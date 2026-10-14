@@ -89,6 +89,17 @@
       <Private>True</Private>
     </Reference>
   </ItemGroup>
+  <!-- Solo al compilar con el .NET SDK (dotnet msbuild), no con el MSBuild de Visual Studio:
+       los .resx con imagenes/sonidos necesitan recursos preserializados y System.Resources.Extensions -->
+  <PropertyGroup Condition=" '$(MSBuildRuntimeType)' == 'Core' ">
+    <GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
+  </PropertyGroup>
+  <ItemGroup Condition=" '$(MSBuildRuntimeType)' == 'Core' ">
+    <Reference Include="System.Resources.Extensions">
+      <HintPath>lib\System.Resources.Extensions.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
   <ItemGroup>
     <Compile Include="PedidosMultiples\Configuracion.cs">
       <SubType>Form</SubType>
