@@ -1,0 +1,155 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Release</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{B3F6C859-043F-4135-9DBB-5C71F0519968}</ProjectGuid>
+    <OutputType>WinExe</OutputType>
+    <!-- RootNamespace vacio: los .resx ya llevan el nombre completo del recurso (PedidosMultiples.InitialForm, PedidosMultiples.Properties.Resources) -->
+    <RootNamespace></RootNamespace>
+    <AssemblyName>PedidosMultiples</AssemblyName>
+    <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <Deterministic>true</Deterministic>
+    <LangVersion>7.3</LangVersion>
+    <EmbeddedResourceUseDependentUponConvention>false</EmbeddedResourceUseDependentUponConvention>
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Ensamblados de .NET Framework 4.8 -->
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="System" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Data" />
+    <Reference Include="System.Data.DataSetExtensions" />
+    <Reference Include="System.Drawing" />
+    <Reference Include="System.Speech" />
+    <Reference Include="System.Windows.Forms" />
+    <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- DLL copiadas del ejecutable original (carpeta lib) -->
+    <Reference Include="AutoUpdater.NET">
+      <HintPath>lib\AutoUpdater.NET.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="BarcodeLib">
+      <HintPath>lib\BarcodeLib.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="ExcelDataReader">
+      <HintPath>lib\ExcelDataReader.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="itextsharp">
+      <HintPath>lib\itextsharp.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Kveer.XmlRPC">
+      <HintPath>lib\Kveer.XmlRPC.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>lib\Newtonsoft.Json.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="Npgsql">
+      <HintPath>lib\Npgsql.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+    <Reference Include="PdfiumViewer">
+      <HintPath>lib\PdfiumViewer.dll</HintPath>
+      <Private>True</Private>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="PedidosMultiples\Configuracion.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PedidosMultiples\ConnectionSQL.cs" />
+    <Compile Include="PedidosMultiples\Contacto.cs" />
+    <Compile Include="PedidosMultiples\CourierRequest.cs" />
+    <Compile Include="PedidosMultiples\CourierResponse.cs" />
+    <Compile Include="PedidosMultiples\Datos.cs" />
+    <Compile Include="PedidosMultiples\Destino.cs" />
+    <Compile Include="PedidosMultiples\Envios.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PedidosMultiples\ExceptionLogging.cs" />
+    <Compile Include="PedidosMultiples\Form1.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PedidosMultiples\InitialForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="PedidosMultiples\IOdooCommon.cs" />
+    <Compile Include="PedidosMultiples\IOdooModels.cs" />
+    <Compile Include="PedidosMultiples\OdooClient.cs" />
+    <Compile Include="PedidosMultiples\Origen.cs" />
+    <Compile Include="PedidosMultiples\Program.cs" />
+    <Compile Include="PedidosMultiples.Properties\Resources.cs" />
+    <Compile Include="PedidosMultiples.Properties\Settings.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="PedidosMultiples.InitialForm.resx" />
+    <EmbeddedResource Include="PedidosMultiples.Properties.Resources.resx" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="App.config" />
+    <None Include="app.manifest" />
+    <Content Include="app.ico" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Dependencias indirectas (Npgsql, System.Text.Json...) y nativas, copiadas tal cual a la salida como en el original -->
+    <None Include="lib\Microsoft.*.dll;lib\System.*.dll">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="lib\nl\PdfiumViewer.resources.dll">
+      <Link>nl\PdfiumViewer.resources.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="lib\x64\pdfium.dll">
+      <Link>x64\pdfium.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Include="lib\x86\pdfium.dll">
+      <Link>x86\pdfium.dll</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!-- Ficheros de datos que el programa espera junto al .exe -->
+    <None Include="recursos\MerchandizersMails.xlsx;recursos\eci_label.pdf;recursos\expediciones_label.pdf">
+      <Link>%(Filename)%(Extension)</Link>
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
