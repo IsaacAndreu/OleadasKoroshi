@@ -148,13 +148,18 @@ lineas.append('')
 lineas.append('F. MATRICULAS (stock.quant.package)')
 Package = env['stock.quant.package']
 for prefijo in ['CJ', 'PACK']:
-    paquetes = Package.search([('name', '=like', prefijo + '%')], order='name asc')
-    vacios = Package.search_count([('name', '=like', prefijo + '%'), ('quant_ids', '=', False)])
-    usados_ml = env['stock.move.line'].search_count([('result_package_id.name', '=like', prefijo + '%')])
-    primero = paquetes and paquetes[0].name or '-'
-    ultimo = paquetes and paquetes[-1].name or '-'
-    lineas.append('   %s: %d paquetes (primero %s, ultimo %s), %d sin stock, %d lineas de movimiento los usan como destino'
-                  % (prefijo, len(paquetes), primero, ultimo, vacios, usados_ml))
+    # Consultas ligeras: contar con search_count y read_group (sin domains sobre one2many)
+    total = Package.search_count([('name', '=like', prefijo + '%')])
+    primero = Package.search([('name', '=like', prefijo + '%')], order='name asc', limit=1).name or '-'
+    ultimo = Package.search([('name', '=like', prefijo + '%')], order='name desc', limit=1).name or '-'
+    con_stock = len(env['stock.quant'].read_group([('package_id.name', '=like', prefijo + '%')], ['package_id'], ['package_id']))
+    lineas.append('   %s: %d paquetes (primero %s, ultimo %s), %d con stock, %d sin stock'
+                  % (prefijo, total, primero, ultimo, con_stock, total - con_stock))
+    ultimos_usados = env['stock.move.line'].search([('result_package_id.name', '=like', prefijo + '%'), ('state', '=', 'done')], order='id desc', limit=5)
+    ejemplos_usados = []
+    for ml in ultimos_usados:
+        ejemplos_usados.append('%s (%s)' % (ml.result_package_id.name, ml.picking_id.name or '-'))
+    lineas.append('      Ultimas usadas: %s' % (', '.join(ejemplos_usados) or '-'))
 
 # ---------------- G. Agrupaciones (oleadas) existentes -----------------------
 lineas.append('')
