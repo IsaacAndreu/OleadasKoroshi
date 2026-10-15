@@ -122,6 +122,9 @@
     </Compile>
     <Compile Include="PedidosMultiples\IOdooCommon.cs" />
     <Compile Include="PedidosMultiples\IOdooModels.cs" />
+    <Compile Include="PedidosMultiples\MatriculasForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
     <Compile Include="PedidosMultiples\OdooAccion.cs" />
     <Compile Include="PedidosMultiples\OdooClient.cs" />
     <Compile Include="PedidosMultiples\Origen.cs" />

@@ -154,6 +154,48 @@ namespace PedidosMultiples
 			return resultado;
 		}
 
+		// Igual que EjecutarAccion, pero buscando antes el albaran por nombre.
+		public Resultado EjecutarAccionPorNombre(int accionId, string nombreAlbaran, int companyId, XmlRpcStruct extra)
+		{
+			try
+			{
+				if (!EstaConfigurada())
+				{
+					throw new Exception("Falta configurar odoo_url / odoo_db / odoo_user / odoo_password");
+				}
+				int pickingId = BuscarPickingId(nombreAlbaran, companyId);
+				if (pickingId <= 0)
+				{
+					throw new Exception("No se encuentra el albarán " + nombreAlbaran + " en Odoo");
+				}
+				return EjecutarAccion(accionId, pickingId, companyId, extra);
+			}
+			catch (XmlRpcFaultException ex)
+			{
+				ExceptionLogging.LogExceptionToFile(ex);
+				return new Resultado
+				{
+					Mensaje = MensajeOdoo(ex.FaultString)
+				};
+			}
+			catch (WebException ex2)
+			{
+				ExceptionLogging.LogExceptionToFile(ex2);
+				return new Resultado
+				{
+					Mensaje = "Sin conexión con Odoo: " + ex2.Message
+				};
+			}
+			catch (Exception ex3)
+			{
+				ExceptionLogging.LogExceptionToFile(ex3);
+				return new Resultado
+				{
+					Mensaje = ex3.Message
+				};
+			}
+		}
+
 		private static XmlRpcStruct ContextoEmpresa(int companyId)
 		{
 			return new XmlRpcStruct
