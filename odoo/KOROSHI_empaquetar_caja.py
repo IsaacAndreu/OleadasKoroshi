@@ -16,6 +16,11 @@
 # Si algo no cuadra, raise Warning: no se escribe nada (rollback) y el programa
 # muestra el mensaje al operario y deja la caja abierta.
 #
+# Con validar_albaran = True en el contexto NO empaqueta: valida la OUT
+# (button_validate), solo si esta completa (todo leido) y todo lo leido esta en
+# caja. Si no, raise Warning y la OUT se queda como estaba (se valida a mano).
+# Al validar se ejecutan las reglas de control de matriculas (17 y 18).
+#
 # Reglas de safe_eval: sin f-strings, sin import, log() siempre antes de raise.
 # =============================================================================
 
@@ -52,64 +57,86 @@ else:
     if pick.state != 'assigned':
         errores.append('El albaran %s no esta Preparado (estado %s)' % (pick.name, pick.state))
 
-formato_ok = len(matricula) > len(PREFIJO) and matricula[:len(PREFIJO)] == PREFIJO
-for ch in matricula[len(PREFIJO):]:
-    if not (ch.isdigit() or ('A' <= ch <= 'Z')):
-        formato_ok = False
-if generar:
-    pass
-elif not formato_ok:
-    errores.append('Matricula "%s" no valida (debe ser %s...)' % (matricula, PREFIJO))
-elif not env['zebra.label'].search_count([('name', '=', matricula)]):
-    errores.append('La matricula %s no existe en Etiquetas Zebra' % matricula)
+validar = bool(env.context.get('validar_albaran'))
+if validar:
+    # ---------------- Solo validar la OUT ----------------
+    if pick:
+        for mv in pick.move_lines:
+            if mv.state != 'cancel' and mv.quantity_done < mv.product_uom_qty:
+                errores.append('Pedido incompleto: %s tiene %d de %d uds leidas'
+                               % (mv.product_id.default_code or mv.product_id.name, mv.quantity_done, mv.product_uom_qty))
+        sin_caja = pick.move_line_ids.filtered(lambda ml: ml.qty_done > 0 and not ml.result_package_id)
+        if sin_caja:
+            errores.append('Hay %d lineas leidas sin caja (matricula)' % len(sin_caja))
+    if errores:
+        log('KOROSHI VALIDAR OUT: NO validado %s -> %s' % (pick and pick.name or '-', ' | '.join(errores[:5])))
+        raise Warning('No se ha validado el albaran %s. Validarlo a mano en Odoo.\n\n%s'
+                      % (pick and pick.name or '-', '\n'.join(errores[:10])))
+    pick.button_validate()
+    if pick.state != 'done':
+        log('KOROSHI VALIDAR OUT: %s sigue en estado %s despues de validar' % (pick.name, pick.state))
+        raise Warning('No se ha validado el albaran %s (Odoo pide confirmacion o falta algo). Validarlo a mano en Odoo.' % pick.name)
+    log('KOROSHI VALIDAR OUT: %s validado' % pick.name)
+    action = {'type': 'ir.actions.act_window_close', 'validado': pick.name}
 else:
-    existentes = env['stock.quant.package'].search([('name', '=', matricula)])
-    if existentes:
-        usado_en = existentes.mapped('quant_ids.location_id.complete_name')
-        errores.append('La matricula %s ya esta usada (paquete existente%s). Usar otra matricula.'
-                       % (matricula, usado_en and (' en ' + ', '.join(usado_en[:3])) or ''))
+    formato_ok = len(matricula) > len(PREFIJO) and matricula[:len(PREFIJO)] == PREFIJO
+    for ch in matricula[len(PREFIJO):]:
+        if not (ch.isdigit() or ('A' <= ch <= 'Z')):
+            formato_ok = False
+    if generar:
+        pass
+    elif not formato_ok:
+        errores.append('Matricula "%s" no valida (debe ser %s...)' % (matricula, PREFIJO))
+    elif not env['zebra.label'].search_count([('name', '=', matricula)]):
+        errores.append('La matricula %s no existe en Etiquetas Zebra' % matricula)
+    else:
+        existentes = env['stock.quant.package'].search([('name', '=', matricula)])
+        if existentes:
+            usado_en = existentes.mapped('quant_ids.location_id.complete_name')
+            errores.append('La matricula %s ya esta usada (paquete existente%s). Usar otra matricula.'
+                           % (matricula, usado_en and (' en ' + ', '.join(usado_en[:3])) or ''))
 
-a_empaquetar = env['stock.move.line']
-destinos = {}
-if pick:
-    for ml in pick.move_line_ids:
-        if ml.qty_done > 0 and not ml.result_package_id:
-            a_empaquetar |= ml
-            destinos[ml.location_dest_id.id] = 1
-    if not a_empaquetar:
-        errores.append('La caja esta vacia: no hay unidades leidas sin caja en %s' % pick.name)
-    if len(destinos) > 1:
-        errores.append('Las lineas de %s tienen %d ubicaciones destino distintas' % (pick.name, len(destinos)))
+    a_empaquetar = env['stock.move.line']
+    destinos = {}
+    if pick:
+        for ml in pick.move_line_ids:
+            if ml.qty_done > 0 and not ml.result_package_id:
+                a_empaquetar |= ml
+                destinos[ml.location_dest_id.id] = 1
+        if not a_empaquetar:
+            errores.append('La caja esta vacia: no hay unidades leidas sin caja en %s' % pick.name)
+        if len(destinos) > 1:
+            errores.append('Las lineas de %s tienen %d ubicaciones destino distintas' % (pick.name, len(destinos)))
 
-if errores:
-    log('KOROSHI EMPAQUETAR CAJA: NO empaquetado %s con %s -> %s'
-        % (pick and pick.name or '-', matricula or '-', ' | '.join(errores)))
-    raise Warning('No se ha cerrado la caja.\n\n%s' % '\n'.join(errores))
+    if errores:
+        log('KOROSHI EMPAQUETAR CAJA: NO empaquetado %s con %s -> %s'
+            % (pick and pick.name or '-', matricula or '-', ' | '.join(errores)))
+        raise Warning('No se ha cerrado la caja.\n\n%s' % '\n'.join(errores))
 
-if generar:
-    # Siguiente CJ de la secuencia de Etiquetas Zebra; se marca como impresa
-    # porque la imprime el programa en su etiqueta de caja.
-    etiqueta = env['zebra.label'].create_next_labels(quantity=1, note='Pedidos Multiples %s' % pick.name)
-    etiqueta.write({'state': 'printed', 'print_date': datetime.datetime.now()})
-    matricula = etiqueta.name
-    if env['stock.quant.package'].search_count([('name', '=', matricula)]):
-        log('KOROSHI EMPAQUETAR CAJA: la matricula generada %s ya existe como paquete' % matricula)
-        raise Warning('No se ha cerrado la caja: la matricula generada %s ya existe como paquete. Avisar a IT.' % matricula)
+    if generar:
+        # Siguiente CJ de la secuencia de Etiquetas Zebra; se marca como impresa
+        # porque la imprime el programa en su etiqueta de caja.
+        etiqueta = env['zebra.label'].create_next_labels(quantity=1, note='Pedidos Multiples %s' % pick.name)
+        etiqueta.write({'state': 'printed', 'print_date': datetime.datetime.now()})
+        matricula = etiqueta.name
+        if env['stock.quant.package'].search_count([('name', '=', matricula)]):
+            log('KOROSHI EMPAQUETAR CAJA: la matricula generada %s ya existe como paquete' % matricula)
+            raise Warning('No se ha cerrado la caja: la matricula generada %s ya existe como paquete. Avisar a IT.' % matricula)
 
-uds = sum(a_empaquetar.mapped('qty_done'))
-pick.put_in_pack(package_name=matricula)
+    uds = sum(a_empaquetar.mapped('qty_done'))
+    pick.put_in_pack(package_name=matricula)
 
-# Comprobacion: un unico paquete con ese nombre y con todas las unidades leidas.
-paquete = env['stock.quant.package'].search([('name', '=', matricula)])
-lineas_paquete = pick.move_line_ids.filtered(lambda ml: ml.result_package_id.name == matricula)
-uds_paquete = sum(lineas_paquete.mapped('qty_done'))
-pendientes = pick.move_line_ids.filtered(lambda ml: ml.qty_done > 0 and not ml.result_package_id)
-if len(paquete) != 1 or uds_paquete != uds or pendientes:
-    log('KOROSHI EMPAQUETAR CAJA: comprobacion fallida %s %s (paquetes %d, uds %d de %d, sin caja %d)'
-        % (pick.name, matricula, len(paquete), uds_paquete, uds, len(pendientes)))
-    raise Warning('No se ha cerrado la caja %s en %s: el resultado no cuadra (paquetes %d, uds %d de %d). '
-                  'No se ha guardado nada.' % (matricula, pick.name, len(paquete), uds_paquete, uds))
+    # Comprobacion: un unico paquete con ese nombre y con todas las unidades leidas.
+    paquete = env['stock.quant.package'].search([('name', '=', matricula)])
+    lineas_paquete = pick.move_line_ids.filtered(lambda ml: ml.result_package_id.name == matricula)
+    uds_paquete = sum(lineas_paquete.mapped('qty_done'))
+    pendientes = pick.move_line_ids.filtered(lambda ml: ml.qty_done > 0 and not ml.result_package_id)
+    if len(paquete) != 1 or uds_paquete != uds or pendientes:
+        log('KOROSHI EMPAQUETAR CAJA: comprobacion fallida %s %s (paquetes %d, uds %d de %d, sin caja %d)'
+            % (pick.name, matricula, len(paquete), uds_paquete, uds, len(pendientes)))
+        raise Warning('No se ha cerrado la caja %s en %s: el resultado no cuadra (paquetes %d, uds %d de %d). '
+                      'No se ha guardado nada.' % (matricula, pick.name, len(paquete), uds_paquete, uds))
 
-log('KOROSHI EMPAQUETAR CAJA: %s caja %s%s con %d uds en %d lineas'
-    % (pick.name, matricula, generar and ' (generada)' or '', uds_paquete, len(lineas_paquete)))
-action = {'type': 'ir.actions.act_window_close', 'matricula': matricula}
+    log('KOROSHI EMPAQUETAR CAJA: %s caja %s%s con %d uds en %d lineas'
+        % (pick.name, matricula, generar and ' (generada)' or '', uds_paquete, len(lineas_paquete)))
+    action = {'type': 'ir.actions.act_window_close', 'matricula': matricula}
