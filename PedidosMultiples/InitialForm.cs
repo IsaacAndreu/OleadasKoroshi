@@ -3502,6 +3502,20 @@ namespace PedidosMultiples
 						pd.PrintController = new StandardPrintController();
 						pd.PrintPage += delegate(object printSender, PrintPageEventArgs printE)
 						{
+							if (company == "EFFE")
+							{
+								// KOROSHI: etiqueta propia que ocupa toda la etiqueta, con la matricula
+								string textoCaja = box;
+								if (last)
+								{
+									int total = (from row in packingListDt.AsEnumerable()
+										where row["PE"].ToString().Equals(pe)
+										select row.Field<int>("BOX")).Distinct().Count();
+									textoCaja = box + "/" + total;
+								}
+								DibujarEtiquetaKoroshi(printE.Graphics, seq, pe, textoCaja, clientName, country, origin, matricula);
+								return;
+							}
 							System.Drawing.Font font = new System.Drawing.Font("Arial", 10f);
 							System.Drawing.Font font2 = new System.Drawing.Font("Arial", 16f);
 							System.Drawing.Font font3 = new System.Drawing.Font("Arial", 16f, FontStyle.Underline);
@@ -3549,6 +3563,104 @@ namespace PedidosMultiples
 			catch (Exception ex)
 			{
 				MessageBox.Show(ex?.ToString() ?? "", "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+			}
+		}
+
+		// Etiqueta de caja de KOROSHI (EFFE). Todo se calcula sobre el area imprimible,
+		// asi ocupa la etiqueta de lado a lado sea cual sea su tamano.
+		private void DibujarEtiquetaKoroshi(Graphics g, string seq, string pe, string textoCaja, string cliente, string pais, string origen, string matricula)
+		{
+			RectangleF area = g.VisibleClipBounds;
+			float margen = area.Width * 0.04f;
+			float x = area.Left + margen;
+			float ancho = area.Width - 2f * margen;
+			float alto = area.Height;
+			float y0 = area.Top;
+			g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+			g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+			// Fila 1: SEQ a la izquierda y BOX a la derecha
+			float filaAlto = alto * 0.10f;
+			DibujarTextoAjustado(g, seq, x, y0 + alto * 0.01f, ancho * 0.40f, filaAlto, FontStyle.Bold, StringAlignment.Near);
+			DibujarTextoAjustado(g, "BOX " + textoCaja, x + ancho * 0.42f, y0 + alto * 0.01f, ancho * 0.58f, filaAlto, FontStyle.Bold, StringAlignment.Far);
+			// Albaran (OUT) y su codigo de barras
+			DibujarTextoAjustado(g, pe, x, y0 + alto * 0.12f, ancho, alto * 0.06f, FontStyle.Bold, StringAlignment.Center);
+			DibujarCodigoBarras(g, pe, x, y0 + alto * 0.185f, ancho, alto * 0.10f);
+			// Tienda, pais y pedido de origen
+			DibujarTextoAjustado(g, cliente, x, y0 + alto * 0.295f, ancho, alto * 0.05f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, pais + ((origen.Length > 0) ? ("   Pedido: " + origen) : ""), x, y0 + alto * 0.35f, ancho, alto * 0.035f, FontStyle.Regular, StringAlignment.Center);
+			if (origen.Length > 0)
+			{
+				DibujarCodigoBarras(g, origen, x + ancho * 0.15f, y0 + alto * 0.39f, ancho * 0.70f, alto * 0.065f);
+			}
+			// Matricula (paquete en Odoo): lo mas grande de la etiqueta
+			g.FillRectangle(Brushes.Black, x, y0 + alto * 0.47f, ancho, alto * 0.006f);
+			if (!string.IsNullOrEmpty(matricula))
+			{
+				DibujarTextoAjustado(g, matricula, x, y0 + alto * 0.49f, ancho, alto * 0.09f, FontStyle.Bold, StringAlignment.Center);
+				DibujarCodigoBarras(g, matricula, x, y0 + alto * 0.59f, ancho, alto * 0.32f);
+			}
+			DibujarTextoAjustado(g, company + "   " + DateTime.Now.ToString("dd/MM/yyyy HH:mm"), x, y0 + alto * 0.93f, ancho, alto * 0.04f, FontStyle.Regular, StringAlignment.Center);
+		}
+
+		// Texto con la letra mas grande que cabe en el rectangulo (unidades de pagina, 1/100 de pulgada).
+		private static void DibujarTextoAjustado(Graphics g, string texto, float x, float y, float ancho, float alto, FontStyle estilo, StringAlignment alineacion)
+		{
+			if (string.IsNullOrEmpty(texto))
+			{
+				return;
+			}
+			float puntos = alto * 0.72f;
+			System.Drawing.Font fuente = new System.Drawing.Font("Arial", puntos, estilo, GraphicsUnit.Point);
+			while (puntos > 4f && g.MeasureString(texto, fuente).Width > ancho)
+			{
+				fuente.Dispose();
+				puntos -= 1f;
+				fuente = new System.Drawing.Font("Arial", puntos, estilo, GraphicsUnit.Point);
+			}
+			using (StringFormat formato = new StringFormat
+			{
+				Alignment = alineacion,
+				LineAlignment = StringAlignment.Center,
+				FormatFlags = StringFormatFlags.NoWrap
+			})
+			{
+				g.DrawString(texto, fuente, Brushes.Black, new RectangleF(x, y, ancho, alto), formato);
+			}
+			fuente.Dispose();
+		}
+
+		// Code128 dibujado modulo a modulo para que ocupe todo el ancho (deja 10 modulos
+		// en blanco a cada lado, la zona de silencio que necesita el lector).
+		private static void DibujarCodigoBarras(Graphics g, string texto, float x, float y, float ancho, float alto)
+		{
+			BarcodeLib.Barcode barcode = new BarcodeLib.Barcode();
+			using (barcode.Encode(TYPE.CODE128, texto, Color.Black, Color.White, 300, 100))
+			{
+			}
+			string modulos = barcode.EncodedValue;
+			if (string.IsNullOrEmpty(modulos))
+			{
+				return;
+			}
+			float modulo = ancho / (float)(modulos.Length + 20);
+			float inicio = x + modulo * 10f;
+			int i = 0;
+			while (i < modulos.Length)
+			{
+				if (modulos[i] == '1')
+				{
+					int j = i;
+					while (j < modulos.Length && modulos[j] == '1')
+					{
+						j++;
+					}
+					g.FillRectangle(Brushes.Black, inicio + modulo * i, y, modulo * (j - i), alto);
+					i = j;
+				}
+				else
+				{
+					i++;
+				}
 			}
 		}
 
