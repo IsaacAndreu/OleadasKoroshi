@@ -22,6 +22,7 @@ using System.Threading.Tasks;
 using System.Windows.Forms;
 using AutoUpdaterDotNET;
 using BarcodeLib;
+using CookComputing.XmlRpc;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Npgsql;
@@ -96,6 +97,21 @@ namespace PedidosMultiples
 		private bool cambiarCaja;
 
 		private bool modoPrueba;
+
+		private bool modoMatricula;
+
+		private const string PrefijoMatricula = "CJ";
+
+		private OdooAccion odooAccion;
+
+		private int accionEmpaquetarId;
+
+		// Modo matricula: matriculas pendientes por SEQ, en orden de uso (la primera es la de la caja abierta).
+		private Dictionary<string, List<string>> matriculasPorSeq = new Dictionary<string, List<string>>();
+
+		private HashSet<string> matriculasUsadas = new HashSet<string>();
+
+		private bool MatriculaActiva => modoMatricula && company == "EFFE" && !ECImode && !VPmode;
 
 		private string queryInicial = "select sml.reference as PE, pt.style_code as Style, COALESCE(color.name, '27 UNICO') as COLOR, COALESCE(talla.name, '') as SIZE, pp.default_code as Product_Code, COALESCE(pp.barcode, '') as EAN_Code, CASE    WHEN sml.product_uom_qty = 0 AND sml.state = 'done' THEN sml.qty_done    ELSE sml.product_uom_qty END AS QTY, sml.qty_done as Leido, sml.id as sml_id, (select trim(so.ref_remarks) from sale_order so where so.id = (select sp.sale_id from stock_picking sp where sp.name = (@order))) as LI_Intitule, pp.x_studio_veepee_product_id as veepee_product_id, 'parcel_id' as LI_Complement, 'pallet_id' as LI_Pallet from stock_move_line sml left join product_product pp on pp.id = sml.product_id left join product_template pt on pt.id = pp.product_tmpl_id left join (select ptav.id, pav.name from product_template_attribute_value ptav, product_attribute_value pav where ptav.product_attribute_value_id = pav.id) as talla on pp.size_attribute_id = talla.id left join(select ptav.id, pav.name from product_template_attribute_value ptav, product_attribute_value pav where ptav.product_attribute_value_id = pav.id) as color on pp.color_attribute_id = color.id where sml.company_id = (@company_id) and (sml.reference = (@order) and sml.picking_id = (select id from stock_picking sp where sp.name = (@order))) and (select state from stock_picking where name = (@order)) in ('assigned', 'done') order by pt.style_code;";
 
@@ -491,6 +507,12 @@ namespace PedidosMultiples
 				Text += " - MODO PRUEBA (no escribe en Odoo ni en SQL Server)";
 				LogPrueba("Inicio del programa en modo prueba");
 			}
+			modoMatricula = (ReturnSetting("koroshi_modo_matricula") ?? "").Equals("true", StringComparison.OrdinalIgnoreCase);
+			if (modoMatricula)
+			{
+				odooAccion = OdooAccion.DesdeConfiguracion();
+				int.TryParse(ReturnSetting("odoo_accion_empaquetar_id"), out accionEmpaquetarId);
+			}
 		}
 
 		private void resetFormOnDbChange()
@@ -537,6 +559,8 @@ namespace PedidosMultiples
 			nombreOleada = "";
 			nombreOleadaTxt.Enabled = true;
 			nombreOleadaLbl.Text = "Nombre oleada: *";
+			matriculasPorSeq.Clear();
+			matriculasUsadas.Clear();
 		}
 
 		private void SetCompanyVariables(string companyName)
@@ -821,7 +845,12 @@ namespace PedidosMultiples
 
 		private void flow(string input)
 		{
-			if (input == "CAMBIAR-CAJA")
+			if (input == "MATRICULAS" && MatriculaActiva)
+			{
+				scanInput.Text = "";
+				AbrirMatriculas();
+			}
+			else if (input == "CAMBIAR-CAJA")
 			{
 				if (articlesGrid.Rows.Count > 0 && peList.Count > 1)
 				{
@@ -1361,6 +1390,270 @@ namespace PedidosMultiples
 			return suma;
 		}
 
+		// ---------------- Modo matricula KOROSHI (EFFE) ----------------
+
+		private void AbrirMatriculas()
+		{
+			using (MatriculasForm form = new MatriculasForm(matriculasPorSeq, seqLength, ValidarSeqMatricula, ValidarMatricula, GuardarMatriculas, null))
+			{
+				form.ShowDialog(this);
+			}
+			scanInput.Text = null;
+			scanInput.Select();
+		}
+
+		// Lee una matricula para cerrar una caja del SEQ cuando no hay ninguna preregistrada. Devuelve null si se cancela.
+		private string PedirMatricula(string seq)
+		{
+			sound_alert.Play();
+			using (MatriculasForm form = new MatriculasForm(matriculasPorSeq, seqLength, ValidarSeqMatricula, ValidarMatricula, GuardarMatriculas, seq))
+			{
+				return (form.ShowDialog(this) == DialogResult.OK) ? form.MatriculaLeida : null;
+			}
+		}
+
+		private string ValidarSeqMatricula(string seq)
+		{
+			foreach (DataGridViewRow row in (IEnumerable)articlesGrid.Rows)
+			{
+				if (row.Cells["SEQ"].Value.ToString().Equals(seq) && !Convert.ToBoolean(row.Cells["Finalizado"].Value.ToString()))
+				{
+					return null;
+				}
+			}
+			return "SEQ " + seq + " no existe en la oleada o el pedido ya está terminado";
+		}
+
+		// Solo lectura: formato, que exista en zebra.label y que no este en un paquete con contenido.
+		private string ValidarMatricula(string matricula)
+		{
+			if (!Regex.IsMatch(matricula, "^" + PrefijoMatricula + "[A-Z0-9]+$"))
+			{
+				return "formato no válido (" + PrefijoMatricula + "...)";
+			}
+			if (matriculasUsadas.Contains(matricula))
+			{
+				return "ya se ha usado en esta sesión";
+			}
+			try
+			{
+				using (ConnectionSQL cSql = new ConnectionSQL(company))
+				{
+					cSql.dbConn.Open();
+					NpgsqlCommand existe = new NpgsqlCommand("select count(*) from zebra_label where name = @matricula;", cSql.dbConn);
+					existe.Parameters.AddWithValue("@matricula", matricula);
+					if (Convert.ToInt64(existe.ExecuteScalar()) == 0)
+					{
+						return "no existe en Odoo (Etiquetas Zebra)";
+					}
+					NpgsqlCommand usada = new NpgsqlCommand("select count(*) from stock_quant_package pk where pk.name = @matricula and (exists (select 1 from stock_quant q where q.package_id = pk.id and q.quantity > 0) or exists (select 1 from stock_move_line ml where ml.result_package_id = pk.id and ml.state not in ('done', 'cancel')));", cSql.dbConn);
+					usada.Parameters.AddWithValue("@matricula", matricula);
+					if (Convert.ToInt64(usada.ExecuteScalar()) > 0)
+					{
+						return "ya es un paquete con contenido en Odoo";
+					}
+					cSql.dbConn.Close();
+				}
+			}
+			catch (Exception ex)
+			{
+				return "error al validar en Odoo: " + ex.Message;
+			}
+			return null;
+		}
+
+		private void GuardarMatriculas()
+		{
+			try
+			{
+				List<string> lineas = new List<string>();
+				foreach (string seq in matriculasPorSeq.Keys.OrderBy((string s) => s))
+				{
+					string pe = "";
+					foreach (DataGridViewRow row in (IEnumerable)articlesGrid.Rows)
+					{
+						if (row.Cells["SEQ"].Value.ToString().Equals(seq))
+						{
+							pe = row.Cells["PE"].Value.ToString();
+							break;
+						}
+					}
+					lineas.Add(seq + ";" + pe + ";" + string.Join(",", matriculasPorSeq[seq]));
+				}
+				File.WriteAllLines(Path.Combine(logFolderPath, "matriculas_" + company + ".txt"), lineas);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show("GuardarMatriculas_ " + ex.Message, "Error");
+			}
+		}
+
+		private HashSet<int> IndicesPedido(string pe)
+		{
+			HashSet<int> indexes = new HashSet<int>();
+			for (int i = 0; i < articlesGrid.Rows.Count; i++)
+			{
+				if (articlesGrid.Rows[i].Cells["PE"].Value.ToString().Equals(pe) && !Convert.ToBoolean(articlesGrid.Rows[i].Cells["Finalizado"].Value.ToString()))
+				{
+					indexes.Add(i);
+				}
+			}
+			return indexes;
+		}
+
+		// Cierra en Odoo la caja abierta del pedido: la accion de servidor pone las lineas
+		// leidas sin paquete en un paquete con el nombre de la matricula. Si va bien, vuelve
+		// a leer las lineas del pedido (Odoo las parte al empaquetar). Si falla, la caja
+		// queda abierta. Si la caja esta vacia no hace nada y devuelve true.
+		private bool CerrarCajaEnOdoo(string seq, string pe, string box, out string matricula)
+		{
+			matricula = string.Empty;
+			int udsCaja = (from row in packingListDt.AsEnumerable()
+				where row["PE"].ToString().Equals(pe)
+				where row["BOX"].ToString().Equals(box)
+				select row.Field<int>("QTY")).Sum();
+			if (udsCaja <= 0)
+			{
+				return true;
+			}
+			bool deLaCola = matriculasPorSeq.TryGetValue(seq, out var cola) && cola.Count > 0;
+			matricula = deLaCola ? cola[0] : PedirMatricula(seq);
+			if (string.IsNullOrEmpty(matricula))
+			{
+				matricula = string.Empty;
+				sound_error.Play();
+				lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
+				lblPe.Text = "CAJA NO CERRADA:\nFALTA LA MATRÍCULA";
+				panelScanPe.BackColor = Color.Red;
+				return false;
+			}
+			lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
+			lblPe.Text = "ESPERE,\nCERRANDO CAJA " + box + " (" + matricula + ")...";
+			panelScanPe.BackColor = default(Color);
+			lblPe.Refresh();
+			OdooAccion.Resultado resultado;
+			if (modoPrueba)
+			{
+				LogPrueba("Empaquetar caja no hecho: " + pe + " SEQ " + seq + " caja " + box + " (" + udsCaja + " uds) matricula " + matricula);
+				resultado = new OdooAccion.Resultado
+				{
+					Ok = true
+				};
+			}
+			else
+			{
+				Cursor = Cursors.WaitCursor;
+				resultado = odooAccion.EjecutarAccionPorNombre(accionEmpaquetarId, pe, db, new XmlRpcStruct { { "matricula", matricula } });
+				Cursor = Cursors.Default;
+			}
+			if (!resultado.Ok)
+			{
+				sound_error.Play();
+				lblPe.Text = "ERROR: CAJA " + box + " NO CERRADA";
+				panelScanPe.BackColor = Color.Red;
+				string mensaje = "No se ha podido cerrar la caja " + box + " del pedido " + pe + " (SEQ " + seq + ") con la matrícula " + matricula + ".\n\n" + resultado.Mensaje + "\n\nLa caja sigue abierta. Para volver a intentarlo: CAMBIAR CAJA y el SEQ.";
+				if (deLaCola)
+				{
+					if (MessageBox.Show(mensaje + "\n\n¿Descartar la matrícula " + matricula + " y usar otra?", "Odoo: caja no cerrada", MessageBoxButtons.YesNo, MessageBoxIcon.Hand) == DialogResult.Yes)
+					{
+						cola.RemoveAt(0);
+						GuardarMatriculas();
+					}
+				}
+				else
+				{
+					MessageBox.Show(mensaje, "Odoo: caja no cerrada", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+				}
+				matricula = string.Empty;
+				return false;
+			}
+			if (deLaCola)
+			{
+				cola.RemoveAt(0);
+			}
+			matriculasUsadas.Add(matricula);
+			GuardarMatriculas();
+			if (!modoPrueba)
+			{
+				RecargarLineasPedido(pe);
+			}
+			return true;
+		}
+
+		// Vuelve a leer de Odoo las lineas de un pedido y las pone en el mismo sitio de la
+		// tabla, conservando SEQ y caja. Necesario despues de empaquetar: Odoo parte las
+		// lineas y los sml_id que tenia el programa ya no sirven.
+		private void RecargarLineasPedido(string pe)
+		{
+			try
+			{
+				DataTable nuevas = new DataTable();
+				using (ConnectionSQL cSql = new ConnectionSQL(company))
+				{
+					cSql.dbConn.Open();
+					NpgsqlCommand obj = new NpgsqlCommand(queryInicial, cSql.dbConn)
+					{
+						CommandTimeout = 120
+					};
+					obj.Parameters.AddWithValue("@company_id", db);
+					obj.Parameters.AddWithValue("@order", pe);
+					using (NpgsqlDataAdapter adapter = new NpgsqlDataAdapter(obj))
+					{
+						adapter.Fill(nuevas);
+					}
+				}
+				if (nuevas.Rows.Count == 0)
+				{
+					MessageBox.Show("No se han podido volver a leer las líneas del pedido " + pe + ". Volver a cargar la oleada antes de seguir.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+					return;
+				}
+				int primero = -1;
+				string seq = "";
+				object caja = 1;
+				for (int i = dataTableSource.Rows.Count - 1; i >= 0; i--)
+				{
+					if (dataTableSource.Rows[i]["PE"].ToString().Equals(pe))
+					{
+						primero = i;
+						seq = dataTableSource.Rows[i]["SEQ"].ToString();
+						caja = dataTableSource.Rows[i]["Caja"];
+						dataTableSource.Rows.RemoveAt(i);
+					}
+				}
+				if (primero < 0)
+				{
+					primero = dataTableSource.Rows.Count;
+				}
+				for (int j = 0; j < nuevas.Rows.Count; j++)
+				{
+					DataRow fila = dataTableSource.NewRow();
+					foreach (DataColumn columna in nuevas.Columns)
+					{
+						if (dataTableSource.Columns.Contains(columna.ColumnName))
+						{
+							fila[columna.ColumnName] = nuevas.Rows[j][columna];
+						}
+					}
+					fila["SEQ"] = seq;
+					fila["Caja"] = caja;
+					fila["Finalizado"] = false;
+					dataTableSource.Rows.InsertAt(fila, primero + j);
+				}
+				foreach (DataGridViewRow row in (IEnumerable)articlesGrid.Rows)
+				{
+					if (row.Cells["PE"].Value.ToString().Equals(pe))
+					{
+						row.DefaultCellStyle.BackColor = (Convert.ToInt32(row.Cells["QTY"].Value.ToString()) == Convert.ToInt32(row.Cells["Leido"].Value.ToString())) ? Color.LightGreen : Color.Empty;
+					}
+				}
+				logArticleLines();
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show("RecargarLineasPedido_ " + ex.Message + "\nVolver a cargar la oleada antes de seguir.", "Error " + pe, MessageBoxButtons.OK, MessageBoxIcon.Hand);
+			}
+		}
+
 		private async void CheckIfPeIsFinishedAndDoStuff(string pe)
 		{
 			try
@@ -1444,12 +1737,22 @@ namespace PedidosMultiples
 									panelScanPe.BackColor = Color.Red;
 								}
 							}
+							string matricula = string.Empty;
+							if (MatriculaActiva)
+							{
+								// Modo matricula: cerrar la ultima caja en Odoo; si falla, el pedido no se termina
+								if (!CerrarCajaEnOdoo(seq, pe, box, out matricula))
+								{
+									return;
+								}
+								indexes = IndicesPedido(pe);
+							}
 							string origin = string.Empty;
 							if (company.Equals("EFFE"))
 							{
 								origin = temporalClient.Rows[0]["Origin"].ToString();
 							}
-							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin);
+							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin, matricula);
 							if (sendEmails)
 							{
 								sendEmailOnPeFinishedToConfigUser(pe, seq, currentReadQtyPe, cliente);
@@ -1922,6 +2225,10 @@ namespace PedidosMultiples
 				paintTable(row.Index);
 			}
 			UpdateProgressBar();
+			if (MatriculaActiva)
+			{
+				AbrirMatriculas();
+			}
 		}
 
 		private void progressBarTotal_Paint(object sender, PaintEventArgs e)
@@ -2210,7 +2517,12 @@ namespace PedidosMultiples
 					{
 						clientData = (FetchLocationName(company, pe), "");
 					}
-					if (clientData.Item1 != string.Empty)
+					string matricula = string.Empty;
+					if (clientData.Item1 != string.Empty && MatriculaActiva && increment && !CerrarCajaEnOdoo(seq, pe, box, out matricula))
+					{
+						// Modo matricula: Odoo no ha cerrado la caja; sigue abierta y el error ya se ha mostrado
+					}
+					else if (clientData.Item1 != string.Empty)
 					{
 						if (increment)
 						{
@@ -2231,7 +2543,7 @@ namespace PedidosMultiples
 						{
 							origin = tempClient.Rows[0]["Origin"].ToString();
 						}
-						GenerateLabel(seq, pe, box, clientData.Item1, clientData.Item2, last: false, origin);
+						GenerateLabel(seq, pe, box, clientData.Item1, clientData.Item2, last: false, origin, matricula);
 					}
 					else
 					{
@@ -2239,6 +2551,11 @@ namespace PedidosMultiples
 						lblPe.Text = "ERROR: Problema con el cliente";
 						panelScanPe.BackColor = Color.Red;
 					}
+				}
+				else if (MatriculaActiva && isValidBox && increment && totalQtyPe > 0 && currentQty == totalQtyPe)
+				{
+					// Modo matricula: pedido completo cuya ultima caja no se pudo cerrar en Odoo; se reintenta
+					CheckIfPeIsFinishedAndDoStuff(pe);
 				}
 				else if (!isValidBox)
 				{
@@ -3101,7 +3418,7 @@ namespace PedidosMultiples
 			return arePending;
 		}
 
-		public void GenerateLabel(string seq, string pe, string box, string clientName, string country, bool last, string origin)
+		public void GenerateLabel(string seq, string pe, string box, string clientName, string country, bool last, string origin, string matricula = "")
 		{
 			try
 			{
@@ -3156,6 +3473,13 @@ namespace PedidosMultiples
 								printE.Graphics.DrawString(origin, font5, Brushes.Black, new PointF(20f, 315f));
 								System.Drawing.Image image2 = barcode.Encode(TYPE.CODE128, origin, Color.Black, Color.White, 225, 50);
 								printE.Graphics.DrawImage(image2, 0, 330);
+							}
+							if (!string.IsNullOrEmpty(matricula))
+							{
+								// Modo matricula KOROSHI: matricula de la caja (paquete en Odoo)
+								printE.Graphics.DrawString(matricula, font2, Brushes.Black, new PointF(20f, 385f));
+								System.Drawing.Image image3 = barcode.Encode(TYPE.CODE128, matricula, Color.Black, Color.White, 225, 50);
+								printE.Graphics.DrawImage(image3, 0, 412);
 							}
 						};
 						pd.PrinterSettings.PrinterName = ReturnSetting("imp_tick").ToString();
@@ -4156,12 +4480,22 @@ namespace PedidosMultiples
 									panelScanPe.BackColor = Color.Red;
 								}
 							}
+							string matricula = string.Empty;
+							if (MatriculaActiva)
+							{
+								// Modo matricula: cerrar la ultima caja en Odoo; si falla, el pedido no se termina
+								if (!CerrarCajaEnOdoo(seq, pe, box, out matricula))
+								{
+									return;
+								}
+								indexes = IndicesPedido(pe);
+							}
 							string origin = string.Empty;
 							if (company.Equals("EFFE"))
 							{
 								origin = temporalClient.Rows[0]["Origin"].ToString();
 							}
-							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin);
+							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin, matricula);
 							if (sendEmails)
 							{
 								sendEmailOnPeFinishedToConfigUser(pe, seq, currentReadQtyPe, cliente);
