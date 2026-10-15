@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_zebra_label_root" name="Koroshi Zebra" sequence="50"/>
+
+    <menuitem id="menu_zebra_label_print" name="Imprimir Etiquetas"
+              parent="menu_zebra_label_root"
+              action="action_zebra_label_print_wizard"
+              sequence="10"/>
+
+    <menuitem id="menu_zebra_label_list" name="Historial de Etiquetas"
+              parent="menu_zebra_label_root"
+              action="action_zebra_label"
+              sequence="20"/>
+</odoo>
