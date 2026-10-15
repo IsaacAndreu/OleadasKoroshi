@@ -3513,7 +3513,10 @@ namespace PedidosMultiples
 										select row.Field<int>("BOX")).Distinct().Count();
 									textoCaja = box + "/" + total;
 								}
-								DibujarEtiquetaKoroshi(printE.Graphics, seq, pe, textoCaja, clientName, country, origin, matricula);
+								// Se dibuja sobre la etiqueta fisica de 4 x 6 pulgadas (101,6 x 152,4 mm),
+								// contando desde el borde del papel y no desde el margen de la impresora.
+								printE.Graphics.TranslateTransform(0f - printE.PageSettings.HardMarginX, 0f - printE.PageSettings.HardMarginY);
+								DibujarEtiquetaKoroshi(printE.Graphics, new RectangleF(0f, 0f, 400f, 600f), seq, pe, textoCaja, clientName, country, origin, matricula);
 								return;
 							}
 							System.Drawing.Font font = new System.Drawing.Font("Arial", 10f);
@@ -3556,6 +3559,13 @@ namespace PedidosMultiples
 							}
 						};
 						pd.PrinterSettings.PrinterName = ReturnSetting("imp_tick").ToString();
+						if (company == "EFFE")
+						{
+							// KOROSHI: etiqueta de 101,6 x 152,4 mm (4 x 6 pulgadas = 400 x 600 centesimas)
+							pd.DefaultPageSettings.PaperSize = new PaperSize("KOROSHI 101,6 x 152,4 mm", 400, 600);
+							pd.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+							pd.DefaultPageSettings.Landscape = false;
+						}
 						pd.Print();
 					}
 				}
@@ -3566,16 +3576,15 @@ namespace PedidosMultiples
 			}
 		}
 
-		// Etiqueta de caja de KOROSHI (EFFE). Todo se calcula sobre el area imprimible,
-		// asi ocupa la etiqueta de lado a lado sea cual sea su tamano.
-		private void DibujarEtiquetaKoroshi(Graphics g, string seq, string pe, string textoCaja, string cliente, string pais, string origen, string matricula)
+		// Etiqueta de caja de KOROSHI (EFFE). Todo se calcula en proporcion a la etiqueta
+		// (area, en centesimas de pulgada), con un margen de seguridad arriba y abajo.
+		private void DibujarEtiquetaKoroshi(Graphics g, RectangleF area, string seq, string pe, string textoCaja, string cliente, string pais, string origen, string matricula)
 		{
-			RectangleF area = g.VisibleClipBounds;
 			float margen = area.Width * 0.04f;
 			float x = area.Left + margen;
 			float ancho = area.Width - 2f * margen;
-			float alto = area.Height;
-			float y0 = area.Top;
+			float alto = area.Height * 0.94f;
+			float y0 = area.Top + area.Height * 0.04f;
 			g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
 			g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
 			// Fila 1: SEQ a la izquierda y BOX a la derecha
