@@ -14,6 +14,9 @@ namespace PedidosMultiples
 			public bool Ok;
 
 			public string Mensaje = string.Empty;
+
+			// Matricula que devuelve la accion en action['matricula'] (si la genera Odoo)
+			public string Matricula = string.Empty;
 		}
 
 		private readonly string url;
@@ -132,7 +135,11 @@ namespace PedidosMultiples
 					}
 				}
 				XmlRpcStruct kwargs = new XmlRpcStruct { { "context", contexto } };
-				Modelos().ExecuteKw(db, uid, password, "ir.actions.server", "run", new object[1] { new int[1] { accionId } }, kwargs);
+				object respuesta = Modelos().ExecuteKw(db, uid, password, "ir.actions.server", "run", new object[1] { new int[1] { accionId } }, kwargs);
+				if (respuesta is XmlRpcStruct accion && accion.ContainsKey("matricula") && accion["matricula"] != null)
+				{
+					resultado.Matricula = accion["matricula"].ToString();
+				}
 				resultado.Ok = true;
 				resultado.Mensaje = "OK";
 			}

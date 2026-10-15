@@ -100,6 +100,9 @@ namespace PedidosMultiples
 
 		private bool modoMatricula;
 
+		// Modo matricula: la matricula la genera Odoo al cerrar la caja (sin preregistro ni lectura)
+		private bool matriculaAuto;
+
 		private const string PrefijoMatricula = "CJ";
 
 		private OdooAccion odooAccion;
@@ -512,6 +515,7 @@ namespace PedidosMultiples
 			{
 				odooAccion = OdooAccion.DesdeConfiguracion();
 				int.TryParse(ReturnSetting("odoo_accion_empaquetar_id"), out accionEmpaquetarId);
+				matriculaAuto = !(ReturnSetting("koroshi_matricula_auto") ?? "").Equals("false", StringComparison.OrdinalIgnoreCase);
 			}
 		}
 
@@ -845,7 +849,7 @@ namespace PedidosMultiples
 
 		private void flow(string input)
 		{
-			if (input == "MATRICULAS" && MatriculaActiva)
+			if (input == "MATRICULAS" && MatriculaActiva && !matriculaAuto)
 			{
 				scanInput.Text = "";
 				AbrirMatriculas();
@@ -1516,24 +1520,40 @@ namespace PedidosMultiples
 			{
 				return true;
 			}
-			bool deLaCola = matriculasPorSeq.TryGetValue(seq, out var cola) && cola.Count > 0;
-			matricula = deLaCola ? cola[0] : PedirMatricula(seq);
-			if (string.IsNullOrEmpty(matricula))
+			List<string> cola = null;
+			bool deLaCola = false;
+			XmlRpcStruct extra;
+			if (matriculaAuto)
 			{
-				matricula = string.Empty;
-				sound_error.Play();
-				lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
-				lblPe.Text = "CAJA NO CERRADA:\nFALTA LA MATRÍCULA";
-				panelScanPe.BackColor = Color.Red;
-				return false;
+				// La matricula la genera Odoo (siguiente CJ de la secuencia) y la devuelve
+				extra = new XmlRpcStruct { { "generar_matricula", true } };
+			}
+			else
+			{
+				deLaCola = matriculasPorSeq.TryGetValue(seq, out cola) && cola.Count > 0;
+				matricula = deLaCola ? cola[0] : PedirMatricula(seq);
+				if (string.IsNullOrEmpty(matricula))
+				{
+					matricula = string.Empty;
+					sound_error.Play();
+					lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
+					lblPe.Text = "CAJA NO CERRADA:\nFALTA LA MATRÍCULA";
+					panelScanPe.BackColor = Color.Red;
+					return false;
+				}
+				extra = new XmlRpcStruct { { "matricula", matricula } };
 			}
 			lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
-			lblPe.Text = "ESPERE,\nCERRANDO CAJA " + box + " (" + matricula + ")...";
+			lblPe.Text = "ESPERE,\nCERRANDO CAJA " + box + (matriculaAuto ? "" : (" (" + matricula + ")")) + "...";
 			panelScanPe.BackColor = default(Color);
 			lblPe.Refresh();
 			OdooAccion.Resultado resultado;
 			if (modoPrueba)
 			{
+				if (matriculaAuto)
+				{
+					matricula = "CJPRUEBA" + DateTime.Now.ToString("HHmmss");
+				}
 				LogPrueba("Empaquetar caja no hecho: " + pe + " SEQ " + seq + " caja " + box + " (" + udsCaja + " uds) matricula " + matricula);
 				resultado = new OdooAccion.Resultado
 				{
@@ -1543,15 +1563,23 @@ namespace PedidosMultiples
 			else
 			{
 				Cursor = Cursors.WaitCursor;
-				resultado = odooAccion.EjecutarAccionPorNombre(accionEmpaquetarId, pe, db, new XmlRpcStruct { { "matricula", matricula } });
+				resultado = odooAccion.EjecutarAccionPorNombre(accionEmpaquetarId, pe, db, extra);
 				Cursor = Cursors.Default;
+				if (resultado.Ok && matriculaAuto)
+				{
+					matricula = resultado.Matricula;
+					if (string.IsNullOrEmpty(matricula))
+					{
+						MessageBox.Show("La caja " + box + " del pedido " + pe + " se ha cerrado en Odoo, pero Odoo no ha devuelto la matrícula y no saldrá en la etiqueta. Revisar la acción de Odoo (odoo_accion_empaquetar_id).", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+					}
+				}
 			}
 			if (!resultado.Ok)
 			{
 				sound_error.Play();
 				lblPe.Text = "ERROR: CAJA " + box + " NO CERRADA";
 				panelScanPe.BackColor = Color.Red;
-				string mensaje = "No se ha podido cerrar la caja " + box + " del pedido " + pe + " (SEQ " + seq + ") con la matrícula " + matricula + ".\n\n" + resultado.Mensaje + "\n\nLa caja sigue abierta. Para volver a intentarlo: CAMBIAR CAJA y el SEQ.";
+				string mensaje = "No se ha podido cerrar la caja " + box + " del pedido " + pe + " (SEQ " + seq + ")" + (matriculaAuto ? "" : (" con la matrícula " + matricula)) + ".\n\n" + resultado.Mensaje + "\n\nLa caja sigue abierta. Para volver a intentarlo: CAMBIAR CAJA y el SEQ.";
 				if (deLaCola)
 				{
 					if (MessageBox.Show(mensaje + "\n\n¿Descartar la matrícula " + matricula + " y usar otra?", "Odoo: caja no cerrada", MessageBoxButtons.YesNo, MessageBoxIcon.Hand) == DialogResult.Yes)
@@ -1572,7 +1600,18 @@ namespace PedidosMultiples
 				cola.RemoveAt(0);
 			}
 			matriculasUsadas.Add(matricula);
-			GuardarMatriculas();
+			if (!matriculaAuto)
+			{
+				GuardarMatriculas();
+			}
+			try
+			{
+				File.AppendAllText(Path.Combine(logFolderPath, "cajas_" + company + ".txt"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + ";" + nombreOleada + ";" + pe + ";" + seq + ";" + box + ";" + udsCaja + ";" + matricula + Environment.NewLine);
+			}
+			catch (Exception ex)
+			{
+				ex.ToString();
+			}
 			if (!modoPrueba)
 			{
 				RecargarLineasPedido(pe);
@@ -2225,7 +2264,7 @@ namespace PedidosMultiples
 				paintTable(row.Index);
 			}
 			UpdateProgressBar();
-			if (MatriculaActiva)
+			if (MatriculaActiva && !matriculaAuto)
 			{
 				AbrirMatriculas();
 			}
