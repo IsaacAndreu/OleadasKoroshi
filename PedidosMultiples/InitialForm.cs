@@ -517,6 +517,7 @@ namespace PedidosMultiples
 				int.TryParse(ReturnSetting("odoo_accion_empaquetar_id"), out accionEmpaquetarId);
 				matriculaAuto = !(ReturnSetting("koroshi_matricula_auto") ?? "").Equals("false", StringComparison.OrdinalIgnoreCase);
 			}
+			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta de caja de prueba", null, imprimirEtiquetaPrueba_Click);
 		}
 
 		private void resetFormOnDbChange()
@@ -1392,6 +1393,25 @@ namespace PedidosMultiples
 				}
 			}
 			return suma;
+		}
+
+		// Etiqueta de caja con datos de ejemplo, para ver como sale impresa.
+		// No toca Odoo, ni la base de datos, ni la oleada cargada.
+		private void imprimirEtiquetaPrueba_Click(object sender, EventArgs e)
+		{
+			if (!printLabels)
+			{
+				MessageBox.Show("Activar antes Opciones > Imprimir etiquetas caja.", "Etiqueta de prueba", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+				return;
+			}
+			string empresaActual = company;
+			if (string.IsNullOrEmpty(company))
+			{
+				company = "EFFE";
+			}
+			GenerateLabel("001", "EFFEC/OUT/00000", "1/1", "K00 - TIENDA DE PRUEBA", "España", last: false, "S00000", "CJ665000000");
+			company = empresaActual;
+			scanInput.Select();
 		}
 
 		// ---------------- Modo matricula KOROSHI (EFFE) ----------------
