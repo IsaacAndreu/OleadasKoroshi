@@ -5,10 +5,14 @@
 # La llama el programa Pedidos Multiples (modo matricula, EFFE) al cerrar una
 # caja, por XML-RPC (ir.actions.server.run) con el contexto:
 #   active_model = 'stock.picking', active_id / active_ids = la OUT,
-#   matricula = 'CJ...', allowed_company_ids = [8]
+#   matricula = 'CJ...'  o  generar_matricula = True,  allowed_company_ids = [8]
+# Con generar_matricula, la matricula es el siguiente codigo de la secuencia de
+# Etiquetas Zebra (CJ...): se crea el registro zebra.label (impresa) y la
+# matricula se devuelve al programa para imprimirla en su etiqueta.
 # Pone las lineas leidas (qty_done > 0) que aun no tienen paquete en un paquete
 # nuevo con el nombre de la matricula, con put_in_pack(package_name=...) del
 # modulo stock_barcode_optimization. Odoo parte las lineas leidas a medias.
+# Devuelve action = {'type': 'ir.actions.act_window_close', 'matricula': ...}.
 # Si algo no cuadra, raise Warning: no se escribe nada (rollback) y el programa
 # muestra el mensaje al operario y deja la caja abierta.
 #
@@ -22,7 +26,8 @@ PREFIJO = 'CJ'
 # En produccion: False (el albaran y la matricula vienen del contexto).
 PRUEBA_MANUAL = False
 PICKING_NOMBRE = 'EFFEC/OUT/19385'
-MATRICULA_PRUEBA = 'CJ665002800'
+# Vacio = generar la matricula (como hace el programa); con valor = usar esa.
+MATRICULA_PRUEBA = ''
 # -----------------------------------------------------------------------------
 
 pick = env['stock.picking']
@@ -30,8 +35,11 @@ if env.context.get('active_model') == 'stock.picking' and env.context.get('activ
     pick = env['stock.picking'].browse(env.context.get('active_id')).exists()
 elif PRUEBA_MANUAL and PICKING_NOMBRE:
     pick = env['stock.picking'].search([('name', '=', PICKING_NOMBRE), ('company_id', '=', COMPANY_ID)], limit=1)
-matricula = env.context.get('matricula') or (PRUEBA_MANUAL and MATRICULA_PRUEBA) or ''
-matricula = matricula.strip().upper()
+generar = bool(env.context.get('generar_matricula')) or bool(PRUEBA_MANUAL and not env.context.get('matricula') and not MATRICULA_PRUEBA)
+matricula = ''
+if not generar:
+    matricula = env.context.get('matricula') or (PRUEBA_MANUAL and MATRICULA_PRUEBA) or ''
+    matricula = matricula.strip().upper()
 
 errores = []
 if not pick:
@@ -48,7 +56,9 @@ formato_ok = len(matricula) > len(PREFIJO) and matricula[:len(PREFIJO)] == PREFI
 for ch in matricula[len(PREFIJO):]:
     if not (ch.isdigit() or ('A' <= ch <= 'Z')):
         formato_ok = False
-if not formato_ok:
+if generar:
+    pass
+elif not formato_ok:
     errores.append('Matricula "%s" no valida (debe ser %s...)' % (matricula, PREFIJO))
 elif not env['zebra.label'].search_count([('name', '=', matricula)]):
     errores.append('La matricula %s no existe en Etiquetas Zebra' % matricula)
@@ -76,6 +86,16 @@ if errores:
         % (pick and pick.name or '-', matricula or '-', ' | '.join(errores)))
     raise Warning('No se ha cerrado la caja.\n\n%s' % '\n'.join(errores))
 
+if generar:
+    # Siguiente CJ de la secuencia de Etiquetas Zebra; se marca como impresa
+    # porque la imprime el programa en su etiqueta de caja.
+    etiqueta = env['zebra.label'].create_next_labels(quantity=1, note='Pedidos Multiples %s' % pick.name)
+    etiqueta.write({'state': 'printed', 'print_date': datetime.datetime.now()})
+    matricula = etiqueta.name
+    if env['stock.quant.package'].search_count([('name', '=', matricula)]):
+        log('KOROSHI EMPAQUETAR CAJA: la matricula generada %s ya existe como paquete' % matricula)
+        raise Warning('No se ha cerrado la caja: la matricula generada %s ya existe como paquete. Avisar a IT.' % matricula)
+
 uds = sum(a_empaquetar.mapped('qty_done'))
 pick.put_in_pack(package_name=matricula)
 
@@ -90,5 +110,6 @@ if len(paquete) != 1 or uds_paquete != uds or pendientes:
     raise Warning('No se ha cerrado la caja %s en %s: el resultado no cuadra (paquetes %d, uds %d de %d). '
                   'No se ha guardado nada.' % (matricula, pick.name, len(paquete), uds_paquete, uds))
 
-log('KOROSHI EMPAQUETAR CAJA: %s caja %s con %d uds en %d lineas'
-    % (pick.name, matricula, uds_paquete, len(lineas_paquete)))
+log('KOROSHI EMPAQUETAR CAJA: %s caja %s%s con %d uds en %d lineas'
+    % (pick.name, matricula, generar and ' (generada)' or '', uds_paquete, len(lineas_paquete)))
+action = {'type': 'ir.actions.act_window_close', 'matricula': matricula}
