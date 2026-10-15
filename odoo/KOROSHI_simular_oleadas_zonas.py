@@ -29,6 +29,10 @@ NUM_ZONAS = 5
 # Vacio = zonas equilibradas esta noche. Los cortes deben caer entre pasillos
 # (acabar en lineal impar), para que un pasillo no quede partido entre dos PDA.
 ZONAS_FIJAS = []
+# Solo para simular (no se tocan): incluir OUT que ya estan en una oleada y
+# OUT con reserva parcial (se cuentan solo las unidades reservadas).
+INCLUIR_YA_EN_OLEADA = True
+INCLUIR_RESERVA_PARCIAL = True
 MAX_LINEAS_MENSAJE = 220
 # -----------------------------------------------------------------------------
 
@@ -58,18 +62,37 @@ for i in range(NUM_OLEADAS):
 candidatos = Picking.search([
     ('company_id', '=', COMPANY_ID),
     ('picking_type_code', '=', 'outgoing'),
-    ('batch_id', '=', False),
-    ('state', '=', 'assigned'),
+    ('state', 'in', ['confirmed', 'waiting', 'assigned']),
     ('create_date', '>=', desde_txt),
 ], order='name asc')
 tiendas = {}
 descartadas = 0
+motivos = {}
+oleadas_existentes = {}
 for p in candidatos:
     tipo = p.sale_id and p.sale_id.s_order_type_id and p.sale_id.s_order_type_id.name or ''
     if tipo != TIPO_PEDIDO:
         descartadas += 1
+        clave_m = 'otro tipo de pedido (%s)' % (tipo or 'sin tipo')
+        motivos[clave_m] = motivos.get(clave_m, 0) + 1
         continue
+    if p.batch_id:
+        oleadas_existentes[p.batch_id.name] = oleadas_existentes.get(p.batch_id.name, 0) + 1
+        if not INCLUIR_YA_EN_OLEADA:
+            descartadas += 1
+            motivos['ya en una oleada'] = motivos.get('ya en una oleada', 0) + 1
+            continue
     uds = sum(p.move_line_ids.mapped('product_uom_qty'))
+    if uds <= 0:
+        descartadas += 1
+        motivos['sin nada reservado (%s)' % p.state] = motivos.get('sin nada reservado (%s)' % p.state, 0) + 1
+        continue
+    if p.state != 'assigned':
+        if not INCLUIR_RESERVA_PARCIAL:
+            descartadas += 1
+            motivos['reserva parcial'] = motivos.get('reserva parcial', 0) + 1
+            continue
+        motivos['incluida con reserva parcial'] = motivos.get('incluida con reserva parcial', 0) + 1
     clave = p.partner_id.id
     if clave not in tiendas:
         tiendas[clave] = {'nombre': p.partner_id.name or '-', 'outs': [], 'uds': 0.0}
@@ -175,9 +198,13 @@ for item in detalle:
 
 # ----------------------------- MENSAJE ---------------------------------------
 lineas.append('')
-lineas.append('OUT candidatas: %d | de tienda: %d | descartadas (otro tipo de pedido): %d | tiendas: %d'
+lineas.append('OUT pendientes: %d | de tienda simuladas: %d | descartadas: %d | tiendas: %d'
               % (len(candidatos), len(candidatos) - descartadas, descartadas, len(tiendas)))
 lineas.append('Lineas reservadas sin lineal reconocible: %d (%d uds)' % (lineas_sin_l, uds_sin_l))
+for k in sorted(motivos.keys()):
+    lineas.append('   %s: %d OUT' % (k, motivos[k]))
+for k in sorted(oleadas_existentes.keys()):
+    lineas.append('   Ya estan en la oleada %s: %d OUT de tienda%s' % (k, oleadas_existentes[k], INCLUIR_YA_EN_OLEADA and ' (incluidas en la simulacion)' or ''))
 
 lineas.append('')
 lineas.append('ZONAS (una por PDA): lineales | uds | paradas (ubicaciones distintas)')
