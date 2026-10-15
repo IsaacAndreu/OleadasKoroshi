@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <data>
+        <record id="group_sorter_manager" model="res.groups">
+            <field name="name">Sorter / Manager</field>
+        </record>
+
+        <record id="sorter_batch_multi_company_rule" model="ir.rule">
+            <field name="name">Sorter Batch: multi-company</field>
+            <field name="model_id" ref="model_sorter_batch"/>
+            <field name="domain_force">['|',('company_id','=',False),('company_id','in',company_ids)]</field>
+        </record>
+    </data>
+</odoo>

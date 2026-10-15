@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="seq_zebra_label" model="ir.sequence">
+        <field name="name">Secuencia Etiquetas Zebra (CJ)</field>
+        <field name="code">zebra.label.code</field>
+        <field name="prefix">CJ</field>
+        <field name="padding">9</field>
+        <!-- Empieza en CJ665000001 -->
+        <field name="number_next">665000001</field>
+        <field name="number_increment">1</field>
+        <field name="implementation">standard</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

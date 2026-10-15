@@ -1,0 +1,60 @@
+<?xml version="1.0" ?>
+<odoo>
+    <record id="sorter_batch_action" model="ir.actions.act_window">
+        <field name="name">Sorter Batches</field>
+        <field name="res_model">sorter.batch</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+    <record id="sorter_batch_form_view" model="ir.ui.view">
+        <field name="name">sorter.batch.form.view</field>
+        <field name="model">sorter.batch</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name_seq"/>
+                            <field name="sorter_operation_type"/>
+                            <field name="sorter_location"/>
+                            <field name="picking_ids" widget="many2many_tags" options="{'no_create_edit': True}" placeholder="Pickings..."/>
+                            <field name="company_id"/>
+                        </group>
+                    </group>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="activity_ids" widget="mail_activity"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+    <record id="sorter_batch_tree_view" model="ir.ui.view">
+        <field name="name">sorter.batch.tree.view</field>
+        <field name="model">sorter.batch</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="name_seq"/>
+                <field name="sorter_operation_type"/>
+                <field name="sorter_location"/>
+                <field name="company_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="sorter_batch_view_search" model="ir.ui.view">
+        <field name="name">sorter.batch.search</field>
+        <field name="model">sorter.batch</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name_seq"/>
+                <field name="picking_ids"/>
+                <field name="company_id"/>
+            </search>
+        </field>
+    </record>
+
+
+    <menuitem id="sorter_batch_root" action="sorter_batch_action" web_icon="sorter_batch,static/description/icon.png"/>/>
+
+</odoo>

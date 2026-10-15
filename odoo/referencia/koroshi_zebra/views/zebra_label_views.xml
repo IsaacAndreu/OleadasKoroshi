@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_zebra_label_tree" model="ir.ui.view">
+        <field name="name">zebra.label.tree</field>
+        <field name="model">zebra.label</field>
+        <field name="arch" type="xml">
+            <tree string="Etiquetas Zebra" decoration-muted="state=='printed'">
+                <field name="name"/>
+                <field name="note"/>
+                <field name="state"/>
+                <field name="print_date"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_zebra_label_form" model="ir.ui.view">
+        <field name="name">zebra.label.form</field>
+        <field name="model">zebra.label</field>
+        <field name="arch" type="xml">
+            <form string="Etiqueta Zebra">
+                <header>
+                    <button name="action_print" type="object" string="Imprimir" class="btn-primary"/>
+                    <button name="action_reset_draft" type="object" string="Marcar como pendiente"
+                            attrs="{'invisible': [('state', '=', 'draft')]}"/>
+                    <field name="state" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="sequence_number"/>
+                        <field name="note"/>
+                        <field name="print_date"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_zebra_label" model="ir.actions.act_window">
+        <field name="name">Etiquetas Zebra</field>
+        <field name="res_model">zebra.label</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

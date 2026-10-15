@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_zebra_label_user,zebra.label.user,model_zebra_label,base.group_user,1,1,1,0
+access_zebra_label_manager,zebra.label.manager,model_zebra_label,base.group_system,1,1,1,1
+access_zebra_label_print_wizard,zebra.label.print.wizard.user,model_zebra_label_print_wizard,base.group_user,1,1,1,1
