@@ -103,6 +103,9 @@ namespace PedidosMultiples
 		// Modo matricula: la matricula la genera Odoo al cerrar la caja (sin preregistro ni lectura)
 		private bool matriculaAuto;
 
+		// Modo matricula: validar la OUT en Odoo al cerrar la ultima caja del pedido
+		private bool validarOut;
+
 		private const string PrefijoMatricula = "CJ";
 
 		private OdooAccion odooAccion;
@@ -516,6 +519,7 @@ namespace PedidosMultiples
 				odooAccion = OdooAccion.DesdeConfiguracion();
 				int.TryParse(ReturnSetting("odoo_accion_empaquetar_id"), out accionEmpaquetarId);
 				matriculaAuto = !(ReturnSetting("koroshi_matricula_auto") ?? "").Equals("false", StringComparison.OrdinalIgnoreCase);
+				validarOut = (ReturnSetting("koroshi_validar_out") ?? "").Equals("true", StringComparison.OrdinalIgnoreCase);
 			}
 			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta de caja de prueba", null, imprimirEtiquetaPrueba_Click);
 		}
@@ -1639,6 +1643,44 @@ namespace PedidosMultiples
 			return true;
 		}
 
+		// Valida la OUT en Odoo (accion de empaquetar con validar_albaran). Solo valida si el
+		// pedido esta completo y todo esta en caja; si no, avisa para validarla a mano.
+		// Las cajas ya cerradas no se tocan aunque la validacion falle.
+		private void ValidarOutEnOdoo(string pe)
+		{
+			if (modoPrueba)
+			{
+				LogPrueba("Validar OUT no hecho: " + pe);
+				return;
+			}
+			lblPe.Font = new System.Drawing.Font("Microsoft Sans Serif", 48f);
+			lblPe.Text = "ESPERE,\nVALIDANDO " + pe + "...";
+			lblPe.Refresh();
+			Cursor = Cursors.WaitCursor;
+			OdooAccion.Resultado resultado = odooAccion.EjecutarAccionPorNombre(accionEmpaquetarId, pe, db, new XmlRpcStruct { { "validar_albaran", true } });
+			Cursor = Cursors.Default;
+			try
+			{
+				File.AppendAllText(Path.Combine(logFolderPath, "cajas_" + company + ".txt"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + ";" + nombreOleada + ";" + pe + ";VALIDAR;" + (resultado.Ok ? "OK" : ("ERROR " + resultado.Mensaje.Replace("\n", " "))) + Environment.NewLine);
+			}
+			catch (Exception ex)
+			{
+				ex.ToString();
+			}
+			if (resultado.Ok)
+			{
+				lblPe.Text = pe + "\nVALIDADO";
+				panelScanPe.BackColor = Color.LightGreen;
+			}
+			else
+			{
+				sound_alert.Play();
+				lblPe.Text = pe + "\nNO VALIDADO";
+				panelScanPe.BackColor = Color.Yellow;
+				MessageBox.Show("El pedido " + pe + " está terminado y sus cajas cerradas, pero no se ha podido validar en Odoo:\n\n" + resultado.Mensaje + "\n\nValidarlo a mano en Odoo.", "Odoo: albarán no validado", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+			}
+		}
+
 		// Vuelve a leer de Odoo las lineas de un pedido y las pone en el mismo sitio de la
 		// tabla, conservando SEQ y caja. Necesario despues de empaquetar: Odoo parte las
 		// lineas y los sml_id que tenia el programa ya no sirven.
@@ -1812,6 +1854,10 @@ namespace PedidosMultiples
 								origin = temporalClient.Rows[0]["Origin"].ToString();
 							}
 							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin, matricula);
+							if (MatriculaActiva && validarOut)
+							{
+								ValidarOutEnOdoo(pe);
+							}
 							if (sendEmails)
 							{
 								sendEmailOnPeFinishedToConfigUser(pe, seq, currentReadQtyPe, cliente);
@@ -4676,6 +4722,10 @@ namespace PedidosMultiples
 								origin = temporalClient.Rows[0]["Origin"].ToString();
 							}
 							GenerateLabel(seq, pe, box, cliente, pays, last: true, origin, matricula);
+							if (MatriculaActiva && validarOut)
+							{
+								ValidarOutEnOdoo(pe);
+							}
 							if (sendEmails)
 							{
 								sendEmailOnPeFinishedToConfigUser(pe, seq, currentReadQtyPe, cliente);
