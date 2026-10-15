@@ -20,7 +20,9 @@
 COMPANY_ID = 8
 PREFIJO = 'CJ'
 MATRICULA_PRUEBA = 'CJ665002800'
-MOSTRAR_CODIGO_REGLAS = True
+# Albaran a revisar si la accion se ejecuta sin albaran (boton "Ejecutar" de la accion).
+PICKING_NOMBRE = 'EFFEC/OUT/19385'
+MOSTRAR_CODIGO_REGLAS = False
 MAX_LINEAS_MENSAJE = 250
 # -----------------------------------------------------------------------------
 
@@ -31,6 +33,8 @@ if env.context.get('active_id'):
     pick = env['stock.picking'].browse(env.context.get('active_id'))
 elif records:
     pick = records[0]
+elif PICKING_NOMBRE:
+    pick = env['stock.picking'].search([('name', '=', PICKING_NOMBRE), ('company_id', '=', COMPANY_ID)], limit=1)
 matricula = (env.context.get('matricula') or MATRICULA_PRUEBA or '').strip().upper()
 
 lineas.append('EMPAQUETAR CAJA KOROSHI - DIAGNOSTICO - NO SE HA MODIFICADO NADA')
