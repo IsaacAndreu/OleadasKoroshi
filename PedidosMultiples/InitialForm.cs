@@ -95,6 +95,8 @@ namespace PedidosMultiples
 
 		private bool cambiarCaja;
 
+		private bool modoPrueba;
+
 		private string queryInicial = "select sml.reference as PE, pt.style_code as Style, COALESCE(color.name, '27 UNICO') as COLOR, COALESCE(talla.name, '') as SIZE, pp.default_code as Product_Code, COALESCE(pp.barcode, '') as EAN_Code, CASE    WHEN sml.product_uom_qty = 0 AND sml.state = 'done' THEN sml.qty_done    ELSE sml.product_uom_qty END AS QTY, sml.qty_done as Leido, sml.id as sml_id, (select trim(so.ref_remarks) from sale_order so where so.id = (select sp.sale_id from stock_picking sp where sp.name = (@order))) as LI_Intitule, pp.x_studio_veepee_product_id as veepee_product_id, 'parcel_id' as LI_Complement, 'pallet_id' as LI_Pallet from stock_move_line sml left join product_product pp on pp.id = sml.product_id left join product_template pt on pt.id = pp.product_tmpl_id left join (select ptav.id, pav.name from product_template_attribute_value ptav, product_attribute_value pav where ptav.product_attribute_value_id = pav.id) as talla on pp.size_attribute_id = talla.id left join(select ptav.id, pav.name from product_template_attribute_value ptav, product_attribute_value pav where ptav.product_attribute_value_id = pav.id) as color on pp.color_attribute_id = color.id where sml.company_id = (@company_id) and (sml.reference = (@order) and sml.picking_id = (select id from stock_picking sp where sp.name = (@order))) and (select state from stock_picking where name = (@order)) in ('assigned', 'done') order by pt.style_code;";
 
 		private string queryCheckIfOrderStateIsAssigned = "select sp.name, sp.state from stock_picking sp where sp.name = (@order) and sp.state = 'assigned' and company_id = (@company_id);";
@@ -482,6 +484,13 @@ namespace PedidosMultiples
 			warehouse_id = ReturnSetting("warehouse_id");
 			envios = new Envios();
 			AddUpdateAppSettings("generarEtiquetas", "false");
+			modoPrueba = (ReturnSetting("koroshi_modo_prueba") ?? "").Equals("true", StringComparison.OrdinalIgnoreCase);
+			if (modoPrueba)
+			{
+				crmLogs = false;
+				Text += " - MODO PRUEBA (no escribe en Odoo ni en SQL Server)";
+				LogPrueba("Inicio del programa en modo prueba");
+			}
 		}
 
 		private void resetFormOnDbChange()
@@ -1325,6 +1334,33 @@ namespace PedidosMultiples
 			}
 		}
 
+		// Modo prueba: anota lo que el programa habria escrito, en lugar de escribirlo.
+		private void LogPrueba(string texto)
+		{
+			try
+			{
+				File.AppendAllText(Path.Combine(logFolderPath, "prueba_" + (company ?? "") + ".txt"), DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss") + " " + texto + Environment.NewLine);
+			}
+			catch (Exception ex)
+			{
+				ex.ToString();
+			}
+		}
+
+		// Modo prueba: suma de lo leido en el programa para un pedido (sustituye a GetDoneQtySum).
+		private int SumaLeidoEnMemoria(string order)
+		{
+			int suma = 0;
+			for (int i = 0; i < articlesGrid.Rows.Count; i++)
+			{
+				if (articlesGrid.Rows[i].Cells["PE"].Value.ToString().Equals(order))
+				{
+					suma += Convert.ToInt32(articlesGrid.Rows[i].Cells["Leido"].Value.ToString());
+				}
+			}
+			return suma;
+		}
+
 		private async void CheckIfPeIsFinishedAndDoStuff(string pe)
 		{
 			try
@@ -1559,6 +1595,11 @@ namespace PedidosMultiples
 
 		private async void sendEmailOnPeFinishedToConfigUser(string pedido, string sequential, int cantidadArticulos, string nombreCliente)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("Correo (pedido terminado, usuario) no enviado: " + pedido);
+				return;
+			}
 			if (!sendEmails)
 			{
 				return;
@@ -1614,6 +1655,11 @@ namespace PedidosMultiples
 
 		private async void sendEmailOnPeFinishedToGestor(string pedido, string sequential, int cantidadArticulos, string nombreCliente)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("Correo (pedido terminado, gestor) no enviado: " + pedido);
+				return;
+			}
 			try
 			{
 				string emailAddress = ReturnSetting("email_pack").ToString();
@@ -1695,6 +1741,11 @@ namespace PedidosMultiples
 
 		private async void sendEmailOnOleadaFinishedToConfigUser()
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("Correo (oleada terminada) no enviado");
+				return;
+			}
 			string emailAddress = "";
 			try
 			{
@@ -3012,6 +3063,11 @@ namespace PedidosMultiples
 
 		private void InsertProductivity()
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("INSERT Productividad_Operadores no hecho: " + shiftArticles + " uds");
+				return;
+			}
 			try
 			{
 				using (SqlConnection conn = new SqlConnection(crmConectionString))
@@ -3353,6 +3409,11 @@ namespace PedidosMultiples
 
 		private void InsertRecordsIntoCrmDatabase(HashSet<string> list)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("INSERT OrderPrintLog no hecho: " + peList.Count + " pedidos");
+				return;
+			}
 			try
 			{
 				string companyName = "";
@@ -3404,6 +3465,11 @@ namespace PedidosMultiples
 
 		private void InsertOrderPrintLogCrm(string orderId, string companyName, string companyOrderId)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("INSERT OrderPrintLog no hecho: " + orderId);
+				return;
+			}
 			try
 			{
 				using (SqlConnection conn = new SqlConnection(crmConectionString))
@@ -3427,6 +3493,11 @@ namespace PedidosMultiples
 
 		private void InsertOrderDoubleCheckingLogCrm(string pe)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("INSERT OrderDoubleCheckingLog no hecho: " + pe);
+				return;
+			}
 			try
 			{
 				string companyName = "";
@@ -3877,6 +3948,11 @@ namespace PedidosMultiples
 
 		private void cambiarModo(object sender)
 		{
+			if (modoPrueba)
+			{
+				MessageBox.Show("En modo prueba solo se puede usar el modo normal.", "Modo prueba", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+				return;
+			}
 			if (sender.Equals(modoVPToolStripMenuItem))
 			{
 				if (ReturnSetting("modoVP").Equals("false") && !VPmode)
@@ -4261,6 +4337,11 @@ namespace PedidosMultiples
 
 		private void UpdateDoneQtyByOrderNumber(string order, int qty_leido, string product_code, string ean_code, int sml_id)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("UPDATE stock_move_line no hecho: id=" + sml_id + " " + order + " EAN " + ean_code + " qty_done=" + qty_leido);
+				return;
+			}
 			try
 			{
 				using (ConnectionSQL cSql = new ConnectionSQL(company))
@@ -4306,6 +4387,10 @@ namespace PedidosMultiples
 
 		private int GetDoneQtySum(string order)
 		{
+			if (modoPrueba)
+			{
+				return SumaLeidoEnMemoria(order);
+			}
 			try
 			{
 				int value = 0;
@@ -4592,6 +4677,11 @@ namespace PedidosMultiples
 
 		private bool GenerateCarrierLabelInOdoo(string order, DataTable orderInfo)
 		{
+			if (modoPrueba)
+			{
+				LogPrueba("Validacion en Odoo y etiqueta de transportista no hechas: " + order);
+				return false;
+			}
 			try
 			{
 				int packageTypeId = 0;
