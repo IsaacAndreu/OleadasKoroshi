@@ -1589,6 +1589,21 @@ namespace PedidosMultiples
 				Cursor = Cursors.WaitCursor;
 				resultado = odooAccion.EjecutarAccionPorNombre(accionEmpaquetarId, pe, db, extra);
 				Cursor = Cursors.Default;
+				if (!resultado.Ok && matriculaAuto && resultado.Mensaje.Contains("La caja esta vacia"))
+				{
+					// En Odoo ya no hay nada leido sin caja: esta caja ya se cerro (p.ej. el programa
+					// se cerro mientras Odoo empaquetaba y se ha recuperado con "Ultimo pedido").
+					List<string> cerradas = MatriculasDelPedido(pe);
+					if (cerradas.Count > 0)
+					{
+						resultado = new OdooAccion.Resultado
+						{
+							Ok = true,
+							Matricula = cerradas[cerradas.Count - 1]
+						};
+						MessageBox.Show("La caja " + box + " del pedido " + pe + " ya estaba cerrada en Odoo con la matrícula " + resultado.Matricula + ". Se imprime su etiqueta y se pasa a la caja siguiente.", "Caja ya cerrada", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+					}
+				}
 				if (resultado.Ok && matriculaAuto)
 				{
 					matricula = resultado.Matricula;
@@ -1641,6 +1656,119 @@ namespace PedidosMultiples
 				RecargarLineasPedido(pe);
 			}
 			return true;
+		}
+
+		// Matriculas (paquetes) de un pedido en Odoo, en el orden en que se cerraron las cajas
+		// (por id del paquete). Solo lectura.
+		private List<string> MatriculasDelPedido(string pe)
+		{
+			List<string> matriculas = new List<string>();
+			try
+			{
+				using (ConnectionSQL cSql = new ConnectionSQL(company))
+				{
+					cSql.dbConn.Open();
+					NpgsqlCommand npgsqlCommand = new NpgsqlCommand("select pk.name from stock_quant_package pk where pk.id in (select ml.result_package_id from stock_move_line ml join stock_picking sp on sp.id = ml.picking_id where sp.name = @order and sp.company_id = @company_id and ml.result_package_id is not null) order by pk.id;", cSql.dbConn);
+					npgsqlCommand.Parameters.AddWithValue("@order", pe);
+					npgsqlCommand.Parameters.AddWithValue("@company_id", db);
+					using (NpgsqlDataReader reader = npgsqlCommand.ExecuteReader())
+					{
+						while (reader.Read())
+						{
+							matriculas.Add(reader["name"].ToString());
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show("MatriculasDelPedido_ " + ex.Message, "Error");
+			}
+			return matriculas;
+		}
+
+		// Matriculas de un pedido segun Logs\cajas_<empresa>.txt (para el modo prueba, que no crea paquetes).
+		private List<string> MatriculasDelLog(string pe)
+		{
+			List<string> matriculas = new List<string>();
+			try
+			{
+				string fichero = Path.Combine(logFolderPath, "cajas_" + company + ".txt");
+				if (File.Exists(fichero))
+				{
+					foreach (string linea in File.ReadAllLines(fichero))
+					{
+						// fecha;oleada;pedido;seq;caja;uds;matricula
+						string[] campos = linea.Split(';');
+						if (campos.Length >= 7 && campos[2].Equals(pe) && campos[3] != "VALIDAR")
+						{
+							matriculas.Add(campos[6]);
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+				ex.ToString();
+			}
+			return matriculas;
+		}
+
+		// "Imp. Etiq." para EFFE: vuelve a imprimir la etiqueta de una caja ya cerrada, con la misma
+		// matricula. Entrada: SEQ (ultima caja cerrada) o SEQ-n (caja n), p.ej. 001 o 001-2.
+		private void ReimprimirEtiquetaKoroshi(string entrada)
+		{
+			string[] partes = entrada.Split('-');
+			string seq = partes[0];
+			string pe = string.Empty;
+			int cajaActual = 0;
+			bool terminado = true;
+			foreach (DataGridViewRow row in (IEnumerable)articlesGrid.Rows)
+			{
+				if (row.Cells["SEQ"].Value.ToString().Equals(seq))
+				{
+					pe = row.Cells["PE"].Value.ToString();
+					cajaActual = Convert.ToInt32(row.Cells["Caja"].Value.ToString());
+					if (!Convert.ToBoolean(row.Cells["Finalizado"].Value.ToString()))
+					{
+						terminado = false;
+					}
+				}
+			}
+			if (pe.Length == 0)
+			{
+				MessageBox.Show("El SEQ " + seq + " no está en la oleada.", "Reimprimir etiqueta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+				return;
+			}
+			int cerradas = terminado ? cajaActual : (cajaActual - 1);
+			int caja = cerradas;
+			if (partes.Length > 1 && !int.TryParse(partes[1], out caja))
+			{
+				caja = 0;
+			}
+			if (caja < 1 || caja > cerradas)
+			{
+				MessageBox.Show("El pedido " + pe + " (SEQ " + seq + ") tiene " + cerradas + " cajas cerradas. Escribir SEQ o SEQ-n con n entre 1 y " + cerradas + ".", "Reimprimir etiqueta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+				return;
+			}
+			List<string> matriculas = MatriculasDelPedido(pe);
+			if (matriculas.Count == 0)
+			{
+				matriculas = MatriculasDelLog(pe);
+			}
+			string matricula = (matriculas.Count >= caja) ? matriculas[caja - 1] : string.Empty;
+			if (MatriculaActiva && matricula.Length == 0)
+			{
+				MessageBox.Show("No se encuentra la matrícula de la caja " + caja + " del pedido " + pe + ". La etiqueta saldrá sin matrícula.", "Reimprimir etiqueta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+			}
+			DataTable cliente = FetchClientInfoFromLivraison(company, pe);
+			if (cliente == null || cliente.Rows.Count == 0)
+			{
+				MessageBox.Show("No se han podido leer los datos del pedido " + pe + ".", "Reimprimir etiqueta", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+				return;
+			}
+			string textoCaja = terminado ? (caja + "/" + cerradas) : caja.ToString();
+			GenerateLabel(seq, pe, textoCaja, cliente.Rows[0]["Name"].ToString(), cliente.Rows[0]["Pays"].ToString(), last: false, cliente.Rows[0]["Origin"].ToString(), matricula);
 		}
 
 		// Valida la OUT en Odoo (accion de empaquetar con validar_albaran). Solo valida si el
@@ -1708,29 +1836,31 @@ namespace PedidosMultiples
 					MessageBox.Show("No se han podido volver a leer las líneas del pedido " + pe + ". Volver a cargar la oleada antes de seguir.", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
 					return;
 				}
+				// La tabla que se ve: la de la carga normal o la de "Ultimo pedido" (recoverLastLines)
+				DataTable tabla = (articlesGrid.DataSource as DataTable) ?? dataTableSource;
 				int primero = -1;
 				string seq = "";
 				object caja = 1;
-				for (int i = dataTableSource.Rows.Count - 1; i >= 0; i--)
+				for (int i = tabla.Rows.Count - 1; i >= 0; i--)
 				{
-					if (dataTableSource.Rows[i]["PE"].ToString().Equals(pe))
+					if (tabla.Rows[i]["PE"].ToString().Equals(pe))
 					{
 						primero = i;
-						seq = dataTableSource.Rows[i]["SEQ"].ToString();
-						caja = dataTableSource.Rows[i]["Caja"];
-						dataTableSource.Rows.RemoveAt(i);
+						seq = tabla.Rows[i]["SEQ"].ToString();
+						caja = tabla.Rows[i]["Caja"];
+						tabla.Rows.RemoveAt(i);
 					}
 				}
 				if (primero < 0)
 				{
-					primero = dataTableSource.Rows.Count;
+					primero = tabla.Rows.Count;
 				}
 				for (int j = 0; j < nuevas.Rows.Count; j++)
 				{
-					DataRow fila = dataTableSource.NewRow();
+					DataRow fila = tabla.NewRow();
 					foreach (DataColumn columna in nuevas.Columns)
 					{
-						if (dataTableSource.Columns.Contains(columna.ColumnName))
+						if (tabla.Columns.Contains(columna.ColumnName))
 						{
 							fila[columna.ColumnName] = nuevas.Rows[j][columna];
 						}
@@ -1738,7 +1868,7 @@ namespace PedidosMultiples
 					fila["SEQ"] = seq;
 					fila["Caja"] = caja;
 					fila["Finalizado"] = false;
-					dataTableSource.Rows.InsertAt(fila, primero + j);
+					tabla.Rows.InsertAt(fila, primero + j);
 				}
 				foreach (DataGridViewRow row in (IEnumerable)articlesGrid.Rows)
 				{
@@ -5126,6 +5256,14 @@ namespace PedidosMultiples
 					e.SuppressKeyPress = true;
 					string seq = boxLblPrintTxt.Text.Trim();
 					seq = seq.Replace(" ", string.Empty);
+					if (company == "EFFE" && !VPmode && !ECImode && seq.Length >= seqLength)
+					{
+						// KOROSHI: reimprimir la etiqueta de una caja cerrada (SEQ o SEQ-n), con su matricula
+						ReimprimirEtiquetaKoroshi(seq);
+						boxLblPrintTxt.Clear();
+						scanInput.Select();
+						return;
+					}
 					if (seq == "" || seq == null || seq.Length != seqLength)
 					{
 						MessageBox.Show("Introduce un número de Pedido (SEQ) válido!", "Atención", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
