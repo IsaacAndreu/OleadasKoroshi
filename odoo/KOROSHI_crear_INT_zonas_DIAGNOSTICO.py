@@ -32,6 +32,10 @@ ZONAS = [
     ('Z5', 'D', 96, 136),
 ]
 ZONA_OTRAS = 'ZX'                # lineas en ubicaciones sin lineal (MU, etc.)
+# Simulacion con albaranes concretos (ids). Con SIMULAR_HECHAS se aceptan OUT ya
+# validadas y se usa la cantidad hecha y el hueco del que salio cada linea.
+IDS_SIMULAR = []
+SIMULAR_HECHAS = False
 MAX_OUT_SIN_SELECCION = 300
 MOSTRAR_LINEAS_POR_INT = 0       # >0 = ensena las primeras N lineas de cada INT
 MAX_LINEAS_MENSAJE = 250
@@ -47,7 +51,10 @@ lineas.append('INT: %s | %s -> %s' % (tipo_int.display_name or 'NO EXISTE', stoc
                                       sorter.complete_name or 'NO EXISTE'))
 
 # ---------------- 1. OUT a repartir ------------------------------------------
-if env.context.get('active_model') == 'stock.picking' and env.context.get('active_ids'):
+if IDS_SIMULAR:
+    candidatos = env['stock.picking'].browse(IDS_SIMULAR).exists()
+    origen_sel = 'ids de IDS_SIMULAR (%d)' % len(candidatos)
+elif env.context.get('active_model') == 'stock.picking' and env.context.get('active_ids'):
     candidatos = env['stock.picking'].browse(env.context.get('active_ids'))
     origen_sel = 'seleccion (%d)' % len(candidatos)
 else:
@@ -70,6 +77,8 @@ for p in candidatos:
         motivo = 'no es OUT de la empresa %d' % COMPANY_ID
     elif tipo != TIPO_PEDIDO:
         motivo = 'tipo de pedido %s' % (tipo or 'sin tipo')
+    elif SIMULAR_HECHAS and p.state in ('assigned', 'done'):
+        motivo = ''
     elif p.state != 'assigned':
         motivo = 'no esta Preparada (%s)' % p.state
     elif p.batch_id:
@@ -90,9 +99,20 @@ for p in candidatos:
 
 # ---------------- 2. Lineas por zona -----------------------------------------
 por_zona = {}      # zona -> lista de (pasillo, pos, lineal, nivel, ubicacion, producto, uds, out)
+lineas_en_sorter = 0
+uds_en_sorter = 0.0
 for p in validas:
     for ml in p.move_line_ids:
-        if ml.product_uom_qty <= 0:
+        if p.state == 'done':
+            qty = ml.qty_done
+        else:
+            qty = ml.product_uom_qty
+        if qty <= 0:
+            continue
+        if sorter and ml.location_id.id == sorter.id:
+            # Ya salio del SORTER: no se sabe de que hueco, no entra en ningun INT
+            lineas_en_sorter += 1
+            uds_en_sorter += qty
             continue
         lineal = 0
         pos = 0
@@ -128,7 +148,7 @@ for p in validas:
                     break
         if zona not in por_zona:
             por_zona[zona] = []
-        por_zona[zona].append((lineal // 2, pos, lineal, nivel, ml.location_id, ml.product_id, ml.product_uom_qty, p))
+        por_zona[zona].append((lineal // 2, pos, lineal, nivel, ml.location_id, ml.product_id, qty, p))
 
 # ---------------- 3. INT por zona en trozos iguales ---------------------------
 ints = []   # dicts: nombre, zona, lineas (lista), uds
@@ -190,6 +210,8 @@ lineas.append('OUT a repartir: %d | uds: %d | INT que se crearian: %d (max %d ud
               % (len(validas), total_uds, len(ints), MAX_UDS_INT))
 for k in sorted(descartes.keys()):
     lineas.append('   Descartadas, %s: %d' % (k, descartes[k]))
+if lineas_en_sorter:
+    lineas.append('   Lineas que ya salian del SORTER (no entran en ningun INT): %d (%d uds)' % (lineas_en_sorter, uds_en_sorter))
 
 lineas.append('')
 lineas.append('ZONAS')
