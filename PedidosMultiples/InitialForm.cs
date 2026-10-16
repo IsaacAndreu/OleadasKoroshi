@@ -522,6 +522,7 @@ namespace PedidosMultiples
 				validarOut = (ReturnSetting("koroshi_validar_out") ?? "").Equals("true", StringComparison.OrdinalIgnoreCase);
 			}
 			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta de caja de prueba", null, imprimirEtiquetaPrueba_Click);
+			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta CAMBIAR-CAJA", null, imprimirEtiquetaCambiarCaja_Click);
 		}
 
 		private void resetFormOnDbChange()
@@ -1416,6 +1417,51 @@ namespace PedidosMultiples
 			GenerateLabel("001", "EFFEC/OUT/00000", "1/1", "K00 - TIENDA DE PRUEBA", "España", last: false, "S00000", "CJ665000000");
 			company = empresaActual;
 			scanInput.Select();
+		}
+
+		// Etiqueta de 101,6 x 152,4 mm con el codigo CAMBIAR-CAJA, para pegar en el puesto.
+		// Solo imprime: no toca Odoo, ni la base de datos, ni la oleada cargada.
+		private void imprimirEtiquetaCambiarCaja_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				using (PrintDocument pd = new PrintDocument())
+				{
+					pd.PrintController = new StandardPrintController();
+					pd.PrintPage += delegate(object printSender, PrintPageEventArgs printE)
+					{
+						printE.Graphics.TranslateTransform(0f - printE.PageSettings.HardMarginX, 0f - printE.PageSettings.HardMarginY);
+						DibujarEtiquetaCambiarCaja(printE.Graphics, new RectangleF(0f, 0f, 400f, 600f));
+					};
+					pd.PrinterSettings.PrinterName = ReturnSetting("imp_tick").ToString();
+					pd.DefaultPageSettings.PaperSize = new PaperSize("KOROSHI 101,6 x 152,4 mm", 400, 600);
+					pd.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+					pd.DefaultPageSettings.Landscape = false;
+					pd.Print();
+				}
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex?.ToString() ?? "", "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+			}
+			scanInput.Select();
+		}
+
+		private static void DibujarEtiquetaCambiarCaja(Graphics g, RectangleF area)
+		{
+			float margen = area.Width * 0.04f;
+			float x = area.Left + margen;
+			float ancho = area.Width - 2f * margen;
+			float alto = area.Height * 0.94f;
+			float y0 = area.Top + area.Height * 0.04f;
+			g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+			g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+			DibujarTextoAjustado(g, "CAMBIAR", x, y0 + alto * 0.02f, ancho, alto * 0.14f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, "CAJA", x, y0 + alto * 0.16f, ancho, alto * 0.14f, FontStyle.Bold, StringAlignment.Center);
+			DibujarCodigoBarras(g, "CAMBIAR-CAJA", x, y0 + alto * 0.34f, ancho, alto * 0.38f);
+			DibujarTextoAjustado(g, "CAMBIAR-CAJA", x, y0 + alto * 0.73f, ancho, alto * 0.05f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, "Leer este código y después", x, y0 + alto * 0.83f, ancho, alto * 0.05f, FontStyle.Regular, StringAlignment.Center);
+			DibujarTextoAjustado(g, "el SEQ de la caja llena", x, y0 + alto * 0.89f, ancho, alto * 0.05f, FontStyle.Regular, StringAlignment.Center);
 		}
 
 		// ---------------- Modo matricula KOROSHI (EFFE) ----------------
