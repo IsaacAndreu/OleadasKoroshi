@@ -91,10 +91,14 @@ for g in grupos:
         continue
     # La etiqueta de 'date:day' viene traducida ('16 oct. 2026'); la fecha ordenable
     # se saca del dominio del grupo (date >= 'AAAA-MM-DD ...').
-    dia = g['date:day']
+    # El dominio del grupo incluye tambien el date >= de la busqueda: se coge el mayor.
+    dia = ''
     for cond in g.get('__domain', []):
         if isinstance(cond, (list, tuple)) and len(cond) == 3 and cond[0] == 'date' and cond[1] == '>=':
-            dia = str(cond[2])[:10]
+            if str(cond[2])[:10] > dia:
+                dia = str(cond[2])[:10]
+    if not dia:
+        dia = g['date:day']
     uds = g['qty_done'] or 0.0
     lineas_g = g['__count']
     if dia not in dias:
