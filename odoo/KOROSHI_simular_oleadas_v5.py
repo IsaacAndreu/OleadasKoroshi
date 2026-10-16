@@ -30,7 +30,7 @@ NUM_PDA = 5                      # una zona por PDA
 # Zonas fijas por lineales, p.ej. [[1, 65], [66, 85], [86, 97], [98, 107], [108, 136]].
 # Vacio = zonas equilibradas con los datos de esta simulacion.
 ZONAS_FIJAS = []
-RUTA = 'conjunta'                # 'conjunta' o 'secuencial'
+RUTA = 'secuencial'              # 'conjunta' o 'secuencial'
 HORA_INICIO_PICKING = '06:00'
 HORA_INICIO_U = '06:00'
 HORA_LIMITE = '13:00'
@@ -130,6 +130,7 @@ for o in oleadas:
 
 # ---------------- 3. Lineas por pasillo --------------------------------------
 lineas_sin_l = 0
+sin_lineal = {}   # ubicacion -> [lineas, uds]
 detalle = []   # (oleada, pasillo, ubicacion_id, uds, ronda)
 for o in oleadas:
     for t in o['tiendas']:
@@ -158,6 +159,11 @@ for o in oleadas:
                         break
                 if not lineal:
                     lineas_sin_l += 1
+                    nombre_ubic = ml.location_id.complete_name or '-'
+                    if nombre_ubic not in sin_lineal:
+                        sin_lineal[nombre_ubic] = [0, 0.0]
+                    sin_lineal[nombre_ubic][0] += 1
+                    sin_lineal[nombre_ubic][1] += qty
                     continue
                 detalle.append((o['num'], lineal // 2, ml.location_id.id, qty, o['ronda']))
 
@@ -284,6 +290,11 @@ lineas.append('Tiendas: %d | OUT: %d | uds: %d | oleadas: %d | rondas: %d | line
               % (len(tiendas), total_outs, total_uds, num_oleadas, num_rondas, lineas_sin_l))
 for k in sorted(motivos.keys()):
     lineas.append('   Descartadas, %s: %d OUT' % (k, motivos[k]))
+if sin_lineal:
+    lineas.append('   Ubicaciones sin lineal (no cuentan en ninguna zona): %d. Las %d con mas uds:'
+                  % (len(sin_lineal), min(15, len(sin_lineal))))
+    for nombre_ubic in sorted(sin_lineal.keys(), key=lambda x: -sin_lineal[x][1])[:15]:
+        lineas.append('      %s | %d lineas | %d uds' % (nombre_ubic, sin_lineal[nombre_ubic][0], sin_lineal[nombre_ubic][1]))
 
 lineas.append('')
 lineas.append('ZONAS / PDA: lineales | uds | paradas | horas | termina')
