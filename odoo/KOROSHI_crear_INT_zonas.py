@@ -19,8 +19,8 @@
 # Al acabar abre la lista de los INT creados.
 #
 # MODO PLANIFICADO (para usarla como accion planificada, sin seleccion):
-#   con MODO_PLANIFICADO = True busca sola las OUT de tienda entradas en las ultimas
-#   PLAN_HORAS horas que se pueden repartir y las coge por orden de llegada hasta juntar
+#   con MODO_PLANIFICADO = True busca sola las OUT de tienda entradas HOY (desde las
+#   0:00 hora de Espana; las del dia anterior no) que se pueden repartir y las coge por orden de llegada hasta juntar
 #   unas PLAN_MAX_UDS uds sin pasarse (una oleada), con un maximo de PLAN_MAX_OUT OUT (tiendas).
 #   Con OLEADA_PROPIA las OUT elegidas pasan a una agrupacion nueva (la oleada que carga el programa).
 #   Las que no valen se saltan (no se para). El resultado queda en el registro
@@ -70,7 +70,7 @@ PLAN_MAX_OUT = 10                # tope de OUT (tiendas) por oleada
 # agrupacion nueva, en curso, para que el programa de oleadas cargue solo estas tiendas.
 OLEADA_PROPIA = False
 PREFIJO_OLEADA = 'B-KOR-'         # la oleada se llama B-KOR-ddmm-01, -02... (numero siguiente del dia)
-PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
+ZONA_HORARIA = 'Europe/Madrid'   # Odoo guarda las fechas en UTC: el dia (OUT de hoy y ddmm) va en hora local
 # SIMULAR = True: lo hace todo y al final lanza un aviso que DESHACE TODO (prueba sin dejar nada).
 # Para hacerlo de verdad hay que poner SIMULAR = False.
 SIMULAR = True
@@ -78,6 +78,11 @@ LINEAS_SIMULAR = 3               # lineas de ejemplo de cada INT en el aviso
 # Estimacion de km (plano simplificado de NAU-2): para comparar con como se hace hoy
 OUT_POR_VUELTA_HOY = 3           # cuantas OUT lleva hoy un picker en cada vuelta
 # -----------------------------------------------------------------------------
+
+# Dia de hoy en hora local y su 0:00 pasado a UTC (create_date esta en UTC)
+ahora_local = datetime.datetime.now(timezone(ZONA_HORARIA))
+medianoche_local = timezone(ZONA_HORARIA).localize(datetime.datetime(ahora_local.year, ahora_local.month, ahora_local.day))
+desde = medianoche_local.astimezone(timezone('UTC')).strftime('%Y-%m-%d %H:%M:%S')
 
 errores = []
 sorter = env['stock.location'].search([('barcode', '=', 'SORTER'), ('company_id', '=', COMPANY_ID)], limit=1)
@@ -96,7 +101,6 @@ if IDS_PRUEBA:
 elif env.context.get('active_model') == 'stock.picking' and env.context.get('active_ids'):
     outs = env['stock.picking'].browse(env.context.get('active_ids'))
 elif MODO_PLANIFICADO:
-    desde = (datetime.datetime.now() - datetime.timedelta(hours=PLAN_HORAS)).strftime('%Y-%m-%d %H:%M:%S')
     outs = env['stock.picking'].search([
         ('company_id', '=', COMPANY_ID),
         ('picking_type_code', '=', 'outgoing'),
@@ -164,6 +168,7 @@ if MODO_PLANIFICADO:
     outs = env['stock.picking'].browse(elegidas)
     texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas %d (%d uds): %s' % (
         len(validas) + len(saltadas), len(validas), len(outs), uds_elegidas, ', '.join(outs.mapped('name')) or 'ninguna')
+    texto_plan += '\nOUT creadas desde %s UTC (las 0:00 de hoy en hora local)' % desde
     if saltadas:
         texto_plan += '\nSaltadas:\n' + '\n'.join(saltadas[:40])
     log(texto_plan)
@@ -226,7 +231,7 @@ for z in ZONAS:
 orden_zonas.append(ZONA_OTRAS)
 orden_zonas.append(ZONA_OUTLET)
 letras = 'abcdefghijklmnopqrstuvwxyz'
-hoy = datetime.date.today().strftime('%d%m')
+hoy = ahora_local.strftime('%d%m')
 trozos_int = []   # (etiqueta, lista de lineas)
 if ZONAS_DINAMICAS:
     # Todas las lineas con lineal en orden de recorrido; ZX aparte
