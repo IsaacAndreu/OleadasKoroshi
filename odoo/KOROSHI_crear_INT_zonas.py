@@ -12,6 +12,8 @@
 #   4. Confirma y reserva los INT y comprueba que cada movimiento queda reservado
 #      entero y del mismo hueco. Si no, deshace TODO (no queda nada a medias).
 #   5. Pone origen SORTER a las OUT, que quedan en espera hasta que se validen los INT.
+#      Si la OUT estaba reservada a medias, lo que faltaba sigue saliendo de EFFEC/Stock
+#      (queda pendiente como hoy); solo lo reservado va a los INT y al SORTER.
 #      Despues: validar los INT y hacer "Comprobar disponibilidad" en las OUT.
 # Todo va en una sola transaccion: cualquier error deja Odoo como estaba.
 # Al acabar abre la lista de los INT creados.
@@ -109,18 +111,14 @@ for p in outs:
     elif sorter and p.location_id.id == sorter.id:
         motivo = 'ya sale del SORTER'
     else:
-        for m in p.move_lines:
-            if m.state not in ('assigned', 'cancel', 'done'):
-                motivo = 'no esta reservada entera (%s)' % m.product_id.display_name
+        # Puede estar reservada a medias: al INT solo va lo reservado (ver paso 4)
+        for ml in p.move_line_ids:
+            if ml.qty_done > 0:
+                motivo = 'ya tiene unidades leidas'
                 break
-        if not motivo:
-            for ml in p.move_line_ids:
-                if ml.qty_done > 0:
-                    motivo = 'ya tiene unidades leidas'
-                    break
-                if sorter and ml.location_id.id == sorter.id:
-                    motivo = 'tiene lineas reservadas en el SORTER'
-                    break
+            if sorter and ml.location_id.id == sorter.id:
+                motivo = 'tiene lineas reservadas en el SORTER'
+                break
     if MODO_PLANIFICADO:
         if motivo:
             saltadas.append('%s: %s' % (p.name, motivo))
@@ -230,8 +228,38 @@ for zona in orden_zonas:
     for i in range(len(trozos)):
         trozos_int.append(('%s-%s-%s-%s' % (PREFIJO, hoy, zona, letras[i]), trozos[i]))
 
-# ---------------- 4. Quitar la reserva de las OUT ----------------------------
+# ---------------- 4. Quitar la reserva de las OUT y separar lo que falta -------
+# Lo reservado de cada movimiento se guarda antes de quitar la reserva.
+reservado_mov = {}
+origen_out = {}
+for p in outs:
+    origen_out[p.id] = p.location_id.id
+    for m in p.move_lines:
+        if m.state in ('done', 'cancel'):
+            continue
+        r_m = 0.0
+        for ml in m.move_line_ids:
+            r_m += ml.product_uom_qty
+        reservado_mov[m.id] = r_m
 outs.do_unreserve()
+# Lo que no estaba reservado sigue saliendo de EFFEC/Stock, como hoy: si un movimiento
+# estaba reservado a medias se parte en dos (reservado -> SORTER, lo que falta -> se queda).
+faltan_ids = []
+uds_faltan = {}
+for p in outs:
+    uds_faltan[p.id] = 0.0
+    for m in p.move_lines:
+        if m.id not in reservado_mov:
+            continue
+        r_m = reservado_mov[m.id]
+        if r_m <= 0.001:
+            faltan_ids.append(m.id)
+            uds_faltan[p.id] += m.product_uom_qty
+        elif m.product_uom_qty - r_m > 0.001:
+            falta = m.product_uom_qty - r_m
+            nuevo_id = m._split(falta)
+            faltan_ids.append(nuevo_id)
+            uds_faltan[p.id] += falta
 
 # ---------------- 5. Crear, confirmar y reservar los INT ----------------------
 ints = env['stock.picking']
@@ -307,12 +335,21 @@ if fallos:
 outs.write({'location_id': sorter.id})
 for p in outs:
     for m in p.move_lines:
-        if m.state not in ('done', 'cancel') and m.location_id.id != sorter.id:
+        if m.state in ('done', 'cancel'):
+            continue
+        if m.id in faltan_ids:
+            # lo que falta se queda saliendo de donde salia (EFFEC/Stock), como hoy
+            if m.location_id.id != origen_out[p.id]:
+                m.write({'location_id': origen_out[p.id]})
+        elif m.location_id.id != sorter.id:
             m.write({'location_id': sorter.id})
     nombres = ''
     for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
         nombres += ' %s (%s)' % (picking.name, etiqueta)
-    p.message_post(body='Repartida en INT por zona. Ahora sale del SORTER. INT:%s' % nombres)
+    texto_msg = 'Repartida en INT por zona. Lo reservado sale ahora del SORTER. INT:%s' % nombres
+    if uds_faltan[p.id] > 0.001:
+        texto_msg += ' | %d uds sin reserva siguen saliendo de EFFEC/Stock (pendientes como siempre).' % uds_faltan[p.id]
+    p.message_post(body=texto_msg)
 
 # ---------------- 8. Resumen y lista de los INT --------------------------------
 lineas_log = ['KOROSHI REPARTIR INT ZONAS - ' + (SIMULAR and 'SIMULACION (SE HA DESHECHO TODO)' or 'HECHO'),
@@ -327,9 +364,13 @@ lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
 if SIMULAR:
     # Detalle de lo que ha quedado antes de deshacer: estado de las OUT y primeras lineas de cada INT
     lineas_log.append('')
-    lineas_log.append('OUT despues de repartir (origen | estado):')
+    lineas_log.append('OUT despues de repartir (origen | estado | uds al SORTER | uds sin reserva que siguen en EFFEC/Stock):')
     for p in outs:
-        lineas_log.append('   %s | %s | %s' % (p.name, p.location_id.complete_name, p.state))
+        al_sorter = 0.0
+        for m in p.move_lines:
+            if m.state not in ('done', 'cancel') and m.location_id.id == sorter.id:
+                al_sorter += m.product_uom_qty
+        lineas_log.append('   %s | %s | %s | %d | %d' % (p.name, p.location_id.complete_name, p.state, al_sorter, uds_faltan[p.id]))
     lineas_log.append('')
     lineas_log.append('INT: primeras lineas (hueco | producto | uds reservadas):')
     for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
