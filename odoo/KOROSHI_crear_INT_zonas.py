@@ -20,7 +20,8 @@
 #
 # MODO PLANIFICADO (para usarla como accion planificada, sin seleccion):
 #   con MODO_PLANIFICADO = True busca sola las OUT de tienda entradas en las ultimas
-#   PLAN_HORAS horas que se pueden repartir y coge las PLAN_MAX_OUT mas pequenas.
+#   PLAN_HORAS horas que se pueden repartir y las coge por orden de llegada hasta juntar
+#   unas PLAN_MAX_UDS uds (una oleada), con un maximo de PLAN_MAX_OUT OUT.
 #   Las que no valen se saltan (no se para). El resultado queda en el registro
 #   (Ajustes > Tecnico > Registros), en el chat de cada OUT y en el origen de los INT (KOR-...).
 #
@@ -52,12 +53,15 @@ PREFIJO = 'KOR'
 PREFIJO_AGRUPACION = 'TIENDA'
 # Modo planificado (accion planificada): elige sola las OUT
 MODO_PLANIFICADO = False
-PLAN_MAX_OUT = 3                 # cuantas OUT coge (las mas pequenas)
+PLAN_MAX_UDS = 2000              # uds que junta (una oleada)
+PLAN_MAX_OUT = 80                # tope de OUT
 PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
 # SIMULAR = True: lo hace todo y al final lanza un aviso que DESHACE TODO (prueba sin dejar nada).
 # Para hacerlo de verdad hay que poner SIMULAR = False.
 SIMULAR = True
 LINEAS_SIMULAR = 3               # lineas de ejemplo de cada INT en el aviso
+# Estimacion de km (plano simplificado de NAU-2): para comparar con como se hace hoy
+OUT_POR_VUELTA_HOY = 3           # cuantas OUT lleva hoy un picker en cada vuelta
 # -----------------------------------------------------------------------------
 
 errores = []
@@ -131,11 +135,14 @@ for p in outs:
         errores.append('%s: %s' % (p.name, motivo))
 
 if MODO_PLANIFICADO:
-    # Se cogen las mas pequenas, para la prueba
-    validas = sorted(validas, key=lambda x: (x[0], x[1]))
+    # Por orden de llegada (la busqueda ya viene ordenada por nombre) hasta juntar PLAN_MAX_UDS
     elegidas = []
-    for v in validas[:PLAN_MAX_OUT]:
+    uds_elegidas = 0.0
+    for v in validas:
+        if len(elegidas) >= PLAN_MAX_OUT or uds_elegidas >= PLAN_MAX_UDS:
+            break
         elegidas.append(v[1])
+        uds_elegidas += v[0]
     outs = env['stock.picking'].browse(elegidas)
     texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas: %s' % (
         len(validas) + len(saltadas), len(validas), ', '.join(outs.mapped('name')) or 'ninguna')
@@ -227,6 +234,76 @@ for zona in orden_zonas:
         trozos.append(actual)
     for i in range(len(trozos)):
         trozos_int.append(('%s-%s-%s-%s' % (PREFIJO, hoy, zona, letras[i]), trozos[i]))
+
+# ---------------- 3b. Km estimados: INT por zona frente a hoy (OUT por vueltas) --
+# Plano simplificado: 1 m por lineal (el L01 a 31 m de los muelles), 60 m de ancho,
+# solo se cambia de pasillo por los transversales (tras P03, central y tras P24).
+# Cada vuelta sale del SORTER, pasa por sus huecos en orden de pasillo y vuelve.
+grupos_hoy = []
+lineas_por_out = {}
+nombres_out = {}
+for zona in por_zona:
+    for x in por_zona[zona]:
+        if x[7].id not in lineas_por_out:
+            lineas_por_out[x[7].id] = []
+            nombres_out[x[7].id] = x[7].name
+        lineas_por_out[x[7].id].append(x)
+pares_out = []
+for k in lineas_por_out:
+    pares_out.append((nombres_out[k], k))
+pares_out.sort()
+ids_ordenados = []
+for par in pares_out:
+    ids_ordenados.append(par[1])
+for i in range(0, len(ids_ordenados), OUT_POR_VUELTA_HOY):
+    g = []
+    for k in ids_ordenados[i:i + OUT_POR_VUELTA_HOY]:
+        g += lineas_por_out[k]
+    grupos_hoy.append(g)
+grupos_int = []
+for etiqueta, lineas_t in trozos_int:
+    grupos_int.append(lineas_t)
+metros = {'hoy': 0.0, 'int': 0.0}
+for clave, grupos in (('hoy', grupos_hoy), ('int', grupos_int)):
+    for g in grupos:
+        paradas = []
+        vistos = {}
+        for x in sorted(g, key=lambda x: (x[0], x[1], x[2])):
+            if not x[2] or (x[2], x[1]) in vistos:
+                continue
+            vistos[(x[2], x[1])] = 1
+            p_y = x[1]
+            if p_y <= 17:
+                if p_y == 0:
+                    y = 29.3
+                elif p_y <= 3:
+                    y = 2 + (p_y - 0.5) * 1.5
+                else:
+                    y = 9 + (p_y - 3.5) * (20.0 / 14)
+            else:
+                if p_y > 36:
+                    p_y = 36
+                if p_y <= 24:
+                    y = 31 + (p_y - 17.5) * (12.0 / 7)
+                else:
+                    y = 45.5 + (p_y - 24.5) * (12.5 / 12)
+            paradas.append((30 + 2 * (x[2] // 2) - 0.5, y))
+        paradas.append((26.0, 30.0))
+        cx = 26.0
+        cy = 30.0
+        for px, py in paradas:
+            if abs(px - cx) < 0.01:
+                metros[clave] += abs(py - cy)
+            else:
+                mejor = 1e9
+                for c in (7.75, 30.0, 44.25):
+                    if abs(cy - c) + abs(py - c) < mejor:
+                        mejor = abs(cy - c) + abs(py - c)
+                metros[clave] += mejor + abs(px - cx)
+            cx = px
+            cy = py
+texto_km = 'Recorrido estimado: INT por zona %.1f km en %d vueltas | hoy (%d OUT por vuelta) %.1f km en %d vueltas' % (
+    metros['int'] / 1000.0, len(grupos_int), OUT_POR_VUELTA_HOY, metros['hoy'] / 1000.0, len(grupos_hoy))
 
 # ---------------- 4. Quitar la reserva de las OUT y separar lo que falta -------
 # Lo reservado de cada movimiento se guarda antes de quitar la reserva.
@@ -374,6 +451,7 @@ for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     lineas_log.append('   %s | %s | %d uds | %d movimientos | %d OUT | %s' % (
         picking.name, etiqueta, uds_t, n_movs, n_outs, picking.state))
 lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
+lineas_log.append(texto_km)
 
 if SIMULAR:
     # Detalle de lo que ha quedado antes de deshacer: estado de las OUT y primeras lineas de cada INT
