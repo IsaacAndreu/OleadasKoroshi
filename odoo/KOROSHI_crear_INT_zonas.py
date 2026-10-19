@@ -69,7 +69,7 @@ PLAN_MAX_OUT = 10                # tope de OUT (tiendas) por oleada
 # Oleada propia: las OUT elegidas salen de su agrupacion del dia (TIENDA dd-mm) y pasan a una
 # agrupacion nueva, en curso, para que el programa de oleadas cargue solo estas tiendas.
 OLEADA_PROPIA = False
-NOMBRE_OLEADA = 'KOR-%s-OLEADA'     # %s = ddmm
+PREFIJO_OLEADA = 'B-KOR-'         # la oleada se llama B-KOR-ddmm-01, -02... (numero siguiente del dia)
 PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
 # SIMULAR = True: lo hace todo y al final lanza un aviso que DESHACE TODO (prueba sin dejar nada).
 # Para hacerlo de verdad hay que poner SIMULAR = False.
@@ -496,7 +496,8 @@ if fallos:
 outs.write({'location_id': sorter.id})
 oleada = env['stock.picking.batch']
 if OLEADA_PROPIA and outs:
-    oleada = env['stock.picking.batch'].create({'name': NOMBRE_OLEADA % hoy, 'company_id': COMPANY_ID, 'batch_type': 'normal'})
+    n_oleadas = env['stock.picking.batch'].search_count([('company_id', '=', COMPANY_ID), ('name', '=like', '%s%s-%%' % (PREFIJO_OLEADA, hoy))])
+    oleada = env['stock.picking.batch'].create({'name': '%s%s-%02d' % (PREFIJO_OLEADA, hoy, n_oleadas + 1), 'company_id': COMPANY_ID, 'batch_type': 'normal'})
     outs.write({'batch_id': oleada.id})
     oleada.write({'state': 'in_progress'})
 for p in outs:
