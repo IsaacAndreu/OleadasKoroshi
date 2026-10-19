@@ -27,7 +27,7 @@
 #   quedar un salto en la numeracion de los INT.
 #
 # Reglas de safe_eval: sin f-strings, sin import, sin comprensiones, log() antes de raise.
-# =============================================================================
+# =================================s============================================
 
 # ----------------------------- PARAMETROS ------------------------------------
 COMPANY_ID = 8
@@ -45,6 +45,9 @@ ZONA_OTRAS = 'ZX'                # huecos sin lineal (MU, cajas sueltas...): van
 IDS_PRUEBA = []
 MAX_OUT = 80                     # tope de OUT por ejecucion
 PREFIJO = 'KOR'
+# Las OUT de tienda llegan dentro de su agrupacion del dia (TIENDA dd-mm), que es la que
+# carga el programa de oleadas: se aceptan y se dejan en ella. Otras agrupaciones no.
+PREFIJO_AGRUPACION = 'TIENDA'
 # Modo planificado (accion planificada): elige sola las OUT
 MODO_PLANIFICADO = False
 PLAN_MAX_OUT = 3                 # cuantas OUT coge (las mas pequenas)
@@ -79,7 +82,7 @@ elif MODO_PLANIFICADO:
         ('state', '=', 'assigned'),
         ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO),
         ('create_date', '>=', desde),
-        ('batch_id', '=', False),
+        '|', ('batch_id', '=', False), ('batch_id.name', '=like', PREFIJO_AGRUPACION + '%'),
         ('backorder_id', '=', False),
         ('name', 'not like', '-O'),
     ], order='name asc', limit=200)
@@ -101,7 +104,7 @@ for p in outs:
         motivo = 'tipo de pedido %s' % (tipo or 'sin tipo')
     elif p.state != 'assigned':
         motivo = 'no esta Preparada (%s)' % p.state
-    elif p.batch_id:
+    elif p.batch_id and not (p.batch_id.name or '').startswith(PREFIJO_AGRUPACION):
         motivo = 'esta en la agrupacion %s' % p.batch_id.name
     elif sorter and p.location_id.id == sorter.id:
         motivo = 'ya sale del SORTER'
