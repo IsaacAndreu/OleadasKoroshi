@@ -22,6 +22,10 @@
 #   Las que no valen se saltan (no se para). El resultado queda en el registro
 #   (Ajustes > Tecnico > Registros), en el chat de cada OUT y en el origen de los INT (KOR-...).
 #
+# SIMULAR = True (por defecto): hace todo y al final lanza un aviso con el resultado.
+#   El aviso deshace la transaccion: no queda nada creado ni cambiado. Solo puede
+#   quedar un salto en la numeracion de los INT.
+#
 # Reglas de safe_eval: sin f-strings, sin import, sin comprensiones, log() antes de raise.
 # =============================================================================
 
@@ -45,6 +49,10 @@ PREFIJO = 'KOR'
 MODO_PLANIFICADO = False
 PLAN_MAX_OUT = 3                 # cuantas OUT coge (las mas pequenas)
 PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
+# SIMULAR = True: lo hace todo y al final lanza un aviso que DESHACE TODO (prueba sin dejar nada).
+# Para hacerlo de verdad hay que poner SIMULAR = False.
+SIMULAR = True
+LINEAS_SIMULAR = 3               # lineas de ejemplo de cada INT en el aviso
 # -----------------------------------------------------------------------------
 
 errores = []
@@ -304,12 +312,39 @@ for p in outs:
     p.message_post(body='Repartida en INT por zona. Ahora sale del SORTER. INT:%s' % nombres)
 
 # ---------------- 8. Resumen y lista de los INT --------------------------------
-lineas_log = ['KOROSHI REPARTIR INT ZONAS - HECHO', 'OUT: %d (%s)' % (len(outs), ', '.join(outs.mapped('name')))]
+lineas_log = ['KOROSHI REPARTIR INT ZONAS - ' + (SIMULAR and 'SIMULACION (SE HA DESHECHO TODO)' or 'HECHO'),
+              'OUT: %d (%s)' % (len(outs), ', '.join(outs.mapped('name')))]
 total = 0.0
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     total += uds_t
-    lineas_log.append('   %s | %s | %d uds | %d movimientos | %d OUT' % (picking.name, etiqueta, uds_t, n_movs, n_outs))
+    lineas_log.append('   %s | %s | %d uds | %d movimientos | %d OUT | %s' % (
+        picking.name, etiqueta, uds_t, n_movs, n_outs, picking.state))
 lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
+
+if SIMULAR:
+    # Detalle de lo que ha quedado antes de deshacer: estado de las OUT y primeras lineas de cada INT
+    lineas_log.append('')
+    lineas_log.append('OUT despues de repartir (origen | estado):')
+    for p in outs:
+        lineas_log.append('   %s | %s | %s' % (p.name, p.location_id.complete_name, p.state))
+    lineas_log.append('')
+    lineas_log.append('INT: primeras lineas (hueco | producto | uds reservadas):')
+    for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
+        lineas_log.append('   %s' % etiqueta)
+        n = 0
+        for ml in picking.move_line_ids:
+            if n >= LINEAS_SIMULAR:
+                lineas_log.append('      ...')
+                break
+            lineas_log.append('      %s | %s | %d' % (ml.location_id.name, ml.product_id.display_name, ml.product_uom_qty))
+            n += 1
+    lineas_log.append('')
+    lineas_log.append('Es una simulacion: al lanzar este aviso Odoo deshace todo. No queda ningun INT ni ningun cambio en las OUT.')
+    lineas_log.append('Para hacerlo de verdad: SIMULAR = False.')
+    texto = '\n'.join(lineas_log)
+    log(texto)
+    raise Warning(texto)
+
 log('\n'.join(lineas_log))
 
 action = {
