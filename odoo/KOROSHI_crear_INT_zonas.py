@@ -91,7 +91,7 @@ elif MODO_PLANIFICADO:
 else:
     outs = env['stock.picking']
 if not outs and not MODO_PLANIFICADO:
-    errores.append('No hay OUT seleccionadas (o IDS_PRUEBA vacio)')
+    errores.append('No hay OUT: selecciona OUT en la lista, pon ids en IDS_PRUEBA o pon MODO_PLANIFICADO = True')
 if len(outs) > MAX_OUT and not MODO_PLANIFICADO:
     errores.append('Hay %d OUT seleccionadas y el maximo es %d' % (len(outs), MAX_OUT))
 
