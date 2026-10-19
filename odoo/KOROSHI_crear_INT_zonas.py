@@ -264,6 +264,7 @@ for p in outs:
 # ---------------- 5. Crear, confirmar y reservar los INT ----------------------
 ints = env['stock.picking']
 resumen = []
+fallos_previos = []
 for etiqueta, lineas_t in trozos_int:
     # Un movimiento por (producto, hueco)
     movs = {}
@@ -285,6 +286,7 @@ for etiqueta, lineas_t in trozos_int:
         'company_id': COMPANY_ID,
         'origin': etiqueta,
     })
+    creados = []      # (movimiento, hueco, uds) para volver a comprobarlos tras confirmar
     for clave in orden_movs:
         producto = movs[clave][0]
         hueco = movs[clave][1]
@@ -303,13 +305,25 @@ for etiqueta, lineas_t in trozos_int:
         # se vuelven a fijar el hueco exacto y el SORTER antes de confirmar
         if movimiento.location_id.id != hueco.id or movimiento.location_dest_id.id != sorter.id:
             movimiento.write({'location_id': hueco.id, 'location_dest_id': sorter.id})
-    picking.action_confirm()
+        creados.append((movimiento, hueco, movs[clave][2]))
+    # Confirmar SIN fusionar: con action_confirm() Odoo junta los movimientos del mismo
+    # producto (aunque salgan de huecos distintos) y luego reserva todo de un solo hueco.
+    picking.move_lines._action_confirm(merge=False)
+    for movimiento, hueco, uds_m in creados:
+        if not movimiento.exists():
+            fallos_previos.append('%s: un movimiento de %s se ha fusionado con otro' % (etiqueta, hueco.complete_name))
+            continue
+        if movimiento.location_id.id != hueco.id or movimiento.location_dest_id.id != sorter.id:
+            movimiento.write({'location_id': hueco.id, 'location_dest_id': sorter.id})
+        if abs(movimiento.product_uom_qty - uds_m) > 0.001:
+            fallos_previos.append('%s: %s en %s tiene %d uds y deberia tener %d' % (
+                etiqueta, movimiento.product_id.display_name, hueco.complete_name, movimiento.product_uom_qty, uds_m))
     picking.action_assign()
     ints |= picking
     resumen.append((etiqueta, picking, uds_t, len(orden_movs), len(outs_t)))
 
 # ---------------- 6. Comprobar que todo ha quedado reservado del hueco exacto --
-fallos = []
+fallos = fallos_previos[:]
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     for m in picking.move_lines:
         reservado = 0.0
