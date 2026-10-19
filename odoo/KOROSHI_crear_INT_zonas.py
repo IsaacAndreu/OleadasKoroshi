@@ -44,6 +44,16 @@ ZONAS = [
     ('Z5', 'D', 96, 136),
 ]
 ZONA_OTRAS = 'ZX'                # huecos sin lineal (MU, cajas sueltas...): van en su propio INT
+# Zonas dinamicas: en vez de las ZONAS fijas por lineal, se ordenan todas las lineas por el
+# recorrido de la nave y se cortan en tramos seguidos con el mismo trabajo (lecturas + uds).
+ZONAS_DINAMICAS = False
+N_INT_MINIMO = 5                 # minimo de INT (uno por picker); si hay muchas uds salen mas (max MAX_UDS_INT)
+SEG_LECTURA = 20                 # peso de cada lectura de hueco (producto + hueco) para repartir el trabajo
+SEG_UNIDAD = 4                   # peso de cada unidad
+# Outlet: lo que no es de la temporada actual va en su propio INT (OUTLET), aparte de las zonas
+SEPARAR_OUTLET = False
+TEMPORADAS_ACTUALES = ['I27', 'V27']
+ZONA_OUTLET = 'OUTLET'
 # Para la prueba: ids de OUT concretas. Vacio = las OUT seleccionadas en la lista.
 IDS_PRUEBA = []
 MAX_OUT = 80                     # tope de OUT por ejecucion
@@ -187,7 +197,10 @@ for p in outs:
                         nivel = int(num)
                 break
         zona = ZONA_OTRAS
-        if lineal:
+        temporada = ml.product_id.product_tmpl_id.season_id and ml.product_id.product_tmpl_id.season_id.name or ''
+        if SEPARAR_OUTLET and temporada not in TEMPORADAS_ACTUALES:
+            zona = ZONA_OUTLET
+        elif lineal:
             # P00 (cabecera del lineal) va con el lado izquierdo, como P01-P17
             lado = pos <= 17 and 'I' or 'D'
             for z in ZONAS:
@@ -203,10 +216,59 @@ orden_zonas = []
 for z in ZONAS:
     orden_zonas.append(z[0])
 orden_zonas.append(ZONA_OTRAS)
+orden_zonas.append(ZONA_OUTLET)
 letras = 'abcdefghijklmnopqrstuvwxyz'
 hoy = datetime.date.today().strftime('%d%m')
 trozos_int = []   # (etiqueta, lista de lineas)
+if ZONAS_DINAMICAS:
+    # Todas las lineas con lineal en orden de recorrido; ZX aparte
+    todas = []
+    for zona in por_zona:
+        if zona != ZONA_OTRAS and zona != ZONA_OUTLET:
+            todas += por_zona[zona]
+    todas = sorted(todas, key=lambda x: (x[0], x[1], x[2], x[3], x[5].id))
+    uds_tot = 0.0
+    peso_tot = 0.0
+    clave_ant = None
+    for x in todas:
+        uds_tot += x[6]
+        peso_tot += SEG_UNIDAD * x[6]
+        if (x[5].id, x[4].id) != clave_ant:
+            peso_tot += SEG_LECTURA
+        clave_ant = (x[5].id, x[4].id)
+    n_din = int(uds_tot // MAX_UDS_INT)
+    if n_din * MAX_UDS_INT < uds_tot:
+        n_din += 1
+    if n_din < N_INT_MINIMO:
+        n_din = N_INT_MINIMO
+    trozos = []
+    actual = []
+    peso_act = 0.0
+    clave_ant = None
+    if todas:
+        objetivo = peso_tot / n_din
+        for x in todas:
+            clave = (x[5].id, x[4].id)
+            # solo se corta entre lecturas distintas (una lectura no se parte en dos INT)
+            if actual and clave != clave_ant and peso_act >= objetivo * (len(trozos) + 1) - 0.001 and len(trozos) < n_din - 1:
+                trozos.append(actual)
+                actual = []
+            actual.append(x)
+            peso_act += SEG_UNIDAD * x[6]
+            if clave != clave_ant:
+                peso_act += SEG_LECTURA
+            clave_ant = clave
+        if actual:
+            trozos.append(actual)
+    for i in range(len(trozos)):
+        trozos_int.append(('%s-%s-D%d' % (PREFIJO, hoy, i + 1), trozos[i]))
+    for zona_aparte in (ZONA_OTRAS, ZONA_OUTLET):
+        if por_zona.get(zona_aparte):
+            sel_ap = sorted(por_zona[zona_aparte], key=lambda x: (x[0], x[1], x[2], x[3]))
+            trozos_int.append(('%s-%s-%s-a' % (PREFIJO, hoy, zona_aparte), sel_ap))
 for zona in orden_zonas:
+    if ZONAS_DINAMICAS:
+        break
     sel = por_zona.get(zona, [])
     if not sel:
         continue
@@ -448,8 +510,26 @@ lineas_log = ['KOROSHI REPARTIR INT ZONAS - ' + (SIMULAR and 'SIMULACION (SE HA 
 total = 0.0
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     total += uds_t
-    lineas_log.append('   %s | %s | %d uds | %d movimientos | %d OUT | %s' % (
-        picking.name, etiqueta, uds_t, n_movs, n_outs, picking.state))
+    lin_min = 9999
+    lin_max = 0
+    for m in picking.move_lines:
+        nombre_h = m.location_id.complete_name or ''
+        pos_l = nombre_h.find(' - L')
+        if pos_l >= 0:
+            num = ''
+            for ch in nombre_h[pos_l + 4:]:
+                if ch.isdigit():
+                    num += ch
+                else:
+                    break
+            if num:
+                if int(num) < lin_min:
+                    lin_min = int(num)
+                if int(num) > lin_max:
+                    lin_max = int(num)
+    tramo = lin_max and ('L%02d-L%02d' % (lin_min, lin_max)) or 'sin lineal'
+    lineas_log.append('   %s | %s | %s | %d uds | %d movimientos | %d OUT | %s' % (
+        picking.name, etiqueta, tramo, uds_t, n_movs, n_outs, picking.state))
 lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
 lineas_log.append(texto_km)
 
