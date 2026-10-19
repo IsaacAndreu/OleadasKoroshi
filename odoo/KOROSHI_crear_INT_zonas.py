@@ -31,7 +31,7 @@
 #   quedar un salto en la numeracion de los INT.
 #
 # Reglas de safe_eval: sin f-strings, sin import, sin comprensiones, log() antes de raise.
-# =================================s============================================
+# =============================================================================
 
 # ----------------------------- PARAMETROS ------------------------------------
 COMPANY_ID = 8
