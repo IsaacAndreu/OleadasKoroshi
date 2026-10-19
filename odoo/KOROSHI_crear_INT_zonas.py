@@ -16,6 +16,12 @@
 # Todo va en una sola transaccion: cualquier error deja Odoo como estaba.
 # Al acabar abre la lista de los INT creados.
 #
+# MODO PLANIFICADO (para usarla como accion planificada, sin seleccion):
+#   con MODO_PLANIFICADO = True busca sola las OUT de tienda entradas en las ultimas
+#   PLAN_HORAS horas que se pueden repartir y coge las PLAN_MAX_OUT mas pequenas.
+#   Las que no valen se saltan (no se para). El resultado queda en el registro
+#   (Ajustes > Tecnico > Registros), en el chat de cada OUT y en el origen de los INT (KOR-...).
+#
 # Reglas de safe_eval: sin f-strings, sin import, sin comprensiones, log() antes de raise.
 # =============================================================================
 
@@ -35,6 +41,10 @@ ZONA_OTRAS = 'ZX'                # huecos sin lineal (MU, cajas sueltas...): van
 IDS_PRUEBA = []
 MAX_OUT = 80                     # tope de OUT por ejecucion
 PREFIJO = 'KOR'
+# Modo planificado (accion planificada): elige sola las OUT
+MODO_PLANIFICADO = False
+PLAN_MAX_OUT = 3                 # cuantas OUT coge (las mas pequenas)
+PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
 # -----------------------------------------------------------------------------
 
 errores = []
@@ -53,13 +63,27 @@ if IDS_PRUEBA:
     outs = env['stock.picking'].browse(IDS_PRUEBA).exists()
 elif env.context.get('active_model') == 'stock.picking' and env.context.get('active_ids'):
     outs = env['stock.picking'].browse(env.context.get('active_ids'))
+elif MODO_PLANIFICADO:
+    desde = (datetime.datetime.now() - datetime.timedelta(hours=PLAN_HORAS)).strftime('%Y-%m-%d %H:%M:%S')
+    outs = env['stock.picking'].search([
+        ('company_id', '=', COMPANY_ID),
+        ('picking_type_code', '=', 'outgoing'),
+        ('state', '=', 'assigned'),
+        ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO),
+        ('create_date', '>=', desde),
+        ('batch_id', '=', False),
+        ('backorder_id', '=', False),
+        ('name', 'not like', '-O'),
+    ], order='name asc', limit=200)
 else:
     outs = env['stock.picking']
-if not outs:
+if not outs and not MODO_PLANIFICADO:
     errores.append('No hay OUT seleccionadas (o IDS_PRUEBA vacio)')
-if len(outs) > MAX_OUT:
+if len(outs) > MAX_OUT and not MODO_PLANIFICADO:
     errores.append('Hay %d OUT seleccionadas y el maximo es %d' % (len(outs), MAX_OUT))
 
+validas = []      # modo planificado: (uds, out) de las que se pueden repartir
+saltadas = []
 for p in outs:
     motivo = ''
     tipo = p.sale_id and p.sale_id.s_order_type_id and p.sale_id.s_order_type_id.name or ''
@@ -86,8 +110,29 @@ for p in outs:
                 if sorter and ml.location_id.id == sorter.id:
                     motivo = 'tiene lineas reservadas en el SORTER'
                     break
-    if motivo:
+    if MODO_PLANIFICADO:
+        if motivo:
+            saltadas.append('%s: %s' % (p.name, motivo))
+        else:
+            uds_p = 0.0
+            for m in p.move_lines:
+                uds_p += m.product_uom_qty
+            validas.append((uds_p, p.id))
+    elif motivo:
         errores.append('%s: %s' % (p.name, motivo))
+
+if MODO_PLANIFICADO:
+    # Se cogen las mas pequenas, para la prueba
+    validas = sorted(validas, key=lambda x: (x[0], x[1]))
+    elegidas = []
+    for v in validas[:PLAN_MAX_OUT]:
+        elegidas.append(v[1])
+    outs = env['stock.picking'].browse(elegidas)
+    texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas: %s' % (
+        len(validas) + len(saltadas), len(validas), ', '.join(outs.mapped('name')) or 'ninguna')
+    if saltadas:
+        texto_plan += '\nSaltadas:\n' + '\n'.join(saltadas[:40])
+    log(texto_plan)
 
 if errores:
     texto = 'REPARTIR INT POR ZONA - NO SE HA HECHO NADA\n\n' + '\n'.join(errores)
@@ -259,7 +304,7 @@ for p in outs:
     p.message_post(body='Repartida en INT por zona. Ahora sale del SORTER. INT:%s' % nombres)
 
 # ---------------- 8. Resumen y lista de los INT --------------------------------
-lineas_log = ['KOROSHI REPARTIR INT ZONAS - HECHO', 'OUT: %d' % len(outs)]
+lineas_log = ['KOROSHI REPARTIR INT ZONAS - HECHO', 'OUT: %d (%s)' % (len(outs), ', '.join(outs.mapped('name')))]
 total = 0.0
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     total += uds_t
