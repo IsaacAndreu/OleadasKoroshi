@@ -21,7 +21,8 @@
 # MODO PLANIFICADO (para usarla como accion planificada, sin seleccion):
 #   con MODO_PLANIFICADO = True busca sola las OUT de tienda entradas en las ultimas
 #   PLAN_HORAS horas que se pueden repartir y las coge por orden de llegada hasta juntar
-#   unas PLAN_MAX_UDS uds (una oleada), con un maximo de PLAN_MAX_OUT OUT.
+#   unas PLAN_MAX_UDS uds sin pasarse (una oleada), con un maximo de PLAN_MAX_OUT OUT (tiendas).
+#   Con OLEADA_PROPIA las OUT elegidas pasan a una agrupacion nueva (la oleada que carga el programa).
 #   Las que no valen se saltan (no se para). El resultado queda en el registro
 #   (Ajustes > Tecnico > Registros), en el chat de cada OUT y en el origen de los INT (KOR-...).
 #
@@ -64,7 +65,11 @@ PREFIJO_AGRUPACION = 'TIENDA'
 # Modo planificado (accion planificada): elige sola las OUT
 MODO_PLANIFICADO = False
 PLAN_MAX_UDS = 2000              # uds que junta (una oleada)
-PLAN_MAX_OUT = 80                # tope de OUT
+PLAN_MAX_OUT = 10                # tope de OUT (tiendas) por oleada
+# Oleada propia: las OUT elegidas salen de su agrupacion del dia (TIENDA dd-mm) y pasan a una
+# agrupacion nueva, en curso, para que el programa de oleadas cargue solo estas tiendas.
+OLEADA_PROPIA = False
+NOMBRE_OLEADA = 'KOR-%s-OLEADA'     # %s = ddmm
 PLAN_HORAS = 10                  # OUT creadas en las ultimas N horas
 # SIMULAR = True: lo hace todo y al final lanza un aviso que DESHACE TODO (prueba sin dejar nada).
 # Para hacerlo de verdad hay que poner SIMULAR = False.
@@ -145,17 +150,20 @@ for p in outs:
         errores.append('%s: %s' % (p.name, motivo))
 
 if MODO_PLANIFICADO:
-    # Por orden de llegada (la busqueda ya viene ordenada por nombre) hasta juntar PLAN_MAX_UDS
+    # Por orden de llegada (la busqueda ya viene ordenada por nombre): se coge cada tienda si no
+    # pasa de PLAN_MAX_UDS; si no cabe se prueba la siguiente. Maximo PLAN_MAX_OUT tiendas.
     elegidas = []
     uds_elegidas = 0.0
     for v in validas:
-        if len(elegidas) >= PLAN_MAX_OUT or uds_elegidas >= PLAN_MAX_UDS:
+        if len(elegidas) >= PLAN_MAX_OUT:
             break
+        if uds_elegidas + v[0] > PLAN_MAX_UDS:
+            continue
         elegidas.append(v[1])
         uds_elegidas += v[0]
     outs = env['stock.picking'].browse(elegidas)
-    texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas: %s' % (
-        len(validas) + len(saltadas), len(validas), ', '.join(outs.mapped('name')) or 'ninguna')
+    texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas %d (%d uds): %s' % (
+        len(validas) + len(saltadas), len(validas), len(outs), uds_elegidas, ', '.join(outs.mapped('name')) or 'ninguna')
     if saltadas:
         texto_plan += '\nSaltadas:\n' + '\n'.join(saltadas[:40])
     log(texto_plan)
@@ -486,6 +494,11 @@ if fallos:
 
 # ---------------- 7. Las OUT pasan a salir del SORTER --------------------------
 outs.write({'location_id': sorter.id})
+oleada = env['stock.picking.batch']
+if OLEADA_PROPIA and outs:
+    oleada = env['stock.picking.batch'].create({'name': NOMBRE_OLEADA % hoy, 'company_id': COMPANY_ID, 'batch_type': 'normal'})
+    outs.write({'batch_id': oleada.id})
+    oleada.write({'state': 'in_progress'})
 for p in outs:
     for m in p.move_lines:
         if m.state in ('done', 'cancel'):
@@ -500,13 +513,15 @@ for p in outs:
     for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
         nombres += ' %s (%s)' % (picking.name, etiqueta)
     texto_msg = 'Repartida en INT por zona. Lo reservado sale ahora del SORTER. INT:%s' % nombres
+    if oleada:
+        texto_msg += ' | Oleada: %s' % oleada.name
     if uds_faltan[p.id] > 0.001:
         texto_msg += ' | %d uds sin reserva siguen saliendo de EFFEC/Stock (pendientes como siempre).' % uds_faltan[p.id]
     p.message_post(body=texto_msg)
 
 # ---------------- 8. Resumen y lista de los INT --------------------------------
 lineas_log = ['KOROSHI REPARTIR INT ZONAS - ' + (SIMULAR and 'SIMULACION (SE HA DESHECHO TODO)' or 'HECHO'),
-              'OUT: %d (%s)' % (len(outs), ', '.join(outs.mapped('name')))]
+              'OUT: %d (%s)' % (len(outs), ', '.join(outs.mapped('name'))) + (oleada and ' | oleada %s' % oleada.name or '')]
 total = 0.0
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     total += uds_t
