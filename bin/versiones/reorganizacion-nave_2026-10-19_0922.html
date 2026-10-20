@@ -1,0 +1,298 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Reorganización NAU-2 KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: misma columna y tokens que las otras páginas KOROSHI; las piezas centrales son los dos planos (hoy / propuesta) */
+:root {
+  --bg: #f3f4f2; --panel: #ffffff; --ink: #1d2327; --muted: #5d676d; --line: #d5d9d6; --floor: #e6e8e4;
+  --accent: #e0a100; --accent-ink: #6b4d00; --ok: #2e7d4f;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f; --accent: #f2b81c; --accent-ink: #f2b81c; --ok: #6cc495; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f; --accent: #f2b81c; --accent-ink: #f2b81c; --ok: #6cc495; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 52px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); } h2 { font-size: 1.9rem; } h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 70ch; }
+section { display: grid; gap: 18px; min-width: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tape { height: 10px; border-radius: 2px; max-width: 220px; background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px); }
+.lead { font-size: 1.12rem; }
+.note { font-size: .88rem; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.scroll { overflow-x: auto; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.2rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.kpi.ok .v { color: var(--ok); }
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-family: var(--f-mono); font-size: .7rem; letter-spacing: .07em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+.m { font-family: var(--f-mono); }
+.mapa svg { display: block; width: 100%; min-width: 820px; height: auto; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: .82rem; color: var(--muted); }
+.leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.reglas { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.regla { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 6px; align-content: start; }
+.regla p { font-size: .9rem; color: var(--muted); }
+.tallas { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+.talla-col { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 10px; display: grid; gap: 4px; align-content: start; }
+.talla-col b { font-family: var(--f-display); font-size: 1.05rem; }
+.chip { display: flex; justify-content: space-between; align-items: center; padding: 3px 8px; border-radius: 3px; font-family: var(--f-mono); font-size: .8rem; font-weight: 500; }
+.fases { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; counter-reset: f; }
+.fase { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.fase::before { counter-increment: f; content: "Fase " counter(f); font-family: var(--f-mono); font-size: .75rem; letter-spacing: .08em; text-transform: uppercase; color: var(--accent-ink); }
+.fase p { font-size: .9rem; color: var(--muted); }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+.callout ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: 0; }
+.km { display: grid; gap: 14px; }
+.km-fila { display: grid; grid-template-columns: 120px minmax(0, 1fr) minmax(120px, 2fr) 80px; gap: 12px; align-items: center; }
+.km-n { font-family: var(--f-display); font-size: 1.2rem; font-weight: 700; }
+.km-d { font-size: .85rem; color: var(--muted); }
+.km-bar { height: 22px; background: var(--floor); border-radius: 3px; position: relative; }
+.km-bar i { position: absolute; inset: 0 auto 0 0; border-radius: 3px; }
+.km-v { font-family: var(--f-display); font-size: 1.5rem; font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+@media (max-width: 640px) { .km-fila { grid-template-columns: 1fr auto; } .km-d, .km-bar { grid-column: 1 / -1; } }
+
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 10.5pt; }
+  .wrap { max-width: none; padding: 0; gap: 22px; }
+  section { gap: 11px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 26pt; } h2 { font-size: 18pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  .mapa svg { min-width: 0; }
+  .scroll { overflow: visible; }
+  .km, .regla, .kpi, .kpis, .callout, .fase, .talla-col, tr, .mapa { break-inside: avoid; }
+  td.m, th { white-space: nowrap; }
+  td, th { padding: 3px 5px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 19pt; }
+  .reglas, .fases { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .regla, .fase { padding: 10px; }
+  .regla p, .fase p { font-size: 8.8pt; }
+  .tallas { grid-template-columns: repeat(5, 1fr); gap: 6px; }
+  table { font-size: 7.8pt; }
+}
+</style>
+
+<div class="wrap">
+
+<header style="display:grid;gap:14px">
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · NAU-2 · Estoc de Odoo del 19/10/2026 · propuesta, no se ha movido nada</span>
+  <h1>Limpieza y orden por modelo</h1>
+  <p class="lead">Hoy la mercancía está repartida en muchas cajas medio vacías y cada modelo está en varios sitios. La propuesta: quitar los contenedores vacíos, juntar cada talla en un solo contenedor y poner cada modelo en un bloque seguido, con sus tallas en orden y su color de etiqueta. Los modelos que más se venden, cerca de los muelles.</p>
+</header>
+
+<section>
+  <span class="eyebrow">Cómo está hoy</span>
+  <h2>La nave hoy</h2>
+  <div class="kpis" id="kpisHoy"></div>
+  <div class="panel mapa scroll"><svg id="mapaHoy" viewBox="0 0 1000 250" role="img" aria-label="Ocupación actual por lineal"></svg></div>
+  <div class="leyenda"><span><i style="background:#d9dee0"></i>Hueco vacío</span><span><i style="background:#9fb3c8"></i>Poco ocupado</span><span><i style="background:#2f5f8a"></i>Muy ocupado</span><span>La altura de cada barra es el % de huecos con mercancía de ese lineal y lado.</span></div>
+  <div class="callout">
+    <h3>Lo que más llama la atención</h3>
+    <ul id="hallazgos"></ul>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Criterios de la propuesta</span>
+  <h2>Cómo se ordena</h2>
+  <div class="reglas">
+    <div class="regla"><h3>Lo que se vende, delante</h3><p>Primero los modelos de la temporada I27 que han salido en los últimos 60 días. Después los que se venden de otras temporadas. Al fondo, lo que no se mueve.</p></div>
+    <div class="regla"><h3>Familias juntas</h3><p>Chaquetas, pantalones, ML, TR, sudaderas… cada familia en su tramo. Así no se confunden los colores de talla (el verde es XS en chaquetas y 38 en pantalones).</p></div>
+    <div class="regla"><h3>Un bloque por modelo</h3><p>Cada modelo seguido, sin saltos. Dentro: color de la prenda y, en cada color, las tallas en orden con su color de etiqueta.</p></div>
+    <div class="regla"><h3>Un contenedor por talla</h3><p>Cada SKU en un solo contenedor (una etiqueta). Si no cabe en un palet, palets seguidos con la etiqueta duplicada.</p></div>
+    <div class="regla"><h3>Cajas llenas</h3><p>Se calculan con lo que cabe hoy en una caja bien llena de cada familia: unas 12 chaquetas, 30 pantalones, 22 TR, 20 sudaderas, 27 ML.</p></div>
+    <div class="regla"><h3>8 cajas por hueco</h3><p>Es lo que tienen hoy la mayoría de huecos. Se rellena pasillo a pasillo desde el L01, los dos lados del pasillo central.</p></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Propuesta</span>
+  <h2>La nave ordenada</h2>
+  <div class="kpis" id="kpisProp"></div>
+  <div class="panel mapa scroll"><svg id="mapaProp" viewBox="0 0 1000 250" role="img" aria-label="Propuesta de ubicación por familia"></svg></div>
+  <div class="leyenda" id="leyProp"></div>
+  <p class="note">Cada lineal se pinta con las familias que tendría en la propuesta (los dos lados del pasillo central). Color lleno: modelos activos I27. Color claro: otros que se venden. Gris rayado: lo que no se ha movido en 60 días.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Un día real · pedido TIENDA 13-10 (martes) · 41 tiendas · 4.757 uds</span>
+  <h2>Kilómetros andando</h2>
+  <p>El mismo pedido calculado de tres maneras sobre el mismo plano. Cuenta lo que se camina desde el SORTER hasta los huecos y vuelta.</p>
+  <div class="panel km">
+    <div class="km-fila"><span class="km-n">Hoy</span><span class="km-d">Una vuelta por cada tienda (OUT a OUT), ubicación actual</span><span class="km-bar"><i style="width:100%;background:#8a9399"></i></span><span class="km-v">48,9 km</span></div>
+    <div class="km-fila"><span class="km-n">Zonas</span><span class="km-d">INT por zona de 500 uds, ubicación actual</span><span class="km-bar"><i style="width:12.7%;background:#2a62b8"></i></span><span class="km-v">6,2 km</span></div>
+    <div class="km-fila"><span class="km-n">Zonas + orden</span><span class="km-d">INT por zona, con la nave ordenada como esta propuesta</span><span class="km-bar"><i style="width:3.9%;background:#2e9a52"></i></span><span class="km-v">1,9 km</span></div>
+  </div>
+  <div class="panel scroll"><table><thead><tr><th>Cómo se recoge</th><th class="r">Km</th><th class="r">Vueltas</th><th class="r">Lecturas de hueco</th><th class="r">Km frente a hoy</th></tr></thead><tbody>
+    <tr><td>Hoy: OUT a OUT</td><td class="r">48,9</td><td class="r">41</td><td class="r">3.682</td><td class="r">—</td></tr>
+    <tr><td>Zonas, ubicación actual</td><td class="r">6,2</td><td class="r">12 INT</td><td class="r">1.941</td><td class="r">−87%</td></tr>
+    <tr><td>Zonas, nave ordenada</td><td class="r">1,9</td><td class="r">11 INT</td><td class="r">1.723</td><td class="r">−96%</td></tr>
+  </tbody></table></div>
+  <div class="callout">
+    <h3>Qué se ve</h3>
+    <ul>
+      <li><b>El picking por zonas ya ahorra mucho con la nave como está</b>: de 48,9 km a 6,2 km. Se puede probar mañana sin esperar a reubicar.</li>
+      <li><b>Con la nave ordenada el camino vuelve a bajar a un tercio</b> (1,9 km), porque lo que se vende está todo entre L01 y L15, cerca del SORTER.</li>
+      <li>Las lecturas bajan menos (de 1.941 a 1.723) porque los INT ya juntan lo de muchas tiendas. Con un contenedor por talla, cada talla se lee una sola vez en cada INT.</li>
+      <li>Con la nave ordenada casi todo cae en dos zonas: las zonas actuales habría que repartirlas de nuevo para que cada picker tenga trabajo.</li>
+    </ul>
+  </div>
+  <p class="note">Pedido TIENDA 13-10: 51 OUT. Se dejan fuera las 1.978 uds que salieron del SORTER (no se sabe de qué hueco) y 2 uds sin lineal. Mismo plano y mismas reglas en los tres casos: 2 m por pareja de lineales, pasillos transversales tras P03, central y tras P24, salida y vuelta al SORTER. Con la nave ordenada, el 96% de las líneas tiene su hueco nuevo exacto; el resto va al bloque de su modelo.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Detalle</span>
+  <h2>Por familia</h2>
+  <div class="panel scroll"><table><thead><tr><th>Familia</th><th class="r">Modelos</th><th class="r">SKU</th><th class="r">Uds</th><th class="r">Salidas 60 días</th><th class="r">Contenedores hoy</th><th class="r">Cajas propuesta</th><th class="r">Uds por caja</th><th>Tramo de los activos</th></tr></thead><tbody id="tFam"></tbody></table></div>
+  <h3>Los 25 modelos que más salen</h3>
+  <div class="panel scroll"><table><thead><tr><th>Modelo</th><th class="r">Uds</th><th class="r">Salidas 60 d</th><th class="r">Tallas</th><th class="r">Contenedores hoy</th><th class="r">Huecos hoy</th><th>Lineales hoy</th><th>Propuesta</th></tr></thead><tbody id="tMod"></tbody></table></div>
+  <p class="note">Ejemplo: el 2621JA50 está hoy en 206 contenedores y 73 huecos repartidos entre L65 y L72. En la propuesta ocupa unos 35 huecos seguidos al principio del L01.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Etiquetas</span>
+  <h2>Color de cada talla</h2>
+  <div class="tallas" id="tallas"></div>
+</section>
+
+<section>
+  <span class="eyebrow">Cómo hacerlo</span>
+  <h2>Por fases</h2>
+  <div class="fases">
+    <div class="fase"><h3>Quitar contenedores vacíos</h3><p id="f1"></p></div>
+    <div class="fase"><h3>Juntar cada talla en un contenedor</h3><p>Dentro de cada lineal, juntar las cajas medio vacías del mismo SKU en una sola. No hay que mover nada de sitio: solo vaciar cajas en otras. Libera huecos para la fase 3.</p></div>
+    <div class="fase"><h3>Los 418 modelos activos, delante</h3><p id="f3"></p></div>
+    <div class="fase"><h3>El resto, por familias</h3><p>Lo que se vende de otras temporadas detrás de los activos. Lo que no se mueve, al fondo y bien compacto. Se puede hacer poco a poco, cuando haya huecos libres.</p></div>
+    <div class="fase"><h3>Rehacer las zonas de picking</h3><p>Con los activos concentrados en pocos lineales, las 5 zonas actuales dejan de servir: habrá que definirlas por familia o por tramo. La acción de repartir INT solo necesita cambiar la tabla de zonas.</p></div>
+    <div class="fase"><h3>Color en la PDA</h3><p>Opcional: que la PDA enseñe el color de la talla. Es un cambio en la app de códigos de barras.</p></div>
+  </div>
+  <div class="callout">
+    <h3>Hay que tener en cuenta</h3>
+    <ul>
+      <li>Los números de capacidad (8 cajas por hueco y cajas llenas por familia) salen de cómo están hoy las cajas en Odoo. Hay que confirmarlos en la nave antes de mover nada.</li>
+      <li>El orden dentro del pasillo (posición y nivel) es una simulación. El sitio exacto de cada modelo se decide al hacer la fase 3, con el plano del almacén.</li>
+      <li>Para poner los activos delante primero hay que liberar ese espacio: por eso las fases 1 y 2 van antes.</li>
+      <li>Estoc leído de Odoo el 19/10/2026, solo lectura. Las salidas son los últimos 60 días de todos los pedidos de KOROSHI.</li>
+    </ul>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var D = {"resumen":{"skus":30544,"modelos":8781,"uds":373956,"contenedores_hoy":53870,"huecos_hoy":9509,"huecos_fisicos":19454,"cajas_propuesta":47878,"huecos_propuesta":6204,"contenedores_vacios_en_huecos":21909,"contenedores_vacios_total":43567,"grupos":[{"g":1,"mods":418,"u":232588,"rot":179348,"ini":"L01 P17 C1","fin":"L14 P22 C3"},{"g":2,"mods":2068,"u":53495,"rot":11602,"ini":"L14 P22 C4","fin":"L23 P32 C1"},{"g":3,"mods":6295,"u":87873,"rot":0,"ini":"L23 P32 C2","fin":"L40 P37 C3"}]},"familias":[["JA",1109,4515,130458,56436,16924,14232,12,"L01 P17 C1","L09 P04 C2"],["PT",975,3275,52887,40161,8331,4501,30,"L09 P04 C3","L10 P14 C3"],["ML",416,1892,16694,24373,4350,2170,27,"L10 P14 C4","L10 P03 C3"],["TR",799,3391,67768,23055,13338,5714,22,"L10 P03 C4","L12 P21 C2"],["SU",299,1289,19090,16029,4364,1974,20,"L12 P21 C3","L13 P35 C2"],["CL",122,615,6234,10853,1488,817,18,"L13 P35 C3","L14 P14 C2"],["VS",427,1267,7597,4995,3785,1485,15,"L14 P14 C3","L15 P10 C3"],["BL",264,657,3431,3373,1823,785,12,"L15 P10 C4","L14 P07 C2"],["PL",76,371,2899,3049,690,508,12,"L14 P07 C3","L15 P04 C1"],["FA",166,507,4236,2726,1545,658,15,"L15 P04 C2","L14 P01 C3"],["XC",130,742,4600,2352,2235,917,12,"L14 P01 C4","L15 P19 C4"],["TP",406,846,3833,558,3592,1002,12,"",""],["UN",26,71,3900,539,115,372,12,"",""],["ZC",21,49,1226,480,95,139,12,"L14 P20 C1","L15 P21 C1"],["PS",481,1044,3980,444,3785,1158,12,"",""],["-",2085,7716,31792,434,30615,8487,12,"",""],["ZB",30,30,1515,331,806,146,12,"L15 P21 C2","L14 P22 C3"],["MC",343,740,2195,297,2064,818,12,"",""]],"famList":["JA","PT","ML","TR","SU","CL","VS","BL","PL","FA","XC","ZC","ZB","TP","UN","PS","-","MC","TS","ZT","CC","WA","PC","MS","ZN","HS","H","SM","SG","HA","ZA","BI","SC","S","SW","P","CW","B","U","C","ZF","G","BG","M"],"prop":[[1,"D",[[0,1,82]]],[1,"I",[[0,1,70]]],[2,"D",[[0,1,82]]],[2,"I",[[0,1,70]]],[3,"D",[[0,1,82]]],[3,"I",[[0,1,70]]],[4,"D",[[0,1,82]]],[4,"I",[[0,1,70]]],[5,"D",[[0,1,82]]],[5,"I",[[0,1,69]]],[6,"D",[[0,1,82]]],[6,"I",[[0,1,70]]],[7,"D",[[0,1,82]]],[7,"I",[[0,1,70]]],[8,"D",[[1,1,81]]],[8,"I",[[0,1,56],[1,1,14]]],[9,"D",[[1,1,82]]],[9,"I",[[0,1,54],[1,1,16]]],[10,"D",[[3,1,80]]],[10,"I",[[1,1,15],[2,1,44],[3,1,11]]],[11,"D",[[3,1,82]]],[11,"I",[[1,1,12],[2,1,44],[3,1,14]]],[12,"D",[[3,1,14],[4,1,58],[5,1,10]]],[12,"I",[[3,1,70]]],[13,"D",[[3,1,12],[4,1,58],[5,1,12]]],[13,"I",[[3,1,70]]],[14,"D",[[10,1,8],[11,1,8],[12,1,3],[0,2,63]]],[14,"I",[[5,1,14],[6,1,18],[7,1,10],[8,1,14],[9,1,11],[10,1,3]]],[15,"D",[[10,1,8],[11,1,5],[12,1,3],[0,2,65]]],[15,"I",[[5,1,12],[6,1,19],[7,1,9],[8,1,13],[9,1,11],[10,1,6]]],[16,"D",[[3,2,57],[1,2,24]]],[16,"I",[[0,2,28],[3,2,42]]],[17,"D",[[3,2,56],[1,2,26]]],[17,"I",[[0,2,24],[3,2,46]]],[18,"D",[[2,2,20],[6,2,43],[4,2,18]]],[18,"I",[[1,2,44],[2,2,26]]],[19,"D",[[2,2,20],[6,2,44],[4,2,17]]],[19,"I",[[1,2,43],[2,2,27]]],[20,"D",[[10,2,24],[15,2,24],[16,2,31]]],[20,"I",[[4,2,17],[13,2,31],[14,2,21],[10,2,1]]],[21,"D",[[10,2,23],[15,2,24],[16,2,35]]],[21,"I",[[4,2,16],[13,2,28],[14,2,23],[10,2,2]]],[22,"D",[[5,2,14],[8,2,10],[18,2,3],[19,2,9],[20,2,4],[11,2,1],[21,2,5],[12,2,1],[22,2,2],[23,2,3],[25,2,2],[26,2,1],[27,2,1],[30,2,1],[31,2,1],[32,2,1],[33,2,1],[16,3,22]]],[22,"I",[[16,2,16],[7,2,16],[9,2,20],[17,2,16],[5,2,2]]],[23,"D",[[5,2,12],[8,2,9],[18,2,3],[19,2,11],[20,2,3],[11,2,2],[21,2,4],[22,2,4],[23,2,1],[24,2,3],[28,2,1],[29,2,3],[33,2,1],[16,3,25]]],[23,"I",[[16,2,12],[7,2,20],[9,2,16],[17,2,19],[5,2,2]]],[24,"D",[[16,3,82]]],[24,"I",[[16,3,70]]],[25,"D",[[16,3,82]]],[25,"I",[[16,3,70]]],[26,"D",[[16,3,82]]],[26,"I",[[16,3,70]]],[27,"D",[[16,3,82]]],[27,"I",[[16,3,70]]],[28,"D",[[16,3,81]]],[28,"I",[[16,3,70]]],[29,"D",[[16,3,82]]],[29,"I",[[16,3,69]]],[30,"D",[[0,3,82]]],[30,"I",[[16,3,7],[0,3,63]]],[31,"D",[[0,3,82]]],[31,"I",[[16,3,4],[0,3,66]]],[32,"D",[[0,3,18],[1,3,64]]],[32,"I",[[0,3,70]]],[33,"D",[[0,3,16],[1,3,66]]],[33,"I",[[0,3,70]]],[34,"D",[[3,3,82]]],[34,"I",[[1,3,58],[3,3,12]]],[35,"D",[[3,3,80],[2,3,2]]],[35,"I",[[1,3,56],[3,3,14]]],[36,"D",[[15,3,36],[4,3,39],[29,3,7]]],[36,"I",[[2,3,56],[15,3,14]]],[37,"D",[[15,3,33],[4,3,39],[29,3,9],[33,3,1]]],[37,"I",[[2,3,55],[15,3,15]]],[38,"D",[[10,3,24],[7,3,24],[12,3,6],[13,3,28]]],[38,"I",[[33,3,25],[6,3,38],[32,3,7]]],[39,"D",[[10,3,20],[7,3,26],[12,3,6],[13,3,29]]],[39,"I",[[33,3,24],[6,3,35],[32,3,10]]],[40,"D",[[9,3,12],[8,3,12],[22,3,16],[20,3,12],[19,3,3],[35,3,1],[23,3,5],[21,3,3],[36,3,1],[24,3,2],[14,3,1],[26,3,2],[11,3,2],[38,3,2],[39,3,2],[42,3,1],[28,3,1],[43,3,1]]],[40,"I",[[13,3,6],[17,3,34],[34,3,8],[5,3,18],[9,3,2]]],[41,"D",[[9,3,10],[8,3,12],[22,3,17],[20,3,13],[35,3,2],[25,3,2],[23,3,4],[21,3,3],[36,3,1],[14,3,3],[26,3,1],[11,3,1],[37,3,3],[40,3,1],[30,3,1],[31,3,1],[41,3,1]]],[41,"I",[[13,3,4],[17,3,34],[34,3,9],[5,3,17],[9,3,6]]]]};
+  var HOY = [[1,"D",82,76,1088,178],[1,"I",70,28,943,53],[2,"D",82,76,1181,140],[2,"I",70,30,823,88],[3,"D",82,68,1108,167],[3,"I",70,29,769,35],[4,"D",82,66,1043,173],[4,"I",70,30,765,40],[5,"D",82,80,977,189],[5,"I",69,30,695,36],[6,"D",82,77,777,429],[6,"I",70,29,629,37],[7,"D",82,76,1083,101],[7,"I",70,29,669,36],[8,"D",81,71,1182,104],[8,"I",70,27,640,52],[9,"D",86,78,1121,110],[9,"I",70,29,689,54],[10,"D",84,76,1154,189],[10,"I",70,29,674,44],[11,"D",82,76,1278,45],[11,"I",70,30,746,23],[12,"D",82,75,1336,64],[12,"I",70,30,677,42],[13,"D",98,80,1426,67],[13,"I",70,30,631,33],[14,"D",98,80,1596,50],[14,"I",70,30,743,16],[15,"D",97,72,1293,63],[15,"I",70,30,774,25],[16,"D",97,73,1393,57],[16,"I",70,30,771,21],[17,"D",98,39,1136,184],[17,"I",70,30,786,26],[18,"D",97,41,1077,189],[18,"I",70,29,684,25],[19,"D",97,47,926,48],[19,"I",70,28,868,13],[20,"D",95,45,961,52],[20,"I",70,30,968,22],[21,"D",98,54,1154,48],[21,"I",69,27,649,45],[22,"D",98,54,1205,46],[22,"I",70,30,764,26],[23,"D",82,19,575,35],[23,"I",69,28,568,39],[24,"D",82,20,1162,0],[24,"I",70,28,700,21],[25,"D",98,40,994,96],[25,"I",70,32,788,40],[26,"D",98,40,1046,73],[26,"I",70,28,635,61],[27,"D",98,57,1356,16],[27,"I",70,30,573,38],[28,"D",97,56,1190,27],[28,"I",70,29,480,160],[29,"D",98,52,1331,21],[29,"I",69,28,481,55],[30,"D",98,52,1194,23],[30,"I",70,30,533,44],[31,"D",98,31,1226,8],[31,"I",70,30,470,73],[32,"D",98,28,1118,8],[32,"I",70,30,450,80],[33,"D",98,48,1201,58],[33,"I",70,22,506,34],[34,"D",98,48,1120,64],[34,"I",70,22,320,73],[35,"D",98,52,1151,33],[35,"I",70,28,469,67],[36,"D",98,52,1035,49],[36,"I",70,28,381,81],[37,"D",98,32,561,31],[37,"I",70,26,277,127],[38,"D",98,32,576,20],[38,"I",70,24,275,133],[39,"D",97,52,1524,77],[39,"I",69,30,575,86],[40,"D",94,52,1431,98],[40,"I",68,28,541,70],[41,"D",94,80,1453,72],[41,"I",70,52,486,264],[42,"D",94,82,1452,68],[42,"I",70,52,499,260],[43,"D",94,26,446,14],[43,"I",70,26,2329,54],[44,"D",94,30,626,14],[44,"I",70,26,2048,63],[45,"D",94,78,1126,185],[45,"I",70,19,947,165],[46,"D",94,80,997,682],[46,"I",70,24,2287,120],[47,"D",94,84,1063,250],[47,"I",70,17,1690,169],[48,"D",94,83,943,320],[48,"I",70,24,2858,120],[49,"D",94,85,986,256],[49,"I",70,25,3125,70],[50,"D",94,86,1347,238],[50,"I",70,17,1015,125],[51,"D",94,25,2190,0],[51,"I",70,12,342,144],[52,"D",94,23,1823,0],[52,"I",70,31,2541,63],[53,"D",94,83,626,374],[53,"I",70,23,2147,84],[54,"D",94,86,693,385],[54,"I",70,28,2678,66],[55,"D",94,37,321,552],[55,"I",70,31,2084,65],[56,"D",94,78,962,290],[56,"I",70,20,1618,94],[57,"D",94,27,1899,0],[57,"I",70,24,1774,37],[58,"D",94,20,1093,3],[58,"I",70,16,944,66],[59,"D",94,85,645,357],[59,"I",70,14,288,81],[60,"D",94,86,635,382],[60,"I",70,26,832,30],[61,"D",94,78,423,527],[61,"I",70,3,24,125],[62,"D",90,75,418,473],[62,"I",70,24,644,66],[63,"D",82,79,1393,231],[63,"I",70,14,435,166],[64,"D",82,78,1189,253],[64,"I",70,26,913,139],[65,"D",82,78,1272,164],[65,"I",70,29,1785,88],[66,"D",82,81,1179,153],[66,"I",70,20,1558,111],[67,"D",82,39,310,278],[67,"I",70,29,1801,82],[68,"D",82,47,318,271],[68,"I",70,26,1266,120],[69,"D",82,28,3358,154],[69,"I",70,34,2132,25],[70,"D",82,32,3138,129],[70,"I",70,21,899,97],[71,"D",82,44,3114,96],[71,"I",70,22,824,76],[72,"D",82,36,3053,88],[72,"I",70,33,1520,36],[73,"D",82,29,1346,105],[73,"I",70,12,247,96],[74,"D",82,26,1259,117],[74,"I",70,29,964,58],[75,"D",82,22,476,86],[75,"I",70,32,883,90],[76,"D",82,19,579,80],[76,"I",70,33,1316,33],[77,"D",81,36,4124,48],[77,"I",70,26,487,137],[78,"D",82,33,3479,71],[78,"I",70,35,1259,30],[79,"D",82,32,1998,112],[79,"I",70,29,810,100],[80,"D",82,38,2925,62],[80,"I",70,36,1495,5],[81,"D",82,27,1710,156],[81,"I",70,26,1071,94],[82,"D",82,27,1841,118],[82,"I",70,30,2091,45],[83,"D",82,27,1605,136],[83,"I",70,19,415,105],[84,"D",82,25,2192,139],[84,"I",70,28,1676,22],[85,"D",82,29,1426,180],[85,"I",70,12,257,67],[86,"D",82,36,4107,97],[86,"I",70,26,948,65],[87,"D",82,25,1490,147],[87,"I",70,24,559,101],[88,"D",82,30,1983,149],[88,"I",70,28,1334,34],[89,"D",82,16,315,192],[89,"I",70,32,1066,77],[90,"D",82,38,1662,53],[90,"I",70,35,1407,66],[91,"D",82,42,5358,54],[91,"I",70,36,1594,14],[92,"D",82,42,4631,83],[92,"I",70,33,1267,53],[93,"D",82,34,3288,125],[93,"I",70,35,1548,39],[94,"D",82,34,3846,108],[94,"I",70,31,1303,63],[95,"D",82,18,571,105],[95,"I",70,26,879,63],[96,"D",82,26,1308,53],[96,"I",70,33,1100,48],[97,"D",82,30,2167,85],[97,"I",70,36,1024,8],[98,"D",82,34,2577,74],[98,"I",70,34,907,24],[99,"D",82,38,3134,63],[99,"I",72,37,1322,2],[100,"D",84,41,3374,29],[100,"I",72,36,1320,6],[101,"D",84,42,4324,57],[101,"I",72,34,1503,26],[102,"D",84,41,4103,67],[102,"I",72,34,1563,16],[103,"D",84,40,4637,15],[103,"I",72,33,1583,4],[104,"D",84,40,5064,21],[104,"I",72,32,1545,11],[105,"D",84,41,4690,7],[105,"I",72,31,1115,49],[106,"D",84,40,4308,17],[106,"I",72,31,1107,58],[107,"D",84,31,4868,25],[107,"I",72,36,1267,15],[108,"D",84,22,2642,19],[108,"I",72,30,1213,32],[109,"D",84,30,1424,45],[109,"I",72,26,875,74],[110,"D",84,31,1362,45],[110,"I",72,19,860,74],[111,"D",84,28,1921,2],[111,"I",72,16,1093,13],[112,"D",84,31,2166,1],[112,"I",72,24,1606,47],[113,"D",84,31,1888,1],[113,"I",72,29,954,77],[114,"D",84,30,1839,3],[114,"I",72,29,701,128],[115,"D",84,33,2170,0],[115,"I",72,29,985,60],[116,"D",84,33,2163,0],[116,"I",72,29,715,99],[117,"D",84,33,1824,0],[117,"I",72,29,1176,62],[118,"D",84,34,1774,0],[118,"I",72,32,1415,52],[119,"D",84,20,965,0],[119,"I",72,36,1491,6],[120,"D",84,21,1023,0],[120,"I",72,36,1495,4],[121,"D",84,0,0,0],[121,"I",72,36,1298,6],[122,"D",84,0,0,0],[122,"I",72,31,968,4],[123,"D",84,0,0,0],[123,"I",72,36,1531,6],[124,"D",84,0,0,0],[124,"I",72,0,0,0],[125,"D",84,0,0,0],[125,"I",72,37,1765,7],[126,"D",84,0,0,0],[126,"I",72,36,1878,9],[127,"D",84,0,0,0],[127,"I",72,29,1067,8],[128,"D",84,0,0,0],[128,"I",72,35,1449,23],[129,"D",84,0,0,0],[129,"I",72,22,1350,22],[130,"D",84,0,0,0],[130,"I",72,28,1431,55],[131,"D",84,0,0,0],[131,"I",72,36,1775,26],[132,"D",84,0,0,0],[132,"I",72,35,1804,22],[133,"D",84,0,0,0],[133,"I",72,36,1937,41],[134,"D",84,0,0,0],[134,"I",72,36,2300,27],[135,"D",84,0,0,0],[135,"I",72,5,117,12],[136,"D",84,0,0,0],[136,"I",72,6,136,3]];
+  var MODS = [["2621JA50", "JA", 3284, 2624, 30, 206, 73, "L65–L72", 7, "L01 P17 C1", "L01 P09 C4"], ["2621PT87", "PT", 2272, 2401, 17, 84, 42, "L49–L54", 6, "L09 P04 C3", "L08 P02 C1"], ["2622JA16", "JA", 1052, 2122, 17, 89, 37, "L83–L86", 4, "L01 P08 C1", "L01 P06 C4"], ["2621JA22", "JA", 2038, 1942, 17, 156, 52, "L115–L118", 3, "L01 P05 C1", "L01 P18 C1"], ["2621JA00", "JA", 2863, 1905, 18, 209, 64, "L131–L136", 6, "L01 P18 C2", "L01 P25 C4"], ["2622JA07", "JA", 3795, 1794, 23, 581, 127, "L73–L78", 6, "L01 P26 C1", "L01 P36 C2"], ["2621TR24", "TR", 2823, 1794, 20, 112, 41, "L99–L102", 3, "L10 P03 C4", "L11 P01 C1"], ["2622JA50", "JA", 3468, 1749, 23, 523, 123, "L73–L82", 10, "L01 P36 C3", "L03 P14 C2"], ["2621CL56", "CL", 478, 1698, 14, 22, 9, "L93–L93", 1, "L13 P35 C3", "L12 P36 C3"], ["2621TR46", "TR", 669, 1621, 13, 31, 17, "L95–L102", 5, "L11 P01 C2", "L10 P00 C2"], ["2622TR00", "TR", 1228, 1601, 20, 81, 32, "L79–L82", 4, "L11 P00 C1", "L11 P18 C3"], ["2621SU18", "SU", 886, 1597, 15, 59, 22, "L71–L74", 4, "L12 P21 C3", "L12 P22 C1"], ["2622JA12", "JA", 2393, 1465, 12, 164, 21, "L81–L82", 2, "L03 P14 C3", "L03 P11 C4"], ["2621JA59", "JA", 4420, 1409, 24, 571, 110, "L87–L92", 6, "L02 P10 C1", "L03 P05 C4"], ["2621JA17", "JA", 294, 1297, 10, 21, 12, "L73–L74", 2, "L02 P04 C1", "L02 P04 C4"], ["2621JA40", "JA", 597, 1287, 12, 55, 22, "L114–L114", 1, "L03 P04 C1", "L02 P03 C3"], ["2621JA49", "JA", 5270, 1279, 24, 74, 70, "L109–L112", 4, "L02 P03 C4", "L03 P21 C4"], ["2621SU17", "SU", 2057, 1256, 10, 128, 31, "L71–L72", 2, "L12 P22 C2", "L13 P23 C3"], ["2621PT03", "PT", 592, 1209, 10, 27, 12, "L51–L54", 3, "L08 P02 C2", "L09 P02 C1"], ["2621JA95", "JA", 816, 1201, 12, 95, 32, "L87–L90", 4, "L02 P22 C1", "L02 P23 C1"], ["2621JA54", "JA", 2433, 1176, 18, 318, 74, "L91–L96", 6, "L02 P23 C2", "L02 P26 C4"], ["2622ML00", "ML", 434, 1131, 10, 15, 9, "L73–L84", 5, "L10 P14 C4", "L11 P14 C2"], ["2621JA71", "JA", 512, 1130, 12, 36, 11, "L97–L108", 4, "L03 P26 C1", "L02 P27 C2"], ["2621JA96", "JA", 469, 1092, 12, 35, 17, "L114–L118", 3, "L02 P27 C3", "L03 P27 C4"], ["2621JA68", "JA", 406, 1090, 12, 29, 9, "L109–L110", 2, "L02 P28 C1", "L03 P28 C1"]];
+  var NS = 'http://www.w3.org/2000/svg';
+  function fmt(n) { return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  var R = D.resumen;
+  var kpi = function (v, l, cls) { return '<div class="kpi ' + (cls || '') + '"><span class="v">' + v + '</span><span class="l">' + l + '</span></div>'; };
+  var ocupados = 0, totalH = 0; HOY.forEach(function (h) { totalH += h[2]; ocupados += h[3]; });
+  document.getElementById('kpisHoy').innerHTML =
+    kpi(fmt(R.uds), 'unidades de KOROSHI en la nave') +
+    kpi(fmt(R.contenedores_hoy), 'contenedores con mercancía') +
+    kpi(fmt(R.contenedores_vacios_total), 'contenedores vacíos en Odoo') +
+    kpi(fmt(R.huecos_hoy), 'huecos con mercancía (L01–L136)');
+  document.getElementById('hallazgos').innerHTML = [
+    'Hay <b>' + fmt(R.contenedores_vacios_total) + ' contenedores vacíos</b> dados de alta en Odoo (' + fmt(R.contenedores_vacios_en_huecos) + ' dentro de los huecos). Es lo que se vio en la revisión de la nave.',
+    'La caja típica tiene <b>3 unidades</b>: la mitad de los contenedores con mercancía tienen 3 o menos.',
+    'Cada talla está repartida: de las 2.689 tallas de los modelos activos, <b>1.938 (72%) están en más de un contenedor</b>.',
+    'Los 418 modelos activos ocupan hoy <b>3.984 huecos en 93 lineales distintos</b>. Un mismo modelo está de media en 2,4 lineales.'
+  ].map(function (t) { return '<li>' + t + '</li>'; }).join('');
+
+  // ---- planos: x = lineal 1-136, arriba lado izquierdo (P00-P17), abajo lado derecho (P18-P38)
+  var X0 = 46, SX = (985 - X0) / 136, ALTO = 90, YI = 30, YD = 140;
+  function base(svg) {
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; svg.appendChild(n); return n; }
+    e('text', { x: 2, y: YI + ALTO / 2 + 4, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'IZQ');
+    e('text', { x: 2, y: YD + ALTO / 2 + 4, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'DER');
+    [1, 20, 40, 60, 80, 100, 120, 136].forEach(function (l) { e('text', { x: X0 + (l - 0.5) * SX, y: 246, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l)); });
+    e('text', { x: X0, y: 16, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, '← muelles y SORTER');
+    return e;
+  }
+  var svgH = document.getElementById('mapaHoy'), eh = base(svgH);
+  HOY.forEach(function (h) {
+    var L = h[0], lado = h[1], tot = h[2], oc = h[3];
+    var y0 = lado === 'I' ? YI : YD;
+    eh('rect', { x: X0 + (L - 1) * SX + .5, y: y0, width: SX - 1, height: ALTO, fill: '#d9dee0' });
+    if (tot > 0 && oc > 0) {
+      var f = oc / tot, hgt = ALTO * f;
+      var col = f > .7 ? '#2f5f8a' : (f > .4 ? '#5d86ab' : '#9fb3c8');
+      eh('rect', { x: X0 + (L - 1) * SX + .5, y: y0 + ALTO - hgt, width: SX - 1, height: hgt, fill: col });
+    }
+  });
+
+  var COL = { JA: '#2a62b8', PT: '#e07b1a', ML: '#00798c', TR: '#c8372d', SU: '#7a4cc2', CL: '#2e9a52', VS: '#d1495b', BL: '#8d6e2f', PL: '#5b9a3c', FA: '#b04fa0', XC: '#3d7f9f', ZC: '#6c757d', ZB: '#495057' };
+  var svgP = document.getElementById('mapaProp'), ep = base(svgP);
+  var defs = document.createElementNS(NS, 'defs');
+  defs.innerHTML = '<pattern id="rayas" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="#c9cfd2"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9aa3a8" stroke-width="2"/></pattern>';
+  svgP.appendChild(defs);
+  HOY.forEach(function (h) { var y0 = h[1] === 'I' ? YI : YD; ep('rect', { x: X0 + (h[0] - 1) * SX + .5, y: y0, width: SX - 1, height: ALTO, fill: '#eef0ee', stroke: '#d9dee0', 'stroke-width': .5 }); });
+  var famUsadas = {};
+  D.prop.forEach(function (p) {
+    var L = p[0], lado = p[1], runs = p[2], tot = 0; runs.forEach(function (r) { tot += r[2]; });
+    var y0 = lado === 'I' ? YI : YD, cap = lado === 'I' ? 70 : 82, y = y0 + ALTO;
+    runs.forEach(function (r) {
+      var fam = D.famList[r[0]], g = r[1], hgt = ALTO * r[2] / cap; y -= hgt;
+      var fill = g === 3 ? 'url(#rayas)' : (COL[fam] || '#8a9399');
+      ep('rect', { x: X0 + (L - 1) * SX + .5, y: y, width: SX - 1, height: Math.max(.5, hgt), fill: fill, opacity: g === 2 ? .45 : 1 });
+      if (g === 1) famUsadas[fam] = 1;
+    });
+  });
+  var ley = '';
+  Object.keys(COL).forEach(function (f) { if (famUsadas[f]) ley += '<span><i style="background:' + COL[f] + '"></i>' + f + '</span>'; });
+  ley += '<span><i style="background:#2a62b8;opacity:.45"></i>otros que se venden</span><span><i style="background:repeating-linear-gradient(45deg,#c9cfd2 0 3px,#9aa3a8 3px 5px)"></i>sin salidas en 60 días</span><span><i style="background:#eef0ee;border:1px solid #d9dee0"></i>libre</span>';
+  document.getElementById('leyProp').innerHTML = ley;
+
+  var g = R.grupos;
+  document.getElementById('kpisProp').innerHTML =
+    kpi(fmt(R.huecos_propuesta), 'huecos necesarios (hoy ' + fmt(R.huecos_hoy) + ')', 'ok') +
+    kpi('L01–L15', 'los 418 modelos activos (' + Math.round(g[0].rot / (g[0].rot + g[1].rot) * 100) + '% de las salidas)') +
+    kpi('L01–L41', 'toda la mercancía') +
+    kpi('L42–L136', 'quedaría libre');
+
+  var tf = '';
+  D.familias.forEach(function (f) {
+    tf += '<tr><td><span class="dot" style="background:' + (COL[f[0]] || '#8a9399') + '"></span>' + (f[0] === '-' ? 'sin familia' : f[0]) + '</td><td class="r">' + fmt(f[1]) + '</td><td class="r">' + fmt(f[2]) + '</td><td class="r">' + fmt(f[3]) + '</td><td class="r">' + fmt(f[4]) + '</td><td class="r">' + fmt(f[5]) + '</td><td class="r">' + fmt(f[6]) + '</td><td class="r">' + f[7] + '</td><td class="m">' + (f[8] ? f[8] + ' → ' + f[9] : '—') + '</td></tr>';
+  });
+  document.getElementById('tFam').innerHTML = tf;
+  var tm = '';
+  MODS.forEach(function (m) {
+    tm += '<tr><td class="m"><span class="dot" style="background:' + (COL[m[1]] || '#8a9399') + '"></span>' + m[0] + '</td><td class="r">' + fmt(m[2]) + '</td><td class="r">' + fmt(m[3]) + '</td><td class="r">' + m[4] + '</td><td class="r">' + m[5] + '</td><td class="r">' + m[6] + '</td><td class="m">' + m[7] + '</td><td class="m">' + m[9] + ' → ' + m[10] + '</td></tr>';
+  });
+  document.getElementById('tMod').innerHTML = tm;
+
+  var TALLAS = [
+    ['Chaquetas (JA) / polos / tricots', [['XS', '#2e9a52', '#fff'], ['S', '#d32f2f', '#fff'], ['M', '#f2d600', '#1d2327'], ['L', '#111', '#fff'], ['XL', '#29a3e0', '#1d2327'], ['XXL', '#e020b5', '#fff'], ['3XL', '#e3a521', '#1d2327']]],
+    ['Pantalones', [['28', '#29a3e0', '#1d2327'], ['30', '#f2d600', '#1d2327'], ['32', '#d32f2f', '#fff'], ['34', '#111', '#fff'], ['36', '#e020b5', '#fff'], ['38', '#2e9a52', '#fff'], ['40', '#b8bcbf', '#1d2327'], ['42', '#e3a521', '#1d2327']]],
+    ['Zapatos hombre', [['40', '#29a3e0', '#1d2327'], ['41', '#f2d600', '#1d2327'], ['42', '#d32f2f', '#fff'], ['43', '#111', '#fff'], ['44', '#e020b5', '#fff'], ['45', '#2e9a52', '#fff']]],
+    ['Zapatos mujer', [['36', '#29a3e0', '#1d2327'], ['37', '#f2d600', '#1d2327'], ['38', '#d32f2f', '#fff'], ['39', '#111', '#fff'], ['40', '#e020b5', '#fff'], ['41', '#2e9a52', '#fff']]],
+    ['Accesorios', [['Talla única', '#a6a9ac', '#1d2327']]]
+  ];
+  document.getElementById('tallas').innerHTML = TALLAS.map(function (c) {
+    return '<div class="talla-col"><b>' + c[0] + '</b>' + c[1].map(function (t) { return '<span class="chip" style="background:' + t[1] + ';color:' + t[2] + '">' + t[0] + '</span>'; }).join('') + '</div>';
+  }).join('');
+  document.getElementById('f1').textContent = 'Dar de baja los ' + fmt(R.contenedores_vacios_total) + ' contenedores vacíos de Odoo y retirar las cajas vacías de la nave. No se mueve mercancía. Se puede hacer con una acción de Odoo (primero diagnóstico) a partir del listado.';
+  document.getElementById('f3').textContent = 'Los 418 modelos de la temporada I27 que se venden (' + fmt(g[0].u) + ' uds, el ' + Math.round(g[0].rot / (g[0].rot + g[1].rot) * 100) + '% de las salidas) en un bloque seguido de unos 2.150 huecos entre L01 y L15. Es la fase que más ahorra en el picking.';
+})();
+</script>
+</body></html>

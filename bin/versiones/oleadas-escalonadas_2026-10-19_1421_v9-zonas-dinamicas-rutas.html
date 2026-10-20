@@ -1,0 +1,615 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Oleadas escalonadas KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: misma columna y tokens que «Reparto por zonas KOROSHI»; la pieza central es el cronograma de pickers y U */
+:root {
+  --bg: #f3f4f2; --panel: #ffffff; --ink: #1d2327; --muted: #5d676d; --line: #d5d9d6; --floor: #e6e8e4;
+  --accent: #e0a100; --accent-ink: #6b4d00;
+  --oa: #00798c; --ob: #d1495b; --oc: #5b9a3c; --od: #7a4cc2; --oe: #e07b1a;
+  --ok: #2e7d4f; --bad: #b3261e;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --oa: #2fb3c6; --ob: #ef6f80; --oc: #82c463; --od: #a687e6; --oe: #f59a52; --ok: #6cc495; --bad: #f08a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --oa: #2fb3c6; --ob: #ef6f80; --oc: #82c463; --od: #a687e6; --oe: #f59a52; --ok: #6cc495; --bad: #f08a80;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 52px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 18px; min-width: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tape { height: 10px; border-radius: 2px; max-width: 220px; background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px); }
+.lead { font-size: 1.12rem; }
+.note { font-size: .88rem; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+.m { font-family: var(--f-mono); }
+.tag { display: inline-block; min-width: 26px; text-align: center; font-family: var(--f-mono); font-weight: 500; font-size: .8rem; padding: 1px 6px; border-radius: 3px; color: #fff; }
+.tA { background: var(--oa); } .tB { background: var(--ob); } .tC { background: var(--oc); } .tD { background: var(--od); } .tE { background: var(--oe); }
+.rot td { text-align: center; } .rot td:first-child, .rot th:first-child { text-align: left; }
+.pasos { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; counter-reset: p; }
+.paso { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.paso::before { counter-increment: p; content: counter(p); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #1d2327; font-family: var(--f-display); font-weight: 700; }
+.paso p { font-size: .92rem; color: var(--muted); }
+.controles { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: end; }
+.grupo { display: grid; gap: 6px; }
+.grupo > span { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { font: inherit; font-size: .88rem; padding: 6px 12px; border: 0; background: var(--panel); color: var(--ink); cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.kpi.ok .v { color: var(--ok); } .kpi.bad .v { color: var(--bad); }
+.gantt svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .85rem; color: var(--muted); align-items: center; }
+.leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.estado { font-family: var(--f-mono); font-size: .8rem; font-weight: 500; }
+.estado.ok { color: var(--ok); } .estado.bad { color: var(--bad); }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+.callout ul, .lista { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.hipo { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.hipo div { border: 1px dashed var(--accent); border-radius: 6px; padding: 10px 12px; background: var(--panel); display: grid; gap: 2px; }
+.hipo b { font-family: var(--f-mono); font-weight: 500; }
+.hipo span { font-size: .85rem; color: var(--muted); }
+
+.itinerarios { display: grid; grid-template-columns: 1fr; gap: 14px; }
+.ruta-mini { display: block; width: 100%; height: auto; }
+.lotes-mini { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 8px; }
+.lote-mini { margin: 0; display: grid; gap: 3px; }
+.lote-mini figcaption { display: flex; justify-content: space-between; gap: 6px; font-family: var(--f-mono); font-size: .75rem; }
+.lote-mini figcaption span { color: var(--muted); }
+.itin { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; display: grid; gap: 6px; align-content: start; }
+.itin h3 { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 8px; }
+.itin h3 span { font-family: var(--f-mono); font-size: .78rem; font-weight: 500; color: var(--muted); }
+.itin table { font-size: .82rem; }
+.itin td, .itin th { padding: 4px 6px; }
+.wf td:first-child { white-space: nowrap; }
+.itin td.m { white-space: nowrap; }
+.rango { display: flex; align-items: center; gap: 10px; }
+.rango input { width: 180px; accent-color: var(--accent); }
+.rango output { font-family: var(--f-mono); font-size: .9rem; min-width: 64px; }
+.visor { position: fixed; inset: 0; background: rgba(15, 18, 20, .72); display: grid; place-items: center; z-index: 50;
+  padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
+.visor[hidden] { display: none !important; }
+.visor-caja { background: var(--panel); border-radius: 8px; padding: 16px; width: min(1100px, 100%); max-height: 100%; overflow: auto; display: grid; gap: 10px; }
+.visor-cab { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.visor-cab button { font: inherit; font-size: .9rem; padding: 6px 12px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel); color: var(--ink); cursor: pointer; }
+.visor svg { display: block; width: 100%; height: auto; }
+.lote-mini { cursor: zoom-in; border-radius: 4px; }
+.lote-mini:hover, .lote-mini:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11pt; }
+  .wrap { max-width: none; padding: 0; gap: 22px; }
+  section { gap: 12px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 28pt; } h2 { font-size: 19pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  .interactivo { display: none !important; }
+  .visor { display: none !important; }
+  .gantt svg { min-width: 0; }
+  .scroll { overflow: visible; }
+  .panel, .paso, .kpi, .kpis, .callout, .hipo, tr, .gantt, .itin { break-inside: avoid; }
+  .itinerarios { gap: 10px; }
+  .lotes-mini { grid-template-columns: repeat(4, 1fr); gap: 6px; }
+  .lote-mini figcaption { font-size: 7pt; }
+  .itin { break-inside: avoid; }
+  .itin table { font-size: 7.5pt; }
+  .wf { font-size: 8.5pt; }
+  .wf td, .wf th { padding: 3px 6px; }
+  .wf td:nth-child(3) { width: 55%; }
+  .pasos { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .paso { padding: 10px 12px; gap: 4px; }
+  .paso::before { width: 22px; height: 22px; font-size: 10pt; }
+  .paso p { font-size: 8.8pt; line-height: 1.35; }
+  .lead { font-size: 11.5pt; }
+  .rot th, .rot td { padding: 4px 8px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 20pt; }
+  .solo-pantalla { display: none; }
+  .solo-papel { display: grid !important; }
+}
+.solo-papel { display: none; }
+</style>
+
+<div class="wrap">
+
+<header style="display:grid;gap:14px">
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Pedidos de tienda · Simulación con el día de 10.000 u (10/09/2026) · carro con 2 cajas</span>
+  <h1>Oleadas escalonadas por zona, 2 cajas por carro</h1>
+  <p class="lead">El picking empieza a las 3:00 y las oleadas a las 6:00. Cada picker tiene su zona y lleva <b>siempre 2 cajas en el carro, una por oleada</b>: recoge su zona para dos oleadas a la vez (A y B, C y D) y pone cada prenda en su caja. La E va sola. Cada picker empieza por una pareja distinta, así a las 6:00 las cinco U ya tienen ropa.</p>
+</header>
+
+<section>
+  <span class="eyebrow">La idea</span>
+  <h2>Cómo funciona</h2>
+  <div class="pasos">
+    <div class="paso"><h3>5 oleadas iguales</h3><p>El sistema reparte las tiendas del día en 5 oleadas, de la A a la E, de unas 2.000 u cada una. Cada oleada va a una U: la A a la U1, la B a la U2… la E a la U5.</p></div>
+    <div class="paso"><h3>Un lote por zona y pareja</h3><p>«Z1-AB» es lo que las oleadas A y B necesitan de la zona 1: dos cajas, una para cada oleada. Si un lote pasa de 500 u se parte (Z2-AB1, Z2-AB2…).</p></div>
+    <div class="paso"><h3>Cada picker, su zona</h3><p>Con <b>zonas dinámicas</b>, cada día el sistema corta la nave en 5 tramos seguidos con las mismas uds: D1 para Andy, D2 para Ayub… Con zonas fijas, cada uno tiene siempre los mismos lineales (Z1–Z5).</p></div>
+    <div class="paso"><h3>Empiezan escalonados</h3><p>Andy empieza por AB, Ayub por CD, Pep por E, Jordi por AB y Carlos por CD. Al acabar un lote deja cada caja en su U y sigue con la pareja siguiente.</p></div>
+    <div class="paso"><h3>A las 6:00 todas las U trabajan</h3><p>Cada U ya tiene la ropa de varias zonas. Va leyendo lo que ha llegado y sigue a medida que llegan más lotes.</p></div>
+    <div class="paso"><h3>Quien acaba, ayuda</h3><p>Las zonas no pesan igual cada día. Quien termina su zona coge un lote pendiente de la zona más cargada.</p></div>
+  </div>
+  <div class="panel scroll">
+    <table class="rot">
+      <thead><tr><th>Orden de lotes</th><th>1.º</th><th>2.º</th><th>3.º</th></tr></thead>
+      <tbody id="rotacion"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Los datos del día</span>
+  <h2>Qué hay que recoger</h2>
+  <p id="textoDatos"></p>
+  <div class="cols">
+    <div class="panel scroll"><table><thead><tr><th>Oleada</th><th>U</th><th class="r">Tiendas</th><th class="r">Uds</th></tr></thead><tbody id="tOleadas"></tbody></table></div>
+    <div class="panel scroll"><table><thead><tr><th>Zona</th><th>Picker</th><th class="r">Lotes</th><th class="r">Uds</th><th class="r">Lecturas</th></tr></thead><tbody id="tZonas"></tbody></table></div>
+  </div>
+  <div class="hipo">
+    <div><b id="hipoPK">200 u/h</b><span>por picker: incluye andar, leer huecos y repartir en las 2 cajas (se puede cambiar en la simulación)</span></div>
+    <div><b>5 min</b><span>por lote para dejarlo en la U y validarlo</span></div>
+    <div><b id="hipoU">225 u/h</b><span>por persona en cada U leyendo, desde las 6:00 (se puede cambiar en la simulación)</span></div>
+  </div>
+  <p class="note">Los tiempos son hipótesis: hay que afinarlos con los tiempos reales. No incluye los viajes extra si la caja del carro se llena antes de acabar el lote.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Simulación</span>
+  <h2>Cronograma de pickers y U</h2>
+  <div class="controles interactivo">
+    <div class="grupo"><span>Pickers</span><div class="seg" id="cPickers"><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button></div></div>
+    <div class="grupo"><span>Reparto de zonas</span><div class="seg" id="cReparto"><button type="button" data-v="din">Dinámicas</button><button type="button" data-v="fija">Fijas por lineal</button></div></div>
+    <div class="grupo"><span>Ayuda entre zonas</span><div class="seg" id="cModo"><button type="button" data-v="fija">Sin ayuda</button><button type="button" data-v="ayuda">Con ayuda</button></div></div>
+    <div class="grupo"><span>Picking · uds por hora y picker</span><div class="rango"><input type="range" id="cPKRate" min="50" max="500" step="10" value="200" aria-label="Unidades por hora de cada picker"><output id="oPKRate" for="cPKRate">200 u/h</output></div></div>
+    <div class="grupo"><span>Lectura en la U · uds por hora y persona</span><div class="rango"><input type="range" id="cURate" min="100" max="500" step="10" value="225" aria-label="Unidades por hora en cada U"><output id="oURate" for="cURate">225 u/h</output></div></div>
+  </div>
+  <p class="note interactivo" id="aviso"></p>
+  <p class="note" id="escenario"></p>
+  <div class="kpis" id="kpis"></div>
+  <div class="panel gantt scroll"><svg id="gantt" viewBox="0 0 1000 420" role="img" aria-label="Cronograma de lotes por picker y lectura en cada U"></svg></div>
+  <div class="leyenda"><span><i class="tA"></i>Oleada A · U1</span><span><i class="tB"></i>B · U2</span><span><i class="tC"></i>C · U3</span><span><i class="tD"></i>D · U4</span><span><i class="tE"></i>E · U5</span><span><i style="background:var(--floor);border:1px solid var(--line)"></i>U esperando ropa</span></div>
+  <div class="panel scroll"><table><thead><tr><th>U</th><th class="r">Uds a las 6:00</th><th class="r">Último lote llega</th><th class="r">Tiempo esperando</th><th class="r">Termina</th></tr></thead><tbody id="tU"></tbody></table></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Ruta de cada persona</span>
+  <h2>Por dónde va cada picker</h2>
+  <p>Cada picker tiene su zona en la nave. Con ayuda, quien acaba su zona coge lotes de la zona más cargada. Abajo, el itinerario de cada uno en el escenario elegido: un plano pequeño por cada lote, en el orden en que los hace, con su camino desde el SORTER (en línea discontinua, los lotes de otra zona que hace ayudando) y la tabla con la hora, los lineales y las prendas que lleva a cada U.</p>
+  <div class="panel scroll"><svg id="mapaZonas" viewBox="0 0 1000 300" role="img" aria-label="Zona de cada picker en la nave"></svg></div>
+  <p class="note" id="escenarioRuta"></p>
+  <div class="itinerarios" id="itinerarios"></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">El día paso a paso</span>
+  <h2>Workflow</h2>
+  <div class="panel scroll"><table class="wf">
+    <thead><tr><th>Hora</th><th>Quién</th><th>Qué hace</th><th>Dónde</th></tr></thead>
+    <tbody>
+      <tr><td class="m">Noche</td><td>Odoo (S4T)</td><td>Entran los pedidos de tienda y quedan Preparados (reservados en su hueco).</td><td>Albaranes · PED. TIENDAS</td></tr>
+      <tr><td class="m">2:45</td><td>Jefe de turno</td><td>Lanza el reparto: el sistema hace las 5 oleadas (A–E) y crea los lotes por zona y pareja (Z1-AB, Z1-CD, Z1-E…). Comprueba que no hay avisos.</td><td>Odoo · acción de reparto</td></tr>
+      <tr><td class="m">2:55</td><td>Jefe de turno</td><td>Reparte: cada picker su zona y su pareja de inicio (Andy AB, Ayub CD, Pep E, Jordi AB, Carlos CD). Prepara los carros con 2 cajas de colores, una por oleada.</td><td>SORTER</td></tr>
+      <tr><td class="m">3:00</td><td>Pickers</td><td>Abren en la PDA su primer lote. En cada hueco: escanean ubicación y producto y ponen cada prenda en la caja de su oleada (la PDA indica la U de destino de cada línea).</td><td>Su zona</td></tr>
+      <tr><td class="m">Fin de lote</td><td>Pickers</td><td>Vuelven, dejan cada caja en su U (la de la A en la U1, la de la B en la U2…), validan el lote en la PDA y cogen el siguiente lote de su zona.</td><td>U1–U5</td></tr>
+      <tr><td class="m">Cada lote</td><td>Jefe de turno</td><td>«Comprobar disponibilidad» de las OUT de la oleada que ha recibido ropa, para que la U la pueda leer.</td><td>Odoo</td></tr>
+      <tr><td class="m">6:00</td><td>Operarios U</td><td>Una persona por U. Cargan su oleada en el programa y leen lo que ya ha llegado. Cajas a tiendas; al llenarse, matrícula CJ.</td><td>U1–U5</td></tr>
+      <tr><td class="m">6:00 →</td><td>Operarios U</td><td>Cuando llega un lote nuevo a su U, vuelven a cargar la oleada en el programa y siguen leyendo.</td><td>Programa de oleadas</td></tr>
+      <tr><td class="m">Al acabar su zona</td><td>Pickers</td><td>Cogen el siguiente lote pendiente de la zona más cargada (se lo indica el jefe de turno).</td><td>Otra zona</td></tr>
+      <tr><td class="m">Última caja</td><td>Operarios U</td><td>Cuando una tienda está completa: cerrar caja, validar la OUT y llevar las cajas a muelle.</td><td>U → muelle</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">Las horas de los lotes salen de la simulación. Este workflow es la propuesta para la prueba: hay que ajustarlo con el equipo.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Comparativa</span>
+  <h2>¿A qué hora se acaba?</h2>
+  <p id="compIntro">Todas las combinaciones con el mismo día de 10.000 u. Picking desde las 3:00 y oleadas desde las 6:00 con 5 U.</p>
+  <div class="panel scroll"><table><thead><tr><th>Pickers</th><th>Zonas</th><th>Picking</th><th class="r">Horas de picking</th><th class="r">Acaba el picking</th><th class="r">Acaban las U</th><th>Antes de las 11:00</th></tr></thead><tbody id="tComp"></tbody></table></div>
+  <div class="callout">
+    <h3>Qué se ve</h3>
+    <ul id="conclusiones"></ul>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Antes de ponerlo en marcha</span>
+  <h2>Lo que hay que comprobar</h2>
+  <div class="pasos">
+    <div class="paso"><h3>Ritmos reales</h3><p>Medir en la prueba cuántas uds por hora hace un picker con 2 cajas y cuántas lee una persona en la U. Son los dos números que deciden la hora de fin.</p></div>
+    <div class="paso"><h3>Las 2 cajas del carro</h3><p>Cuántas prendas caben en cada caja. Si una se llena antes de acabar el lote, el picker deja las cajas en sus U, valida lo que lleva (entrega parcial) y vuelve. Cada viaje extra son unos 175 m. Las cajas, de colores distintos para no equivocarse de oleada.</p></div>
+    <div class="paso"><h3>Leer una oleada a medias</h3><p>Las U empiezan a leer antes de que lleguen todos los lotes. El programa de oleadas tiene que volver a cargar la oleada cuando llega un lote nuevo. Hay que probarlo.</p></div>
+  </div>
+</section>
+
+</div>
+
+<div class="visor" id="visor" hidden>
+  <div class="visor-caja" role="dialog" aria-modal="true" aria-labelledby="visorTitulo">
+    <div class="visor-cab"><h3 id="visorTitulo"></h3><button type="button" id="visorCerrar">Cerrar ✕</button></div>
+    <svg id="visorSvg" viewBox="0 0 1000 280" role="img" aria-label="Ruta del lote"></svg>
+    <p class="note" id="visorInfo"></p>
+  </div>
+</div>
+
+<script>
+(function () {
+  var OLEADAS = { A: [2016, 10], B: [2064, 10], C: [2045, 10], D: [2049, 10], E: [2022, 11] };
+  // [lote, zona, oleada, uds, lecturas (producto-hueco), paradas, metros, tramo] · leído de Odoo, día 10/09/2026
+  var LOTES = [["Z1-AB1", "Z1", "AB", 351, 126, 81, 764, "L04–L73", {"A": 168, "B": 183}], ["Z1-AB2", "Z1", "AB", 351, 165, 41, 289, "L72–L78", {"B": 169, "A": 182}], ["Z1-CD1", "Z1", "CD", 389, 139, 94, 881, "L03–L69", {"D": 187, "C": 202}], ["Z1-CD2", "Z1", "CD", 388, 173, 53, 347, "L68–L78", {"D": 190, "C": 198}], ["Z1-E", "Z1", "E", 373, 187, 92, 707, "L02–L78", {"E": 373}], ["Z2-AB1", "Z2", "AB", 381, 136, 49, 519, "L81–L113", {"B": 190, "A": 191}], ["Z2-AB2", "Z2", "AB", 381, 87, 25, 301, "L113–L115", {"B": 212, "A": 169}], ["Z2-AB3", "Z2", "AB", 381, 93, 24, 314, "L114–L117", {"A": 180, "B": 201}], ["Z2-AB4", "Z2", "AB", 382, 81, 22, 310, "L116–L118", {"B": 202, "A": 180}], ["Z2-CD1", "Z2", "CD", 375, 107, 52, 484, "L81–L109", {"C": 164, "D": 211}], ["Z2-CD2", "Z2", "CD", 376, 107, 31, 370, "L109–L115", {"C": 188, "D": 188}], ["Z2-CD3", "Z2", "CD", 376, 112, 32, 334, "L114–L117", {"C": 188, "D": 188}], ["Z2-CD4", "Z2", "CD", 375, 93, 25, 316, "L116–L118", {"C": 188, "D": 187}], ["Z2-E1", "Z2", "E", 354, 129, 53, 451, "L87–L115", {"E": 354}], ["Z2-E2", "Z2", "E", 354, 124, 39, 356, "L114–L118", {"E": 354}], ["Z3-AB1", "Z3", "AB", 390, 145, 85, 901, "L03–L78", {"B": 195, "A": 195}], ["Z3-AB2", "Z3", "AB", 390, 84, 28, 308, "L78–L83", {"A": 212, "B": 178}], ["Z3-CD1", "Z3", "CD", 391, 201, 113, 964, "L01–L75", {"C": 217, "D": 174}], ["Z3-CD2", "Z3", "CD", 393, 94, 36, 399, "L74–L83", {"C": 179, "D": 214}], ["Z3-E", "Z3", "E", 395, 147, 73, 718, "L05–L83", {"E": 395}], ["Z4-AB1", "Z4", "AB", 500, 130, 48, 309, "L84–L89", {"A": 257, "B": 243}], ["Z4-AB2", "Z4", "AB", 499, 130, 27, 337, "L88–L95", {"A": 245, "B": 254}], ["Z4-CD1", "Z4", "CD", 471, 120, 49, 311, "L84–L89", {"C": 230, "D": 241}], ["Z4-CD2", "Z4", "CD", 472, 126, 30, 351, "L88–L95", {"C": 247, "D": 225}], ["Z4-E1", "Z4", "E", 251, 89, 44, 299, "L84–L89", {"E": 251}], ["Z4-E2", "Z4", "E", 250, 86, 25, 329, "L88–L94", {"E": 250}], ["Z5-AB", "Z5", "AB", 74, 20, 8, 280, "L97–L98", {"B": 37, "A": 37}], ["Z5-CD", "Z5", "CD", 88, 18, 7, 280, "L97–L98", {"D": 44, "C": 44}], ["Z5-E", "Z5", "E", 45, 15, 7, 280, "L97–L98", {"E": 45}]];
+  var PICKERS = ['Andy', 'Ayub', 'Pep', 'Jordi', 'Carlos', 'Apoyo'];
+  var ZONAS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+  var ZONAS_FIJAS = ZONAS, ZONAS_DIN = ['D1', 'D2', 'D3', 'D4', 'D5'];
+  var LOTES_FIJAS = LOTES;
+  var LOTES_DIN = [["D1-AB1","D1","AB",363,163,118,1515,"L03–L69",{"B":183,"A":180}],["D1-AB2","D1","AB",362,136,55,467,"L69–L75",{"B":170,"A":192}],["D1-CD1","D1","CD",469,250,166,1939,"L01–L69",{"C":254,"D":215}],["D1-CD2","D1","CD",468,156,66,475,"L68–L75",{"C":242,"D":226}],["D1-E","D1","E",378,176,112,1285,"L02–L75",{"E":378}],["D2-AB1","D2","AB",405,145,39,398,"L74–L79",{"B":205,"A":200}],["D2-AB2","D2","AB",405,89,33,385,"L79–L85",{"A":217,"B":188}],["D2-CD1","D2","CD",411,149,43,398,"L74–L79",{"C":210,"D":201}],["D2-CD2","D2","CD",412,102,50,458,"L79–L85",{"D":243,"C":169}],["D2-E","D2","E",412,164,58,492,"L74–L85",{"E":412}],["D3-AB1","D3","AB",425,115,41,325,"L84–L87",{"A":213,"B":212}],["D3-AB2","D3","AB",424,118,32,410,"L86–L93",{"A":214,"B":210}],["D3-CD1","D3","CD",388,107,44,325,"L84–L87",{"D":205,"C":183}],["D3-CD2","D3","CD",388,110,33,427,"L86–L93",{"D":188,"C":200}],["D3-E","D3","E",408,147,59,403,"L84–L90",{"E":408}],["D4-AB1","D4","AB",396,119,37,575,"L93–L110",{"A":200,"B":196}],["D4-AB2","D4","AB",396,106,32,349,"L110–L115",{"B":216,"A":180}],["D4-CD1","D4","CD",427,101,33,453,"L93–L109",{"C":223,"D":204}],["D4-CD2","D4","CD",429,120,36,370,"L109–L115",{"D":216,"C":213}],["D4-E","D4","E",402,140,56,551,"L93–L115",{"E":402}],["D5-AB1","D5","AB",452,107,28,325,"L114–L117",{"B":246,"A":206}],["D5-AB2","D5","AB",452,94,25,316,"L116–L118",{"A":214,"B":238}],["D5-CD1","D5","CD",350,103,28,325,"L114–L117",{"C":177,"D":173}],["D5-CD2","D5","CD",352,87,24,316,"L116–L118",{"D":178,"C":174}],["D5-E","D5","E",422,147,47,370,"L114–L118",{"E":422}]];
+  var ZINFO_DIN = [["D1",1,75,2040,574],["D2",74,85,2045,333],["D3",84,93,2033,276],["D4",93,115,2050,250],["D5",114,118,2028,214]];
+  var LETRAS = ['A', 'B', 'C', 'D', 'E'];
+  var INICIO = 3.25, U_INICIO = 6, U_RATE = 425, ENTREGA = 5 / 60, MARGEN = 1.0, REPARTO = 1.5;
+  var PARES = ['AB', 'CD', 'E'];
+
+  // Horas de un lote: unidades / ritmo del picker (u/h) + 5 min para dejar las cajas en la U y validar
+  function horas(l, pkRate) { return l[3] / pkRate + ENTREGA; }
+  function hm(h) { var m = Math.round(h * 60); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+  function fmt(n) { return Math.round(n).toLocaleString('es-ES'); }
+
+  // Cola de cada zona en orden escalonado: la zona i empieza por la pareja i (AB, CD, E, AB, CD)
+  function colaZona(i) {
+    var orden = [];
+    for (var k = 0; k < 3; k++) orden.push(PARES[(i + k) % 3]);
+    var cola = [];
+    orden.forEach(function (o) { LOTES.forEach(function (l) { if (l[1] === ZONAS[i] && l[2] === o) cola.push(l); }); });
+    return cola;
+  }
+
+  function simular(nP, modo, sLect) {
+    var colas = ZONAS.map(function (z, i) { return colaZona(i); });
+    // Con 4 pickers nadie tiene la Z5: sus lotes van a la cola de quien la tenga más ligera al final (con ayuda) o a Jordi (fijas)
+    var dueno = [0, 1, 2, 3, 4];
+    if (nP === 4) { colas[3] = colas[3].concat(colas[4]); colas[4] = []; dueno = [0, 1, 2, 3]; }
+    var pk = [];
+    for (var p = 0; p < nP; p++) pk.push({ nombre: nP === 4 && p === 3 ? PICKERS[3] + ' (' + ZONAS[3] + '+' + ZONAS[4] + ')' : PICKERS[p], zona: p < 5 ? p : -1, t: INICIO, bloques: [] });
+    var llegadas = [];
+    function restante(c) { var s = 0; c.forEach(function (l) { s += horas(l, sLect); }); return s; }
+    var vivo = true;
+    while (vivo) {
+      vivo = false;
+      // el picker que antes queda libre coge su siguiente lote
+      var orden = pk.slice().sort(function (a, b) { return a.t - b.t; });
+      for (var j = 0; j < orden.length; j++) {
+        var q = orden[j], lote = null;
+        if (q.zona >= 0 && q.zona < colas.length && colas[q.zona].length) lote = colas[q.zona].shift();
+        else if (modo === 'ayuda') {
+          var mayor = -1, val = 0;
+          colas.forEach(function (c, i) { var r = restante(c); if (c.length > 1 && r > val) { val = r; mayor = i; } });
+          if (mayor >= 0) lote = colas[mayor].pop();
+        }
+        if (lote) {
+          var d = horas(lote, sLect) * MARGEN;
+          q.bloques.push({ l: lote, ini: q.t, fin: q.t + d });
+          Object.keys(lote[8]).forEach(function (o) { llegadas.push({ o: o, t: q.t + d, u: lote[8][o] }); });
+          q.t += d; vivo = true; break;
+        }
+      }
+    }
+    var finPicking = Math.max.apply(null, pk.map(function (q) { return q.t; }));
+    // Lectura en cada U: lee lo que ha llegado a U_RATE u/h desde las 6:00
+    var us = LETRAS.map(function (o, i) {
+      var ll = llegadas.filter(function (x) { return x.o === o; }).sort(function (a, b) { return a.t - b.t; });
+      var t = U_INICIO, leido = 0, llegado = 0, espera = 0, tramos = [], a6 = 0;
+      ll.forEach(function (x) { if (x.t <= U_INICIO) a6 += x.u; });
+      var k = 0;
+      while (k < ll.length && ll[k].t <= t) { llegado += ll[k].u; k++; }
+      while (leido < OLEADAS[o][0] - 0.5) {
+        if (llegado - leido < 0.5) {
+          if (k >= ll.length) break;
+          var ini = t; t = Math.max(t, ll[k].t); espera += t - ini; if (t > ini) tramos.push({ ini: ini, fin: t, tipo: 'espera' });
+          while (k < ll.length && ll[k].t <= t) { llegado += ll[k].u; k++; }
+          continue;
+        }
+        var prox = k < ll.length ? ll[k].t : Infinity;
+        var tLeer = (llegado - leido) / U_RATE;
+        var hasta = Math.min(t + tLeer, prox);
+        tramos.push({ ini: t, fin: hasta, tipo: 'lee' });
+        leido += (hasta - t) * U_RATE; t = hasta;
+        while (k < ll.length && ll[k].t <= t + 1e-9) { llegado += ll[k].u; k++; }
+      }
+      return { o: o, fin: t, espera: espera, a6: a6, ultimo: ll.length ? ll[ll.length - 1].t : U_INICIO, tramos: tramos };
+    });
+    var finU = Math.max.apply(null, us.map(function (u) { return u.fin; }));
+    var hPick = 0; LOTES.forEach(function (l) { hPick += horas(l, sLect); });
+    return { pk: pk, us: us, finPicking: finPicking, finU: finU, hPick: hPick };
+  }
+
+  // ---- tablas que dependen del reparto de zonas
+  function tablasZonas() {
+  var rot = '';
+  ZONAS.forEach(function (z, i) {
+    rot += '<tr><td>' + PICKERS[i] + ' · ' + z + '</td>';
+    for (var k = 0; k < 3; k++) { var o = PARES[(i + k) % 3]; var fondo = o.length > 1 ? 'linear-gradient(90deg, var(--o' + o[0].toLowerCase() + ') 50%, var(--o' + o[1].toLowerCase() + ') 50%)' : 'var(--o' + o.toLowerCase() + ')'; rot += '<td><span class="tag" style="background:' + fondo + '">' + z + '-' + o + '</span></td>'; }
+    rot += '</tr>';
+  });
+  document.getElementById('rotacion').innerHTML = rot;
+  var to = '';
+  LETRAS.forEach(function (o, i) { to += '<tr><td><span class="tag t' + o + '">' + o + '</span></td><td>U' + (i + 1) + '</td><td class="r">' + OLEADAS[o][1] + '</td><td class="r">' + fmt(OLEADAS[o][0]) + '</td></tr>'; });
+  document.getElementById('tOleadas').innerHTML = to;
+  var tz = '';
+  ZONAS.forEach(function (z, i) {
+    var ls = LOTES.filter(function (l) { return l[1] === z; }), u = 0, lec = 0;
+    ls.forEach(function (l) { u += l[3]; lec += l[4]; });
+    var tramo = estado.z === 'din' ? ' <span class="m" style="color:var(--muted)">L' + String(ZINFO_DIN[i][1]).padStart(2, '0') + '–L' + String(ZINFO_DIN[i][2]).padStart(2, '0') + '</span>' : '';
+    tz += '<tr><td>' + z + tramo + '</td><td>' + PICKERS[i] + '</td><td class="r">' + ls.length + '</td><td class="r">' + fmt(u) + '</td><td class="r">' + fmt(lec) + '</td></tr>';
+  });
+  document.getElementById('tZonas').innerHTML = tz;
+  var nl = LOTES.length, lect = 0, umin = 1e9, umax = 0;
+  LOTES.forEach(function (l) { lect += l[4]; });
+  ZONAS.forEach(function (z) { var u = 0; LOTES.forEach(function (l) { if (l[1] === z) u += l[3]; }); umin = Math.min(umin, u); umax = Math.max(umax, u); });
+  document.getElementById('textoDatos').innerHTML = '51 tiendas y 10.196 u repartidas en 5 oleadas equilibradas. Al cruzar zona y pareja de oleadas salen ' + nl + ' lotes y ' + fmt(lect) + ' lecturas de hueco. ' +
+    (estado.z === 'din' ? '<b>Zonas dinámicas:</b> la nave se corta en 5 tramos con el mismo trabajo; cada zona tiene entre ' + fmt(umin) + ' y ' + fmt(umax) + ' uds. Las del principio de la nave tienen más lecturas (huecos con pocas prendas).' : '<b>Zonas fijas:</b> no pesan igual; este día van de ' + fmt(umin) + ' a ' + fmt(umax) + ' uds por zona.');
+  }
+
+  // ---- cronograma
+  var NS = 'http://www.w3.org/2000/svg';
+  function dibujar(svg, r) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var X0 = 120, X1 = 985, T0 = 3, T1 = Math.max(14, Math.ceil(r.finU + 0.5)), FILA = 30, Y0 = 34;
+    var filas = r.pk.length + 5 + 1, alto = Y0 + filas * FILA + 30;
+    svg.setAttribute('viewBox', '0 0 1000 ' + alto);
+    function x(t) { return X0 + (t - T0) / (T1 - T0) * (X1 - X0); }
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; svg.appendChild(n); return n; }
+    for (var h = T0; h <= T1; h++) {
+      e('line', { x1: x(h), x2: x(h), y1: Y0 - 8, y2: alto - 24, stroke: 'var(--line)', 'stroke-width': h === 6 || h === 11 ? 2 : 1, 'stroke-dasharray': h === 11 ? '5 4' : '' });
+      e('text', { x: x(h), y: Y0 - 14, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, String(h).padStart(2, '0') + ':00');
+    }
+    e('text', { x: x(11) + 4, y: alto - 10, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'objetivo 11:00');
+    var y = Y0;
+    r.pk.forEach(function (q) {
+      e('text', { x: 8, y: y + 19, 'font-family': 'var(--f-body)', 'font-size': 12, fill: 'var(--ink)' }, q.nombre);
+      q.bloques.forEach(function (b) {
+        var ols = b.l[2].split(''), hh = (FILA - 8) / ols.length;
+        ols.forEach(function (o, j) { e('rect', { x: x(b.ini), y: y + 4 + j * hh, width: Math.max(1, x(b.fin) - x(b.ini) - 1), height: hh, fill: 'var(--o' + o.toLowerCase() + ')' }); });
+        if (x(b.fin) - x(b.ini) > 34) e('text', { x: (x(b.ini) + x(b.fin)) / 2, y: y + 19, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 9.5, fill: '#fff' }, b.l[0]);
+      });
+      y += FILA;
+    });
+    y += FILA / 2;
+    e('line', { x1: 8, x2: X1, y1: y - 4, y2: y - 4, stroke: 'var(--ink)', 'stroke-width': 1 });
+    r.us.forEach(function (u, i) {
+      e('text', { x: 8, y: y + 19, 'font-family': 'var(--f-body)', 'font-size': 12, fill: 'var(--ink)' }, 'U' + (i + 1) + ' · oleada ' + u.o);
+      u.tramos.forEach(function (t) {
+        if (t.fin - t.ini < 1 / 120) return;
+        e('rect', { x: x(t.ini), y: y + 6, width: Math.max(1, x(t.fin) - x(t.ini)), height: FILA - 12, rx: 2,
+          fill: t.tipo === 'lee' ? 'var(--o' + u.o.toLowerCase() + ')' : 'var(--floor)', stroke: t.tipo === 'lee' ? 'none' : 'var(--line)', opacity: t.tipo === 'lee' ? .55 : 1 });
+      });
+      e('text', { x: x(u.fin) + 5, y: y + 19, 'font-family': 'var(--f-mono)', 'font-size': 10.5, fill: 'var(--ink)' }, hm(u.fin));
+      y += FILA;
+    });
+  }
+
+  function kpis(r) {
+    var ok = r.finU <= 11 + 1e-9;
+    var a6 = 0; r.us.forEach(function (u) { a6 += u.a6; });
+    var esp = 0; r.us.forEach(function (u) { esp += u.espera; });
+    return '<div class="kpi"><span class="v">' + hm(r.finPicking) + '</span><span class="l">acaba el picking</span></div>' +
+      '<div class="kpi ' + (ok ? 'ok' : 'bad') + '"><span class="v">' + hm(r.finU) + '</span><span class="l">acaban las oleadas</span></div>' +
+      '<div class="kpi"><span class="v">' + fmt(a6) + '</span><span class="l">uds en las U a las 6:00</span></div>' +
+      '<div class="kpi"><span class="v">' + Math.round(esp * 60) + ' min</span><span class="l">esperando ropa (suma de las 5 U)</span></div>';
+  }
+
+
+  // ---- ruta de cada persona
+  var COLZ = { Z1: '#2a62b8', Z2: '#2e9a52', Z3: '#c8372d', Z4: '#e8701a', Z5: '#7a4cc2', D1: '#2a62b8', D2: '#2e9a52', D3: '#c8372d', D4: '#e8701a', D5: '#7a4cc2' };
+  var ZONA_GEO_FIJAS = { Z1: ['I', 1, 79], Z2: ['I', 80, 136], Z3: ['D', 1, 83], Z4: ['D', 84, 95], Z5: ['D', 96, 120] };
+  var ZONA_GEO_DIN = {}; ZINFO_DIN.forEach(function (z) { ZONA_GEO_DIN[z[0]] = ['T', z[1], z[2]]; });
+  var ZONA_GEO = ZONA_GEO_FIJAS;
+  function aplicarReparto() {
+    var d = estado.z === 'din';
+    LOTES = d ? LOTES_DIN : LOTES_FIJAS; ZONAS = d ? ZONAS_DIN : ZONAS_FIJAS; ZONA_GEO = d ? ZONA_GEO_DIN : ZONA_GEO_FIJAS;
+  }
+  function dibujarMapaZonas() {
+    var s = document.getElementById('mapaZonas');
+    while (s.firstChild) s.removeChild(s.firstChild);
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; s.appendChild(n); return n; }
+    var X0 = 150, SX = (985 - X0) / 136, YI = 40, YD = 170, AL = 100;
+    e('rect', { x: 10, y: YI, width: 130, height: YD + AL - YI, fill: 'var(--panel)', stroke: 'var(--line)' });
+    e('text', { x: 75, y: YI + 30, 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, 'SORTER');
+    ['A', 'B', 'C', 'D', 'E'].forEach(function (o, i) {
+      e('rect', { x: 22, y: YI + 50 + i * 36, width: 106, height: 28, rx: 3, fill: 'var(--o' + o.toLowerCase() + ')' });
+      e('text', { x: 75, y: YI + 69 + i * 36, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 12, fill: '#fff' }, 'U' + (i + 1) + ' · oleada ' + o);
+    });
+    e('rect', { x: X0, y: YI, width: 136 * SX, height: AL, fill: 'var(--floor)' });
+    e('rect', { x: X0, y: YD, width: 120 * SX, height: AL, fill: 'var(--floor)' });
+    e('text', { x: X0, y: YI - 8, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'IZQUIERDA · P00–P17');
+    e('text', { x: X0, y: YD + AL + 16, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'DERECHA · P18–P38');
+    Object.keys(ZONA_GEO).forEach(function (z, i) {
+      var g = ZONA_GEO[z], x = X0 + (g[1] - 1) * SX, w = (g[2] - g[1] + 1) * SX;
+      var filas = g[0] === 'T' ? [YI, YD] : [g[0] === 'I' ? YI : YD];
+      filas.forEach(function (y) { e('rect', { x: x + 1, y: y + 2, width: Math.max(2, w - 2), height: AL - 4, rx: 3, fill: COLZ[z], opacity: .85 }); });
+      var yt = g[0] === 'T' ? (YI + YD + AL) / 2 - 20 : filas[0];
+      if (g[0] === 'T') e('rect', { x: x + 1, y: YI + AL, width: Math.max(2, w - 2), height: YD - YI - AL, fill: COLZ[z], opacity: .35 });
+      e('text', { x: x + w / 2, y: yt + AL / 2 - 4 - (g[0] === 'T' ? 30 : 0), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': w > 60 ? 22 : 15, 'font-weight': 700, fill: '#fff' }, z);
+      e('text', { x: x + w / 2, y: yt + AL / 2 + 16 - (g[0] === 'T' ? 30 : 0), 'text-anchor': 'middle', 'font-family': 'var(--f-body)', 'font-size': w > 60 ? 13 : 10, fill: '#fff' }, PICKERS[i]);
+    });
+    [1, 40, 80, 120, 136].forEach(function (l) { e('text', { x: X0 + (l - 0.5) * SX, y: 292, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l)); });
+  }
+
+  // ---- planos de ruta de cada picker. Paradas por lote: [lineal, posición, uds], en orden de recorrido
+  var PARADAS_DIN = {"D1-AB1":[[3,23,1],[4,7,1],[5,32,1],[5,37,1],[9,28,1],[10,25,3],[10,28,2],[10,29,1],[10,30,1],[14,31,1],[17,30,2],[17,31,1],[18,24,1],[18,25,1],[18,28,1],[20,29,1],[26,27,1],[27,32,1],[28,14,2],[29,24,1],[29,26,1],[35,18,1],[34,23,1],[35,40,1],[36,37,1],[39,36,1],[41,21,1],[42,9,1],[42,16,1],[43,31,1],[44,11,1],[44,12,1],[45,13,4],[44,16,2],[44,20,1],[44,33,1],[46,7,2],[47,8,1],[46,15,1],[46,23,1],[48,2,2],[48,13,3],[51,1,1],[50,6,2],[50,8,3],[50,10,1],[51,15,4],[50,17,1],[50,19,1],[50,36,2],[52,1,3],[53,11,2],[52,15,1],[55,7,1],[55,8,1],[55,15,2],[55,17,1],[54,23,3],[57,6,1],[56,11,3],[57,20,1],[59,30,1],[59,36,1],[59,38,1],[61,2,2],[61,3,4],[61,4,5],[61,5,2],[61,12,1],[60,22,1],[60,28,1],[63,1,3],[62,4,1],[63,5,1],[62,6,2],[63,8,43],[63,9,21],[63,10,10],[63,12,12],[63,13,28],[63,14,1],[63,15,7],[63,16,1],[63,38,1],[65,2,2],[64,7,4],[64,8,6],[64,10,4],[64,11,1],[65,15,2],[65,16,4],[65,17,3],[64,23,1],[64,25,1],[65,36,1],[67,1,2],[67,5,1],[67,7,1],[67,13,2],[66,16,2],[67,16,2],[66,17,2],[66,20,1],[68,1,3],[69,3,1],[68,4,2],[68,5,4],[68,6,2],[68,9,2],[68,10,1],[68,14,15],[68,15,16],[68,16,5],[68,17,8],[69,22,8],[69,25,2],[69,34,11],[69,35,2]],"D1-AB2":[[69,35,2],[70,1,3],[70,3,9],[70,4,1],[70,5,6],[70,7,1],[70,8,17],[70,11,4],[70,19,1],[71,20,1],[70,24,12],[70,25,28],[70,27,24],[71,28,4],[71,33,2],[70,34,13],[71,34,3],[70,35,1],[71,35,1],[71,36,9],[70,37,2],[71,37,2],[73,4,10],[73,6,2],[73,7,8],[72,12,1],[73,12,1],[73,15,5],[73,16,7],[73,17,8],[72,20,1],[73,34,15],[73,35,11],[72,36,3],[73,37,3],[75,1,2],[75,2,14],[74,3,8],[75,3,2],[75,4,4],[75,5,12],[75,6,4],[74,7,2],[75,7,1],[74,8,1],[75,8,19],[74,10,3],[74,11,1],[74,12,2],[75,12,18],[74,13,2],[75,13,24],[74,14,9],[75,14,3],[75,15,10]],"D1-CD1":[[1,33,1],[3,3,1],[3,6,1],[3,25,1],[2,32,2],[2,33,8],[4,14,1],[4,31,1],[5,37,2],[6,10,1],[6,25,1],[9,28,2],[9,29,7],[9,31,2],[11,17,1],[10,29,1],[15,9,1],[15,31,1],[17,19,1],[17,21,3],[17,22,2],[17,23,1],[17,25,2],[17,26,6],[17,28,2],[17,30,3],[17,31,3],[17,32,3],[17,33,1],[17,34,2],[17,35,3],[17,36,2],[18,21,1],[18,25,1],[18,26,1],[18,28,1],[18,29,1],[18,31,1],[18,32,3],[18,33,3],[18,37,1],[21,27,1],[23,18,1],[27,17,1],[26,35,1],[28,11,2],[29,15,1],[28,29,1],[29,31,1],[30,9,1],[31,23,1],[30,26,1],[32,20,1],[32,21,1],[32,30,1],[35,24,1],[37,19,2],[41,10,1],[41,38,1],[42,10,1],[42,11,2],[43,11,2],[43,12,2],[42,17,1],[43,27,1],[43,28,3],[43,29,1],[43,32,1],[44,3,2],[44,4,1],[45,10,4],[44,11,1],[44,15,2],[45,15,2],[44,17,3],[45,17,2],[44,18,1],[44,19,2],[44,20,1],[44,22,1],[47,2,1],[47,3,2],[46,17,2],[48,2,2],[48,3,1],[49,6,1],[48,14,1],[49,14,3],[48,18,2],[49,18,1],[49,24,1],[48,28,1],[50,8,1],[50,12,1],[51,15,1],[50,16,1],[50,17,1],[51,17,4],[50,20,1],[52,1,2],[53,2,1],[52,4,1],[53,11,5],[52,18,1],[53,19,1],[55,8,1],[54,11,1],[54,28,1],[56,9,1],[56,11,4],[57,14,1],[57,21,1],[57,24,1],[57,25,1],[59,1,1],[59,2,2],[59,14,1],[59,15,5],[59,20,2],[59,34,1],[61,2,9],[60,3,1],[61,3,7],[61,4,10],[61,5,6],[61,8,1],[60,15,2],[60,25,1],[62,4,1],[62,5,1],[63,5,1],[62,6,4],[62,8,1],[63,8,45],[63,9,23],[63,10,15],[63,12,11],[63,13,37],[62,14,2],[63,36,1],[65,1,2],[64,7,2],[64,8,6],[64,12,1],[65,15,5],[65,16,5],[65,17,4],[67,0,3],[67,1,3],[67,3,2],[67,5,1],[67,13,5],[67,14,2],[66,16,7],[67,16,6],[66,17,3],[66,20,1],[66,29,1],[66,35,2],[66,38,2],[68,1,4],[69,3,6],[68,4,3],[68,5,5],[68,9,4],[68,10,4]],"D1-CD2":[[68,14,10],[68,15,29],[68,16,6],[68,17,5],[69,20,4],[69,22,7],[69,33,1],[69,34,5],[69,35,3],[69,36,3],[70,3,20],[70,4,11],[70,5,2],[70,7,3],[70,8,14],[70,9,1],[70,11,16],[70,18,1],[71,18,1],[71,20,4],[70,24,10],[70,25,23],[70,27,21],[71,28,10],[71,30,2],[70,34,9],[70,35,1],[71,35,4],[71,36,14],[70,37,1],[71,38,1],[73,4,3],[73,5,1],[73,6,2],[73,7,5],[73,12,1],[73,13,1],[73,15,4],[73,16,7],[73,17,6],[72,20,7],[72,21,2],[73,34,17],[73,35,18],[72,36,5],[73,36,2],[73,37,12],[75,1,2],[75,2,13],[74,3,10],[75,3,1],[75,4,2],[75,5,8],[75,6,5],[74,7,7],[75,7,2],[74,8,1],[75,8,14],[74,10,1],[74,11,1],[75,12,14],[74,13,2],[75,13,17],[74,14,23],[75,14,2],[75,15,8]],"D1-E":[[2,7,1],[5,37,1],[7,11,1],[9,21,1],[9,28,1],[15,25,1],[17,37,1],[21,18,1],[31,12,1],[36,21,1],[43,11,1],[43,12,2],[43,13,4],[44,11,3],[44,12,4],[45,16,2],[45,19,1],[46,20,1],[46,23,1],[51,3,5],[50,17,2],[52,6,2],[53,35,1],[57,2,1],[56,12,3],[58,5,1],[61,2,1],[61,3,2],[61,4,3],[60,29,1],[60,31,1],[60,39,1],[61,39,1],[63,5,1],[62,6,1],[63,8,24],[63,9,12],[63,10,6],[63,12,6],[63,13,12],[63,33,1],[63,37,1],[64,8,3],[65,16,3],[65,17,3],[64,23,1],[64,31,1],[67,2,2],[66,5,1],[67,6,2],[67,7,1],[66,16,3],[67,16,2],[68,1,3],[68,2,1],[68,5,4],[68,8,2],[68,9,4],[68,10,2],[68,14,8],[68,15,7],[68,16,3],[68,17,4],[69,22,6],[69,34,2],[70,3,6],[70,4,2],[70,5,6],[70,8,8],[70,11,8],[71,20,1],[70,24,6],[70,25,12],[70,27,12],[71,28,3],[70,29,3],[70,34,6],[71,34,1],[70,35,1],[71,35,2],[71,36,6],[70,37,1],[73,4,4],[73,7,2],[73,12,1],[73,15,5],[73,16,5],[73,17,4],[72,20,1],[73,34,10],[73,35,6],[72,36,2],[73,37,3],[75,1,2],[75,2,8],[74,3,4],[75,3,1],[75,4,1],[75,5,4],[75,6,1],[74,7,2],[75,7,4],[75,8,6],[74,10,2],[74,11,1],[75,12,6],[74,13,2],[75,13,9],[74,14,4],[75,14,2],[74,15,1],[75,15,5]],"D2-AB1":[[75,16,6],[74,31,3],[74,33,6],[75,33,6],[74,34,6],[75,34,8],[74,35,5],[75,35,9],[74,36,24],[75,36,1],[74,37,11],[77,1,18],[77,2,16],[77,5,3],[77,6,7],[77,8,10],[76,10,2],[77,10,2],[76,11,19],[77,11,6],[76,12,17],[77,12,24],[77,13,24],[77,14,20],[77,15,12],[77,24,3],[76,30,6],[76,34,3],[76,35,3],[77,38,4],[78,15,2],[78,20,1],[78,21,26],[78,22,50],[78,23,5],[79,33,4],[79,36,3],[78,37,2],[78,38,28]],"D2-AB2":[[79,38,49],[81,10,1],[81,17,3],[81,19,1],[81,23,53],[81,25,13],[81,27,4],[81,28,7],[81,31,1],[80,34,8],[80,37,22],[80,38,20],[83,0,1],[82,18,2],[83,18,1],[83,19,8],[83,21,6],[83,22,21],[82,23,46],[83,23,20],[82,24,39],[82,25,25],[82,26,2],[82,27,2],[82,28,1],[83,28,1],[85,10,1],[85,11,2],[85,18,8],[85,19,4],[85,20,9],[84,21,6],[85,21,18]],"D2-CD1":[[75,16,6],[75,30,2],[74,31,1],[74,33,4],[75,33,2],[74,34,2],[75,34,7],[74,35,7],[75,35,8],[74,36,25],[75,36,6],[74,37,22],[75,37,2],[77,1,12],[77,2,14],[77,5,4],[77,6,4],[77,8,8],[76,10,2],[77,10,1],[76,11,16],[77,11,7],[76,12,14],[77,12,19],[77,13,19],[77,14,17],[77,15,8],[77,20,1],[77,24,3],[76,30,7],[76,33,1],[76,34,4],[76,35,3],[77,38,2],[78,15,1],[78,21,40],[78,22,65],[78,23,4],[79,33,6],[79,34,1],[78,37,2],[78,38,20],[79,38,12]],"D2-CD2":[[79,38,36],[81,11,10],[81,12,12],[81,14,7],[81,20,1],[81,22,7],[81,23,9],[81,25,8],[81,27,2],[80,34,5],[80,36,1],[80,37,19],[80,38,28],[83,4,1],[83,7,5],[83,8,6],[83,9,9],[83,10,11],[83,11,21],[83,14,13],[82,15,1],[83,15,8],[83,16,3],[83,18,1],[83,19,12],[83,21,3],[82,22,2],[83,22,12],[83,23,11],[82,24,36],[82,25,14],[83,25,3],[83,32,3],[85,0,3],[85,2,9],[85,4,2],[85,5,1],[84,6,2],[85,6,8],[84,9,1],[85,9,3],[85,10,10],[85,11,6],[84,12,3],[84,13,8],[85,18,2],[85,19,2],[85,20,15],[84,21,3],[85,21,14]],"D2-E":[[75,16,4],[74,31,3],[74,33,6],[75,33,2],[74,34,2],[75,34,12],[74,35,3],[75,35,9],[74,36,14],[75,36,2],[74,37,9],[77,1,6],[77,2,8],[77,3,2],[77,5,4],[77,6,1],[77,8,5],[76,10,2],[77,10,1],[76,11,13],[77,11,4],[76,12,8],[77,12,13],[77,13,10],[77,14,9],[77,15,5],[76,30,6],[76,34,4],[76,35,3],[77,38,3],[78,15,1],[78,16,2],[78,21,12],[78,22,30],[79,33,2],[79,34,1],[78,38,14],[79,38,16],[81,23,22],[81,24,3],[81,25,5],[81,30,4],[80,34,3],[80,37,14],[80,38,9],[83,19,6],[83,21,1],[83,22,9],[82,23,18],[83,23,9],[82,24,26],[82,25,7],[82,31,3],[85,18,4],[85,19,3],[85,20,6],[84,21,1],[85,21,8]],"D3-AB1":[[85,21,10],[84,22,28],[85,22,14],[84,23,55],[85,23,8],[84,25,2],[85,25,11],[85,26,3],[85,28,16],[85,29,6],[85,30,8],[84,34,6],[84,35,23],[85,35,8],[85,36,3],[84,37,13],[85,38,12],[87,5,3],[87,6,7],[87,8,9],[86,10,1],[87,10,9],[86,11,2],[87,11,12],[87,19,2],[86,22,6],[87,22,1],[86,23,4],[87,24,1],[87,26,1],[87,27,21],[86,28,12],[87,28,33],[86,29,1],[87,29,10],[86,30,10],[87,30,13],[87,31,13],[87,32,7],[87,34,16],[87,35,5]],"D3-AB2":[[87,35,9],[86,36,8],[87,37,11],[87,38,13],[88,5,2],[88,6,4],[88,20,8],[89,21,4],[89,22,5],[89,23,2],[89,24,2],[89,25,5],[88,26,37],[88,27,73],[89,27,20],[88,28,42],[89,28,24],[88,29,34],[89,29,4],[88,30,25],[89,32,1],[89,33,20],[88,34,1],[89,34,21],[88,35,6],[88,37,2],[88,38,4],[91,17,4],[90,26,7],[90,29,13],[90,35,12],[93,13,1]],"D3-CD1":[[85,21,8],[84,22,17],[85,22,9],[84,23,26],[85,23,7],[85,25,13],[85,26,2],[85,28,16],[85,29,8],[84,30,1],[85,30,4],[84,34,8],[84,35,26],[85,35,8],[85,36,5],[84,37,22],[85,38,17],[87,5,1],[87,6,13],[86,7,6],[86,8,6],[87,8,9],[86,9,2],[86,10,3],[87,10,21],[87,11,10],[86,12,1],[86,13,3],[87,19,2],[86,22,7],[86,23,2],[86,26,1],[86,27,2],[87,27,1],[86,28,17],[87,28,15],[86,29,1],[87,29,8],[86,30,11],[87,30,18],[87,31,6],[87,32,10],[87,34,13],[87,35,2]],"D3-CD2":[[87,35,4],[86,36,12],[87,37,8],[87,38,12],[88,1,1],[88,5,2],[88,6,1],[88,20,4],[89,21,2],[89,22,7],[89,23,6],[88,24,1],[89,24,2],[89,25,3],[88,26,16],[88,27,48],[89,27,56],[88,28,19],[89,28,18],[88,29,25],[89,29,14],[88,30,34],[89,32,1],[89,33,24],[89,34,31],[88,35,1],[88,37,2],[88,38,2],[91,17,1],[90,26,7],[90,29,7],[90,35,16],[93,13,1]],"D3-E":[[85,21,6],[84,22,10],[85,22,6],[84,23,19],[85,23,2],[84,24,2],[85,25,6],[85,28,6],[85,29,2],[85,30,4],[84,34,3],[84,35,12],[85,35,8],[85,36,3],[84,37,6],[85,38,9],[87,5,1],[87,6,5],[87,8,5],[87,10,2],[87,11,8],[86,22,5],[86,23,1],[86,27,2],[87,27,5],[86,28,13],[87,28,9],[87,29,6],[86,30,9],[87,30,6],[87,31,7],[87,32,3],[86,33,3],[87,34,6],[87,35,9],[86,36,6],[87,37,7],[87,38,6],[88,20,6],[88,21,2],[89,21,3],[88,22,1],[89,22,3],[89,25,3],[88,26,15],[88,27,30],[89,27,6],[88,28,9],[89,28,12],[88,29,18],[88,30,20],[89,33,9],[88,34,1],[89,34,12],[88,35,4],[88,36,2],[88,38,3],[90,29,15],[90,35,6]],"D4-AB1":[[93,13,2],[93,22,13],[93,28,12],[93,29,18],[93,30,19],[93,31,23],[95,0,8],[95,2,4],[94,3,5],[95,3,1],[95,4,5],[94,5,2],[95,7,12],[95,9,23],[95,10,7],[94,15,9],[94,16,9],[94,22,19],[94,30,10],[94,31,44],[95,35,1],[96,1,4],[97,31,2],[97,32,14],[97,33,6],[97,34,2],[98,31,7],[98,32,1],[98,37,18],[98,38,24],[109,12,4],[109,13,9],[109,14,34],[109,15,5],[110,6,1],[110,10,4],[110,11,15]],"D4-AB2":[[110,11,6],[110,12,36],[110,13,11],[110,14,8],[110,15,4],[113,3,12],[113,4,10],[113,5,2],[113,6,5],[113,7,7],[113,8,8],[113,10,24],[113,11,2],[113,12,13],[113,14,12],[113,15,14],[113,16,13],[113,17,29],[114,0,17],[115,0,11],[114,1,4],[115,1,9],[114,2,8],[115,2,13],[114,3,18],[115,3,20],[114,4,20],[115,4,24],[114,5,9],[114,6,16],[115,6,2],[114,7,9]],"D4-CD1":[[93,13,2],[93,22,12],[93,24,2],[93,25,1],[93,26,4],[93,28,12],[93,29,18],[93,30,18],[93,31,24],[95,0,15],[95,2,4],[94,3,5],[95,4,3],[94,5,2],[95,7,16],[95,9,33],[95,10,20],[94,15,8],[94,16,17],[94,18,1],[94,22,20],[94,29,9],[94,30,40],[94,31,50],[95,35,1],[97,32,16],[97,33,4],[97,34,2],[98,31,9],[98,32,1],[98,37,24],[98,38,32],[109,12,2]],"D4-CD2":[[109,12,6],[109,13,12],[109,14,44],[109,15,8],[110,10,2],[110,11,25],[110,12,53],[110,13,10],[110,14,20],[110,15,2],[113,3,12],[113,4,8],[113,6,2],[113,7,3],[113,8,7],[113,10,18],[113,11,2],[113,12,10],[113,14,10],[113,15,10],[113,16,10],[113,17,22],[114,0,14],[115,0,8],[114,1,2],[115,1,8],[114,2,7],[115,2,11],[114,3,14],[115,3,16],[114,4,15],[115,4,17],[114,5,6],[114,6,8],[115,6,1],[114,7,6]],"D4-E":[[93,22,4],[93,24,1],[93,26,2],[93,28,9],[93,29,15],[93,30,12],[93,31,18],[95,0,6],[94,3,3],[95,4,6],[95,7,6],[95,9,12],[95,10,6],[94,15,6],[94,16,3],[94,22,4],[94,30,9],[94,31,18],[97,32,12],[97,33,4],[97,34,2],[98,31,5],[98,32,1],[98,37,9],[98,38,12],[109,13,3],[109,14,21],[109,15,2],[110,11,12],[110,12,21],[110,13,3],[110,14,5],[110,15,2],[113,3,4],[113,4,6],[113,5,2],[113,8,6],[113,10,12],[113,12,6],[113,14,8],[113,15,4],[113,16,6],[113,17,12],[114,0,10],[115,0,7],[115,1,2],[114,2,6],[115,2,9],[114,3,7],[115,3,12],[114,4,8],[115,4,6],[114,5,5],[114,6,3],[115,6,1],[114,7,6]],"D5-AB1":[[114,7,13],[115,7,11],[114,8,30],[114,9,17],[115,9,15],[114,10,27],[115,10,18],[114,11,13],[114,12,26],[115,12,21],[114,13,21],[115,13,10],[114,14,18],[114,15,23],[115,15,19],[114,16,19],[114,17,25],[115,17,8],[116,0,9],[117,0,9],[116,1,11],[117,1,4],[116,2,21],[116,3,14],[116,5,10],[116,6,4],[116,7,32],[117,7,4]],"D5-AB2":[[117,7,28],[116,8,26],[117,8,1],[116,9,19],[117,9,19],[116,10,28],[117,10,26],[116,11,6],[116,12,41],[117,12,15],[116,13,15],[117,13,11],[116,14,23],[116,15,22],[117,15,17],[116,16,30],[117,16,4],[116,17,37],[118,0,13],[118,4,4],[118,12,2],[118,13,4],[118,14,24],[118,15,26],[118,16,11]],"D5-CD1":[[114,7,7],[115,7,9],[114,8,22],[114,9,14],[115,9,6],[114,10,21],[115,10,18],[114,11,10],[114,12,20],[115,12,18],[114,13,11],[115,13,5],[114,14,18],[114,15,18],[115,15,16],[114,16,14],[114,17,22],[115,17,7],[116,0,8],[117,0,6],[116,1,14],[117,1,4],[116,2,16],[116,3,8],[116,5,6],[116,6,8],[116,7,22],[117,7,2]],"D5-CD2":[[117,7,21],[116,8,20],[116,9,14],[117,9,17],[116,10,22],[117,10,20],[116,11,8],[116,12,24],[117,12,11],[116,13,11],[117,13,9],[116,14,19],[116,15,16],[117,15,15],[116,16,23],[117,16,2],[116,17,28],[118,0,10],[118,4,6],[118,12,2],[118,13,4],[118,14,18],[118,15,23],[118,16,9]],"D5-E":[[115,7,5],[114,8,14],[114,9,8],[115,9,2],[114,10,8],[115,10,10],[114,11,6],[114,12,12],[115,12,12],[114,13,6],[114,14,12],[114,15,12],[115,15,12],[114,16,6],[114,17,16],[115,17,6],[116,0,7],[117,0,3],[116,1,9],[117,1,3],[116,2,10],[116,3,2],[116,6,6],[116,7,14],[117,7,12],[116,8,12],[116,9,10],[117,9,12],[116,10,12],[117,10,10],[116,11,9],[117,11,2],[116,12,9],[117,12,6],[116,13,11],[117,13,6],[116,14,11],[116,15,12],[117,15,16],[116,16,12],[116,17,16],[118,0,6],[118,4,6],[118,13,3],[118,14,12],[118,15,10],[118,16,6]]};
+  var PARADAS = {"Z1-AB1":[[4,7,1],[28,14,2],[42,9,1],[42,16,1],[44,11,1],[44,12,1],[45,13,4],[44,16,2],[46,7,2],[47,8,1],[46,15,1],[48,2,2],[48,13,3],[51,1,1],[50,6,2],[50,8,3],[50,10,1],[51,15,4],[50,17,1],[52,1,3],[53,11,2],[52,15,1],[55,7,1],[55,8,1],[55,15,2],[55,17,1],[57,6,1],[56,11,3],[61,2,2],[61,3,4],[61,4,5],[61,5,2],[61,12,1],[63,1,3],[62,4,1],[63,5,1],[62,6,2],[63,8,43],[63,9,21],[63,10,10],[63,12,12],[63,13,28],[63,14,1],[63,15,7],[63,16,1],[65,2,2],[64,7,4],[64,8,6],[64,10,4],[64,11,1],[65,15,2],[65,16,4],[65,17,3],[67,1,2],[67,5,1],[67,7,1],[67,13,2],[66,16,2],[67,16,2],[66,17,2],[68,1,3],[69,3,1],[68,4,2],[68,5,4],[68,6,2],[68,9,2],[68,10,1],[68,14,15],[68,15,16],[68,16,5],[68,17,8],[70,1,3],[70,3,9],[70,4,1],[70,5,6],[70,7,1],[70,8,17],[70,11,4],[73,4,10],[73,6,2],[73,7,8]],"Z1-AB2":[[72,12,1],[73,12,1],[73,15,5],[73,16,7],[73,17,8],[75,1,2],[75,2,14],[74,3,8],[75,3,2],[75,4,4],[75,5,12],[75,6,4],[74,7,2],[75,7,1],[74,8,1],[75,8,19],[74,10,3],[74,11,1],[74,12,2],[75,12,18],[74,13,2],[75,13,24],[74,14,9],[75,14,3],[75,15,10],[75,16,6],[77,1,18],[77,2,16],[77,5,3],[77,6,7],[77,8,10],[76,10,2],[77,10,2],[76,11,19],[77,11,6],[76,12,17],[77,12,24],[77,13,24],[77,14,20],[77,15,12],[78,15,2]],"Z1-CD1":[[3,3,1],[3,6,1],[4,14,1],[6,10,1],[11,17,1],[15,9,1],[27,17,1],[28,11,2],[29,15,1],[30,9,1],[41,10,1],[42,10,1],[42,11,2],[43,11,2],[43,12,2],[42,17,1],[44,3,2],[44,4,1],[45,10,4],[44,11,1],[44,15,2],[45,15,2],[44,17,3],[45,17,2],[47,2,1],[47,3,2],[46,17,2],[48,2,2],[48,3,1],[49,6,1],[48,14,1],[49,14,3],[50,8,1],[50,12,1],[51,15,1],[50,16,1],[50,17,1],[51,17,4],[52,1,2],[53,2,1],[52,4,1],[53,11,5],[55,8,1],[54,11,1],[56,9,1],[56,11,4],[57,14,1],[59,1,1],[59,2,2],[59,14,1],[59,15,5],[61,2,9],[60,3,1],[61,3,7],[61,4,10],[61,5,6],[61,8,1],[60,15,2],[62,4,1],[62,5,1],[63,5,1],[62,6,4],[62,8,1],[63,8,45],[63,9,23],[63,10,15],[63,12,11],[63,13,37],[62,14,2],[65,1,2],[64,7,2],[64,8,6],[64,12,1],[65,15,5],[65,16,5],[65,17,4],[67,0,3],[67,1,3],[67,3,2],[67,5,1],[67,13,5],[67,14,2],[66,16,7],[67,16,6],[66,17,3],[68,1,4],[69,3,6],[68,4,3],[68,5,5],[68,9,4],[68,10,4],[68,14,10],[68,15,29],[68,16,5]],"Z1-CD2":[[68,16,1],[68,17,5],[70,3,20],[70,4,11],[70,5,2],[70,7,3],[70,8,14],[70,9,1],[70,11,16],[73,4,3],[73,5,1],[73,6,2],[73,7,5],[73,12,1],[73,13,1],[73,15,4],[73,16,7],[73,17,6],[75,1,2],[75,2,13],[74,3,10],[75,3,1],[75,4,2],[75,5,8],[75,6,5],[74,7,7],[75,7,2],[74,8,1],[75,8,14],[74,10,1],[74,11,1],[75,12,14],[74,13,2],[75,13,17],[74,14,23],[75,14,2],[75,15,8],[75,16,6],[77,1,12],[77,2,14],[77,5,4],[77,6,4],[77,8,8],[76,10,2],[77,10,1],[76,11,16],[77,11,7],[76,12,14],[77,12,19],[77,13,19],[77,14,17],[77,15,8],[78,15,1]],"Z1-E":[[2,7,1],[7,11,1],[31,12,1],[43,11,1],[43,12,2],[43,13,4],[44,11,3],[44,12,4],[45,16,2],[51,3,5],[50,17,2],[52,6,2],[57,2,1],[56,12,3],[58,5,1],[61,2,1],[61,3,2],[61,4,3],[63,5,1],[62,6,1],[63,8,24],[63,9,12],[63,10,6],[63,12,6],[63,13,12],[64,8,3],[65,16,3],[65,17,3],[67,2,2],[66,5,1],[67,6,2],[67,7,1],[66,16,3],[67,16,2],[68,1,3],[68,2,1],[68,5,4],[68,8,2],[68,9,4],[68,10,2],[68,14,8],[68,15,7],[68,16,3],[68,17,4],[70,3,6],[70,4,2],[70,5,6],[70,8,8],[70,11,8],[73,4,4],[73,7,2],[73,12,1],[73,15,5],[73,16,5],[73,17,4],[75,1,2],[75,2,8],[74,3,4],[75,3,1],[75,4,1],[75,5,4],[75,6,1],[74,7,2],[75,7,4],[75,8,6],[74,10,2],[74,11,1],[75,12,6],[74,13,2],[75,13,9],[74,14,4],[75,14,2],[74,15,1],[75,15,5],[75,16,4],[77,1,6],[77,2,8],[77,3,2],[77,5,4],[77,6,1],[77,8,5],[76,10,2],[77,10,1],[76,11,13],[77,11,4],[76,12,8],[77,12,13],[77,13,10],[77,14,9],[77,15,5],[78,15,1],[78,16,2]],"Z2-AB1":[[81,10,1],[81,17,3],[83,0,1],[85,10,1],[85,11,2],[87,5,3],[87,6,7],[87,8,9],[86,10,1],[87,10,9],[86,11,2],[87,11,12],[88,5,2],[88,6,4],[91,17,4],[93,13,3],[95,0,8],[95,2,4],[94,3,5],[95,3,1],[95,4,5],[94,5,2],[95,7,12],[95,9,23],[95,10,7],[94,15,9],[94,16,9],[96,1,4],[109,12,4],[109,13,9],[109,14,34],[109,15,5],[110,6,1],[110,10,4],[110,11,21],[110,12,36],[110,13,11],[110,14,8],[110,15,4],[113,3,12],[113,4,10],[113,5,2],[113,6,5],[113,7,7],[113,8,8],[113,10,24],[113,11,2],[113,12,13],[113,14,8]],"Z2-AB2":[[113,14,4],[113,15,14],[113,16,13],[113,17,29],[114,0,17],[115,0,11],[114,1,4],[115,1,9],[114,2,8],[115,2,13],[114,3,18],[115,3,20],[114,4,20],[115,4,24],[114,5,9],[114,6,16],[115,6,2],[114,7,22],[115,7,11],[114,8,30],[114,9,17],[115,9,15],[114,10,27],[115,10,18],[114,11,10]],"Z2-AB3":[[114,11,3],[114,12,26],[115,12,21],[114,13,21],[115,13,10],[114,14,18],[114,15,23],[115,15,19],[114,16,19],[114,17,25],[115,17,8],[116,0,9],[117,0,9],[116,1,11],[117,1,4],[116,2,21],[116,3,14],[116,5,10],[116,6,4],[116,7,32],[117,7,32],[116,8,26],[117,8,1],[116,9,15]],"Z2-AB4":[[116,9,4],[117,9,19],[116,10,28],[117,10,26],[116,11,6],[116,12,41],[117,12,15],[116,13,15],[117,13,11],[116,14,23],[116,15,22],[117,15,17],[116,16,30],[117,16,4],[116,17,37],[118,0,13],[118,4,4],[118,12,2],[118,13,4],[118,14,24],[118,15,26],[118,16,11]],"Z2-CD1":[[81,11,10],[81,12,12],[81,14,7],[83,4,1],[83,7,5],[83,8,6],[83,9,9],[83,10,11],[83,11,21],[83,14,13],[82,15,1],[83,15,8],[83,16,3],[85,0,3],[85,2,9],[85,4,2],[85,5,1],[84,6,2],[85,6,8],[84,9,1],[85,9,3],[85,10,10],[85,11,6],[84,12,3],[84,13,8],[87,5,1],[87,6,13],[86,7,6],[86,8,6],[87,8,9],[86,9,2],[86,10,3],[87,10,21],[87,11,10],[86,12,1],[86,13,3],[88,1,1],[88,5,2],[88,6,1],[91,17,1],[93,13,3],[95,0,15],[95,2,4],[94,3,5],[95,4,3],[94,5,2],[95,7,16],[95,9,33],[95,10,20],[94,15,8],[94,16,17],[109,12,6]],"Z2-CD2":[[109,12,2],[109,13,12],[109,14,44],[109,15,8],[110,10,2],[110,11,25],[110,12,53],[110,13,10],[110,14,20],[110,15,2],[113,3,12],[113,4,8],[113,6,2],[113,7,3],[113,8,7],[113,10,18],[113,11,2],[113,12,10],[113,14,10],[113,15,10],[113,16,10],[113,17,22],[114,0,14],[115,0,8],[114,1,2],[115,1,8],[114,2,7],[115,2,11],[114,3,14],[115,3,16],[114,4,4]],"Z2-CD3":[[114,4,11],[115,4,17],[114,5,6],[114,6,8],[115,6,1],[114,7,13],[115,7,9],[114,8,22],[114,9,14],[115,9,6],[114,10,21],[115,10,18],[114,11,10],[114,12,20],[115,12,18],[114,13,11],[115,13,5],[114,14,18],[114,15,18],[115,15,16],[114,16,14],[114,17,22],[115,17,7],[116,0,8],[117,0,6],[116,1,14],[117,1,4],[116,2,16],[116,3,8],[116,5,6],[116,6,8],[116,7,1]],"Z2-CD4":[[116,7,21],[117,7,23],[116,8,20],[116,9,14],[117,9,17],[116,10,22],[117,10,20],[116,11,8],[116,12,24],[117,12,11],[116,13,11],[117,13,9],[116,14,19],[116,15,16],[117,15,15],[116,16,23],[117,16,2],[116,17,28],[118,0,10],[118,4,6],[118,12,2],[118,13,4],[118,14,18],[118,15,23],[118,16,9]],"Z2-E1":[[87,5,1],[87,6,5],[87,8,5],[87,10,2],[87,11,8],[95,0,6],[94,3,3],[95,4,6],[95,7,6],[95,9,12],[95,10,6],[94,15,6],[94,16,3],[109,13,3],[109,14,21],[109,15,2],[110,11,12],[110,12,21],[110,13,3],[110,14,5],[110,15,2],[113,3,4],[113,4,6],[113,5,2],[113,8,6],[113,10,12],[113,12,6],[113,14,8],[113,15,4],[113,16,6],[113,17,12],[114,0,10],[115,0,7],[115,1,2],[114,2,6],[115,2,9],[114,3,7],[115,3,12],[114,4,8],[115,4,6],[114,5,5],[114,6,3],[115,6,1],[114,7,6],[115,7,5],[114,8,14],[114,9,8],[115,9,2],[114,10,8],[115,10,10],[114,11,6],[114,12,12],[115,12,3]],"Z2-E2":[[115,12,9],[114,13,6],[114,14,12],[114,15,12],[115,15,12],[114,16,6],[114,17,16],[115,17,6],[116,0,7],[117,0,3],[116,1,9],[117,1,3],[116,2,10],[116,3,2],[116,6,6],[116,7,14],[117,7,12],[116,8,12],[116,9,10],[117,9,12],[116,10,12],[117,10,10],[116,11,9],[117,11,2],[116,12,9],[117,12,6],[116,13,11],[117,13,6],[116,14,11],[116,15,12],[117,15,16],[116,16,12],[116,17,16],[118,0,6],[118,4,6],[118,13,3],[118,14,12],[118,15,10],[118,16,6]],"Z3-AB1":[[3,23,1],[5,32,1],[5,37,1],[9,28,1],[10,25,3],[10,28,2],[10,29,1],[10,30,1],[14,31,1],[17,30,2],[17,31,1],[18,24,1],[18,25,1],[18,28,1],[20,29,1],[26,27,1],[27,32,1],[29,24,1],[29,26,1],[35,18,1],[34,23,1],[35,40,1],[36,37,1],[39,36,1],[41,21,1],[43,31,1],[44,20,1],[44,33,1],[46,23,1],[50,19,1],[50,36,2],[54,23,3],[57,20,1],[59,30,1],[59,36,1],[59,38,1],[60,22,1],[60,28,1],[63,38,1],[64,23,1],[64,25,1],[65,36,1],[66,20,1],[69,22,8],[69,25,2],[69,34,11],[69,35,4],[70,19,1],[71,20,1],[70,24,12],[70,25,28],[70,27,24],[71,28,4],[71,33,2],[70,34,13],[71,34,3],[70,35,1],[71,35,1],[71,36,9],[70,37,2],[71,37,2],[72,20,1],[73,34,15],[73,35,11],[72,36,3],[73,37,3],[74,31,3],[74,33,6],[75,33,6],[74,34,6],[75,34,8],[74,35,5],[75,35,9],[74,36,24],[75,36,1],[74,37,11],[77,24,3],[76,30,6],[76,34,3],[76,35,3],[77,38,4],[78,20,1],[78,21,26],[78,22,50],[78,23,4]],"Z3-AB2":[[78,23,1],[79,33,4],[79,36,3],[78,37,2],[78,38,28],[79,38,49],[81,19,1],[81,23,53],[81,25,13],[81,27,4],[81,28,7],[81,31,1],[80,34,8],[80,37,22],[80,38,20],[82,18,2],[83,18,1],[83,19,8],[83,21,6],[83,22,21],[82,23,46],[83,23,20],[82,24,39],[82,25,25],[82,26,2],[82,27,2],[82,28,1],[83,28,1]],"Z3-CD1":[[1,33,1],[3,25,1],[2,32,2],[2,33,8],[4,31,1],[5,37,2],[6,25,1],[9,28,2],[9,29,7],[9,31,2],[10,29,1],[15,31,1],[17,19,1],[17,21,3],[17,22,2],[17,23,1],[17,25,2],[17,26,6],[17,28,2],[17,30,3],[17,31,3],[17,32,3],[17,33,1],[17,34,2],[17,35,3],[17,36,2],[18,21,1],[18,25,1],[18,26,1],[18,28,1],[18,29,1],[18,31,1],[18,32,3],[18,33,3],[18,37,1],[21,27,1],[23,18,1],[26,35,1],[28,29,1],[29,31,1],[31,23,1],[30,26,1],[32,20,1],[32,21,1],[32,30,1],[35,24,1],[37,19,2],[41,38,1],[43,27,1],[43,28,3],[43,29,1],[43,32,1],[44,18,1],[44,19,2],[44,20,1],[44,22,1],[48,18,2],[49,18,1],[49,24,1],[48,28,1],[50,20,1],[52,18,1],[53,19,1],[54,28,1],[57,21,1],[57,24,1],[57,25,1],[59,20,2],[59,34,1],[60,25,1],[63,36,1],[66,20,1],[66,29,1],[66,35,2],[66,38,2],[69,20,4],[69,22,7],[69,33,1],[69,34,5],[69,35,3],[69,36,3],[70,18,1],[71,18,1],[71,20,4],[70,24,10],[70,25,23],[70,27,21],[71,28,10],[71,30,2],[70,34,9],[70,35,1],[71,35,4],[71,36,14],[70,37,1],[71,38,1],[72,20,7],[72,21,2],[73,34,17],[73,35,18],[72,36,5],[73,36,2],[73,37,12],[75,30,2],[74,31,1],[74,33,4],[75,33,2],[74,34,2],[75,34,7],[74,35,7],[75,35,8],[74,36,25],[75,36,6],[74,37,15]],"Z3-CD2":[[74,37,7],[75,37,2],[77,20,1],[77,24,3],[76,30,7],[76,33,1],[76,34,4],[76,35,3],[77,38,2],[78,21,40],[78,22,65],[78,23,4],[79,33,6],[79,34,1],[78,37,2],[78,38,20],[79,38,48],[81,20,1],[81,22,7],[81,23,9],[81,25,8],[81,27,2],[80,34,5],[80,36,1],[80,37,19],[80,38,28],[83,18,1],[83,19,12],[83,21,3],[82,22,2],[83,22,12],[83,23,11],[82,24,36],[82,25,14],[83,25,3],[83,32,3]],"Z3-E":[[5,37,1],[9,21,1],[9,28,1],[15,25,1],[17,37,1],[21,18,1],[36,21,1],[45,19,1],[46,20,1],[46,23,1],[53,35,1],[60,29,1],[60,31,1],[60,39,1],[61,39,1],[63,33,1],[63,37,1],[64,23,1],[64,31,1],[69,22,6],[69,34,2],[71,20,1],[70,24,6],[70,25,12],[70,27,12],[71,28,3],[70,29,3],[70,34,6],[71,34,1],[70,35,1],[71,35,2],[71,36,6],[70,37,1],[72,20,1],[73,34,10],[73,35,6],[72,36,2],[73,37,3],[74,31,3],[74,33,6],[75,33,2],[74,34,2],[75,34,12],[74,35,3],[75,35,9],[74,36,14],[75,36,2],[74,37,9],[76,30,6],[76,34,4],[76,35,3],[77,38,3],[78,21,12],[78,22,30],[79,33,2],[79,34,1],[78,38,14],[79,38,16],[81,23,22],[81,24,3],[81,25,5],[81,30,4],[80,34,3],[80,37,14],[80,38,9],[83,19,6],[83,21,1],[83,22,9],[82,23,18],[83,23,9],[82,24,26],[82,25,7],[82,31,3]],"Z4-AB1":[[85,18,8],[85,19,4],[85,20,9],[84,21,6],[85,21,28],[84,22,28],[85,22,14],[84,23,55],[85,23,8],[84,25,2],[85,25,11],[85,26,3],[85,28,16],[85,29,6],[85,30,8],[84,34,6],[84,35,23],[85,35,8],[85,36,3],[84,37,13],[85,38,12],[87,19,2],[86,22,6],[87,22,1],[86,23,4],[87,24,1],[87,26,1],[87,27,21],[86,28,12],[87,28,33],[86,29,1],[87,29,10],[86,30,10],[87,30,13],[87,31,13],[87,32,7],[87,34,16],[87,35,14],[86,36,8],[87,37,11],[87,38,13],[88,20,8],[89,21,4],[89,22,5],[89,23,2],[89,24,2],[89,25,5],[88,26,6]],"Z4-AB2":[[88,26,31],[88,27,73],[89,27,20],[88,28,42],[89,28,24],[88,29,34],[89,29,4],[88,30,25],[89,32,1],[89,33,20],[88,34,1],[89,34,21],[88,35,6],[88,37,2],[88,38,4],[90,26,7],[90,29,13],[90,35,12],[93,22,13],[93,28,12],[93,29,18],[93,30,19],[93,31,23],[94,22,19],[94,30,10],[94,31,44],[95,35,1]],"Z4-CD1":[[85,18,2],[85,19,2],[85,20,15],[84,21,3],[85,21,22],[84,22,17],[85,22,9],[84,23,26],[85,23,7],[85,25,13],[85,26,2],[85,28,16],[85,29,8],[84,30,1],[85,30,4],[84,34,8],[84,35,26],[85,35,8],[85,36,5],[84,37,22],[85,38,17],[87,19,2],[86,22,7],[86,23,2],[86,26,1],[86,27,2],[87,27,1],[86,28,17],[87,28,15],[86,29,1],[87,29,8],[86,30,11],[87,30,18],[87,31,6],[87,32,10],[87,34,13],[87,35,6],[86,36,12],[87,37,8],[87,38,12],[88,20,4],[89,21,2],[89,22,7],[89,23,6],[88,24,1],[89,24,2],[89,25,3],[88,26,16],[88,27,45]],"Z4-CD2":[[88,27,3],[89,27,56],[88,28,19],[89,28,18],[88,29,25],[89,29,14],[88,30,34],[89,32,1],[89,33,24],[89,34,31],[88,35,1],[88,37,2],[88,38,2],[90,26,7],[90,29,7],[90,35,16],[93,22,12],[93,24,2],[93,25,1],[93,26,4],[93,28,12],[93,29,18],[93,30,18],[93,31,24],[94,18,1],[94,22,20],[94,29,9],[94,30,40],[94,31,50],[95,35,1]],"Z4-E1":[[85,18,4],[85,19,3],[85,20,6],[84,21,1],[85,21,14],[84,22,10],[85,22,6],[84,23,19],[85,23,2],[84,24,2],[85,25,6],[85,28,6],[85,29,2],[85,30,4],[84,34,3],[84,35,12],[85,35,8],[85,36,3],[84,37,6],[85,38,9],[86,22,5],[86,23,1],[86,27,2],[87,27,5],[86,28,13],[87,28,9],[87,29,6],[86,30,9],[87,30,6],[87,31,7],[87,32,3],[86,33,3],[87,34,6],[87,35,9],[86,36,6],[87,37,7],[87,38,6],[88,20,6],[88,21,2],[89,21,3],[88,22,1],[89,22,3],[89,25,3],[88,26,4]],"Z4-E2":[[88,26,11],[88,27,30],[89,27,6],[88,28,9],[89,28,12],[88,29,18],[88,30,20],[89,33,9],[88,34,1],[89,34,12],[88,35,4],[88,36,2],[88,38,3],[90,29,15],[90,35,6],[93,22,4],[93,24,1],[93,26,2],[93,28,9],[93,29,15],[93,30,12],[93,31,18],[94,22,4],[94,30,9],[94,31,18]],"Z5-AB":[[97,31,2],[97,32,14],[97,33,6],[97,34,2],[98,31,7],[98,32,1],[98,37,18],[98,38,24]],"Z5-CD":[[97,32,16],[97,33,4],[97,34,2],[98,31,9],[98,32,1],[98,37,24],[98,38,32]],"Z5-E":[[97,32,12],[97,33,4],[97,34,2],[98,31,5],[98,32,1],[98,37,9],[98,38,12]]};
+  Object.keys(PARADAS_DIN).forEach(function (k) { PARADAS[k] = PARADAS_DIN[k]; });
+  function rAisleX(n) { return 30 + 2 * Math.floor(n / 2) - 0.5; }
+  function rPosY(p) {
+    if (p <= 17) { if (p === 0) return 29.3; if (p <= 3) return 2 + (p - 0.5) * 1.5; return 9 + (p - 3.5) * (20 / 14); }
+    p = Math.min(p, 36); if (p <= 24) return 31 + (p - 17.5) * (12 / 7); return 45.5 + (p - 24.5) * (12.5 / 12);
+  }
+  var R_CRUCES = [7.75, 30, 44.25], R_SALIDA = [26, 30];
+  function rTrazar(st) {
+    var x = R_SALIDA[0], y = R_SALIDA[1], pts = [[x, y]];
+    function ir(tx, ty) {
+      if (Math.abs(tx - x) < 0.01) pts.push([tx, ty]);
+      else { var mejor = R_CRUCES[0], v = 1e9; R_CRUCES.forEach(function (c) { var w = Math.abs(y - c) + Math.abs(ty - c); if (w < v) { v = w; mejor = c; } }); pts.push([x, mejor], [tx, mejor], [tx, ty]); }
+      x = tx; y = ty;
+    }
+    st.forEach(function (s) { ir(rAisleX(s[0]), rPosY(s[1])); });
+    ir(R_SALIDA[0], R_SALIDA[1]);
+    return pts;
+  }
+  function dibujarLote(svgEl, q, b) {
+    while (svgEl.firstChild) svgEl.removeChild(svgEl.firstChild);
+    var X0 = 40, SX = 5.4, Y0 = 8, SY = 4.4;
+    function mx(m) { return X0 + m * SX; } function my(m) { return Y0 + m * SY; }
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; svgEl.appendChild(n); return n; }
+    e('rect', { x: mx(0), y: my(0), width: 176 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 3 });
+    e('rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+    e('text', { x: mx(13), y: my(31), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 22, 'font-weight': 700, fill: 'var(--ink)' }, 'SORTER');
+    Object.keys(ZONA_GEO).forEach(function (z) {
+      var g = ZONA_GEO[z], y0 = g[0] === 'D' ? 31 : 2, y1 = g[0] === 'I' ? 29 : 58;
+      var xa = rAisleX(g[1]) - 1, xb = rAisleX(g[2]) + 1;
+      e('rect', { x: mx(xa), y: my(y0), width: (xb - xa) * SX, height: (y1 - y0) * SY, fill: COLZ[z], opacity: z === b.l[1] ? .22 : .06 });
+    });
+    R_CRUCES.forEach(function (c) { e('line', { x1: mx(26), y1: my(c), x2: mx(170), y2: my(c), stroke: 'var(--muted)', 'stroke-width': 1.5, 'stroke-dasharray': '6 6', opacity: .5 }); });
+    var st = PARADAS[b.l[0]] || [];
+    var ajeno = q.zona >= 0 && b.l[1] !== ZONAS[q.zona];
+    e('polyline', { points: rTrazar(st).map(function (pt) { return mx(pt[0]) + ',' + my(pt[1]); }).join(' '), fill: 'none', stroke: COLZ[b.l[1]], 'stroke-width': 4, 'stroke-linejoin': 'round', 'stroke-dasharray': ajeno ? '10 6' : '' });
+    st.forEach(function (s) { e('circle', { cx: mx(rAisleX(s[0])), cy: my(rPosY(s[1])), r: Math.min(10, 3 + Math.sqrt(s[2]) * 1.1), fill: COLZ[b.l[1]] }); });
+    e('circle', { cx: mx(R_SALIDA[0]), cy: my(R_SALIDA[1]), r: 9, fill: 'var(--accent)', stroke: 'var(--ink)', 'stroke-width': 2 });
+  }
+  var ULTIMO = null;
+  function abrirVisor(qi, bi) {
+    var q = ULTIMO.pk[qi], b = q.bloques[bi];
+    dibujarLote(document.getElementById('visorSvg'), q, b);
+    var aj = q.zona >= 0 && b.l[1] !== ZONAS[q.zona];
+    document.getElementById('visorTitulo').textContent = q.nombre + ' · lote ' + (bi + 1) + ' · ' + b.l[0] + (aj ? ' (ayuda)' : '') + ' · ' + hm(b.ini) + '–' + hm(b.fin);
+    var cajas = Object.keys(b.l[8]).sort().map(function (o) { return 'U' + (LETRAS.indexOf(o) + 1) + ': ' + b.l[8][o] + ' uds'; }).join(' · ');
+    document.getElementById('visorInfo').textContent = 'Lineales ' + b.l[7] + ' · ' + b.l[3] + ' uds · ' + b.l[4] + ' lecturas · ' + b.l[5] + ' paradas · unos ' + b.l[6] + ' m ida y vuelta · cajas: ' + cajas + '. Cada punto es una parada (más grande, más prendas).';
+    document.getElementById('visor').hidden = false;
+    document.getElementById('visorCerrar').focus();
+  }
+  function cerrarVisor() { document.getElementById('visor').hidden = true; }
+  document.getElementById('visorCerrar').addEventListener('click', cerrarVisor);
+  document.getElementById('visor').addEventListener('click', function (ev) { if (ev.target.id === 'visor') cerrarVisor(); });
+  document.addEventListener('keydown', function (ev) { if (ev.key === 'Escape') cerrarVisor(); });
+  document.getElementById('itinerarios').addEventListener('click', function (ev) { var f = ev.target.closest('.lote-mini'); if (f) abrirVisor(Number(f.dataset.pk), Number(f.dataset.b)); });
+  document.getElementById('itinerarios').addEventListener('keydown', function (ev) { if (ev.key !== 'Enter' && ev.key !== ' ') return; var f = ev.target.closest('.lote-mini'); if (f) { ev.preventDefault(); abrirVisor(Number(f.dataset.pk), Number(f.dataset.b)); } });
+  function itinerarios(r) {
+    var html = '';
+    ULTIMO = r;
+    r.pk.forEach(function (q, qi) {
+      var km = 0, uds = 0;
+      var filas = q.bloques.map(function (b, bi) {
+        km += b.l[6]; uds += b.l[3];
+        var cajas = Object.keys(b.l[8]).sort().map(function (o) { return 'U' + (LETRAS.indexOf(o) + 1) + ': ' + b.l[8][o]; }).join(' · ');
+        var ajeno = q.zona >= 0 && b.l[1] !== ZONAS[q.zona] ? ' (ayuda)' : '';
+        return '<tr><td class="m"><b>' + (bi + 1) + '</b> ' + hm(b.ini) + '–' + hm(b.fin) + '</td><td class="m" style="border-left:4px solid ' + COLZ[b.l[1]] + '">' + b.l[0] + ajeno + '</td><td class="m">' + b.l[7] + '</td><td class="r">' + b.l[3] + '</td><td class="m">' + cajas + '</td></tr>';
+      }).join('');
+      html += '<div class="itin"><h3>' + q.nombre + (q.zona >= 0 && q.zona < 5 ? ' · ' + ZONAS[q.zona] : '') + '<span>' + q.bloques.length + ' lotes · ' + fmt(uds) + ' uds · ' + (km / 1000).toFixed(1).replace('.', ',') + ' km · acaba ' + (q.bloques.length ? hm(q.bloques[q.bloques.length - 1].fin) : '—') + '</span></h3>' +
+        '<div class="lotes-mini">' + q.bloques.map(function (b, bi) { var aj = q.zona >= 0 && b.l[1] !== ZONAS[q.zona]; return '<figure class="lote-mini" tabindex="0" data-pk="' + qi + '" data-b="' + bi + '"><figcaption><b>' + (bi + 1) + '</b> ' + b.l[0] + (aj ? ' · ayuda' : '') + '<span>' + hm(b.ini) + '–' + hm(b.fin) + '</span></figcaption><svg class="ruta-mini" viewBox="0 0 1000 280" role="img" aria-label="Ruta del lote ' + b.l[0] + '"></svg></figure>'; }).join('') + '</div>' +
+        '<table><thead><tr><th>Hora</th><th>Lote</th><th>Lineales</th><th class="r">Uds</th><th>Cajas</th></tr></thead><tbody>' + filas + '</tbody></table></div>';
+    });
+    document.getElementById('itinerarios').innerHTML = html;
+    var svgs = document.querySelectorAll('#itinerarios .ruta-mini');
+    var k = 0;
+    r.pk.forEach(function (q) { q.bloques.forEach(function (b) { if (svgs[k]) dibujarLote(svgs[k], q, b); k++; }); });
+  }
+  var estado = { p: 5, m: 'ayuda', s: 200, u: 225, z: 'din' };
+  var svg = document.getElementById('gantt');
+  function pintar() {
+    aplicarReparto();
+    tablasZonas();
+    dibujarMapaZonas();
+    U_RATE = estado.u;
+    document.getElementById('hipoPK').textContent = estado.s + ' u/h';
+    document.getElementById('oPKRate').textContent = estado.s + ' u/h';
+    document.getElementById('cPKRate').value = estado.s;
+    document.getElementById('hipoU').textContent = estado.u + ' u/h';
+    document.getElementById('oURate').textContent = estado.u + ' u/h';
+    document.getElementById('cURate').value = estado.u;
+    var r = simular(estado.p, estado.m, estado.s);
+    dibujar(svg, r);
+    document.getElementById('kpis').innerHTML = kpis(r);
+    var tu = '';
+    r.us.forEach(function (u, i) {
+      tu += '<tr><td><span class="tag t' + u.o + '">' + u.o + '</span> U' + (i + 1) + '</td><td class="r">' + fmt(u.a6) + '</td><td class="r">' + hm(u.ultimo) + '</td><td class="r">' + Math.round(u.espera * 60) + ' min</td><td class="r">' + hm(u.fin) + '</td></tr>';
+    });
+    document.getElementById('tU').innerHTML = tu;
+    itinerarios(r);
+    document.getElementById('escenarioRuta').textContent = 'Itinerarios del escenario: ' + estado.p + ' pickers, zonas ' + (estado.z === 'din' ? 'dinámicas' : 'fijas') + (estado.m === 'fija' ? ' sin ayuda' : ' con ayuda') + ', ' + estado.s + ' u/h por picker, ' + estado.u + ' u/h en cada U. Los km son los de cada lote (ida y vuelta al SORTER) sobre el plano simplificado.';
+    document.getElementById('escenario').textContent = 'Escenario: ' + estado.p + ' pickers, zonas ' + (estado.z === 'din' ? 'dinámicas' : 'fijas') + (estado.m === 'fija' ? ' sin ayuda' : ' con ayuda') + ', ' + estado.s + ' u/h por picker, ' + estado.u + ' u/h por persona en cada U.';
+    document.getElementById('aviso').textContent =estado.p === 4 ? 'Con 4 pickers, Jordi lleva la ' + ZONAS[3] + ' y la ' + ZONAS[4] + '.' : (estado.p === 6 ? 'Con 6 pickers, la sexta persona no tiene zona: ayuda siempre a la zona más cargada.' : '');
+    [['cPickers', estado.p], ['cModo', estado.m], ['cReparto', estado.z]].forEach(function (c) {
+      Array.prototype.forEach.call(document.getElementById(c[0]).children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v) === String(c[1]) ? 'true' : 'false'); });
+    });
+    comparativa();
+  }
+  function enlazar(id, clave, num) {
+    document.getElementById(id).addEventListener('click', function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      estado[clave] = num ? Number(b.dataset.v) : b.dataset.v;
+      if (estado.p === 6 && estado.m === 'fija') estado.m = 'ayuda';
+      pintar();
+    });
+  }
+  enlazar('cPickers', 'p', true); enlazar('cModo', 'm', false); enlazar('cReparto', 'z', false);
+  document.getElementById('cPKRate').addEventListener('input', function (ev) { estado.s = Number(ev.target.value); pintar(); });
+  document.getElementById('cURate').addEventListener('input', function (ev) { estado.u = Number(ev.target.value); pintar(); });
+
+  // ---- comparativa (se recalcula con las uds por hora de la U)
+  function comparativa() {
+  var comp = '', filas = [], PK = estado.s;
+  [[4, 'ayuda'], [5, 'fija'], [5, 'ayuda'], [6, 'ayuda']].forEach(function (c) {
+    var r = simular(c[0], c[1], PK); filas.push({ p: c[0], m: c[1], r: r });
+    var ok = r.finU <= 11 + 1e-9;
+    comp += '<tr><td>' + c[0] + '</td><td>' + (estado.z === 'din' ? 'Dinámicas' : 'Fijas') + (c[1] === 'fija' ? ', sin ayuda' : ', con ayuda') + '</td><td>' + PK + ' u/h</td><td class="r">' + (r.hPick).toFixed(1).replace('.', ',') + ' h</td><td class="r">' + hm(r.finPicking) + '</td><td class="r">' + hm(r.finU) + '</td><td><span class="estado ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'Sí' : 'No') + '</span></td></tr>';
+  });
+  document.getElementById('tComp').innerHTML = comp;
+  function buscar(p, m) { return filas.filter(function (f) { return f.p === p && f.m === m; })[0].r; }
+  var f5 = buscar(5, 'fija'), a5 = buscar(5, 'ayuda'), a6 = buscar(6, 'ayuda'), a4 = buscar(4, 'ayuda');
+  var hU = 10196 / (5 * U_RATE), hP = 10196 / PK;
+  var pkPara830 = Math.ceil(10196 / (5 * (8.5 - INICIO)));
+  var conc = [
+    'Con <b>' + U_RATE + ' u/h por persona</b>, las 5 U necesitan <b>' + hU.toFixed(1).replace('.', ',') + ' h</b> para leer las 10.196 uds: aunque el picking fuera instantáneo, las oleadas no acabarían antes de las <b>' + hm(6 + hU) + '</b>. Para acabar a las 11:00 harían falta unas ' + Math.ceil(10196 / 5 / 5) + ' u/h por U o ' + Math.ceil(10196 / 5 / U_RATE) + ' U a este ritmo.',
+    'Con <b>' + PK + ' u/h por picker</b> el picking son <b>' + hP.toFixed(1).replace('.', ',') + ' h</b> de trabajo. Con 5 pickers que se ayudan acaba a las <b>' + hm(a5.finPicking) + '</b>; para acabarlo a las 8:30 harían falta unas ' + pkPara830 + ' u/h por picker o ' + Math.ceil(hP / (8.5 - INICIO)) + ' pickers a este ritmo.',
+    (function () { var ts = f5.pk.map(function (q) { return q.t; }); var mx = Math.max.apply(null, ts), mn = Math.min.apply(null, ts); var i1 = ts.indexOf(mx), i2 = ts.indexOf(mn);
+      return 'Sin ayuda entre zonas, ' + f5.pk[i1].nombre + ' (' + ZONAS[i1] + ') acaba a las ' + hm(mx) + ' y ' + f5.pk[i2].nombre + ' (' + ZONAS[i2] + ') a las ' + hm(mn) + ': ' + (estado.z === 'din' ? 'con zonas dinámicas la diferencia es pequeña porque todos tienen el mismo trabajo.' : 'con zonas fijas la diferencia es enorme porque las zonas no pesan igual.') + ' Con ayuda, el picking acaba a las ' + hm(a5.finPicking) + '.'; })(),
+    'Lo que limita el final es lo más lento de los dos: ' + (hm(a5.finPicking) > hm(6 + hU) ? 'ahora mismo el picking' : 'ahora mismo la lectura en las U') + '. Con 5 pickers y ayuda las oleadas acaban a las <b>' + hm(a5.finU) + '</b>; con 6 pickers, a las ' + hm(a6.finU) + '; con 4, a las ' + hm(a4.finU) + '.',
+    'Con 2 cajas cada hueco se visita una vez por pareja de oleadas: 3.264 lecturas (con 1 caja eran 4.462 y sin separar por oleada, 1.681). Un ritmo realista de u/h depende mucho de eso: hay que medirlo en la prueba.'
+  ];
+  document.getElementById('conclusiones').innerHTML = conc.map(function (c) { return '<li>' + c + '</li>'; }).join('');
+  document.getElementById('compIntro').textContent = 'Mismo día de 10.000 u. Picking desde las 3:00 a ' + PK + ' u/h por picker y oleadas desde las 6:00 con 5 U a ' + U_RATE + ' u/h por persona.';
+  }
+  pintar();
+})();
+</script>
+</body></html>

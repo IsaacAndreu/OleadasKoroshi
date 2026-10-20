@@ -1,0 +1,490 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Prueba oleada 21-10</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna de lectura de ~980px; el mapa de la nave es la pieza central, el resto acompaña en bandas sobrias */
+:root {
+  --bg: #f3f4f2;
+  --panel: #ffffff;
+  --ink: #1d2327;
+  --muted: #5d676d;
+  --line: #d5d9d6;
+  --floor: #e6e8e4;
+  --accent: #e0a100;          /* amarillo de señalización de nave */
+  --accent-ink: #6b4d00;
+  --z1: #2a62b8; --z2: #2e9a52;
+  --z3: #c8372d; --z4: #e8701a; --z5: #7a4cc2;
+  --zx: #8b9297;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: .01em; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow {
+  font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+section { display: grid; gap: 20px; min-width: 0; }
+
+/* Cabecera */
+header { display: grid; gap: 16px; }
+.tape {
+  height: 10px; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px);
+  max-width: 220px;
+}
+.lead { font-size: 1.15rem; color: var(--ink); }
+.lead strong { background: linear-gradient(transparent 62%, color-mix(in srgb, var(--accent) 45%, transparent) 0); }
+
+/* Antes / después */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.case { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.case .tag { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+.case.hoy .tag { color: var(--muted); }
+.case.nuevo { border-color: var(--accent); }
+.case.nuevo .tag { color: var(--accent-ink); }
+.case ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mini { width: 100%; height: auto; display: block; }
+
+/* Mapa */
+.map-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.map-box svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.legend div { display: grid; grid-template-columns: 14px 1fr; gap: 4px 10px; align-items: start; font-size: .9rem; }
+.legend i { width: 14px; height: 14px; border-radius: 2px; margin-top: 4px; }
+.legend b { font-family: var(--f-display); font-size: 1.1rem; }
+.legend span { grid-column: 2; color: var(--muted); font-size: .82rem; }
+
+/* Flujo */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; counter-reset: paso; }
+.step { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 16px 16px; display: grid; gap: 8px; align-content: start; }
+.step::before {
+  counter-increment: paso; content: counter(paso);
+  font-family: var(--f-display); font-weight: 700; font-size: 1.1rem;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #1d2327;
+}
+.step p { font-size: .92rem; color: var(--muted); }
+.step .where { font-family: var(--f-mono); font-size: .78rem; color: var(--ink); }
+
+/* Ejemplo real */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.bars { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 7px; overflow-x: auto; }
+.bar-row { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; align-items: center; font-size: .85rem; min-width: 420px; }
+.bar-row .n { font-family: var(--f-mono); font-weight: 500; }
+.bar-row .t { font-family: var(--f-mono); color: var(--muted); font-size: .78rem; }
+.track { position: relative; height: 18px; background: var(--floor); border-radius: 2px; }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+.track .max { position: absolute; top: -4px; bottom: -4px; right: 0; border-right: 2px dashed var(--ink); }
+.bar-row .u { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bars .axis { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; font-family: var(--f-mono); font-size: .72rem; color: var(--muted); min-width: 420px; }
+.bars .axis span:nth-child(3) { display: flex; justify-content: space-between; }
+.note { font-size: .88rem; color: var(--muted); }
+
+/* Escenario 10k */
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+
+/* Estado */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.st { padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; gap: 6px; align-content: start; }
+.pill { justify-self: start; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.ok { color: #2e7d4f; } .next { color: var(--accent-ink); } .later { color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #6cc495; } }
+:root[data-theme="dark"] .ok { color: #6cc495; }
+.st p { font-size: .9rem; color: var(--muted); }
+
+/* Recorrido */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button {
+  font-family: var(--f-mono); font-size: .8rem; padding: 5px 9px; border-radius: 4px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center;
+}
+.chips button i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.chips button[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.mini-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 6px; display: grid; gap: 4px; cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.mini-card:hover, .mini-card:focus-visible { border-color: var(--ink); outline: none; }
+.mini-card .h { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: .78rem; }
+.mini-card .h b { font-weight: 500; white-space: nowrap; }
+.mini-card .h span { text-align: right; }
+.mini-card .h span { color: var(--muted); }
+.mini-card svg { width: 100%; height: auto; display: block; }
+/* Impresión / PDF: A4, sin cortes dentro de tarjetas, mapas ni barras */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11.5pt; }
+  .wrap { max-width: none; padding-left: 0; padding-right: 0; padding-block: 0; gap: 26px; }
+  section { gap: 14px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 30pt; }
+  h2 { font-size: 20pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  .chips { display: none; }
+  .map-box, .bars { overflow: visible; }
+  .map-box svg { min-width: 0; }
+  .bar-row, .bars .axis { min-width: 0; grid-template-columns: 52px 78px 1fr 40px; }
+  .bars { gap: 4px; padding: 12px 14px; }
+  .track { height: 13px; }
+  .case, .step, .kpi, .kpis, .bars, .map-box, .legend, .mini-card, .role, .st, .callout,
+  .preguntas li, .riesgos tr, .scen, .compare, .flow, .same { break-inside: avoid; }
+  .minis-titulo { break-before: page; }
+  .compare { grid-template-columns: 1fr 1fr; }
+  .flow { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { padding: 12px 10px; }
+  .step p { font-size: 9pt; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 22pt; }
+  .scen { grid-template-columns: 1fr 1fr; }
+  .minis { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .mini-card { padding: 5px 6px 4px; display: block; }
+  .mini-card svg { aspect-ratio: 960 / 340; margin-top: 3px; }
+  .map-box:has(#ruta) { padding: 8px; }
+  .map-box:has(#ruta) svg { width: 100%; }
+  .mini-card .h { font-size: 7pt; }
+  .roles { grid-template-columns: repeat(3, 1fr); }
+  .motivos { grid-template-columns: repeat(3, 1fr); }
+  .tlargos, .motivos, .largos .callout { break-inside: avoid; }
+  .largos h3 { break-after: avoid; }
+  .status { grid-template-columns: repeat(3, 1fr); }
+  .lead { font-size: 12.5pt; }
+}
+
+/* Recorridos largos */
+.largos { display: grid; gap: 14px; }
+.tlargos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.tlargos tr.alto td { font-weight: 600; }
+.motivos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.motivos div { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 6px; align-content: start; }
+.motivos h4 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; }
+.motivos p { font-size: .9rem; color: var(--muted); }
+
+/* Qué cambia, riesgos, preguntas */
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.role { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.role p { font-size: .92rem; }
+.role p b { display: block; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.role .antes { color: var(--muted); }
+.role .despues b { color: var(--accent-ink); }
+.same { display: grid; gap: 8px; }
+.same ul, .pide { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.riesgos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.riesgos td { vertical-align: top; }
+.riesgos td:first-child { font-weight: 500; width: 36%; }
+.preguntas { margin: 0; padding: 0; list-style: none; counter-reset: preg; display: grid; gap: 12px; }
+.preguntas li { counter-increment: preg; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; background: var(--panel); border: 1px dashed var(--accent); border-radius: 6px; padding: 16px; }
+.preguntas li::before { content: counter(preg); grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 1.8rem; line-height: 1; color: var(--accent-ink); }
+.preguntas p { font-size: .92rem; color: var(--muted); }
+</style>
+
+<style>
+.tabla { width: 100%; border-collapse: collapse; font-size: .9rem; }
+.tabla th, .tabla td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.tabla th { font-size: .76rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.tabla .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabla td.m { font-family: var(--f-mono); font-size: .84rem; }
+.tabla tfoot td { font-weight: 600; border-top: 2px solid var(--ink); }
+.tabla-wrap { overflow-x: auto; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+.gantt { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 14px; display: grid; gap: 5px; }
+.gfila { display: grid; grid-template-columns: 120px 1fr 54px; align-items: center; gap: 8px; font-family: var(--f-mono); font-size: .76rem; }
+.gfila b { text-align: right; font-weight: 500; }
+.gpista { position: relative; height: 18px; background: var(--floor); border-radius: 2px; }
+.gbar { position: absolute; top: 2px; bottom: 2px; border-radius: 2px; }
+.geje { display: grid; grid-template-columns: 120px 1fr 54px; gap: 8px; font-family: var(--f-mono); font-size: .7rem; color: var(--muted); }
+.geje div { position: relative; height: 14px; }
+.geje span { position: absolute; transform: translateX(-50%); }
+.gsep { height: 1px; background: var(--line); margin: 6px 0; }
+.lista { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.aviso { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 6px; padding: 14px 16px; display: grid; gap: 8px; }
+.aviso p { margin: 0; }
+.supuestos { font-size: .86rem; color: var(--muted); columns: 2 260px; gap: 24px; margin: 0; padding-left: 18px; }
+.supuestos li { margin-bottom: 4px; break-inside: avoid; }
+</style>
+<div class="wrap">
+<header>
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Prueba de oleada · miércoles 21/10/2026</span>
+  <h1>Cómo sería la oleada de 2.000 u de mañana</h1>
+  <p class="lead">Simulación con las <strong>OUT de tienda reales de hoy</strong>, cogidas como lo hará la acción planificada a las 3:00: por orden de llegada, sin pedidos de material (menos de 20 u), hasta 2.000 u y 20 tiendas. Lo reservado se reparte en <strong>5 zonas cortadas por tiempo</strong>, una por picker, para que todos empiecen a las 6:00 y acaben a la vez.</p>
+</header>
+
+<section>
+  <div class="kpis">
+    <div class="kpi"><span class="v" id="kTiendas">–</span><span class="l">tiendas en la oleada</span></div>
+    <div class="kpi"><span class="v" id="kUds">–</span><span class="l">unidades</span></div>
+    <div class="kpi"><span class="v" id="kCajas">–</span><span class="l">cajas de 60×40×40 previstas</span></div>
+    <div class="kpi"><span class="v" id="kFin">–</span><span class="l">acaban los 5 pickers</span></div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">1 · Las tiendas</span>
+  <h2>Qué entra en la oleada</h2>
+  <div class="dos">
+    <div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>OUT</th><th>Tienda</th><th class="r">Uds</th><th class="r">Litros</th><th class="r">Cajas</th></tr></thead>
+      <tbody id="tTiendas"></tbody><tfoot id="fTiendas"></tfoot>
+    </table></div>
+    <div>
+      <p>Las cajas son las de envío a tienda (60×40×40). Se calculan con <b>litros ÷ 75</b>: con el día de 10.000 u esta regla acertó las cajas reales con un error de ±1 caja por tienda.</p>
+      <p><b>Se saltan por ser pedidos de material</b> (menos de 20 u):</p>
+      <table class="tabla"><tbody id="tSaltadas"></tbody></table>
+    </div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">2 · Las zonas</span>
+  <h2>Qué lineales hace cada picker</h2>
+  <p>Cada lineal, del color de la zona que lo recoge. Las zonas se cortan en orden de recorrido para que todas tengan el mismo tiempo: lecturas de hueco, prendas y los viajes de vuelta a la U según el volumen y lo lejos que están. Por eso las zonas del fondo tienen menos prendas: son chaquetas, que llenan antes los baúles, y están más lejos.</p>
+  <div class="map-box"><svg id="mapa" viewBox="0 0 1000 440" role="img" aria-label="Lineales de cada zona"></svg></div>
+  <div class="tabla-wrap"><table class="tabla">
+    <thead><tr><th>Zona</th><th>Lineales</th><th class="r">Uds</th><th class="r">Litros</th><th class="r">Lecturas</th><th class="r">Viajes</th><th class="r">Km</th><th class="r">Empieza</th><th class="r">Acaba</th></tr></thead>
+    <tbody id="tZonas"></tbody>
+  </table></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">3 · Los recorridos</span>
+  <h2>Por dónde va cada picker</h2>
+  <div class="chips" id="chips" role="tablist" aria-label="Elegir zona"></div>
+  <div class="map-box"><svg id="ruta" viewBox="0 0 1000 400" role="img" aria-label="Recorrido de la zona"></svg></div>
+  <p class="note" id="rutaInfo"></p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">4 · El día hora a hora</span>
+  <h2>Picking, lectura en la U y packing</h2>
+  <div class="chips" id="lectores" role="tablist" aria-label="Personas leyendo en la U"></div>
+  <div class="gantt" id="gantt"></div>
+  <p class="note">Cada bloque de color es un viaje: sale de la U, recoge en su zona con 2 baúles y vuelve. La U empieza a leer cuando llega el primer baúl. Lectura a 225 u/h por persona y 1 minuto por caja para cerrarla y etiquetarla.</p>
+  <div class="aviso" id="avisoU"></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">5 · Antes y ahora</span>
+  <h2>Por qué cortar las zonas por tiempo</h2>
+  <p>Con el corte anterior (solo lecturas y unidades) la última zona, la del fondo, se llevaba muchas chaquetas y hacía el doble de viajes.</p>
+  <div class="tabla-wrap"><table class="tabla">
+    <thead><tr><th>Zona</th><th>Antes: lineales</th><th class="r">Uds</th><th class="r">Viajes</th><th class="r">Acaba</th><th>Ahora: lineales</th><th class="r">Uds</th><th class="r">Viajes</th><th class="r">Acaba</th></tr></thead>
+    <tbody id="tComp"></tbody>
+  </table></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">6 · Para mañana</span>
+  <h2>Qué hay que tener preparado</h2>
+  <ul class="lista" id="checklist"></ul>
+</section>
+
+<section>
+  <span class="eyebrow">Cómo se ha calculado</span>
+  <h2>Supuestos</h2>
+  <ul class="supuestos">
+    <li>OUT de PED. TIENDAS creadas hoy 20/10, desde la 19913 (las 10 primeras ya fueron a la prueba de hoy), con sus huecos y unidades reales de Odoo.</li>
+    <li>Volumen por tipo de prenda (JA 8 l, PT 2,2 l…), igual que la acción mientras no se importe el volumen en Odoo; peso 0,145 kg por litro.</li>
+    <li>Carro con 2 baúles grandes de 80×50×33 (132 l), llenos al 78% (103 l) o hasta 15 kg.</li>
+    <li>Andar a 0,8 m/s; 20 s por lectura de hueco; 4 s por prenda; 30 s por baúl dejado en la U.</li>
+    <li>Metros sobre el plano simplificado de la nave (pasillos transversales tras P03, central y tras P24).</li>
+    <li>El ZX (huecos sin lineal) lo hace el primer picker que acaba.</li>
+    <li>No incluye descansos, huecos vacíos ni esperas: la hora real será algo más tarde.</li>
+    <li>El resumen de la acción da unos 30 min menos por zona: su cálculo no cuenta el camino entre huecos, solo la ida y vuelta. El reparto entre zonas es el mismo.</li>
+  </ul>
+</section>
+</div>
+<script>
+(function () {
+  var D = {"ahora":[{"z":"D1","lmin":43,"lmax":69,"uds":437,"litros":2025,"lecturas":205,"est_accion":128,"km":2.2,"viajes":[[6,6.4722,92,202,2,250,48],[6.4722,7.0294,92,202,2,270,62],[7.0294,7.3711,61,204,2,245,31],[7.3711,7.4882,26,196,2,158,3],[7.4882,7.6047,25,194,2,144,4],[7.6047,7.7374,25,194,2,174,5],[7.7374,7.8981,24,192,2,194,9],[7.8981,8.1682,35,199,2,250,23],[8.1682,8.3396,24,192,2,209,10],[8.3396,8.5125,26,193,2,175,12],[8.5125,8.6122,7,56,1,161,5]],"paradas":[[43,1,3],[43,3,1],[43,5,4],[43,8,2],[43,11,1],[43,12,1],[43,14,4],[43,15,2],[43,16,4],[43,17,1],[44,3,2],[45,3,2],[44,5,1],[44,6,1],[44,7,1],[44,9,1],[44,10,1],[45,12,1],[44,14,4],[45,14,1],[44,15,4],[45,15,4],[44,16,2],[44,17,2],[45,17,1],[46,1,4],[46,3,3],[47,4,3],[46,5,1],[46,6,2],[47,6,2],[46,9,5],[46,11,3],[47,11,6],[46,12,6],[46,13,2],[47,13,3],[46,14,4],[47,14,8],[46,15,4],[47,15,2],[46,16,3],[49,1,1],[48,2,2],[49,2,1],[48,3,1],[49,3,2],[49,4,1],[48,5,2],[48,6,2],[49,6,1],[48,7,3],[48,10,1],[48,12,3],[48,13,2],[49,13,1],[48,14,1],[48,15,3],[49,15,1],[48,16,1],[49,16,3],[49,17,4],[50,1,1],[51,1,4],[50,6,1],[51,8,1],[50,9,2],[50,12,4],[51,15,1],[50,16,2],[50,17,1],[52,2,1],[52,5,1],[53,7,1],[53,8,4],[52,10,4],[52,11,1],[53,11,3],[52,12,1],[52,15,2],[52,16,1],[52,17,1],[53,17,1],[55,1,1],[55,3,1],[55,4,1],[54,5,2],[55,5,1],[54,6,3],[55,9,1],[54,10,1],[55,11,1],[55,12,1],[54,13,2],[54,14,3],[54,15,2],[55,15,2],[55,16,8],[56,6,9],[57,6,1],[57,9,3],[57,12,1],[56,13,1],[57,14,1],[58,6,1],[59,6,30],[58,9,2],[59,11,29],[58,13,1],[59,13,22],[58,14,1],[59,14,1],[60,5,1],[60,11,8],[60,13,3],[60,14,3],[60,15,1],[62,2,2],[62,5,2],[62,6,1],[63,6,6],[63,7,2],[62,8,1],[63,13,2],[62,14,3],[63,14,1],[63,16,1],[64,4,1],[64,5,1],[64,7,1],[64,8,1],[65,10,2],[64,12,3],[64,17,2],[67,5,1],[67,7,1],[67,8,3],[67,9,2],[67,10,3],[66,12,3],[67,12,4],[67,15,7],[66,16,3],[67,16,3],[67,17,2],[68,2,4],[69,6,1],[69,7,5],[68,9,1],[69,9,2],[68,10,2],[69,10,3],[68,11,6],[69,11,6],[69,12,2],[68,13,1],[69,13,2],[68,15,2],[69,15,1]]},{"z":"D2","lmin":69,"lmax":87,"uds":365,"litros":1771,"lecturas":207,"est_accion":127,"km":2.7,"viajes":[[6,6.2233,35,193,2,243,15],[6.2233,6.5337,43,199,2,244,29],[6.5337,6.8354,37,195,2,271,27],[6.8354,7.0969,32,195,2,299,19],[7.0969,7.3648,42,202,2,301,18],[7.3648,7.6886,44,195,2,312,27],[7.6886,7.9181,36,195,2,258,15],[7.9181,8.2546,47,196,2,291,30],[8.2546,8.5926,48,194,2,292,30],[8.5926,8.6769,1,8,1,200,1]],"paradas":[[69,16,1],[69,22,5],[69,27,2],[69,33,5],[69,35,1],[69,36,1],[70,6,2],[71,10,1],[70,13,1],[71,13,11],[71,14,5],[71,15,6],[70,22,2],[71,22,1],[70,23,1],[70,25,1],[71,25,1],[70,28,1],[70,29,3],[70,31,1],[70,32,1],[70,33,1],[70,34,3],[70,35,1],[71,35,1],[70,36,3],[70,37,1],[71,37,4],[73,8,1],[72,12,2],[73,12,1],[72,13,3],[72,14,3],[73,15,1],[72,16,1],[73,16,2],[72,17,3],[73,26,3],[73,27,2],[73,33,1],[72,34,7],[72,35,2],[73,35,1],[73,36,3],[72,37,5],[73,37,1],[74,1,1],[74,6,2],[74,8,1],[74,12,1],[74,15,10],[74,19,1],[74,33,1],[74,35,2],[75,36,1],[76,11,2],[76,16,1],[77,16,1],[77,20,3],[77,21,3],[77,23,2],[77,24,1],[76,34,1],[77,34,3],[77,38,2],[79,0,1],[79,4,2],[79,7,3],[78,10,1],[79,14,2],[79,16,2],[78,18,1],[79,22,3],[78,23,4],[78,25,2],[79,27,1],[79,28,9],[79,29,3],[79,30,12],[78,32,1],[78,33,1],[79,38,2],[81,2,1],[81,4,4],[80,5,1],[80,9,1],[80,11,1],[81,13,3],[81,15,1],[80,18,1],[81,18,2],[81,19,1],[81,20,1],[81,23,1],[81,24,1],[81,25,1],[80,26,6],[81,26,1],[81,27,2],[80,28,6],[80,29,13],[81,30,1],[81,31,3],[81,38,4],[82,7,1],[82,10,3],[83,10,2],[82,11,2],[83,12,3],[83,13,3],[82,15,1],[83,15,2],[83,18,1],[82,19,1],[82,20,2],[82,22,4],[82,23,3],[83,23,2],[82,24,1],[82,25,3],[83,26,1],[82,27,1],[83,27,1],[82,28,4],[83,30,1],[83,32,2],[83,35,2],[83,38,2],[85,2,1],[84,5,1],[84,11,3],[85,14,5],[84,15,2],[85,15,2],[84,16,1],[84,18,2],[85,20,1],[84,22,2],[85,22,1],[84,23,3],[84,24,4],[84,27,1],[84,29,2],[85,30,1],[85,32,2],[84,33,4],[85,35,5],[84,36,3],[86,2,1],[86,3,4],[86,5,3],[86,7,2],[86,8,1],[87,8,1],[87,10,3],[87,11,2]]},{"z":"D3","lmin":86,"lmax":105,"uds":324,"litros":1666,"lecturas":207,"est_accion":128,"km":2.8,"viajes":[[6,6.4677,65,197,2,307,49],[6.4677,6.7978,39,201,2,314,29],[6.7978,7.0481,27,195,2,298,18],[7.0481,7.3863,39,205,2,305,31],[7.3863,7.6655,35,199,2,324,20],[7.6655,7.9046,30,195,2,289,16],[7.9046,8.1555,35,202,2,323,15],[8.1555,8.4044,34,204,2,320,15],[8.4044,8.64,20,68,1,318,17]],"paradas":[[87,11,3],[87,12,5],[87,13,2],[87,15,1],[86,18,1],[86,19,1],[86,20,1],[87,21,2],[86,22,1],[87,22,3],[86,23,9],[87,23,2],[86,24,3],[87,24,1],[86,25,2],[87,25,1],[87,26,1],[86,27,6],[87,27,2],[86,28,1],[87,28,1],[86,29,1],[87,29,6],[86,32,1],[86,33,3],[86,34,1],[86,38,1],[87,38,2],[88,3,4],[89,6,1],[88,7,1],[88,10,2],[89,10,1],[89,12,1],[89,18,3],[88,22,1],[88,23,3],[88,24,3],[88,25,1],[88,26,1],[88,28,1],[88,29,1],[89,32,1],[88,36,2],[88,37,4],[88,38,1],[91,10,3],[91,11,1],[91,15,1],[90,16,3],[90,22,1],[91,22,2],[90,23,1],[91,26,1],[91,30,1],[90,31,1],[90,32,1],[91,35,1],[93,1,1],[93,2,8],[92,3,1],[93,3,1],[93,5,1],[93,10,4],[93,11,2],[93,12,1],[92,14,1],[93,14,1],[93,15,1],[92,16,3],[93,16,1],[92,19,1],[93,19,1],[93,21,1],[92,24,1],[93,25,2],[92,27,1],[93,27,2],[92,28,1],[93,28,1],[93,29,2],[93,30,1],[92,31,3],[93,31,2],[93,32,2],[92,38,1],[94,5,8],[94,7,1],[94,11,1],[94,16,2],[95,16,9],[95,20,3],[95,21,1],[94,23,1],[95,24,1],[94,25,1],[94,28,1],[94,29,2],[94,31,4],[94,32,2],[94,35,1],[96,2,1],[96,4,2],[96,5,1],[96,6,2],[96,8,1],[96,9,1],[96,11,3],[97,11,5],[96,12,3],[97,12,1],[96,14,3],[97,22,1],[97,24,1],[97,25,3],[97,27,1],[97,30,1],[96,32,1],[97,34,3],[97,36,1],[99,0,3],[98,15,6],[98,22,1],[99,23,1],[98,26,4],[98,28,1],[99,31,1],[98,35,4],[98,36,1],[98,37,1],[98,38,6],[101,2,3],[101,9,3],[100,11,3],[101,17,6],[101,18,2],[100,23,2],[100,24,1],[100,25,4],[101,30,3],[101,33,1],[101,34,1],[103,5,6],[102,11,3],[102,12,3],[103,22,1],[103,23,1],[102,29,1],[103,30,1],[102,31,3],[102,32,2],[103,32,1],[102,33,2],[103,33,1],[102,34,2],[102,36,2],[102,38,1],[105,3,2]]},{"z":"D4","lmin":104,"lmax":115,"uds":342,"litros":2646,"lecturas":105,"est_accion":128,"km":4.1,"viajes":[[6,6.2694,35,200,2,344,17],[6.2694,6.4691,24,192,2,275,11],[6.4691,6.7486,25,195,2,357,20],[6.7486,6.9304,24,192,2,271,8],[6.9304,7.0784,24,192,2,269,2],[7.0784,7.2327,24,192,2,272,3],[7.2327,7.4431,25,195,2,318,10],[7.4431,7.6517,24,192,2,284,12],[7.6517,7.8085,24,192,2,263,4],[7.8085,7.9628,24,192,2,271,3],[7.9628,8.1114,24,192,2,271,2],[8.1114,8.279,24,192,2,278,5],[8.279,8.5131,24,192,2,341,13],[8.5131,8.6662,17,136,2,259,5]],"paradas":[[104,18,1],[105,20,2],[105,35,4],[105,36,4],[106,13,5],[106,14,1],[106,15,1],[107,15,7],[107,16,4],[107,26,1],[107,28,1],[107,29,1],[107,30,1],[106,35,1],[107,36,1],[108,2,6],[109,3,2],[108,4,6],[109,4,2],[109,5,1],[109,6,4],[109,10,4],[108,12,1],[109,12,1],[108,15,1],[109,18,1],[109,19,1],[109,26,1],[109,28,1],[109,30,2],[108,31,1],[109,31,2],[109,33,2],[109,36,2],[110,2,3],[110,3,1],[110,5,1],[110,6,1],[110,14,1],[110,17,3],[111,18,1],[111,22,3],[110,24,1],[111,25,3],[110,29,2],[111,29,13],[111,30,26],[110,31,3],[111,31,26],[110,32,2],[111,33,1],[110,34,2],[111,34,3],[110,37,1],[111,38,3],[113,0,2],[112,7,1],[113,7,3],[113,11,2],[112,13,1],[113,15,1],[113,17,3],[112,18,5],[112,19,1],[112,20,1],[113,21,2],[112,22,1],[113,23,13],[113,24,13],[112,25,3],[113,25,13],[112,28,1],[112,29,39],[113,30,4],[112,31,1],[112,32,15],[112,34,2],[113,37,3],[112,38,1],[115,2,1],[115,3,2],[115,4,1],[114,6,1],[114,7,1],[114,8,7],[115,8,1],[114,10,1],[114,12,2],[114,13,1],[114,16,2],[114,17,1],[114,18,1],[114,22,13]]},{"z":"D5","lmin":114,"lmax":136,"uds":341,"litros":2691,"lecturas":85,"est_accion":126,"km":4.2,"viajes":[[6,6.1389,24,192,2,259,1],[6.1389,6.2861,24,192,2,267,2],[6.2861,6.4962,24,192,2,320,10],[6.4962,6.6817,24,192,2,298,7],[6.6817,6.8362,24,192,2,272,3],[6.8362,6.9831,24,192,2,266,2],[6.9831,7.1347,24,192,2,264,3],[7.1347,7.2796,24,192,2,261,2],[7.2796,7.4937,26,195,2,325,10],[7.4937,7.7104,25,194,2,320,11],[7.7104,7.9487,25,194,2,334,14],[7.9487,8.1357,24,192,2,286,8],[8.1357,8.3634,25,194,2,336,12],[8.3634,8.5927,24,186,2,376,10]],"paradas":[[114,24,26],[114,25,26],[114,27,1],[114,28,4],[114,34,2],[115,37,1],[116,9,1],[117,11,6],[117,12,3],[116,13,1],[117,13,1],[117,14,2],[118,1,2],[118,3,5],[118,5,4],[118,7,9],[118,8,3],[118,9,5],[118,10,42],[118,11,18],[118,12,36],[118,13,3],[118,14,3],[125,9,1],[129,7,1],[129,8,3],[129,9,1],[129,12,3],[129,13,12],[129,14,6],[128,16,1],[130,4,4],[131,5,1],[130,6,1],[130,7,1],[130,12,3],[130,13,3],[133,0,3],[133,3,1],[133,5,3],[132,6,1],[133,7,1],[133,8,2],[133,9,2],[133,10,1],[133,11,4],[133,12,1],[132,13,5],[133,13,7],[132,14,3],[133,14,1],[132,15,16],[133,15,1],[133,16,4],[132,17,1],[133,17,1],[134,0,3],[134,2,11],[134,3,2],[134,5,6],[134,7,1],[134,13,11],[134,15,2],[134,16,1],[136,1,1]]}],"antes":[{"z":"D1","lmin":43,"lmax":63,"uds":356,"litros":1446,"km":1.6,"nviajes":8,"fin":8.0151},{"z":"D2","lmin":64,"lmax":81,"uds":311,"litros":1747,"km":2.3,"nviajes":9,"fin":8.2679},{"z":"D3","lmin":80,"lmax":93,"uds":275,"litros":1263,"km":2,"nviajes":7,"fin":8.1099},{"z":"D4","lmin":92,"lmax":111,"uds":353,"litros":2273,"km":3.8,"nviajes":12,"fin":8.8573},{"z":"D5","lmin":110,"lmax":136,"uds":514,"litros":4070,"km":6.5,"nviajes":22,"fin":9.9987}],"zx":{"u":178,"lecturas":33,"litros":1424,"min":23},"tiendas":[["19913","K31 - CONDOMINA",106,715,10],["19914","K33 - PUERTO VENECIA",78,497,7],["19915","K34 - GRAN VIA 2",62,429,6],["19916","K37 - SALAMANCA",27,81,2],["19917","K38 - ARTEA",334,2108,29],["19918","K40 - PALENCIA",66,472,7],["19919","K41 - SANTANDER",360,1916,26],["19920","K42 - SPLAU",131,1003,14],["19922","K44 - GIRONA",19,59,1],["19923","K45 - LOGRO\u00d1O BERCEO",417,2213,30],["19924","K46 - IR\u00daN",86,586,8],["19925","K48 - BONAIRE",71,494,7],["19927","K55 - C.C. GRANCASA",70,462,7],["19928","K56 - ROSALEDA",89,679,10],["19930","K58 - EL MIRADOR",71,508,7]],"saltadas":[["19921","K43 - LE\u00d3N",18],["19926","K49 - URBIL",17],["19932","K60 - LOS PRADOS",11],["19946","K79 - PARQUE CORREDOR",15],["19949","K82 - PARQUE PRINCIPADO",9],["19978","K29 - MARINEDA",1]]};
+  var NS = 'http://www.w3.org/2000/svg';
+  var COL = { D1: 'var(--z1)', D2: 'var(--z2)', D3: 'var(--z3)', D4: 'var(--z4)', D5: 'var(--z5)', ZX: 'var(--zx)' };
+  function hm(h) { var m = Math.round(h * 60); return Math.floor(m / 60) + ':' + ('0' + m % 60).slice(-2); }
+  function fmt(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function n1(v) { return v.toFixed(1).replace('.', ','); }
+  var Z = D.ahora;
+  var fin = function (z) { return z.viajes[z.viajes.length - 1][1]; };
+  // ZX: lo hace el primer picker que acaba
+  var primero = Z.slice().sort(function (a, b) { return fin(a) - fin(b); })[0];
+  var zxIni = fin(primero), zxFin = zxIni + (D.zx.min + 5) / 60;
+
+  // ---- KPIs y tiendas
+  var tu = 0, tl = 0, tc = 0;
+  document.getElementById('tTiendas').innerHTML = D.tiendas.map(function (t) { tu += t[2]; tl += t[3]; tc += t[4];
+    return '<tr><td class="m">' + t[0] + '</td><td>' + t[1] + '</td><td class="r">' + t[2] + '</td><td class="r">' + fmt(t[3]) + '</td><td class="r">' + t[4] + '</td></tr>'; }).join('');
+  document.getElementById('fTiendas').innerHTML = '<tr><td></td><td>' + D.tiendas.length + ' tiendas</td><td class="r">' + fmt(tu) + '</td><td class="r">' + fmt(tl) + '</td><td class="r">' + tc + '</td></tr>';
+  document.getElementById('tSaltadas').innerHTML = D.saltadas.map(function (s) { return '<tr><td class="m">' + s[0] + '</td><td>' + s[1] + '</td><td class="r">' + s[2] + ' u</td></tr>'; }).join('');
+  document.getElementById('kTiendas').textContent = D.tiendas.length;
+  document.getElementById('kUds').textContent = fmt(tu);
+  document.getElementById('kCajas').textContent = '≈ ' + tc;
+  var fins = Z.map(fin);
+  document.getElementById('kFin').textContent = hm(Math.min.apply(null, fins)) + '–' + hm(Math.max.apply(null, fins));
+
+  // ---- tabla de zonas
+  document.getElementById('tZonas').innerHTML = Z.map(function (z) {
+    return '<tr><td><span class="dot" style="background:' + COL[z.z] + '"></span>' + z.z + '</td><td>L' + z.lmin + '–L' + z.lmax + '</td><td class="r">' + z.uds + '</td><td class="r">' + fmt(z.litros) + '</td><td class="r">' + z.lecturas + '</td><td class="r">' + z.viajes.length + '</td><td class="r">' + n1(z.km) + '</td><td class="r">6:00</td><td class="r"><b>' + hm(fin(z)) + '</b></td></tr>'; }).join('') +
+    '<tr><td><span class="dot" style="background:var(--zx)"></span>ZX</td><td>Sin lineal (MU…)</td><td class="r">' + D.zx.u + '</td><td class="r">' + fmt(D.zx.litros) + '</td><td class="r">' + D.zx.lecturas + '</td><td class="r">–</td><td class="r">–</td><td class="r">' + hm(zxIni) + '</td><td class="r"><b>' + hm(zxFin) + '</b></td></tr>';
+
+  // ---- geometria
+  function aisleX(n) { return 30 + 2 * Math.floor(n / 2) - 0.5; }
+  function posY(p) { if (p <= 17) { if (p === 0) return 29.3; if (p <= 3) return 2 + (p - 0.5) * 1.5; return 9 + (p - 3.5) * (20 / 14); } p = Math.min(p, 36); if (p <= 24) return 31 + (p - 17.5) * (12 / 7); return 45.5 + (p - 24.5) * (12.5 / 12); }
+  function rack(n) { var a = aisleX(n); return n % 2 === 0 ? a - 0.95 : a + 0.35; }
+  var CRUCES = [7.75, 30, 44.25];
+  function el(s, tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; s.appendChild(n); return n; }
+  // zona de cada lineal y lado, segun las paradas
+  var zonaDe = {};
+  Z.forEach(function (z) { z.paradas.forEach(function (p) { var k = p[0] + (p[1] <= 17 ? 'I' : 'D'); zonaDe[k] = zonaDe[k] || {}; zonaDe[k][z.z] = (zonaDe[k][z.z] || 0) + p[2]; }); });
+
+  // ---- mapa de lineales por zona
+  (function () {
+    var s = document.getElementById('mapa');
+    var X0 = 150, X1 = 990, M0 = 28.5, M1 = 167.5, SX = (X1 - X0) / (M1 - M0);
+    function mx(m) { return X0 + (m - M0) * SX; }
+    var YI = 92, YD = 236, AL = 110, AN = 0.6 * SX;
+    el(s, 'rect', { x: 10, y: YI, width: 130, height: YD + AL - YI, fill: 'var(--panel)', stroke: 'var(--line)' });
+    el(s, 'text', { x: 75, y: YI + 34, 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, 'SORTER');
+    el(s, 'rect', { x: 22, y: YI + 120, width: 106, height: 40, rx: 3, fill: 'var(--accent)' });
+    el(s, 'text', { x: 75, y: YI + 145, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 13, fill: 'var(--ink)' }, 'U · oleada');
+    el(s, 'rect', { x: mx(M0), y: YI - 4, width: (M1 - M0) * SX, height: YD + AL - YI + 8, fill: 'var(--floor)', rx: 3 });
+    el(s, 'text', { x: mx(M0) + (M1 - M0) * SX / 2, y: (YI + AL + YD) / 2 + 4, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)', 'letter-spacing': '.2em' }, 'PASILLO CENTRAL');
+    for (var l = 1; l <= 136; l++) {
+      ['I', 'D'].forEach(function (lado) {
+        if (lado === 'D' && l > 120) return;
+        var y = lado === 'I' ? YI : YD, x = mx(rack(l)), zs = zonaDe[l + lado];
+        if (!zs) { el(s, 'rect', { x: x, y: y, width: AN, height: AL, fill: 'var(--muted)', opacity: .22 }); return; }
+        var ks = Object.keys(zs);
+        ks.forEach(function (z, k) { el(s, 'rect', { x: x, y: y + k * AL / ks.length, width: AN, height: AL / ks.length, fill: COL[z] }); });
+      });
+    }
+    for (var n = 1; n <= 136; n++) {
+      if (n !== 1 && n % 5 !== 0) continue;
+      el(s, 'text', { x: mx(rack(n)) + AN / 2, y: YI - 9, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 9, fill: 'var(--muted)' }, String(n));
+      if (n <= 120) el(s, 'text', { x: mx(rack(n)) + AN / 2, y: YD + AL + 15, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 9, fill: 'var(--muted)' }, String(n));
+    }
+    el(s, 'text', { x: X0, y: YI - 22, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'IZQUIERDA · P00–P17 · lineal');
+    el(s, 'text', { x: X0, y: YD + AL + 30, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'DERECHA · P18–P38 · lineal');
+    Z.forEach(function (z, i) {
+      var xa = mx(rack(z.lmin)), xb = mx(rack(z.lmax)) + AN, nivel = i % 2, y = YI - 36 - nivel * 26;
+      el(s, 'path', { d: 'M' + xa + ' ' + (y + 6) + ' L' + xa + ' ' + y + ' L' + xb + ' ' + y + ' L' + xb + ' ' + (y + 6), fill: 'none', stroke: COL[z.z], 'stroke-width': 2.5 });
+      var cx = Math.min(X1 - 4, Math.max(X0 + 4, (xa + xb) / 2)), anc = cx === (xa + xb) / 2 ? 'middle' : (cx < (xa + xb) / 2 ? 'end' : 'start');
+      el(s, 'text', { x: cx, y: y - 5, 'text-anchor': anc, 'font-family': 'var(--f-mono)', 'font-size': 11, 'font-weight': 600, fill: COL[z.z] }, z.z + ' · L' + z.lmin + '–L' + z.lmax + ' · ' + z.uds + ' u · ' + z.viajes.length + ' viajes');
+    });
+  })();
+
+  // ---- recorridos
+  var ruta = document.getElementById('ruta'), chips = document.getElementById('chips');
+  function dibujarRuta(z) {
+    while (ruta.firstChild) ruta.removeChild(ruta.firstChild);
+    var X0 = 40, SX = 5.4, Y0 = 34, SY = 5.2;
+    function mx(m) { return X0 + m * SX; } function my(m) { return Y0 + m * SY; }
+    el(ruta, 'rect', { x: mx(0), y: my(0), width: 176 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 4 });
+    el(ruta, 'rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+    el(ruta, 'text', { x: mx(13), y: my(31), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, 'U');
+    for (var l = 1; l <= 136; l++) {
+      (l <= 120 ? [[2, 6.5], [9, 29], [31, 43], [45.5, 58]] : [[2, 6.5], [9, 29]]).forEach(function (t) {
+        el(ruta, 'rect', { x: mx(rack(l)), y: my(t[0]), width: 0.6 * SX, height: (t[1] - t[0]) * SY, fill: l >= z.lmin && l <= z.lmax ? COL[z.z] : 'var(--muted)', opacity: l >= z.lmin && l <= z.lmax ? .35 : .15 });
+      });
+    }
+    CRUCES.forEach(function (c) { el(ruta, 'line', { x1: mx(26), y1: my(c), x2: mx(170), y2: my(c), stroke: 'var(--muted)', 'stroke-dasharray': '4 5', opacity: .6 }); });
+    var x = 26, y = 30, pts = [[x, y]];
+    function ir(tx, ty) { if (Math.abs(tx - x) < 0.01) pts.push([tx, ty]); else { var mej = CRUCES[0], v = 1e9; CRUCES.forEach(function (c) { var w = Math.abs(y - c) + Math.abs(ty - c); if (w < v) { v = w; mej = c; } }); pts.push([x, mej], [tx, mej], [tx, ty]); } x = tx; y = ty; }
+    z.paradas.forEach(function (p) { ir(aisleX(p[0]), posY(p[1])); }); ir(26, 30);
+    el(ruta, 'polyline', { points: pts.map(function (p) { return mx(p[0]) + ',' + my(p[1]); }).join(' '), fill: 'none', stroke: 'var(--ink)', 'stroke-width': 1.6, opacity: .7 });
+    z.paradas.forEach(function (p) { el(ruta, 'circle', { cx: mx(aisleX(p[0])), cy: my(posY(p[1])), r: Math.min(12, 2.5 + Math.sqrt(p[2]) * 1.3), fill: COL[z.z], stroke: 'var(--panel)' }); });
+    [1, 40, 80, 120, 136].forEach(function (l) { el(ruta, 'text', { x: mx(aisleX(l)), y: my(64), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l)); });
+    Array.prototype.forEach.call(chips.children, function (c) { c.setAttribute('aria-selected', c.dataset.z === z.z ? 'true' : 'false'); });
+    document.getElementById('rutaInfo').textContent = z.z + ' · L' + z.lmin + '–L' + z.lmax + ' · ' + z.uds + ' u · ' + z.paradas.length + ' huecos · ' + z.viajes.length + ' viajes a la U · ' + n1(z.km) + ' km. La línea es el orden de paso por los huecos; en realidad lo hace en ' + z.viajes.length + ' vueltas, volviendo a la U cada vez que llena los 2 baúles.';
+  }
+  Z.forEach(function (z) { var b = document.createElement('button'); b.type = 'button'; b.dataset.z = z.z; b.setAttribute('role', 'tab'); b.innerHTML = '<i style="background:' + COL[z.z] + '"></i>' + z.z + ' · L' + z.lmin + '–L' + z.lmax; b.addEventListener('click', function () { dibujarRuta(z); }); chips.appendChild(b); });
+  dibujarRuta(Z[0]);
+
+  // ---- cronograma
+  var H0 = 6, H1 = 16, U_RATE = 225, MIN_CAJA = 1;
+  function pct(h) { return ((Math.min(Math.max(h, H0), H1) - H0) / (H1 - H0) * 100).toFixed(2) + '%'; }
+  function fila(nombre, barras, fin) { return '<div class="gfila"><span>' + nombre + '</span><div class="gpista">' + barras.map(function (b) { return '<div class="gbar" style="left:' + pct(b[0]) + ';width:calc(' + pct(b[1]) + ' - ' + pct(b[0]) + ');background:' + b[2] + ';opacity:' + (b[3] || 1) + '" title="' + hm(b[0]) + '–' + hm(b[1]) + '"></div>'; }).join('') + '</div><b>' + (fin ? hm(fin) : '') + '</b></div>'; }
+  var eje = '<div class="geje"><i></i><div>'; for (var h = H0; h <= H1; h++) eje += '<span style="left:' + pct(h) + '">' + h + ':00</span>'; eje += '</div><i></i></div>';
+  function cronograma(N) {
+    var html = eje;
+    Z.forEach(function (z) { html += fila('Picker ' + z.z, z.viajes.map(function (v, i) { return [v[0], v[1], COL[z.z], i % 2 ? .65 : 1]; }).concat(z === primero ? [[zxIni, zxFin, 'var(--zx)', 1]] : []), z === primero ? zxFin : fin(z)); });
+    // llegadas a la U: final de cada viaje (uds); ZX al acabar
+    var lleg = []; Z.forEach(function (z) { z.viajes.forEach(function (v) { lleg.push([v[1], v[2]]); }); }); lleg.push([zxFin, D.zx.u]); lleg.sort(function (a, b) { return a[0] - b[0]; });
+    var cajas = 0; D.tiendas.forEach(function (t) { cajas += t[4]; });
+    var tot = 0; lleg.forEach(function (l) { tot += l[1]; });
+    // cada prenda: lectura 1/225 h; el cierre de cajas se reparte en proporcion a las prendas
+    var segUd = 3600 / U_RATE + cajas * MIN_CAJA * 60 / tot;
+    var t = H0, ini = null, bloques = [];
+    lleg.forEach(function (l) { var a = Math.max(t, l[0]); if (ini === null) ini = a; var dur = l[1] * segUd / 3600 / N; bloques.push([a, a + dur, 'var(--accent)', 1]); t = a + dur; });
+    html += '<div class="gsep"></div>';
+    html += fila('U · ' + N + (N === 1 ? ' persona' : ' personas'), bloques, t);
+    document.getElementById('gantt').innerHTML = html;
+    var hl = tot / U_RATE, hc = cajas * MIN_CAJA / 60;
+    document.getElementById('avisoU').innerHTML = '<p><b>En la U hay ' + n1(hl + hc) + ' h de trabajo:</b> ' + n1(hl) + ' h leyendo ' + fmt(tot) + ' prendas a ' + U_RATE + ' u/h y ' + n1(hc) + ' h cerrando unas ' + cajas + ' cajas. Con ' + N + (N === 1 ? ' persona' : ' personas') + ' la oleada acaba hacia las <b>' + hm(t) + '</b>, aunque el picking acabe a las ' + hm(Math.max.apply(null, fins)) + '.</p>' +
+      '<p>' + (N === 1 ? 'Con una sola persona la U es el cuello de botella: los pickers acaban a primera hora y la oleada sigue toda la mañana y parte de la tarde.' : 'Hay que confirmar que el programa de oleadas deja trabajar a ' + N + ' personas en la misma oleada (un PC cada una), o partir la oleada en ' + N + ' U con sus tiendas.') + '</p>';
+    Array.prototype.forEach.call(document.getElementById('lectores').children, function (c, i) { c.setAttribute('aria-selected', i + 1 === N ? 'true' : 'false'); });
+  }
+  [1, 2, 3].forEach(function (N) { var b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.textContent = N + (N === 1 ? ' persona leyendo en la U' : ' personas leyendo'); b.addEventListener('click', function () { cronograma(N); }); document.getElementById('lectores').appendChild(b); });
+  cronograma(1);
+
+  // ---- antes y ahora
+  document.getElementById('tComp').innerHTML = Z.map(function (z, i) { var a = D.antes[i];
+    return '<tr><td><span class="dot" style="background:' + COL[z.z] + '"></span>' + z.z + '</td><td>L' + a.lmin + '–L' + a.lmax + '</td><td class="r">' + a.uds + '</td><td class="r">' + a.nviajes + '</td><td class="r">' + hm(a.fin) + '</td><td>L' + z.lmin + '–L' + z.lmax + '</td><td class="r">' + z.uds + '</td><td class="r">' + z.viajes.length + '</td><td class="r"><b>' + hm(fin(z)) + '</b></td></tr>'; }).join('');
+
+  // ---- checklist
+  var viajes = 0, baules = 0; Z.forEach(function (z) { viajes += z.viajes.length; z.viajes.forEach(function (v) { baules += v[4]; }); });
+  var cajasT = 0; D.tiendas.forEach(function (t) { cajasT += t[4]; });
+  document.getElementById('checklist').innerHTML = [
+    '<b>Acción planificada:</b> fichero <code>KOROSHI_crear_INT_zonas_PLANIFICADA_2026-10-21_v2-max20.py</code>, ejecución mañana a las 3:00–3:30, 1 llamada. Antes, probar la versión PRUEBA en la 1837.',
+    '<b>5 pickers a las 6:00</b>, cada uno con su INT (KOR-2110-D1 … D5) y su tramo de lineales. El ZX (' + D.zx.u + ' u sin lineal) lo hace el primero que acabe.',
+    '<b>5 carros con 2 baúles grandes</b> (80×50×33) cada uno. Se harán unos ' + viajes + ' viajes y ' + baules + ' baúles llenos: tener baúles vacíos de recambio junto a la U para no esperar.',
+    '<b>La U:</b> ' + D.tiendas.length + ' tiendas y unas ' + cajasT + ' cajas de 60×40×40 montadas (por tienda, ver la tabla). Impresora de etiquetas y el programa de oleadas en el PC.',
+    '<b>Gente leyendo en la U:</b> con 1 persona son unas ' + n1(1996 / 225 + cajasT / 60) + ' h. Decidir cuántas personas o partir en más U.',
+    '<b>Validar los INT</b> a medida que llegan y hacer "Comprobar disponibilidad" en las OUT para que la oleada se pueda leer.',
+    '<b>Apuntar:</b> hora de salida y llegada de cada viaje, quién lo hace, incidencias (huecos vacíos, baúles que pesan demasiado) y hora de fin de la U.'
+  ].map(function (x) { return '<li>' + x + '</li>'; }).join('');
+})();
+</script>
+</body></html>

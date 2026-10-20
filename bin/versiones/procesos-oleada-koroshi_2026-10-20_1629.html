@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Processos oleada KOROSHI</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 14mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.38; color: #111; margin: 0; background: #fff; }
+.wrap { max-width: 182mm; margin: 0 auto; }
+h1 { font-size: 22pt; margin: 0 0 2mm; }
+h2 { font-size: 14pt; margin: 7mm 0 2mm; padding: 1.5mm 3mm; background: #111; color: #fff; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.5mm 0; }
+.sub { color: #444; margin-bottom: 4mm; }
+.cap { border-top: 4px solid #e0a100; padding-top: 3mm; margin-bottom: 4mm; }
+ol, ul { margin: 1mm 0 2mm; padding-left: 6mm; }
+li { margin: .8mm 0; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 9.6pt; break-inside: avoid; }
+th, td { border: 1px solid #999; padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+th { background: #eee; }
+code, .m { font-family: "Courier New", monospace; font-size: 9.6pt; background: #f2f2f2; padding: 0 1mm; }
+.caixa { border: 1.5px solid #111; border-radius: 2mm; padding: 2.5mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.alerta { border-left: 5px solid #c8372d; background: #fbeeed; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.ok { border-left: 5px solid #2e9a52; background: #edf7f0; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.check li { list-style: none; position: relative; padding-left: 6mm; }
+.check li::before { content: ""; position: absolute; left: 0; top: 1.2mm; width: 3.2mm; height: 3.2mm; border: 1.3px solid #111; }
+.flux { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin: 3mm 0; }
+.flux div { border: 1.5px solid #111; border-radius: 2mm; padding: 2mm; font-size: 9pt; break-inside: avoid; }
+.flux b { display: block; font-size: 10pt; }
+.salt { break-before: page; }
+.peu { font-size: 8.5pt; color: #555; margin-top: 6mm; border-top: 1px solid #999; padding-top: 2mm; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cap">
+  <h1>Oleades KOROSHI · tots els processos</h1>
+  <p class="sub">Del moment que entren les comandes de botiga fins que les caixes estan etiquetades i a punt per expedir. Versió del 20/10/2026, per a la prova del dimecres 21/10.</p>
+</div>
+
+<h2>0 · El dia en una mirada</h2>
+<div class="flux">
+  <div><b>~1:00</b>Entren les comandes de botiga (OUT de PED. TIENDAS).</div>
+  <div><b>3:00–3:30</b>L'acció planificada crea l'oleada <span class="m">B-KOR-ddmm-01</span> i els INT per zones.</div>
+  <div><b>abans de les 6:00</b>Preparar la U: cartells de badia, caixes, baüls, PC i impressora.</div>
+  <div><b>6:00</b>Els 5 pickers comencen, cadascun amb el seu INT (la seva zona).</div>
+  <div><b>6:15 →</b>Arriben els primers baüls a la U: validar INT i "Comprobar disponibilidad" a les OUT.</div>
+  <div><b>6:20 →</b>A la U: llegir peça → deixar-la a la seva badia → escanejar el cartell de la badia.</div>
+  <div><b>Caixa plena</b>CAMBIAR-CAJA + cartell de la badia → Odoo tanca la caixa i surt l'etiqueta amb la matrícula.</div>
+  <div><b>Botiga acabada</b>Última caixa tancada sola; validar l'OUT a Odoo; retractilar i a expedició.</div>
+</div>
+
+<h2>1 · L'acció planificada (nit, a Odoo)</h2>
+<p><b>Què és:</b> l'acció planificada que executa el codi <span class="m">KOROSHI_crear_INT_zonas_PLANIFICADA_…py</span> una vegada (Número de llamadas 1), entre les 3:00 i les 3:30.</p>
+<h3>Què fa</h3>
+<ol>
+  <li>Busca les OUT de botiga (PED. TIENDAS) <b>creades avui</b> (des de les 0:00), en estat Preparada.</li>
+  <li><b>Se salta</b> les que no valen: comandes de material (<b>menys de 20 u</b>), les que ja tenen unitats llegides, les que estan en una altra agrupació…</li>
+  <li>Agafa les botigues <b>per ordre d'arribada</b> fins a <b>10 botigues</b> (una per badia) i <b>2.000 u</b> com a màxim.</li>
+  <li>Crea <b>5 INT</b> (un per picker): <span class="m">KOR-ddmm-D1</span> … <span class="m">D5</span>. Cada INT és un tram seguit de lineals, tallat perquè tots durin el mateix (lectures + peces + viatges segons volum i distància).</li>
+  <li>Si hi ha peces en ubicacions sense lineal (MU…), crea un INT a part: <span class="m">KOR-ddmm-ZX-a</span>.</li>
+  <li>Les OUT passen a sortir del SORTER i queden en espera fins que es validin els INT. Si una OUT estava reservada a mitges, el que faltava continua pendent com sempre.</li>
+  <li>Crea l'oleada <span class="m">B-KOR-ddmm-01</span> (en curs) amb aquestes OUT.</li>
+</ol>
+<h3>Paràmetres importants</h3>
+<table>
+  <tr><th>Paràmetre</th><th>Valor</th><th>Per a què</th></tr>
+  <tr><td class="m">PLAN_MAX_OUT</td><td>10</td><td>Botigues per oleada = badies de la U</td></tr>
+  <tr><td class="m">PLAN_MAX_UDS</td><td>2000</td><td>Unitats màximes de l'oleada</td></tr>
+  <tr><td class="m">PLAN_MIN_UDS_OUT</td><td>20</td><td>No agafar comandes de material</td></tr>
+  <tr><td class="m">REPARTO_POR_TIEMPO</td><td>True</td><td>5 zones que acaben a la mateixa hora</td></tr>
+  <tr><td class="m">SIMULAR</td><td>False (planificada) / True (prova)</td><td>True no deixa res fet: només mostra el resultat</td></tr>
+</table>
+<h3>Com saber què ha fet</h3>
+<ul>
+  <li><b>Ajustes › Técnico › Registros</b>, buscar "KOROSHI REPARTIR": una línia "PLANIFICADA" (quines OUT ha agafat i quines s'ha saltat i per què) i una "HECHO" (els INT, amb uds, viatges i hora estimada de fi de cada zona).</li>
+  <li>Agrupacions: ha d'existir <span class="m">B-KOR-ddmm-01</span> en curs.</li>
+  <li>Al xat de cada OUT hi ha el missatge amb els seus INT i l'oleada.</li>
+</ul>
+<div class="alerta"><b>Si posa "DESHECHO" o no hi ha res:</b> no s'ha fet cap canvi. Es treballa com sempre amb l'agrupació TIENDA. Avisar-me amb el text del registre.</div>
+<div class="alerta"><b>A les 6:00, qui crea l'agrupació TIENDA dd-mm no hi ha de posar les OUT de la B-KOR.</b></div>
+
+<h2 class="salt">2 · Preparar la U (abans de les 6:00)</h2>
+<h3>La U: 10 badies · 20 palets</h3>
+<ul>
+  <li>10 palets a una banda i 10 a l'altra. <b>Cada badia = 2 palets = 1 botiga.</b></li>
+  <li><b>Badia = SEQ:</b> el programa numera les botigues de l'oleada 001, 002… per ordre d'OUT. El SEQ 001 és la badia 1, el 002 la badia 2…</li>
+  <li><b>Cartell fix a cada badia</b> amb el seu codi de barres (001…010). Es poden imprimir des del programa: <b>Opciones › Imprimir etiquetas de bahía (SEQ)</b>, una a una (cada clic a Imprimir treu la badia i passa a la següent). També hi ha el PDF en A4.</li>
+  <li>Opcional: escriure a mà el nom de la botiga al cartell (canvia a cada oleada).</li>
+</ul>
+<h3>Caixes de 60×40×40</h3>
+<ul>
+  <li><b>4 caixes per palet = 8 posicions per badia.</b> Una sola caixa oberta per badia alhora (la que s'està omplint); les altres, muntades i a punt.</li>
+  <li>Caixes que necessitarà cada botiga ≈ <b>litres de la comanda ÷ 75</b> (encerta ±1 caixa). Una botiga petita (fins a ~100 u) en té prou amb 8; les grans en necessiten 20–30.</li>
+  <li><b>Si una botiga necessita més de 8:</b> les caixes tancades s'apilen a sobre del mateix palet (fins a 4 pisos ≈ 16 caixes per palet, ≈ 32 per badia). Si passa de 32, el palet ple surt i se'n posa un de buit.</li>
+</ul>
+<h3>Material</h3>
+<ul class="check">
+  <li>5 carros amb 2 baüls grans (80×50×33) cadascun + baüls buits de recanvi al costat de la U (una oleada de 2.000 u són ~60 viatges i ~115 baüls plens).</li>
+  <li>PC de la U amb el programa nou (carpeta pròpia, no sobreescriure l'antic), empresa <b>EFFECTIVE</b>.</li>
+  <li>Impressora d'etiquetes funcionant (provar <b>Opciones › Imprimir etiqueta de caja de prueba</b>).</li>
+  <li>Cartell <b>CAMBIAR-CAJA</b> a mà de qui llegeix (Opciones › Imprimir etiqueta CAMBIAR-CAJA).</li>
+  <li>Llista de botigues de l'oleada amb el seu SEQ i caixes previstes.</li>
+  <li>Full per apuntar temps i incidències (apartat 8).</li>
+</ul>
+
+<h2>3 · Picking (pickers)</h2>
+<ol>
+  <li>Cada picker agafa el seu INT: <span class="m">KOR-ddmm-D1</span> … <span class="m">D5</span>. Només fa els lineals del seu tram.</li>
+  <li>Carro amb <b>2 baüls</b>. Recorre els huecos en l'ordre de l'INT (passadís per passadís).</li>
+  <li>Un baül està ple a <b>~100 litres o 15 kg</b> (≈ 12 chaquetas o ≈ 40–50 peces petites). Quan els 2 són plens, <b>torna a la U</b>, els deixa i en torna a sortir amb 2 de buits.</li>
+  <li>El primer que acabi fa el <b>ZX</b> (peces sense lineal).</li>
+  <li>Si un hueco està buit o falten unitats: apuntar-ho (hueco, producte, unitats) i continuar.</li>
+</ol>
+<div class="ok"><b>Previsió amb 2.000 u:</b> cada picker uns 9–14 viatges i 2–4 km; tots acaben cap a les 8:40 (més tard si hi ha incidències o descansos).</div>
+
+<h2>4 · Odoo durant el matí</h2>
+<ol>
+  <li><b>Validar els INT</b> a mesura que arriben els baüls a la U (les peces passen al SORTER).</li>
+  <li>A les OUT de l'oleada: <b>"Comprobar disponibilidad"</b>, perquè quedin Preparades i el programa les pugui llegir.</li>
+  <li>Si una OUT no queda Preparada: mirar si el seu INT està validat del tot.</li>
+</ol>
+
+<h2 class="salt">5 · A la U amb el programa</h2>
+<h3>Carregar l'oleada</h3>
+<ol>
+  <li>Obrir el programa nou, empresa <b>EFFECTIVE</b>.</li>
+  <li>Escanejar o escriure <span class="m">B-KOR-ddmm-01</span>. Surten les botigues amb el seu SEQ (001, 002…).</li>
+  <li>Comprovar que el SEQ de cada botiga coincideix amb la badia on s'han preparat les seves caixes.</li>
+</ol>
+<h3>Per cada peça</h3>
+<div class="caixa">
+  <ol>
+    <li><b>Llegir la peça.</b> La pantalla mostra el <b>SEQ en gran</b>.</li>
+    <li><b>Deixar-la a la caixa oberta</b> d'aquella badia.</li>
+    <li><b>Escanejar el cartell de la badia.</b> Pantalla verda <b>CONFIRMADO</b>.</li>
+  </ol>
+  <p>Si s'escaneja una badia que no toca: pantalla vermella <b>"SEQ incorrecta"</b> → treure la peça i tornar a començar pel pas 1.</p>
+</div>
+<h3>Caixa plena</h3>
+<ol>
+  <li>Escanejar <b>CAMBIAR-CAJA</b> i després <b>el cartell de la badia</b>.</li>
+  <li>El programa tanca la caixa a Odoo (acció 1838) i Odoo li dona la seva <b>matrícula CJ</b> (cada caixa la seva).</li>
+  <li>Surt l'<b>etiqueta</b> (botiga, OUT, número de caixa i matrícula). Enganxar-la a la caixa, tancar-la amb precinte i apilar-la al palet.</li>
+  <li>Posar una caixa buida a la posició i continuar.</li>
+</ol>
+<p><b>Per què l'etiqueta va al final:</b> mentre s'omple, la caixa no necessita etiqueta, perquè la identifica la badia (només hi ha una caixa oberta per badia). La matrícula i l'etiqueta es donen quan es tanca, amb el contingut ja definitiu.</p>
+<h3>Botiga acabada</h3>
+<ul>
+  <li>Quan es llegeix l'última peça d'una botiga, el programa tanca sol l'última caixa i n'imprimeix l'etiqueta.</li>
+  <li><b>L'OUT no es valida sola</b> (opció <span class="m">koroshi_validar_out = false</span>): validar-la a Odoo, o activar l'opció més endavant.</li>
+  <li>Palets de la badia: retractilar i portar a la zona de sortida / expedició.</li>
+</ul>
+<h3>Altres opcions del programa</h3>
+<table>
+  <tr><th>Què</th><th>On</th></tr>
+  <tr><td>Imprimir els cartells de badia (un a un)</td><td>Opciones › Imprimir etiquetas de bahía (SEQ)</td></tr>
+  <tr><td>Imprimir el cartell CAMBIAR-CAJA</td><td>Opciones › Imprimir etiqueta CAMBIAR-CAJA</td></tr>
+  <tr><td>Provar la impressora sense Odoo</td><td>Opciones › Imprimir etiqueta de caja de prueba</td></tr>
+  <tr><td>Reimprimir l'etiqueta d'una caixa tancada</td><td>Casella d'imprimir etiqueta de caixa: escriure <span class="m">SEQ</span> (última caixa) o <span class="m">SEQ-n</span> (caixa n), p. ex. <span class="m">003-2</span>, i Enter</td></tr>
+  <tr><td>El programa s'ha tancat a mitja oleada</td><td>Tornar-lo a obrir › <b>Ultimo pedido</b> › "Cargar último pedido?" Sí</td></tr>
+  <tr><td>Provar sense escriure a Odoo</td><td>Al .config: <span class="m">koroshi_modo_prueba = true</span> (el títol posa MODO PRUEBA)</td></tr>
+</table>
+
+<h2 class="salt">6 · Problemes freqüents</h2>
+<table>
+  <tr><th>Què passa</th><th>Què fer</th></tr>
+  <tr><td>L'oleada no surt al programa</td><td>Comprovar a Odoo que <span class="m">B-KOR-…</span> està "En curso" i que les OUT estan Preparades (validar INT + Comprobar disponibilidad).</td></tr>
+  <tr><td>"SEQ incorrecta"</td><td>La peça és d'una altra badia: treure-la, tornar a llegir la peça i mirar el SEQ de la pantalla.</td></tr>
+  <tr><td>"ERROR: CAJA NO CERRADA" (Odoo)</td><td>La caixa continua oberta. Tornar a fer CAMBIAR-CAJA + badia. Si torna a fallar, apuntar el missatge i avisar.</td></tr>
+  <tr><td>L'etiqueta no surt o surt malament</td><td>Revisar la impressora; reimprimir amb <span class="m">SEQ-n</span>.</td></tr>
+  <tr><td>Hueco buit o falten peces</td><td>Apuntar hueco, producte i unitats. La botiga quedarà amb peces pendents com sempre.</td></tr>
+  <tr><td>Un baül pesa massa</td><td>Partir-lo en dos (màxim 15 kg per persona).</td></tr>
+  <tr><td>Una botiga necessita més caixes de les que hi ha</td><td>Apilar les tancades al palet; si cal, palet nou a la badia.</td></tr>
+</table>
+
+<h2>7 · Números de referència</h2>
+<table>
+  <tr><th>Concepte</th><th>Valor</th></tr>
+  <tr><td>Lectura a la U</td><td>~225 peces/hora per persona (2.000 u ≈ 9 h d'una persona + ~1 min per caixa tancada)</td></tr>
+  <tr><td>Caixa d'enviament 60×40×40</td><td>~75 litres de producte; ~9 chaquetas o ~30–50 peces petites</td></tr>
+  <tr><td>Baül gran 80×50×33</td><td>~100 litres útils o 15 kg</td></tr>
+  <tr><td>Badia</td><td>2 palets, 8 caixes obertes; fins a ~32 caixes apilades</td></tr>
+  <tr><td>Andar amb carro</td><td>~0,8 m/s</td></tr>
+  <tr><td>Chaquetes</td><td>~8 litres i ~1,2 kg per peça (80% del volum d'un dia normal)</td></tr>
+</table>
+<div class="alerta"><b>El coll d'ampolla és la lectura a la U:</b> els pickers acaben a primera hora, però una sola persona llegint 2.000 u necessita gairebé tota la jornada. Decidir quanta gent llegeix (i si el programa deixa 2 PC a la mateixa oleada) o partir en més oleades.</div>
+
+<h2>8 · Què apuntar a la prova</h2>
+<table>
+  <tr><th style="width:22%">Qui / què</th><th>Dades</th></tr>
+  <tr><td>Cada picker</td><td>Zona (D1–D5) · hora d'inici · hora de cada tornada a la U · hora de fi · incidències</td></tr>
+  <tr><td>Odoo</td><td>Hora de validació de cada INT · OUT que no queden Preparades</td></tr>
+  <tr><td>U</td><td>Hora en què comença a llegir · persones llegint · hora de fi de cada botiga · caixes per botiga · errors de SEQ · caixes que no tanquen</td></tr>
+  <tr><td>Expedició</td><td>Palets per botiga · hora de retractilat</td></tr>
+</table>
+<p class="peu">Documents relacionats: simulació de la prova (prueba-oleada-2110), comparativa A/B en hores, cartells de badies (PDF A4). Fitxer de l'acció: KOROSHI_crear_INT_zonas_PLANIFICADA_2026-10-21.py (10 botigues).</p>
+</div>
+</body>
+</html>

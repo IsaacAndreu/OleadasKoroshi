@@ -1,4 +1,6 @@
-bin/
+# bin/ se sube (repo privado): programa compilado, acciones con fecha y PDF. Los logs del programa no.
+bin/Release/Logs/
+bin/Release/Pendientes/
 obj/
 .vs/
 *.user

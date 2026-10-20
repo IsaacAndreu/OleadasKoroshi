@@ -1,0 +1,338 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Picking en horas totales</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna de lectura de ~980px; el mapa de la nave es la pieza central, el resto acompaña en bandas sobrias */
+:root {
+  --bg: #f3f4f2;
+  --panel: #ffffff;
+  --ink: #1d2327;
+  --muted: #5d676d;
+  --line: #d5d9d6;
+  --floor: #e6e8e4;
+  --accent: #e0a100;          /* amarillo de señalización de nave */
+  --accent-ink: #6b4d00;
+  --z1: #2a62b8; --z2: #2e9a52;
+  --z3: #c8372d; --z4: #e8701a; --z5: #7a4cc2;
+  --zx: #8b9297;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: .01em; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow {
+  font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+section { display: grid; gap: 20px; min-width: 0; }
+
+/* Cabecera */
+header { display: grid; gap: 16px; }
+.tape {
+  height: 10px; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px);
+  max-width: 220px;
+}
+.lead { font-size: 1.15rem; color: var(--ink); }
+.lead strong { background: linear-gradient(transparent 62%, color-mix(in srgb, var(--accent) 45%, transparent) 0); }
+
+/* Antes / después */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.case { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.case .tag { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+.case.hoy .tag { color: var(--muted); }
+.case.nuevo { border-color: var(--accent); }
+.case.nuevo .tag { color: var(--accent-ink); }
+.case ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mini { width: 100%; height: auto; display: block; }
+
+/* Mapa */
+.map-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.map-box svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.legend div { display: grid; grid-template-columns: 14px 1fr; gap: 4px 10px; align-items: start; font-size: .9rem; }
+.legend i { width: 14px; height: 14px; border-radius: 2px; margin-top: 4px; }
+.legend b { font-family: var(--f-display); font-size: 1.1rem; }
+.legend span { grid-column: 2; color: var(--muted); font-size: .82rem; }
+
+/* Flujo */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; counter-reset: paso; }
+.step { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 16px 16px; display: grid; gap: 8px; align-content: start; }
+.step::before {
+  counter-increment: paso; content: counter(paso);
+  font-family: var(--f-display); font-weight: 700; font-size: 1.1rem;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #1d2327;
+}
+.step p { font-size: .92rem; color: var(--muted); }
+.step .where { font-family: var(--f-mono); font-size: .78rem; color: var(--ink); }
+
+/* Ejemplo real */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.bars { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 7px; overflow-x: auto; }
+.bar-row { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; align-items: center; font-size: .85rem; min-width: 420px; }
+.bar-row .n { font-family: var(--f-mono); font-weight: 500; }
+.bar-row .t { font-family: var(--f-mono); color: var(--muted); font-size: .78rem; }
+.track { position: relative; height: 18px; background: var(--floor); border-radius: 2px; }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+.track .max { position: absolute; top: -4px; bottom: -4px; right: 0; border-right: 2px dashed var(--ink); }
+.bar-row .u { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bars .axis { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; font-family: var(--f-mono); font-size: .72rem; color: var(--muted); min-width: 420px; }
+.bars .axis span:nth-child(3) { display: flex; justify-content: space-between; }
+.note { font-size: .88rem; color: var(--muted); }
+
+/* Escenario 10k */
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+
+/* Estado */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.st { padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; gap: 6px; align-content: start; }
+.pill { justify-self: start; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.ok { color: #2e7d4f; } .next { color: var(--accent-ink); } .later { color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #6cc495; } }
+:root[data-theme="dark"] .ok { color: #6cc495; }
+.st p { font-size: .9rem; color: var(--muted); }
+
+/* Recorrido */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button {
+  font-family: var(--f-mono); font-size: .8rem; padding: 5px 9px; border-radius: 4px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center;
+}
+.chips button i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.chips button[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.mini-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 6px; display: grid; gap: 4px; cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.mini-card:hover, .mini-card:focus-visible { border-color: var(--ink); outline: none; }
+.mini-card .h { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: .78rem; }
+.mini-card .h b { font-weight: 500; white-space: nowrap; }
+.mini-card .h span { text-align: right; }
+.mini-card .h span { color: var(--muted); }
+.mini-card svg { width: 100%; height: auto; display: block; }
+/* Impresión / PDF: A4, sin cortes dentro de tarjetas, mapas ni barras */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11.5pt; }
+  .wrap { max-width: none; padding-left: 0; padding-right: 0; padding-block: 0; gap: 26px; }
+  section { gap: 14px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 30pt; }
+  h2 { font-size: 20pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  .chips { display: none; }
+  .map-box, .bars { overflow: visible; }
+  .map-box svg { min-width: 0; }
+  .bar-row, .bars .axis { min-width: 0; grid-template-columns: 52px 78px 1fr 40px; }
+  .bars { gap: 4px; padding: 12px 14px; }
+  .track { height: 13px; }
+  .case, .step, .kpi, .kpis, .bars, .map-box, .legend, .mini-card, .role, .st, .callout,
+  .preguntas li, .riesgos tr, .scen, .compare, .flow, .same { break-inside: avoid; }
+  .minis-titulo { break-before: page; }
+  .compare { grid-template-columns: 1fr 1fr; }
+  .flow { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { padding: 12px 10px; }
+  .step p { font-size: 9pt; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 22pt; }
+  .scen { grid-template-columns: 1fr 1fr; }
+  .minis { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .mini-card { padding: 5px 6px 4px; display: block; }
+  .mini-card svg { aspect-ratio: 960 / 340; margin-top: 3px; }
+  .map-box:has(#ruta) { padding: 8px; }
+  .map-box:has(#ruta) svg { width: 100%; }
+  .mini-card .h { font-size: 7pt; }
+  .roles { grid-template-columns: repeat(3, 1fr); }
+  .motivos { grid-template-columns: repeat(3, 1fr); }
+  .tlargos, .motivos, .largos .callout { break-inside: avoid; }
+  .largos h3 { break-after: avoid; }
+  .status { grid-template-columns: repeat(3, 1fr); }
+  .lead { font-size: 12.5pt; }
+}
+
+/* Recorridos largos */
+.largos { display: grid; gap: 14px; }
+.tlargos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.tlargos tr.alto td { font-weight: 600; }
+.motivos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.motivos div { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 6px; align-content: start; }
+.motivos h4 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; }
+.motivos p { font-size: .9rem; color: var(--muted); }
+
+/* Qué cambia, riesgos, preguntas */
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.role { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.role p { font-size: .92rem; }
+.role p b { display: block; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.role .antes { color: var(--muted); }
+.role .despues b { color: var(--accent-ink); }
+.same { display: grid; gap: 8px; }
+.same ul, .pide { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.riesgos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.riesgos td { vertical-align: top; }
+.riesgos td:first-child { font-weight: 500; width: 36%; }
+.preguntas { margin: 0; padding: 0; list-style: none; counter-reset: preg; display: grid; gap: 12px; }
+.preguntas li { counter-increment: preg; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; background: var(--panel); border: 1px dashed var(--accent); border-radius: 6px; padding: 16px; }
+.preguntas li::before { content: counter(preg); grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 1.8rem; line-height: 1; color: var(--accent-ink); }
+.preguntas p { font-size: .92rem; color: var(--muted); }
+</style>
+
+<style>
+.tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tabla th, .tabla td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+.tabla th { font-size: .78rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.tabla .r { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tabla-wrap { overflow-x: auto; }
+.tabla td:first-child { white-space: nowrap; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.versiones { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.ver { background: var(--panel); border: 1px solid var(--line); border-top: 4px solid var(--c); border-radius: 6px; padding: 14px; display: grid; gap: 6px; align-content: start; font-size: .9rem; }
+.ver h3 { margin: 0; font-family: var(--f-display); font-size: 1.25rem; }
+.ver .quien { font-family: var(--f-mono); font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.barras { display: grid; gap: 10px; }
+.barra { display: grid; grid-template-columns: 150px 1fr 70px; gap: 10px; align-items: center; font-size: .88rem; }
+.pista { display: flex; height: 22px; background: var(--floor); border-radius: 3px; overflow: hidden; }
+.pista span { display: block; height: 100%; }
+.leyenda { display: flex; gap: 16px; flex-wrap: wrap; font-size: .82rem; color: var(--muted); }
+.opinion { background: var(--panel); border: 1px solid var(--line); border-left: 5px solid var(--accent); border-radius: 6px; padding: 16px 18px; display: grid; gap: 10px; }
+.opinion p { margin: 0; }
+.supuestos { font-size: .88rem; color: var(--muted); columns: 2 260px; gap: 24px; margin: 0; padding-left: 18px; }
+.supuestos li { margin-bottom: 4px; break-inside: avoid; }
+</style>
+<div class="wrap">
+<header>
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Pedidos de tienda · Simulación · 20/10/2026</span>
+  <h1>A contra B en horas totales</h1>
+  <p class="lead">Lo que se pidió en la reunión: comparar las opciones por <strong>horas totales de trabajo</strong>, contando los metros andados, los viajes, el volumen y el peso de cada prenda, y no solo las unidades por hora. Día real del 10/09/2026: <strong>51 tiendas, 10.196 u, 57 m³ y 8,3 t</strong>, en 5 oleadas, con 5 pickers y 5 U.</p>
+</header>
+
+<section>
+  <span class="eyebrow">Las opciones</span>
+  <h2>Qué se compara</h2>
+  <div class="versiones">
+    <div class="ver" style="--c: var(--z1)"><span class="quien">A · 25 pedidos</span><h3>Zona × oleada, 2 cajas = 2 oleadas</h3><p>Cada picker en su zona. En el carro, una caja de cada oleada de la pareja (AB, CD, E). Se vuelve cuando se llena una de las dos.</p></div>
+    <div class="ver" style="--c: var(--z2)"><span class="quien">A2 · 25 pedidos</span><h3>Zona × oleada, 2 cajas de la misma oleada</h3><p>Igual que A, pero hace las oleadas de una en una y las dos cajas son de la misma. Se vuelve cuando se llenan las dos.</p></div>
+    <div class="ver" style="--c: var(--z3)"><span class="quien">B · 5 pedidos</span><h3>Un picker por oleada, toda la nave</h3><p>Cada picker prepara una oleada entera recorriendo toda la nave, con 2 cajas de su oleada.</p></div>
+    <div class="ver" style="--c: var(--z5)"><span class="quien">C · Palet en el central</span><h3>Una pasada por zona, de dentro a fuera</h3><p>Cada picker en su zona, una sola pasada para todas las oleadas. Lo deja en un palet del pasillo central con una caja por U. El palet va a las U con transpaleta.</p></div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Resultado</span>
+  <h2>Horas de trabajo y hora de fin</h2>
+  <div class="chips" id="escenarios" role="tablist" aria-label="Elegir arcón y velocidad"></div>
+  <div class="barras" id="barras"></div>
+  <div class="leyenda"><span><i class="dot" style="background:var(--z1)"></i>Picking (andar, leer huecos, coger y dejar)</span><span><i class="dot" style="background:var(--muted)"></i>Lectura en las U (225 u/h)</span></div>
+  <div class="tabla-wrap"><table class="tabla">
+    <thead><tr><th>Opción</th><th class="r">Viajes</th><th class="r">Km pickers</th><th class="r">Km transpaleta</th><th class="r">Horas picking</th><th class="r">Horas lectura U</th><th class="r">Horas totales</th><th class="r">1ª oleada lista</th><th class="r">Última lista</th></tr></thead>
+    <tbody id="tabla"></tbody>
+  </table></div>
+  <h3>A qué hora acaba cada picker</h3>
+  <div class="tabla-wrap"><table class="tabla">
+    <thead><tr><th>Opción</th><th class="r">Picker 1</th><th class="r">Picker 2</th><th class="r">Picker 3</th><th class="r">Picker 4</th><th class="r">Picker 5</th></tr></thead>
+    <tbody id="tablaPk"></tbody>
+  </table></div>
+  <p class="note">Todo empieza a las 6:00. Una hora por encima de 24:00 quiere decir que con 5 pickers y 5 U no se acaba en el día.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Qué sale</span>
+  <h2>Lectura de los números</h2>
+  <div class="opinion">
+    <p><b>Con 2 cajas por carro, A es la peor.</b> Si cada caja es de una oleada distinta, el viaje se acaba cuando se llena una y la otra va medio vacía: 839 viajes y 205 km con arcones de 80 l.</p>
+    <p><b>A2 y B salen casi igual en horas</b> (unas 124 h). Lo que cuenta es llenar bien las dos cajas, no si el picker tiene zona o recorre la nave. La diferencia está en el reparto: con zonas (A2) unos pickers acaban mucho antes que otros, porque las zonas se cortaron por lecturas y unidades y no por viajes; en B todos acaban a la vez.</p>
+    <p><b>C (palet en el pasillo central) baja a la mitad</b> (unas 79 h): los pickers casi no van y vuelven a las U, solo se mueve el palet. Es la idea de Andrés, pero separando a la U en el propio palet.</p>
+    <p><b>En todas, la lectura en las U son 45 h</b> (10.196 u a 225 u/h). Con 5 U son 9 h seguidas como mínimo: ninguna opción acaba en 3 h si no se lee más rápido o hay más U.</p>
+    <p><b>El tamaño del arcón cambia mucho A, A2 y B</b> (de 60 a 120 l, de 142 a 106 h) y casi nada C.</p>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Cómo se ha calculado</span>
+  <h2>Supuestos</h2>
+  <ul class="supuestos">
+    <li>Líneas reales del 10/09/2026 (7.484) leídas de Odoo, con su hueco, volumen y peso por artículo (Excel de volúmenes I27/V27; 98% de las unidades con dato propio).</li>
+    <li>5 oleadas de unidades parecidas por orden de OUT; 5 zonas dinámicas con el mismo trabajo (lecturas + unidades).</li>
+    <li>Andar con carro a 0,8 m/s (también 0,6 m/s); transpaleta a 1 m/s y 3 min de maniobra por palet; palet de 1,5 m³.</li>
+    <li>20 s por lectura de hueco, 4 s por prenda, 30 s por caja dejada en la U; en C, 5 s más por hueco y U.</li>
+    <li>Arcón: se llena hasta el 78% de su volumen (lo que caben las cajas de 60×40×40 reales de ese día) o hasta el límite de kg.</li>
+    <li>U en fila junto al SORTER, 24 m de extremo a extremo. Lectura a 225 u/h por persona desde que llega la primera caja.</li>
+    <li>Metros sobre el plano simplificado de la nave (pasillos transversales tras P03, central y tras P24).</li>
+    <li>Falta por confirmar: medida real de los arcones grises y kg máximos por persona (15 kg según prevención; 18–20 kg en hombres por confirmar).</li>
+  </ul>
+</section>
+</div>
+<script>
+(function () {
+  var R = [["A",80,15,0.8,839,205.1,0,110.9,45.3,156.2,"24:34","38:18",["18:01","33:00","24:57","26:42","38:16"]],["A2",80,15,0.8,503,126.1,0,79,45.3,124.3,"20:08","27:04",["16:23","24:35","20:56","20:06","27:01"]],["B",80,15,0.8,494,124.4,0,78.5,45.3,123.8,"20:33","23:44",["20:29","20:37","21:01","23:44","22:37"]],["C",80,15,0.8,19,16.7,3,33.5,45.3,78.8,"15:48","17:36",["13:06","12:52","14:27","11:19","11:45"]],["A",60,15,0.8,1148,277.2,0,141.3,45.3,186.6,"29:59","48:16",["20:20","41:31","28:51","32:20","48:15"]],["A2",60,15,0.8,669,164.8,0,96.6,45.3,142,"23:23","32:44",["17:47","29:22","23:18","23:29","32:42"]],["B",60,15,0.8,664,164.2,0,96.6,45.3,141.9,"23:30","28:23",["23:30","24:02","23:54","28:21","26:48"]],["C",60,15,0.8,19,21.4,3,35.1,45.3,80.4,"15:52","17:41",["13:17","13:25","14:44","11:38","12:05"]],["A",120,20,0.8,530,132.4,0,79.9,45.3,125.2,"20:09","28:08",["15:54","25:27","20:20","20:09","28:05"]],["A2",120,20,0.8,333,86.5,0,61.2,45.3,106.5,"16:40","21:14",["15:14","20:07","18:03","16:37","21:12"]],["B",120,20,0.8,325,85.2,0,60.8,45.3,106.1,"17:45","19:00",["17:40","17:47","18:14","18:57","18:08"]],["C",120,20,0.8,19,12.4,3,32,45.3,77.3,"15:43","17:31",["12:58","12:24","14:08","11:04","11:25"]],["A",80,15,0.6,839,205.1,0,134.7,45.3,180,"28:34","46:14",["19:56","38:56","28:16","31:20","46:13"]],["A2",80,15,0.6,503,126.1,0,93.6,45.3,138.9,"22:54","31:37",["17:53","28:08","23:09","22:52","31:34"]],["B",80,15,0.6,494,124.4,0,92.9,45.3,138.2,"22:57","27:24",["22:53","23:01","23:30","27:23","26:05"]],["C",80,15,0.6,19,16.7,3,35.4,45.3,80.7,"15:54","17:42",["13:32","13:21","14:48","11:37","12:06"]]];
+  var COL = { A: 'var(--z1)', A2: 'var(--z2)', B: 'var(--z3)', C: 'var(--z5)' };
+  var NOM = { A: 'A · 25 pedidos, 2 oleadas', A2: 'A2 · 25 pedidos, 1 oleada', B: 'B · 5 pedidos', C: 'C · palet central' };
+  var ESC = [[80, 15, 0.8, 'Arcón 80 l · 15 kg · 0,8 m/s'], [60, 15, 0.8, 'Arcón 60 l · 15 kg · 0,8 m/s'], [120, 20, 0.8, 'Arcón 120 l · 20 kg · 0,8 m/s'], [80, 15, 0.6, 'Arcón 80 l · 15 kg · 0,6 m/s']];
+  function n1(v) { return String(v).replace('.', ','); }
+  function pintar(e) {
+    var filas = R.filter(function (r) { return r[1] === e[0] && r[2] === e[1] && r[3] === e[2]; });
+    var max = Math.max.apply(null, R.map(function (r) { return r[9]; }));
+    document.getElementById('barras').innerHTML = filas.map(function (r) {
+      return '<div class="barra"><span><i class="dot" style="background:' + COL[r[0]] + '"></i>' + NOM[r[0]] + '</span><div class="pista">' +
+        '<span style="width:' + (r[7] / max * 100) + '%;background:' + COL[r[0]] + '" title="picking ' + n1(r[7]) + ' h"></span>' +
+        '<span style="width:' + (r[8] / max * 100) + '%;background:var(--muted);opacity:.55" title="lectura ' + n1(r[8]) + ' h"></span></div><b>' + n1(r[9]) + ' h</b></div>';
+    }).join('');
+    document.getElementById('tabla').innerHTML = filas.map(function (r) {
+      return '<tr><td><span class="dot" style="background:' + COL[r[0]] + '"></span>' + NOM[r[0]] + '</td><td class="r">' + r[4] + '</td><td class="r">' + n1(r[5]) + '</td><td class="r">' + (r[6] ? n1(r[6]) : '–') + '</td><td class="r">' + n1(r[7]) + '</td><td class="r">' + n1(r[8]) + '</td><td class="r"><b>' + n1(r[9]) + '</b></td><td class="r">' + r[10] + '</td><td class="r">' + r[11] + '</td></tr>';
+    }).join('');
+    document.getElementById('tablaPk').innerHTML = filas.map(function (r) {
+      return '<tr><td><span class="dot" style="background:' + COL[r[0]] + '"></span>' + NOM[r[0]] + '</td>' + r[12].map(function (h) { return '<td class="r">' + h + '</td>'; }).join('') + '</tr>';
+    }).join('');
+    Array.prototype.forEach.call(document.getElementById('escenarios').children, function (c, i) { c.setAttribute('aria-selected', ESC[i] === e ? 'true' : 'false'); });
+  }
+  var chips = document.getElementById('escenarios');
+  ESC.forEach(function (e) { var b = document.createElement('button'); b.type = 'button'; b.setAttribute('role', 'tab'); b.textContent = e[3]; b.addEventListener('click', function () { pintar(e); }); chips.appendChild(b); });
+  pintar(ESC[0]);
+})();
+</script>
+</body></html>
