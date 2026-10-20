@@ -51,6 +51,19 @@ ZONAS_DINAMICAS = False
 N_INT_MINIMO = 5                 # minimo de INT (uno por picker); si hay muchas uds salen mas (max MAX_UDS_INT)
 SEG_LECTURA = 20                 # peso de cada lectura de hueco (producto + hueco) para repartir el trabajo
 SEG_UNIDAD = 4                   # peso de cada unidad
+# Reparto por tiempo: ademas de lecturas y uds, cada prenda lleva su parte del viaje de ida y vuelta
+# al SORTER (segun su volumen y lo lejos que esta). Asi todos los pickers empiezan a la vez y acaban
+# mas o menos a la misma hora. Con REPARTO_POR_TIEMPO salen N_PICKERS INT (uno por picker).
+REPARTO_POR_TIEMPO = True
+N_PICKERS = 5
+V_ANDAR = 0.8                    # m/s andando con carro
+LITROS_BAUL = 103                # baul grande 80x50x33 (132 l) lleno al 78%
+BAULES_CARRO = 2
+# Litros por prenda si el producto no tiene volumen en Odoo (por las letras del modelo: 2621JA31 -> JA)
+LITROS_TIPO = {'JA': 8.0, 'XC': 12.0, 'ZB': 14.0, 'SU': 4.0, 'TR': 3.7, 'CL': 3.0, 'PT': 2.2, 'PL': 2.1,
+               'ML': 1.9, 'VS': 1.8, 'FA': 1.6, 'TP': 1.2, 'BL': 0.8, 'ZC': 0.6}
+LITROS_DEFECTO = 3.0
+HORA_INICIO = 6.0                # para el resumen: hora a la que empiezan los pickers
 # Outlet: lo que no es de la temporada actual va en su propio INT (OUTLET), aparte de las zonas
 SEPARAR_OUTLET = False
 TEMPORADAS_ACTUALES = ['I27', 'V27']
@@ -66,6 +79,7 @@ PREFIJO_AGRUPACION = 'TIENDA'
 MODO_PLANIFICADO = False
 PLAN_MAX_UDS = 2000              # uds que junta (una oleada)
 PLAN_MAX_OUT = 10                # tope de OUT (tiendas) por oleada
+PLAN_MIN_UDS_OUT = 20            # no se cogen OUT con menos uds (pedidos de material para la tienda)
 # Oleada propia: las OUT elegidas salen de su agrupacion del dia (TIENDA dd-mm) y pasan a una
 # agrupacion nueva, en curso, para que el programa de oleadas cargue solo estas tiendas.
 OLEADA_PROPIA = False
@@ -149,7 +163,10 @@ for p in outs:
             uds_p = 0.0
             for m in p.move_lines:
                 uds_p += m.product_uom_qty
-            validas.append((uds_p, p.id))
+            if uds_p < PLAN_MIN_UDS_OUT:
+                saltadas.append('%s: solo %d uds (menos de %d: pedido de material)' % (p.name, uds_p, PLAN_MIN_UDS_OUT))
+            else:
+                validas.append((uds_p, p.id))
     elif motivo:
         errores.append('%s: %s' % (p.name, motivo))
 
@@ -179,7 +196,8 @@ if errores:
     raise Warning(texto)
 
 # ---------------- 2. Lineas reservadas por zona -------------------------------
-# Se leen ANTES de quitar la reserva: (pasillo, posicion, lineal, nivel, ubicacion, producto, uds, out)
+# Se leen ANTES de quitar la reserva:
+# (pasillo, posicion, lineal, nivel, ubicacion, producto, uds, out, litros por prenda, segundos de viaje por prenda)
 por_zona = {}
 for p in outs:
     for ml in p.move_line_ids:
@@ -222,7 +240,28 @@ for p in outs:
                     break
         if zona not in por_zona:
             por_zona[zona] = []
-        por_zona[zona].append((lineal // 2, pos, lineal, nivel, ml.location_id, ml.product_id, qty, p))
+        litros = (ml.product_id.volume or 0.0) * 1000.0
+        if litros <= 0:
+            litros = LITROS_TIPO.get((ml.product_id.default_code or '')[4:6], LITROS_DEFECTO)
+        # Ida y vuelta desde el SORTER por el pasillo central (plano simplificado de NAU-2)
+        viaje_ud = 0.0
+        if lineal:
+            if pos <= 17:
+                if pos == 0:
+                    y_h = 29.3
+                elif pos <= 3:
+                    y_h = 2 + (pos - 0.5) * 1.5
+                else:
+                    y_h = 9 + (pos - 3.5) * (20.0 / 14)
+            else:
+                p_y = pos > 36 and 36 or pos
+                if p_y <= 24:
+                    y_h = 31 + (p_y - 17.5) * (12.0 / 7)
+                else:
+                    y_h = 45.5 + (p_y - 24.5) * (12.5 / 12)
+            ida_vuelta = 2 * ((30 + 2 * (lineal // 2) - 0.5 - 26.0) + abs(y_h - 30.0))
+            viaje_ud = litros / (LITROS_BAUL * BAULES_CARRO) * ida_vuelta / V_ANDAR
+        por_zona[zona].append((lineal // 2, pos, lineal, nivel, ml.location_id, ml.product_id, qty, p, litros, viaje_ud))
 
 # ---------------- 3. Trozos iguales por zona (igual que el diagnostico) -------
 orden_zonas = []
@@ -246,6 +285,8 @@ if ZONAS_DINAMICAS:
     for x in todas:
         uds_tot += x[6]
         peso_tot += SEG_UNIDAD * x[6]
+        if REPARTO_POR_TIEMPO:
+            peso_tot += x[6] * x[9]
         if (x[5].id, x[4].id) != clave_ant:
             peso_tot += SEG_LECTURA
         clave_ant = (x[5].id, x[4].id)
@@ -254,6 +295,8 @@ if ZONAS_DINAMICAS:
         n_din += 1
     if n_din < N_INT_MINIMO:
         n_din = N_INT_MINIMO
+    if REPARTO_POR_TIEMPO:
+        n_din = N_PICKERS
     trozos = []
     actual = []
     peso_act = 0.0
@@ -268,6 +311,8 @@ if ZONAS_DINAMICAS:
                 actual = []
             actual.append(x)
             peso_act += SEG_UNIDAD * x[6]
+            if REPARTO_POR_TIEMPO:
+                peso_act += x[6] * x[9]
             if clave != clave_ant:
                 peso_act += SEG_LECTURA
             clave_ant = clave
@@ -309,6 +354,23 @@ for zona in orden_zonas:
         trozos.append(actual)
     for i in range(len(trozos)):
         trozos_int.append(('%s-%s-%s-%s' % (PREFIJO, hoy, zona, letras[i]), trozos[i]))
+
+# Tiempo estimado de cada INT: lecturas + uds + viajes al SORTER (lo mismo que se usa para repartir)
+estimado = {}
+for etiqueta, lineas_t in trozos_int:
+    seg_t = 0.0
+    litros_t = 0.0
+    claves_t = {}
+    for x in lineas_t:
+        seg_t += x[6] * (SEG_UNIDAD + x[9])
+        litros_t += x[6] * x[8]
+        claves_t[(x[5].id, x[4].id)] = 1
+    seg_t += SEG_LECTURA * len(claves_t)
+    viajes_t = int(litros_t // (LITROS_BAUL * BAULES_CARRO))
+    if viajes_t * LITROS_BAUL * BAULES_CARRO < litros_t:
+        viajes_t += 1
+    fin_min = int(round(HORA_INICIO * 60 + seg_t / 60.0))
+    estimado[etiqueta] = (seg_t / 60.0, viajes_t, litros_t, '%d:%02d' % (fin_min // 60, fin_min % 60))
 
 # ---------------- 3b. Km estimados: INT por zona frente a hoy (OUT por vueltas) --
 # Plano simplificado: 1 m por lineal (el L01 a 31 m de los muelles), 60 m de ancho,
@@ -549,8 +611,9 @@ for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
                 if int(num) > lin_max:
                     lin_max = int(num)
     tramo = lin_max and ('L%02d-L%02d' % (lin_min, lin_max)) or 'sin lineal'
-    lineas_log.append('   %s | %s | %s | %d uds | %d movimientos | %d OUT | %s' % (
-        picking.name, etiqueta, tramo, uds_t, n_movs, n_outs, picking.state))
+    est = estimado.get(etiqueta, (0, 0, 0, ''))
+    lineas_log.append('   %s | %s | %s | %d uds | %d movimientos | %d OUT | ~%d min, %d viajes, %d l, acaba ~%s | %s' % (
+        picking.name, etiqueta, tramo, uds_t, n_movs, n_outs, est[0], est[1], est[2], est[3], picking.state))
 lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
 lineas_log.append(texto_km)
 
