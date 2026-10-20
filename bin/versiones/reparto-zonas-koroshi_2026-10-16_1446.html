@@ -1,0 +1,695 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Reparto por zonas KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna de lectura de ~980px; el mapa de la nave es la pieza central, el resto acompaña en bandas sobrias */
+:root {
+  --bg: #f3f4f2;
+  --panel: #ffffff;
+  --ink: #1d2327;
+  --muted: #5d676d;
+  --line: #d5d9d6;
+  --floor: #e6e8e4;
+  --accent: #e0a100;          /* amarillo de señalización de nave */
+  --accent-ink: #6b4d00;
+  --z1: #2a62b8; --z2: #2e9a52;
+  --z3: #c8372d; --z4: #e8701a; --z5: #7a4cc2;
+  --zx: #8b9297;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: .01em; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow {
+  font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+section { display: grid; gap: 20px; min-width: 0; }
+
+/* Cabecera */
+header { display: grid; gap: 16px; }
+.tape {
+  height: 10px; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px);
+  max-width: 220px;
+}
+.lead { font-size: 1.15rem; color: var(--ink); }
+.lead strong { background: linear-gradient(transparent 62%, color-mix(in srgb, var(--accent) 45%, transparent) 0); }
+
+/* Antes / después */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.case { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.case .tag { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+.case.hoy .tag { color: var(--muted); }
+.case.nuevo { border-color: var(--accent); }
+.case.nuevo .tag { color: var(--accent-ink); }
+.case ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mini { width: 100%; height: auto; display: block; }
+
+/* Mapa */
+.map-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.map-box svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.legend div { display: grid; grid-template-columns: 14px 1fr; gap: 4px 10px; align-items: start; font-size: .9rem; }
+.legend i { width: 14px; height: 14px; border-radius: 2px; margin-top: 4px; }
+.legend b { font-family: var(--f-display); font-size: 1.1rem; }
+.legend span { grid-column: 2; color: var(--muted); font-size: .82rem; }
+
+/* Flujo */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; counter-reset: paso; }
+.step { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 16px 16px; display: grid; gap: 8px; align-content: start; }
+.step::before {
+  counter-increment: paso; content: counter(paso);
+  font-family: var(--f-display); font-weight: 700; font-size: 1.1rem;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #1d2327;
+}
+.step p { font-size: .92rem; color: var(--muted); }
+.step .where { font-family: var(--f-mono); font-size: .78rem; color: var(--ink); }
+
+/* Ejemplo real */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.bars { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 7px; overflow-x: auto; }
+.bar-row { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; align-items: center; font-size: .85rem; min-width: 420px; }
+.bar-row .n { font-family: var(--f-mono); font-weight: 500; }
+.bar-row .t { font-family: var(--f-mono); color: var(--muted); font-size: .78rem; }
+.track { position: relative; height: 18px; background: var(--floor); border-radius: 2px; }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+.track .max { position: absolute; top: -4px; bottom: -4px; right: 0; border-right: 2px dashed var(--ink); }
+.bar-row .u { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bars .axis { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; font-family: var(--f-mono); font-size: .72rem; color: var(--muted); min-width: 420px; }
+.bars .axis span:nth-child(3) { display: flex; justify-content: space-between; }
+.note { font-size: .88rem; color: var(--muted); }
+
+/* Escenario 10k */
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+
+/* Estado */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.st { padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; gap: 6px; align-content: start; }
+.pill { justify-self: start; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.ok { color: #2e7d4f; } .next { color: var(--accent-ink); } .later { color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #6cc495; } }
+:root[data-theme="dark"] .ok { color: #6cc495; }
+.st p { font-size: .9rem; color: var(--muted); }
+
+/* Recorrido */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button {
+  font-family: var(--f-mono); font-size: .8rem; padding: 5px 9px; border-radius: 4px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center;
+}
+.chips button i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.chips button[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.mini-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 6px; display: grid; gap: 4px; cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.mini-card:hover, .mini-card:focus-visible { border-color: var(--ink); outline: none; }
+.mini-card .h { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: .78rem; }
+.mini-card .h b { font-weight: 500; white-space: nowrap; }
+.mini-card .h span { text-align: right; }
+.mini-card .h span { color: var(--muted); }
+.mini-card svg { width: 100%; height: auto; display: block; }
+/* Impresión / PDF: A4, sin cortes dentro de tarjetas, mapas ni barras */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11.5pt; }
+  .wrap { max-width: none; padding-left: 0; padding-right: 0; padding-block: 0; gap: 26px; }
+  section { gap: 14px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 30pt; }
+  h2 { font-size: 20pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  .chips { display: none; }
+  .map-box, .bars { overflow: visible; }
+  .map-box svg { min-width: 0; }
+  .bar-row, .bars .axis { min-width: 0; grid-template-columns: 52px 78px 1fr 40px; }
+  .bars { gap: 4px; padding: 12px 14px; }
+  .track { height: 13px; }
+  .case, .step, .kpi, .kpis, .bars, .map-box, .legend, .mini-card, .role, .st, .callout,
+  .preguntas li, .riesgos tr, .scen, .compare, .flow, .same { break-inside: avoid; }
+  .minis-titulo { break-before: page; }
+  .compare { grid-template-columns: 1fr 1fr; }
+  .flow { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { padding: 12px 10px; }
+  .step p { font-size: 9pt; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 22pt; }
+  .scen { grid-template-columns: 1fr 1fr; }
+  .minis { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .mini-card { padding: 5px 6px 4px; display: block; }
+  .mini-card svg { aspect-ratio: 960 / 340; margin-top: 3px; }
+  .map-box:has(#ruta) { padding: 8px; }
+  .map-box:has(#ruta) svg { width: 100%; }
+  .mini-card .h { font-size: 7pt; }
+  .roles { grid-template-columns: repeat(3, 1fr); }
+  .motivos { grid-template-columns: repeat(3, 1fr); }
+  .tlargos, .motivos, .largos .callout { break-inside: avoid; }
+  .largos h3 { break-after: avoid; }
+  .status { grid-template-columns: repeat(3, 1fr); }
+  .lead { font-size: 12.5pt; }
+}
+
+/* Recorridos largos */
+.largos { display: grid; gap: 14px; }
+.tlargos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.tlargos tr.alto td { font-weight: 600; }
+.motivos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.motivos div { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 6px; align-content: start; }
+.motivos h4 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; }
+.motivos p { font-size: .9rem; color: var(--muted); }
+
+/* Qué cambia, riesgos, preguntas */
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.role { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.role p { font-size: .92rem; }
+.role p b { display: block; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.role .antes { color: var(--muted); }
+.role .despues b { color: var(--accent-ink); }
+.same { display: grid; gap: 8px; }
+.same ul, .pide { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.riesgos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.riesgos td { vertical-align: top; }
+.riesgos td:first-child { font-weight: 500; width: 36%; }
+.preguntas { margin: 0; padding: 0; list-style: none; counter-reset: preg; display: grid; gap: 12px; }
+.preguntas li { counter-increment: preg; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; background: var(--panel); border: 1px dashed var(--accent); border-radius: 6px; padding: 16px; }
+.preguntas li::before { content: counter(preg); grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 1.8rem; line-height: 1; color: var(--accent-ink); }
+.preguntas p { font-size: .92rem; color: var(--muted); }
+</style>
+
+<div class="wrap">
+
+<header>
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Pedidos de tienda · Propuesta de picking</span>
+  <h1>Reparto de los pedidos de tienda por zonas</h1>
+  <p class="lead">Cada mañana entran las OUT de tienda. En lugar de que cada picker recorra la nave entera por cada OUT, una acción de Odoo <strong>junta todo lo que hay que sacar de cada zona en INT de 500 unidades como máximo</strong>. Cada picker se queda en su zona y lo lleva todo al SORTER, donde se reparte a las tiendas en las oleadas.</p>
+</header>
+
+<section>
+  <span class="eyebrow">El cambio</span>
+  <h2>Hoy y con la propuesta</h2>
+  <div class="compare">
+    <div class="case hoy">
+      <span class="tag">Hoy</span>
+      <h3>Una OUT, toda la nave</h3>
+      <svg class="mini" viewBox="0 0 300 120" role="img" aria-label="Un picker recorre las cinco zonas para una sola OUT">
+        <rect x="0" y="0" width="300" height="120" fill="var(--floor)" rx="4"/>
+        <rect x="12" y="10" width="160" height="46" fill="var(--z1)" opacity=".25"/>
+        <rect x="172" y="10" width="116" height="46" fill="var(--z2)" opacity=".25"/>
+        <rect x="12" y="64" width="166" height="46" fill="var(--z3)" opacity=".25"/>
+        <rect x="178" y="64" width="26" height="46" fill="var(--z4)" opacity=".25"/>
+        <rect x="204" y="64" width="56" height="46" fill="var(--z5)" opacity=".25"/>
+        <path d="M6 100 L40 100 L40 22 L90 22 L90 90 L150 90 L150 30 L220 30 L220 95 L250 95 L250 40 L280 40 L280 80 L190 80 L190 105 L6 105" fill="none" stroke="var(--ink)" stroke-width="2.2" stroke-dasharray="5 4" stroke-linejoin="round"/>
+        <circle cx="6" cy="102" r="5" fill="var(--accent)" stroke="var(--ink)"/>
+      </svg>
+      <ul>
+        <li>El picker escanea una OUT y va a buscar todo lo de esa tienda.</li>
+        <li>Casi todas las OUT tienen producto en las cinco zonas: cada OUT es una vuelta completa.</li>
+        <li>Varios pickers pasan por los mismos pasillos a la vez.</li>
+      </ul>
+    </div>
+    <div class="case nuevo">
+      <span class="tag">Propuesta</span>
+      <h3>Una zona, muchas tiendas a la vez</h3>
+      <svg class="mini" viewBox="0 0 300 120" role="img" aria-label="Cada picker recorre solo su zona, en orden de pasillo">
+        <rect x="0" y="0" width="300" height="120" fill="var(--floor)" rx="4"/>
+        <rect x="12" y="10" width="160" height="46" fill="var(--z1)" opacity=".25"/>
+        <rect x="172" y="10" width="116" height="46" fill="var(--z2)" opacity=".25"/>
+        <rect x="12" y="64" width="166" height="46" fill="var(--z3)" opacity=".25"/>
+        <rect x="178" y="64" width="26" height="46" fill="var(--z4)" opacity=".25"/>
+        <rect x="204" y="64" width="56" height="46" fill="var(--z5)" opacity=".25"/>
+        <path d="M18 16 L18 50 L38 50 L38 16 L58 16 L58 50 L78 50 L78 16 L98 16 L98 50" fill="none" stroke="var(--z1)" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M180 16 L180 50 L200 50 L200 16 L220 16 L220 50" fill="none" stroke="var(--z2)" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M20 70 L20 104 L40 104 L40 70 L60 70 L60 104" fill="none" stroke="var(--z3)" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M184 70 L184 104 L196 104 L196 70" fill="none" stroke="var(--z4)" stroke-width="2.4" stroke-linejoin="round"/>
+        <path d="M212 70 L212 104 L232 104 L232 70" fill="none" stroke="var(--z5)" stroke-width="2.4" stroke-linejoin="round"/>
+      </svg>
+      <ul>
+        <li>El picker coge un INT de su zona, ya ordenado por pasillo.</li>
+        <li>En el ejemplo real, cada INT recoge para unas 36 tiendas en una sola pasada.</li>
+        <li>Nadie se cruza: cada zona tiene su gente.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Nave NAU-2 · vista desde arriba, muelles a la izquierda</span>
+  <h2>Las cinco zonas</h2>
+  <p>El pasillo central parte la nave en dos lados: izquierda (posiciones P01–P17) y derecha (P18–P36). Cada lado se corta por tramos de lineales. Los cortes están puestos para que la carga de cada zona sea parecida según la demanda real de los últimos 30 días.</p>
+  <div class="map-box"><svg id="mapa" viewBox="0 0 1000 380" role="img" aria-label="Plano de la nave con las cinco zonas de picking"></svg></div>
+  <div class="legend">
+    <div><i style="background:var(--z1)"></i><b>Z1</b><span>Izquierda · L01–L79</span></div>
+    <div><i style="background:var(--z2)"></i><b>Z2</b><span>Izquierda · L80–L136</span></div>
+    <div><i style="background:var(--z3)"></i><b>Z3</b><span>Derecha · L01–L83</span></div>
+    <div><i style="background:var(--z4)"></i><b>Z4</b><span>Derecha · L84–L95</span></div>
+    <div><i style="background:var(--z5)"></i><b>Z5</b><span>Derecha · L96–L120</span></div>
+  </div>
+  <p class="note">Las unidades del plano son las del día de ejemplo TIENDA 13-10.</p>
+</section>
+
+<section>
+  <span class="eyebrow">Cómo funciona en Odoo</span>
+  <h2>De la OUT de tienda a la oleada</h2>
+  <div class="flow">
+    <div class="step"><h3>Entran las OUT</h3><p>Los pedidos de tienda llegan como siempre y quedan preparados (reservados en su hueco).</p><span class="where">Albaranes · PED. TIENDAS</span></div>
+    <div class="step"><h3>Repartir por zona</h3><p>Se seleccionan las OUT y se lanza la acción. Mira de qué hueco sale cada línea y la asigna a su zona.</p><span class="where">Acción › Repartir INT por zona</span></div>
+    <div class="step"><h3>INT por zona</h3><p>Crea los INT de cada zona, de 500 u como máximo, en orden de recorrido. Cada línea sale del hueco exacto.</p><span class="where">EFFEC/Stock → SORTER</span></div>
+    <div class="step"><h3>Picking</h3><p>Cada picker valida su INT desde la PDA. La mercancía llega al SORTER.</p><span class="where">PDA · un INT por persona</span></div>
+    <div class="step"><h3>Oleadas</h3><p>Las OUT ya salen del SORTER: se reservan allí y se reparten a tiendas en la U con el programa de oleadas.</p><span class="where">SORTER → U → caja</span></div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Prueba con datos reales · TIENDA 13-10 · sin crear nada</span>
+  <h2>Un día real repartido por zonas</h2>
+  <p>Hemos pasado por el diagnóstico las 51 OUT de tienda de ese día. El diagnóstico no crea nada en Odoo, solo dice qué INT haría. El resultado en Odoo coincide al 100% con la simulación hecha aparte.</p>
+  <div class="kpis">
+    <div class="kpi"><span class="v">51</span><span class="l">OUT de tienda</span></div>
+    <div class="kpi"><span class="v">4.759</span><span class="l">unidades a recoger</span></div>
+    <div class="kpi"><span class="v">13</span><span class="l">INT de zona</span></div>
+    <div class="kpi"><span class="v">380–439</span><span class="l">unidades por INT (máx. 500)</span></div>
+  </div>
+  <div class="bars" id="bars" aria-label="Unidades de cada INT"></div>
+  <p class="note">Las 2 unidades marcadas como ZX estaban en ubicaciones sin lineal. En la versión real se añaden al INT de la zona más cercana. Ese día además 10 OUT ya se habían preparado desde el SORTER; esas líneas no entran en ningún INT.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Simulación con un día fuerte real · 10 de septiembre de 2026 · solo lectura</span>
+  <h2>Un día de 10.000 unidades</h2>
+  <p>Buscamos en Odoo los días con más unidades de pedidos de tienda. El 10 de septiembre salieron 10.196 unidades, el más cercano a 10.000. Hemos repartido sus líneas por zonas con la misma regla que usará la acción.</p>
+  <div class="kpis">
+    <div class="kpi"><span class="v">51</span><span class="l">OUT de tienda</span></div>
+    <div class="kpi"><span class="v">10.196</span><span class="l">unidades a recoger</span></div>
+    <div class="kpi"><span class="v">22</span><span class="l">INT de zona</span></div>
+    <div class="kpi"><span class="v">7.484</span><span class="l">líneas de picking</span></div>
+  </div>
+  <div class="scen">
+    <table>
+      <thead><tr><th>Zona</th><th class="r">Uds</th><th class="r">% del día</th><th class="r">INT</th></tr></thead>
+      <tbody id="tabla10k"></tbody>
+      <tfoot><tr><td>Total</td><td class="r">10.196</td><td class="r">100%</td><td class="r">22</td></tr></tfoot>
+    </table>
+    <div class="callout">
+      <h3>22 INT para todo el día</h3>
+      <p>Dentro del objetivo de 20–30 INT diarios. Casi todos rondan las 460–490 unidades. Si hay más volumen, la acción crea más INT de la misma zona.</p>
+      <p>La carga por zona cambia de un día a otro según dónde esté el stock: este día Z2 tuvo 3.735 u y Z5 solo 207. Por eso el INT es la unidad de trabajo: quien termina su zona coge el siguiente INT pendiente de otra.</p>
+    </div>
+  </div>
+  <div class="bars" id="bars10k" aria-label="Unidades de cada INT del día de 10.000 unidades"></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Recorrido · día de 10.000 unidades · 10/09/2026</span>
+  <h2>Por dónde camina cada picker</h2>
+  <p>Cada INT sale del SORTER, entra en los pasillos de su zona en el orden en que la acción pone las líneas y vuelve al SORTER. Los círculos son las paradas: cuanto más grande, más unidades se cogen en ese hueco. Los metros son una estimación sobre el plano, usando solo los pasillos transversales (tras P03, central y tras P24).</p>
+  <div class="kpis">
+    <div class="kpi"><span class="v" id="kmInt">–</span><span class="l">recorrido total con los 22 INT</span></div>
+    <div class="kpi"><span class="v">43,7 km</span><span class="l">recorrido estimado hoy, una vuelta por cada una de las 51 OUT</span></div>
+    <div class="kpi"><span class="v" id="ahorro">–</span><span class="l">menos metros andados</span></div>
+    <div class="kpi"><span class="v" id="mediaInt">–</span><span class="l">metros de media por INT</span></div>
+  </div>
+  <div class="chips" id="chips" role="tablist" aria-label="Elegir INT"></div>
+  <div class="map-box"><svg id="ruta" viewBox="0 0 1000 400" role="img" aria-label="Recorrido del INT seleccionado"></svg></div>
+  <p class="note" id="rutaInfo"></p>
+  <p class="note">Hoy cada OUT se coge por separado: el picker hace una vuelta por cada tienda, pasando por casi todas las zonas. La cifra de hoy está calculada con el mismo plano y el mismo orden de pasillos, para comparar igual con igual.</p>
+  <h3 class="minis-titulo">Los 22 recorridos de un vistazo</h3>
+  <div class="minis" id="minis"></div>
+  <div class="largos">
+    <h3>Por qué unos recorridos son más largos</h3>
+    <p>Todos los INT llevan casi las mismas unidades (unas 460–490), pero no se recogen igual de concentradas. Los tres más largos son Z3-a, Z1-a y Z2-a.</p>
+    <table class="tlargos">
+      <thead><tr><th>INT</th><th>Tramo</th><th class="r">Paradas</th><th class="r">Pasillos</th><th class="r">Uds por parada</th><th class="r">Metros</th></tr></thead>
+      <tbody>
+        <tr class="alto"><td><span class="dot" style="background:var(--z3)"></span>Z3-a</td><td>L01–L71</td><td class="r">147</td><td class="r">34</td><td class="r">3,3</td><td class="r">1.251</td></tr>
+        <tr class="alto"><td><span class="dot" style="background:var(--z1)"></span>Z1-a</td><td>L02–L63</td><td class="r">98</td><td class="r">20</td><td class="r">4,7</td><td class="r">785</td></tr>
+        <tr class="alto"><td><span class="dot" style="background:var(--z2)"></span>Z2-a</td><td>L81–L95</td><td class="r">53</td><td class="r">8</td><td class="r">8,8</td><td class="r">450</td></tr>
+        <tr><td><span class="dot" style="background:var(--z2)"></span>Z2-e</td><td>L114–L115</td><td class="r">12</td><td class="r">1</td><td class="r">38,9</td><td class="r">261</td></tr>
+        <tr><td><span class="dot" style="background:var(--z4)"></span>Z4-a</td><td>L84–L85</td><td class="r">19</td><td class="r">1</td><td class="r">25,7</td><td class="r">228</td></tr>
+      </tbody>
+    </table>
+    <div class="motivos">
+      <div><h4>La demanda está repartida</h4><p>En la parte delantera de la nave (L01–L70) cada hueco da pocas unidades: 3 o 4 por parada. Para juntar 490 u, el INT tiene que pasar por muchos huecos en muchos pasillos. Al fondo (L110–L118) un solo pasillo da 30–40 u por parada.</p></div>
+      <div><h4>El INT se corta por unidades</h4><p>La regla junta líneas en orden de pasillo hasta llegar a unas 490 u. El primer INT de cada zona recoge toda la cola de huecos con poca venta y por eso abarca un tramo muy largo.</p></div>
+      <div><h4>Ida y vuelta al SORTER</h4><p>Cada INT parte del SORTER y vuelve. Eso son 230–300 m fijos aunque el INT sea de un solo pasillo. Los INT del fondo son cortos de picking, pero lejanos.</p></div>
+    </div>
+    <div class="callout">
+      <h3>Qué se puede mejorar</h3>
+      <ul class="pide">
+        <li><b>Limitar también las paradas por INT</b> (por ejemplo, 500 u o 60 paradas, lo que llegue antes). Z3-a se partiría en 2–3 INT y el trabajo quedaría más igualado: no cuesta lo mismo hacer 147 paradas que 12.</li>
+        <li><b>Recorrer los pasillos en zigzag</b> (uno de ida y el siguiente de vuelta). Con este día baja de 7,9 a 7,4 km, un 7% menos, sin cambiar nada más.</li>
+        <li><b>A más largo plazo, reubicar</b> los productos que se venden poco y están repartidos por L01–L70, para que los huecos con más salida queden cerca del SORTER.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Para el equipo</span>
+  <h2>Qué cambia y qué no</h2>
+  <div class="roles">
+    <div class="role"><h3>Picker</h3><p class="antes"><b>Hoy</b> Escanea una OUT y recoge todo lo de esa tienda por toda la nave.</p><p class="despues"><b>Con la propuesta</b> Coge un INT de su zona en la PDA y recoge para muchas tiendas a la vez, pasillo a pasillo. Lo deja todo en el SORTER.</p></div>
+    <div class="role"><h3>Responsable de almacén</h3><p class="antes"><b>Hoy</b> Reparte OUT entre los pickers.</p><p class="despues"><b>Con la propuesta</b> Cada mañana selecciona las OUT de tienda y lanza la acción «Repartir INT por zona». Reparte INT, no OUT: quien acaba su zona coge el siguiente INT pendiente.</p></div>
+    <div class="role"><h3>SORTER y oleadas</h3><p class="antes"><b>Hoy</b> Recibe OUT ya preparadas por tienda.</p><p class="despues"><b>Con la propuesta</b> Recibe la mercancía por zonas. Las OUT se reservan desde el SORTER y se reparten a tiendas en la U, como ya se hace con el programa de oleadas.</p></div>
+  </div>
+  <div class="same">
+    <h3>Lo que no cambia</h3>
+    <ul>
+      <li>El programa de oleadas y las cajas funcionan igual.</li>
+      <li>Las demás empresas no se tocan: solo afecta a los pedidos de tienda de KOROSHI.</li>
+      <li>No hay que instalar nada. Es una acción dentro de Odoo, con los INT y las PDA de siempre.</li>
+      <li>Los pedidos que no son de tienda siguen su circuito actual.</li>
+    </ul>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Riesgos</span>
+  <h2>Qué puede fallar y cómo se cubre</h2>
+  <table class="riesgos">
+    <thead><tr><th>Situación</th><th>Qué hace la propuesta</th></tr></thead>
+    <tbody>
+      <tr><td>Falta stock en un hueco al crear los INT (alguien lo ha movido)</td><td>La acción comprueba que cada INT queda reservado entero. Si falta algo, lo deshace todo y avisa del producto y el hueco. No queda nada a medias.</td></tr>
+      <tr><td>Las OUT quedan sin reserva mientras se hace el picking</td><td>Es intencionado: quedan en espera y se reservan desde el SORTER cuando se validan sus INT. Su stock está reservado en los INT, así que nadie más lo puede coger.</td></tr>
+      <tr><td>Un INT no se termina o se deja a medias</td><td>Sus OUT no se pueden reservar enteras desde el SORTER y se ve enseguida qué INT falta. Se termina o se reasigna a otra persona.</td></tr>
+      <tr><td>El SORTER se llena con 10.000 u</td><td>Los INT se lanzan por rondas, no todos a la vez. Hay que comprobar el espacio y los carros del SORTER antes del piloto.</td></tr>
+      <tr><td>Error al ponerlo en marcha</td><td>Primero una prueba con 2–3 OUT, después un día completo de prueba. Se puede volver al sistema actual en cualquier momento.</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<section>
+  <span class="eyebrow">Dónde estamos</span>
+  <h2>Siguientes pasos</h2>
+  <div class="status">
+    <div class="st"><span class="pill ok">Hecho</span><h3>Diagnóstico validado</h3><p>La acción de prueba lee las OUT reales y calcula los INT sin tocar nada. Resultado comprobado en Odoo.</p></div>
+    <div class="st"><span class="pill next">Siguiente</span><h3>Acción real con 2–3 OUT de prueba</h3><p>Crear los INT, validarlos y comprobar que las OUT se reservan desde el SORTER.</p></div>
+    <div class="st"><span class="pill later">Después</span><h3>Día completo</h3><p>Lanzarlo con todas las OUT de un día y asignar cada zona a su picker.</p></div>
+  </div>
+  <div class="callout">
+    <h3>Qué necesitamos</h3>
+    <ul class="pide">
+      <li>El visto bueno para hacer la prueba con 2–3 OUT de tienda.</li>
+      <li>Fijar un día para el piloto con un día completo de pedidos.</li>
+      <li>Decidir cuántas personas van a cada zona.</li>
+    </ul>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Pendiente de cerrar</span>
+  <h2>Preguntas abiertas</h2>
+  <ol class="preguntas">
+    <li><h3>¿Cuánta gente y cuántas horas para un día de 10.000 u?</h3><p>Necesitamos las unidades por hora que hace un picker y a qué hora se empieza. Con eso se calcula cuántos pickers hacen falta y a qué hora se acaba. La idea de partida: 2 rondas y unas 10 PDA que se ayudan entre zonas, para acabar antes de las 13:00.</p></li>
+    <li><h3>¿Dónde está el cuello de botella?</h3><p>Con 10.000 u, la lectura en las 5 U de oleadas lleva unas 4,7 h, más que el picking. Andar un 82% menos no significa acabar un 82% antes: el picking va más rápido, pero el ritmo final lo marca la U. Hay que decidir si hacen falta más U o más horas de lectura.</p></li>
+    <li><h3>¿Cómo es un día hora a hora?</h3><p>A qué hora se lanza la acción, cuándo sale la primera ronda de INT, cuándo llega la mercancía al SORTER, cuándo empiezan las oleadas y cuándo se carga. Falta montar este calendario con el equipo.</p></li>
+  </ol>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var ZONAS = {
+    Z1: { lado: 'I', desde: 1, hasta: 79, uds: 1523, ints: 4 },
+    Z2: { lado: 'I', desde: 80, hasta: 136, uds: 820, ints: 2 },
+    Z3: { lado: 'D', desde: 1, hasta: 83, uds: 1201, ints: 3 },
+    Z4: { lado: 'D', desde: 84, hasta: 95, uds: 774, ints: 2 },
+    Z5: { lado: 'D', desde: 96, hasta: 120, uds: 439, ints: 1 }
+  };
+  function zonaDe(lado, l) {
+    for (var k in ZONAS) { var z = ZONAS[k]; if (z.lado === lado && l >= z.desde && l <= z.hasta) return k; }
+    return null;
+  }
+
+  // ---- Mapa: eje X = metros desde los muelles (0-175), eje Y = ancho de la nave (0-60)
+  var svg = document.getElementById('mapa');
+  var NS = 'http://www.w3.org/2000/svg';
+  var X0 = 40, SX = 5.4, Y0 = 34, SY = 5.2;
+  function mx(m) { return X0 + m * SX; }
+  function my(m) { return Y0 + m * SY; }
+  function el(tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var a in attrs) e.setAttribute(a, attrs[a]);
+    if (text) e.textContent = text;
+    svg.appendChild(e); return e;
+  }
+  // Suelo de la nave
+  el('rect', { x: mx(0), y: my(0), width: 166 * SX + 10 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 4 });
+  // Zona de muelles y U
+  el('rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+  el('text', { x: mx(13), y: my(24), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 20, 'font-weight': 700, fill: 'var(--ink)' }, 'MUELLES');
+  el('text', { x: mx(13), y: my(29), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, 'SORTER · U');
+  el('text', { x: mx(13), y: my(33), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, 'oleadas');
+  for (var u = 0; u < 5; u++) {
+    el('rect', { x: mx(4 + u * 3.8), y: my(40), width: 2.8 * SX, height: 10 * SY, fill: 'none', stroke: 'var(--accent)', 'stroke-width': 2, rx: 2 });
+    el('text', { x: mx(5.4 + u * 3.8), y: my(53.5), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'U' + (u + 1));
+  }
+  // Lados: izquierda arriba (y 2-29), derecha abajo (y 31-58). Pasillos tras P03 y tras P24.
+  var tramos = {
+    I: [[2, 6.5], [9, 29]],   // P01-P03 | pasillo | P04-P17
+    D: [[31, 43], [45.5, 58]] // P18-P24 | pasillo | P25-P36
+  };
+  for (var l = 1; l <= 136; l++) {
+    var x = 30 + (l - 1); // L01 a ~31 m de los muelles, 1 m por lineal
+    ['I', 'D'].forEach(function (lado) {
+      var z = zonaDe(lado, l);
+      if (!z) return;
+      tramos[lado].forEach(function (t) {
+        // Garita en L57-L62 P16-P17 (lado izquierdo, junto al pasillo central)
+        var y2 = t[1];
+        if (lado === 'I' && l >= 57 && l <= 62 && t[1] === 29) y2 = 25.5;
+        el('rect', { x: mx(x), y: my(t[0]), width: 0.62 * SX, height: (y2 - t[0]) * SY, fill: 'var(--' + z.toLowerCase() + ')' });
+      });
+    });
+  }
+  // Garita
+  el('rect', { x: mx(86), y: my(25.8), width: 6 * SX, height: 3.2 * SY, fill: 'var(--panel)', stroke: 'var(--muted)', 'stroke-dasharray': '3 2' });
+  el('text', { x: mx(89), y: my(28.2), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 9, fill: 'var(--muted)' }, 'garita');
+  // Pasillo central
+  el('line', { x1: mx(29), y1: my(30), x2: mx(170), y2: my(30), stroke: 'var(--accent)', 'stroke-width': 2, 'stroke-dasharray': '8 6' });
+  el('text', { x: mx(169), y: my(31.6), 'text-anchor': 'end', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--accent-ink)' }, 'pasillo central');
+  // Etiquetas de lado
+  el('text', { x: mx(0), y: my(-2), 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, 'IZQUIERDA · P01–P17');
+  el('text', { x: mx(0), y: my(63.5), 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, 'DERECHA · P18–P36');
+  // Etiquetas de zona con unidades del día real
+  function etiqueta(z, cx, cy) {
+    var d = ZONAS[z];
+    var g = 'var(--' + z.toLowerCase() + ')';
+    el('rect', { x: mx(cx) - 52, y: my(cy) - 22, width: 104, height: 40, rx: 4, fill: 'var(--panel)', stroke: g, 'stroke-width': 2 });
+    el('text', { x: mx(cx), y: my(cy) - 4, 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, z);
+    el('text', { x: mx(cx), y: my(cy) + 11, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, d.uds.toLocaleString('es-ES') + ' u · ' + d.ints + ' INT');
+  }
+  etiqueta('Z1', 69, 16);
+  etiqueta('Z2', 136, 16);
+  etiqueta('Z3', 71, 44);
+  etiqueta('Z4', 119, 52);
+  etiqueta('Z5', 138, 39);
+  // Marcas de lineal
+  [1, 40, 80, 120, 136].forEach(function (l) {
+    el('text', { x: mx(30 + (l - 1)), y: my(66.5), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l));
+  });
+  svg.setAttribute('viewBox', '0 0 1000 400');
+
+  // ---- Barras de INT del día real
+  var INTS = [
+    ['Z1-a', 'L03–L49', 381], ['Z1-b', 'L48–L53', 381], ['Z1-c', 'L52–L63', 381], ['Z1-d', 'L62–L79', 380],
+    ['Z2-a', 'L80–L115', 410], ['Z2-b', 'L114–L136', 410],
+    ['Z3-a', 'L01–L69', 400], ['Z3-b', 'L69–L77', 400], ['Z3-c', 'L76–L83', 401],
+    ['Z4-a', 'L84–L89', 387], ['Z4-b', 'L88–L95', 387],
+    ['Z5-a', 'L96–L114', 439], ['ZX-a', 'sin lineal', 2]
+  ];
+  function pintarBarras(id, lista) {
+    var html = '';
+    lista.forEach(function (r) {
+      var z = r[0].slice(0, 2).toLowerCase();
+      html += '<div class="bar-row"><span class="n">' + r[0] + '</span><span class="t">' + r[1] + '</span>' +
+        '<span class="track"><span class="fill" style="width:' + (r[2] / 500 * 100) + '%;background:var(--' + z + ')"></span><span class="max"></span></span>' +
+        '<span class="u">' + r[2] + '</span></div>';
+    });
+    html += '<div class="axis"><span></span><span></span><span><span>0</span><span>250</span><span>500 u máx.</span></span><span></span></div>';
+    document.getElementById(id).innerHTML = html;
+  }
+  pintarBarras('bars', INTS);
+
+  // ---- Día de 10.000 u: 10/09/2026, leído de Odoo (líneas hechas de OUT PED. TIENDAS)
+  var ZONAS_10K = { Z1: [1852, 4], Z2: [3735, 8], Z3: [1959, 4], Z4: [2443, 5], Z5: [207, 1] };
+  var INTS_10K = [
+    ['Z1-a', 'L02–L63', 462], ['Z1-b', 'L62–L70', 463], ['Z1-c', 'L70–L75', 463], ['Z1-d', 'L74–L78', 464],
+    ['Z2-a', 'L81–L95', 466], ['Z2-b', 'L94–L110', 467], ['Z2-c', 'L110–L115', 467], ['Z2-d', 'L114–L115', 466],
+    ['Z2-e', 'L114–L115', 467], ['Z2-f', 'L114–L117', 466], ['Z2-g', 'L116–L117', 467], ['Z2-h', 'L116–L118', 469],
+    ['Z3-a', 'L01–L71', 490], ['Z3-b', 'L70–L78', 490], ['Z3-c', 'L78–L81', 489], ['Z3-d', 'L80–L83', 490],
+    ['Z4-a', 'L84–L85', 489], ['Z4-b', 'L84–L87', 489], ['Z4-c', 'L86–L89', 488], ['Z4-d', 'L88–L90', 488],
+    ['Z4-e', 'L90–L95', 489], ['Z5-a', 'L97–L98', 207]
+  ];
+  var total = 0, k;
+  for (k in ZONAS_10K) total += ZONAS_10K[k][0];
+  var filas = '';
+  for (k in ZONAS_10K) {
+    filas += '<tr><td><span class="dot" style="background:var(--' + k.toLowerCase() + ')"></span>' + k + '</td>' +
+      '<td class="r">' + ZONAS_10K[k][0].toLocaleString('es-ES') + '</td>' +
+      '<td class="r">' + (ZONAS_10K[k][0] / total * 100).toFixed(0) + '%</td>' +
+      '<td class="r">' + ZONAS_10K[k][1] + '</td></tr>';
+  }
+  document.getElementById('tabla10k').innerHTML = filas;
+  pintarBarras('bars10k', INTS_10K);
+
+  // ---- Recorridos del día de 10.000 u. Paradas por INT: [lineal, posición, uds], en el orden de la acción
+  var PARADAS = {"Z1-a":[[3,3,1],[3,6,1],[2,7,1],[4,7,1],[4,14,1],[6,10,1],[7,11,1],[11,17,1],[15,9,1],[27,17,1],[28,11,2],[28,14,2],[29,15,1],[30,9,1],[31,12,1],[41,10,1],[42,9,1],[42,10,1],[42,11,2],[43,11,3],[43,12,4],[43,13,4],[42,16,1],[42,17,1],[44,3,2],[44,4,1],[45,10,4],[44,11,5],[44,12,5],[45,13,4],[44,15,2],[45,15,2],[44,16,2],[45,16,2],[44,17,3],[45,17,2],[47,2,1],[47,3,2],[46,7,2],[47,8,1],[46,15,1],[46,17,2],[48,2,4],[48,3,1],[49,6,1],[48,13,3],[48,14,1],[49,14,3],[51,1,1],[51,3,5],[50,6,2],[50,8,4],[50,10,1],[50,12,1],[51,15,5],[50,16,1],[50,17,4],[51,17,4],[52,1,5],[53,2,1],[52,4,1],[52,6,2],[53,11,7],[52,15,1],[55,7,1],[55,8,2],[54,11,1],[55,15,2],[55,17,1],[57,2,1],[57,6,1],[56,9,1],[56,11,7],[56,12,3],[57,14,1],[59,1,1],[59,2,2],[58,5,1],[59,14,1],[59,15,5],[61,2,12],[60,3,1],[61,3,13],[61,4,18],[61,5,8],[61,8,1],[61,12,1],[60,15,2],[63,1,3],[62,4,2],[62,5,1],[63,5,3],[62,6,7],[62,8,1],[63,8,112],[63,9,56],[63,10,31],[63,12,23]],"Z1-b":[[63,12,6],[63,13,77],[62,14,2],[63,14,1],[63,15,7],[63,16,1],[65,1,2],[65,2,2],[64,7,6],[64,8,15],[64,10,4],[64,11,1],[64,12,1],[65,15,7],[65,16,12],[65,17,10],[67,0,3],[67,1,5],[67,2,2],[67,3,2],[66,5,1],[67,5,2],[67,6,2],[67,7,2],[67,13,7],[67,14,2],[66,16,12],[67,16,10],[66,17,5],[68,1,10],[68,2,1],[69,3,7],[68,4,5],[68,5,13],[68,6,2],[68,8,2],[68,9,10],[68,10,7],[68,14,33],[68,15,52],[68,16,14],[68,17,17],[70,1,3],[70,3,35],[70,4,14],[70,5,14],[70,7,4],[70,8,11]],"Z1-c":[[70,8,28],[70,9,1],[70,11,28],[73,4,17],[73,5,1],[73,6,4],[73,7,15],[72,12,1],[73,12,3],[73,13,1],[73,15,14],[73,16,19],[73,17,18],[75,1,6],[75,2,35],[74,3,22],[75,3,4],[75,4,7],[75,5,24],[75,6,10],[74,7,11],[75,7,7],[74,8,2],[75,8,39],[74,10,6],[74,11,3],[74,12,2],[75,12,38],[74,13,6],[75,13,50],[74,14,36],[75,14,5]],"Z1-d":[[75,14,2],[74,15,1],[75,15,23],[75,16,16],[77,1,36],[77,2,38],[77,3,2],[77,5,11],[77,6,12],[77,8,23],[76,10,6],[77,10,4],[76,11,48],[77,11,17],[76,12,39],[77,12,56],[77,13,53],[77,14,46],[77,15,25],[78,15,4],[78,16,2]],"Z2-a":[[81,10,1],[81,11,10],[81,12,12],[81,14,7],[81,17,3],[83,0,1],[83,4,1],[83,7,5],[83,8,6],[83,9,9],[83,10,11],[83,11,21],[83,14,13],[82,15,1],[83,15,8],[83,16,3],[85,0,3],[85,2,9],[85,4,2],[85,5,1],[84,6,2],[85,6,8],[84,9,1],[85,9,3],[85,10,11],[85,11,8],[84,12,3],[84,13,8],[87,5,5],[87,6,25],[86,7,6],[86,8,6],[87,8,23],[86,9,2],[86,10,4],[87,10,32],[86,11,2],[87,11,30],[86,12,1],[86,13,3],[88,1,1],[88,5,4],[88,6,5],[91,17,5],[93,13,6],[95,0,29],[95,2,8],[94,3,13],[95,3,1],[95,4,14],[94,5,4],[95,7,34],[95,9,32]],"Z2-b":[[95,9,36],[95,10,33],[94,15,23],[94,16,29],[96,1,4],[109,12,12],[109,13,24],[109,14,99],[109,15,15],[110,6,1],[110,10,6],[110,11,58],[110,12,110],[110,13,17]],"Z2-c":[[110,13,7],[110,14,33],[110,15,8],[113,3,28],[113,4,24],[113,5,4],[113,6,7],[113,7,10],[113,8,21],[113,10,54],[113,11,4],[113,12,29],[113,14,30],[113,15,28],[113,16,29],[113,17,63],[114,0,41],[115,0,26],[114,1,6],[115,1,15]],"Z2-d":[[115,1,4],[114,2,21],[115,2,33],[114,3,39],[115,3,48],[114,4,43],[115,4,47],[114,5,20],[114,6,27],[115,6,4],[114,7,41],[115,7,25],[114,8,66],[114,9,39],[115,9,9]],"Z2-e":[[115,9,14],[114,10,56],[115,10,46],[114,11,29],[114,12,58],[115,12,51],[114,13,38],[115,13,15],[114,14,48],[114,15,53],[115,15,47],[114,16,12]],"Z2-f":[[114,16,27],[114,17,63],[115,17,21],[116,0,24],[117,0,18],[116,1,34],[117,1,11],[116,2,47],[116,3,24],[116,5,16],[116,6,18],[116,7,68],[117,7,67],[116,8,28]],"Z2-g":[[116,8,30],[117,8,1],[116,9,43],[117,9,48],[116,10,62],[117,10,56],[116,11,23],[117,11,2],[116,12,74],[117,12,32],[116,13,37],[117,13,26],[116,14,33]],"Z2-h":[[116,14,20],[116,15,50],[117,15,48],[116,16,65],[117,16,6],[116,17,81],[118,0,29],[118,4,16],[118,12,4],[118,13,11],[118,14,54],[118,15,59],[118,16,26]],"Z3-a":[[1,33,1],[3,23,1],[3,25,1],[2,32,2],[2,33,8],[4,31,1],[5,32,1],[5,37,4],[6,25,1],[9,21,1],[9,28,4],[9,29,7],[9,31,2],[10,25,3],[10,28,2],[10,29,2],[10,30,1],[15,25,1],[14,31,1],[15,31,1],[17,19,1],[17,21,3],[17,22,2],[17,23,1],[17,25,2],[17,26,6],[17,28,2],[17,30,5],[17,31,4],[17,32,3],[17,33,1],[17,34,2],[17,35,3],[17,36,2],[17,37,1],[18,21,1],[18,24,1],[18,25,2],[18,26,1],[18,28,2],[18,29,1],[18,31,1],[18,32,3],[18,33,3],[18,37,1],[21,18,1],[21,27,1],[20,29,1],[23,18,1],[26,27,1],[27,32,1],[26,35,1],[29,24,1],[29,26,1],[28,29,1],[29,31,1],[31,23,1],[30,26,1],[32,20,1],[32,21,1],[32,30,1],[35,18,1],[34,23,1],[35,24,1],[35,40,1],[37,19,2],[36,21,1],[36,37,1],[39,36,1],[41,21,1],[41,38,1],[43,27,1],[43,28,3],[43,29,1],[43,31,1],[43,32,1],[44,18,1],[44,19,2],[45,19,1],[44,20,2],[44,22,1],[44,33,1],[46,20,1],[46,23,2],[48,18,2],[49,18,1],[49,24,1],[48,28,1],[50,19,1],[50,20,1],[50,36,2],[52,18,1],[53,19,1],[53,35,1],[54,23,3],[54,28,1],[57,20,1],[57,21,1],[57,24,1],[57,25,1],[59,20,2],[59,30,1],[59,34,1],[59,36,1],[59,38,1],[60,22,1],[60,25,1],[60,28,1],[60,29,1],[60,31,1],[60,39,1],[61,39,1],[63,33,1],[63,36,1],[63,37,1],[63,38,1],[64,23,2],[64,25,1],[64,31,1],[65,36,1],[66,20,2],[66,29,1],[66,35,2],[66,38,2],[69,20,4],[69,22,21],[69,25,2],[69,33,1],[69,34,18],[69,35,7],[69,36,3],[70,18,1],[71,18,1],[70,19,1],[71,20,6],[70,24,28],[70,25,63],[70,27,57],[71,28,17],[70,29,3],[71,30,2],[71,33,2],[70,34,28],[71,34,4],[70,35,3],[71,35,7],[71,36,18]],"Z3-b":[[71,36,11],[70,37,4],[71,37,2],[71,38,1],[72,20,9],[72,21,2],[73,34,42],[73,35,35],[72,36,10],[73,36,2],[73,37,18],[75,30,2],[74,31,7],[74,33,16],[75,33,10],[74,34,10],[75,34,27],[74,35,15],[75,35,26],[74,36,63],[75,36,9],[74,37,42],[75,37,2],[77,20,1],[77,24,6],[76,30,19],[76,33,1],[76,34,11],[76,35,9],[77,38,9],[78,20,1],[78,21,68]],"Z3-c":[[78,21,10],[78,22,145],[78,23,9],[79,33,12],[79,34,2],[79,36,3],[78,37,4],[78,38,62],[79,38,113],[81,19,1],[81,20,1],[81,22,7],[81,23,84],[81,24,3],[81,25,26],[81,27,6],[81,28,1]],"Z3-d":[[81,28,6],[81,30,4],[81,31,1],[80,34,16],[80,36,1],[80,37,55],[80,38,57],[82,18,2],[83,18,2],[83,19,26],[83,21,10],[82,22,2],[83,22,42],[82,23,64],[83,23,40],[82,24,101],[82,25,46],[83,25,3],[82,26,2],[82,27,2],[82,28,1],[83,28,1],[82,31,3],[83,32,3]],"Z4-a":[[85,18,14],[85,19,9],[85,20,30],[84,21,10],[85,21,64],[84,22,55],[85,22,29],[84,23,100],[85,23,17],[84,24,2],[84,25,2],[85,25,30],[85,26,5],[85,28,38],[85,29,16],[84,30,1],[85,30,16],[84,34,17],[84,35,34]],"Z4-b":[[84,35,27],[85,35,24],[85,36,11],[84,37,41],[85,38,38],[87,19,4],[86,22,18],[87,22,1],[86,23,7],[87,24,1],[86,26,1],[87,26,1],[86,27,4],[87,27,27],[86,28,42],[87,28,57],[86,29,2],[87,29,24],[86,30,30],[87,30,37],[87,31,26],[87,32,20],[86,33,3],[87,34,35],[87,35,8]],"Z4-c":[[87,35,21],[86,36,26],[87,37,26],[87,38,31],[88,20,18],[88,21,2],[89,21,9],[88,22,1],[89,22,15],[89,23,8],[88,24,1],[89,24,4],[89,25,11],[88,26,68],[88,27,151],[89,27,82],[88,28,14]],"Z4-d":[[88,28,56],[89,28,54],[88,29,77],[89,29,18],[88,30,79],[89,32,2],[89,33,53],[88,34,2],[89,34,64],[88,35,11],[88,36,2],[88,37,4],[88,38,9],[90,26,14],[90,29,35],[90,35,8]],"Z4-e":[[90,35,26],[93,22,29],[93,24,3],[93,25,1],[93,26,6],[93,28,33],[93,29,51],[93,30,49],[93,31,65],[94,18,1],[94,22,43],[94,29,9],[94,30,59],[94,31,112],[95,35,2]],"Z5-a":[[97,31,2],[97,32,42],[97,33,14],[97,34,6],[98,31,21],[98,32,3],[98,37,51],[98,38,68]]};
+  function aisleX(n) { return 30 + 2 * Math.floor(n / 2) - 0.5; }        // un pasillo sirve L(2k) y L(2k+1)
+  function posY(p) {
+    if (p <= 17) {
+      if (p === 0) return 29.3;                                           // P00: cabecera, junto al pasillo central
+      if (p <= 3) return 2 + (p - 0.5) * 1.5;
+      return 9 + (p - 3.5) * (20 / 14);
+    }
+    p = Math.min(p, 36);
+    if (p <= 24) return 31 + (p - 17.5) * (12 / 7);
+    return 45.5 + (p - 24.5) * (12.5 / 12);
+  }
+  var CRUCES = [7.75, 30, 44.25];        // pasillos transversales: tras P03, central, tras P24
+  var SALIDA = [26, 30];                 // SORTER, en la zona de muelles
+  function trazar(paradas) {
+    var x = SALIDA[0], y = SALIDA[1], d = 0, pts = [[x, y]];
+    function ir(tx, ty) {
+      if (Math.abs(tx - x) < 0.01) { d += Math.abs(ty - y); pts.push([tx, ty]); }
+      else {
+        var mejor = CRUCES[0], v = 1e9;
+        CRUCES.forEach(function (c) { var w = Math.abs(y - c) + Math.abs(ty - c); if (w < v) { v = w; mejor = c; } });
+        d += v + Math.abs(tx - x);
+        pts.push([x, mejor], [tx, mejor], [tx, ty]);
+      }
+      x = tx; y = ty;
+    }
+    paradas.forEach(function (s) { ir(aisleX(s[0]), posY(s[1])); });
+    ir(SALIDA[0], SALIDA[1]);
+    return { metros: d, pts: pts };
+  }
+  function lado(p) { return p <= 17 ? 'I' : 'D'; }
+  function rackX(n) { var a = aisleX(n); return n % 2 === 0 ? a - 0.95 : a + 0.35; }
+
+  function dibujarBase(s, detalle) {
+    var X0 = 40, SX = 5.4, Y0 = 34, SY = 5.2;
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt) n.textContent = txt; s.appendChild(n); return n; }
+    var mx = function (m) { return X0 + m * SX; }, my = function (m) { return Y0 + m * SY; };
+    e('rect', { x: mx(0), y: my(0), width: 176 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 4 });
+    e('rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+    if (detalle) {
+      for (var l = 1; l <= 136; l++) {
+        ['I', 'D'].forEach(function (ld) {
+          var z = zonaDe(ld, l); if (!z) return;
+          var tr = ld === 'I' ? [[2, 6.5], [9, 29]] : [[31, 43], [45.5, 58]];
+          tr.forEach(function (t) { e('rect', { x: mx(rackX(l)), y: my(t[0]), width: 0.6 * SX, height: (t[1] - t[0]) * SY, fill: 'var(--' + z.toLowerCase() + ')', opacity: .28 }); });
+        });
+      }
+      e('text', { x: mx(13), y: my(31), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, 'SORTER');
+      [1, 40, 80, 120, 136].forEach(function (l) {
+        e('text', { x: mx(aisleX(l)), y: my(64), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l));
+      });
+    } else {
+      for (var k in ZONAS) {
+        var z = ZONAS[k], y0 = z.lado === 'I' ? 2 : 31, y1 = z.lado === 'I' ? 29 : 58;
+        e('rect', { x: mx(rackX(z.desde)), y: my(y0), width: (rackX(z.hasta) + 0.6 - rackX(z.desde)) * SX, height: (y1 - y0) * SY, fill: 'var(--' + k.toLowerCase() + ')', opacity: .16 });
+      }
+    }
+    CRUCES.forEach(function (c) { e('line', { x1: mx(26), y1: my(c), x2: mx(170), y2: my(c), stroke: 'var(--muted)', 'stroke-width': 1, 'stroke-dasharray': '4 5', opacity: .6 }); });
+    return { e: e, mx: mx, my: my };
+  }
+  function dibujarRuta(s, nombre, detalle) {
+    while (s.firstChild) s.removeChild(s.firstChild);
+    var b = dibujarBase(s, detalle);
+    var r = trazar(PARADAS[nombre]);
+    var col = 'var(--' + nombre.slice(0, 2).toLowerCase() + ')';
+    b.e('polyline', { points: r.pts.map(function (p) { return b.mx(p[0]) + ',' + b.my(p[1]); }).join(' '), fill: 'none', stroke: detalle ? 'var(--ink)' : col, 'stroke-width': detalle ? 2.2 : 9, 'stroke-linejoin': 'round', opacity: detalle ? .85 : 1 });
+    if (detalle) {
+      PARADAS[nombre].forEach(function (p) {
+        b.e('circle', { cx: b.mx(aisleX(p[0])), cy: b.my(posY(p[1])), r: Math.min(14, 2.5 + Math.sqrt(p[2]) * 1.3), fill: col, stroke: 'var(--panel)', 'stroke-width': 1 });
+      });
+    }
+    b.e('circle', { cx: b.mx(SALIDA[0]), cy: b.my(SALIDA[1]), r: detalle ? 7 : 16, fill: 'var(--accent)', stroke: 'var(--ink)', 'stroke-width': detalle ? 1.5 : 3 });
+    return r;
+  }
+
+  var NOMBRES = Object.keys(PARADAS), totalM = 0, metros = {};
+  NOMBRES.forEach(function (n) { metros[n] = trazar(PARADAS[n]).metros; totalM += metros[n]; });
+  document.getElementById('kmInt').textContent = (totalM / 1000).toFixed(1).replace('.', ',') + ' km';
+  document.getElementById('ahorro').textContent = Math.round((1 - totalM / 43748) * 100) + '%';
+  document.getElementById('mediaInt').textContent = Math.round(totalM / NOMBRES.length).toLocaleString('es-ES') + ' m';
+  var udsInt = {};
+  INTS_10K.forEach(function (r) { udsInt[r[0]] = r[2]; });
+
+  var ruta = document.getElementById('ruta'), chips = document.getElementById('chips'), info = document.getElementById('rutaInfo');
+  function seleccionar(nombre) {
+    var r = dibujarRuta(ruta, nombre, true);
+    Array.prototype.forEach.call(chips.children, function (c) { c.setAttribute('aria-selected', c.dataset.int === nombre ? 'true' : 'false'); });
+    var pasillos = {};
+    PARADAS[nombre].forEach(function (p) { pasillos[Math.floor(p[0] / 2)] = 1; });
+    info.textContent = nombre + ' · ' + udsInt[nombre] + ' uds · ' + PARADAS[nombre].length + ' paradas · ' +
+      Object.keys(pasillos).length + ' pasillos · unos ' + Math.round(r.metros).toLocaleString('es-ES') + ' m ida y vuelta desde el SORTER';
+  }
+  var minis = document.getElementById('minis');
+  NOMBRES.forEach(function (n) {
+    var c = document.createElement('button');
+    c.type = 'button'; c.dataset.int = n; c.setAttribute('role', 'tab');
+    c.innerHTML = '<i style="background:var(--' + n.slice(0, 2).toLowerCase() + ')"></i>' + n;
+    c.addEventListener('click', function () { seleccionar(n); });
+    chips.appendChild(c);
+    var card = document.createElement('button');
+    card.type = 'button'; card.className = 'mini-card';
+    card.innerHTML = '<span class="h"><b>' + n + '</b><span>' + udsInt[n] + ' u · ' + PARADAS[n].length + ' paradas · ' + Math.round(metros[n]) + ' m</span></span>';
+    var s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '30 20 960 340'); s.setAttribute('aria-label', 'Recorrido ' + n);
+    card.appendChild(s);
+    card.addEventListener('click', function () { seleccionar(n); ruta.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    minis.appendChild(card);
+    dibujarRuta(s, n, false);
+  });
+  seleccionar('Z1-a');
+})();
+</script>
+</body></html>

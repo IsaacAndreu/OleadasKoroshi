@@ -1,0 +1,417 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Oleada B-KOR-2010-01</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: columna de lectura de ~980px; el mapa de la nave es la pieza central, el resto acompaña en bandas sobrias */
+:root {
+  --bg: #f3f4f2;
+  --panel: #ffffff;
+  --ink: #1d2327;
+  --muted: #5d676d;
+  --line: #d5d9d6;
+  --floor: #e6e8e4;
+  --accent: #e0a100;          /* amarillo de señalización de nave */
+  --accent-ink: #6b4d00;
+  --z1: #2a62b8; --z2: #2e9a52;
+  --z3: #c8372d; --z4: #e8701a; --z5: #7a4cc2;
+  --zx: #8b9297;
+  --f-display: "Barlow Condensed", "Arial Narrow", "Roboto Condensed", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --z1: #6a9be6; --z2: #5cc483; --z3: #ef6a5f; --z4: #f59a52; --z5: #a687e6; --zx: #79838a;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.55;
+}
+.wrap {
+  max-width: 1000px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 40px 64px;
+  display: grid; gap: 56px;
+}
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.4rem, 6vw, 3.6rem); letter-spacing: .01em; }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 65ch; }
+.eyebrow {
+  font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted);
+}
+.num { font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+section { display: grid; gap: 20px; min-width: 0; }
+
+/* Cabecera */
+header { display: grid; gap: 16px; }
+.tape {
+  height: 10px; border-radius: 2px;
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px);
+  max-width: 220px;
+}
+.lead { font-size: 1.15rem; color: var(--ink); }
+.lead strong { background: linear-gradient(transparent 62%, color-mix(in srgb, var(--accent) 45%, transparent) 0); }
+
+/* Antes / después */
+.compare { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.case { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 20px; display: grid; gap: 12px; align-content: start; }
+.case .tag { font-family: var(--f-mono); font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; }
+.case.hoy .tag { color: var(--muted); }
+.case.nuevo { border-color: var(--accent); }
+.case.nuevo .tag { color: var(--accent-ink); }
+.case ul { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.mini { width: 100%; height: auto; display: block; }
+
+/* Mapa */
+.map-box { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; overflow-x: auto; }
+.map-box svg { display: block; min-width: 640px; width: 100%; height: auto; }
+.legend { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.legend div { display: grid; grid-template-columns: 14px 1fr; gap: 4px 10px; align-items: start; font-size: .9rem; }
+.legend i { width: 14px; height: 14px; border-radius: 2px; margin-top: 4px; }
+.legend b { font-family: var(--f-display); font-size: 1.1rem; }
+.legend span { grid-column: 2; color: var(--muted); font-size: .82rem; }
+
+/* Flujo */
+.flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; counter-reset: paso; }
+.step { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px 16px 16px; display: grid; gap: 8px; align-content: start; }
+.step::before {
+  counter-increment: paso; content: counter(paso);
+  font-family: var(--f-display); font-weight: 700; font-size: 1.1rem;
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--accent); color: #1d2327;
+}
+.step p { font-size: .92rem; color: var(--muted); }
+.step .where { font-family: var(--f-mono); font-size: .78rem; color: var(--ink); }
+
+/* Ejemplo real */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.4rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.bars { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 7px; overflow-x: auto; }
+.bar-row { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; align-items: center; font-size: .85rem; min-width: 420px; }
+.bar-row .n { font-family: var(--f-mono); font-weight: 500; }
+.bar-row .t { font-family: var(--f-mono); color: var(--muted); font-size: .78rem; }
+.track { position: relative; height: 18px; background: var(--floor); border-radius: 2px; }
+.track .fill { position: absolute; inset: 0 auto 0 0; border-radius: 2px; }
+.track .max { position: absolute; top: -4px; bottom: -4px; right: 0; border-right: 2px dashed var(--ink); }
+.bar-row .u { font-family: var(--f-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.bars .axis { display: grid; grid-template-columns: 58px 84px minmax(160px, 1fr) 44px; gap: 10px; font-family: var(--f-mono); font-size: .72rem; color: var(--muted); min-width: 420px; }
+.bars .axis span:nth-child(3) { display: flex; justify-content: space-between; }
+.note { font-size: .88rem; color: var(--muted); }
+
+/* Escenario 10k */
+.scen { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; align-items: start; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+tfoot td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--ink); }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 8px; vertical-align: 0; }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+
+/* Estado */
+.status { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.st { padding: 14px 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; gap: 6px; align-content: start; }
+.pill { justify-self: start; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 99px; border: 1px solid currentColor; }
+.ok { color: #2e7d4f; } .next { color: var(--accent-ink); } .later { color: var(--muted); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .ok { color: #6cc495; } }
+:root[data-theme="dark"] .ok { color: #6cc495; }
+.st p { font-size: .9rem; color: var(--muted); }
+
+/* Recorrido */
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips button {
+  font-family: var(--f-mono); font-size: .8rem; padding: 5px 9px; border-radius: 4px; cursor: pointer;
+  background: var(--panel); color: var(--ink); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center;
+}
+.chips button i { width: 9px; height: 9px; border-radius: 2px; display: inline-block; }
+.chips button[aria-selected="true"] { border-color: var(--ink); background: var(--ink); color: var(--bg); }
+.chips button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.minis { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.mini-card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px 6px; display: grid; gap: 4px; cursor: pointer; text-align: left; color: var(--ink); font: inherit; }
+.mini-card:hover, .mini-card:focus-visible { border-color: var(--ink); outline: none; }
+.mini-card .h { display: flex; justify-content: space-between; gap: 8px; font-family: var(--f-mono); font-size: .78rem; }
+.mini-card .h b { font-weight: 500; white-space: nowrap; }
+.mini-card .h span { text-align: right; }
+.mini-card .h span { color: var(--muted); }
+.mini-card svg { width: 100%; height: auto; display: block; }
+/* Impresión / PDF: A4, sin cortes dentro de tarjetas, mapas ni barras */
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11.5pt; }
+  .wrap { max-width: none; padding-left: 0; padding-right: 0; padding-block: 0; gap: 26px; }
+  section { gap: 14px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 30pt; }
+  h2 { font-size: 20pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  p, li { orphans: 3; widows: 3; }
+  .chips { display: none; }
+  .map-box, .bars { overflow: visible; }
+  .map-box svg { min-width: 0; }
+  .bar-row, .bars .axis { min-width: 0; grid-template-columns: 52px 78px 1fr 40px; }
+  .bars { gap: 4px; padding: 12px 14px; }
+  .track { height: 13px; }
+  .case, .step, .kpi, .kpis, .bars, .map-box, .legend, .mini-card, .role, .st, .callout,
+  .preguntas li, .riesgos tr, .scen, .compare, .flow, .same { break-inside: avoid; }
+  .minis-titulo { break-before: page; }
+  .compare { grid-template-columns: 1fr 1fr; }
+  .flow { grid-template-columns: repeat(5, 1fr); gap: 8px; }
+  .step { padding: 12px 10px; }
+  .step p { font-size: 9pt; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 22pt; }
+  .scen { grid-template-columns: 1fr 1fr; }
+  .minis { grid-template-columns: repeat(5, 1fr); gap: 5px; }
+  .mini-card { padding: 5px 6px 4px; display: block; }
+  .mini-card svg { aspect-ratio: 960 / 340; margin-top: 3px; }
+  .map-box:has(#ruta) { padding: 8px; }
+  .map-box:has(#ruta) svg { width: 100%; }
+  .mini-card .h { font-size: 7pt; }
+  .roles { grid-template-columns: repeat(3, 1fr); }
+  .motivos { grid-template-columns: repeat(3, 1fr); }
+  .tlargos, .motivos, .largos .callout { break-inside: avoid; }
+  .largos h3 { break-after: avoid; }
+  .status { grid-template-columns: repeat(3, 1fr); }
+  .lead { font-size: 12.5pt; }
+}
+
+/* Recorridos largos */
+.largos { display: grid; gap: 14px; }
+.tlargos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.tlargos tr.alto td { font-weight: 600; }
+.motivos { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+.motivos div { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 6px; align-content: start; }
+.motivos h4 { margin: 0; font-family: var(--f-display); font-size: 1.15rem; font-weight: 600; }
+.motivos p { font-size: .9rem; color: var(--muted); }
+
+/* Qué cambia, riesgos, preguntas */
+.roles { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+.role { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 18px; display: grid; gap: 10px; align-content: start; }
+.role p { font-size: .92rem; }
+.role p b { display: block; font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; font-weight: 500; }
+.role .antes { color: var(--muted); }
+.role .despues b { color: var(--accent-ink); }
+.same { display: grid; gap: 8px; }
+.same ul, .pide { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.riesgos { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+.riesgos td { vertical-align: top; }
+.riesgos td:first-child { font-weight: 500; width: 36%; }
+.preguntas { margin: 0; padding: 0; list-style: none; counter-reset: preg; display: grid; gap: 12px; }
+.preguntas li { counter-increment: preg; display: grid; grid-template-columns: 40px 1fr; gap: 4px 12px; background: var(--panel); border: 1px dashed var(--accent); border-radius: 6px; padding: 16px; }
+.preguntas li::before { content: counter(preg); grid-row: span 2; font-family: var(--f-display); font-weight: 700; font-size: 1.8rem; line-height: 1; color: var(--accent-ink); }
+.preguntas p { font-size: .92rem; color: var(--muted); }
+</style>
+
+<style>
+.tabla { width: 100%; border-collapse: collapse; font-size: .92rem; }
+.tabla th, .tabla td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.tabla th { font-size: .78rem; color: var(--muted); font-weight: 500; text-transform: uppercase; letter-spacing: .04em; }
+.tabla .r { text-align: right; font-variant-numeric: tabular-nums; }
+.tabla td.m { font-family: var(--f-mono); font-size: .85rem; }
+.dot { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+.tiendas { display: flex; flex-wrap: wrap; gap: 6px; list-style: none; padding: 0; margin: 0; }
+.tiendas li { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 4px 9px; font-size: .88rem; }
+.tiendas li b { font-family: var(--f-mono); font-weight: 500; margin-right: 4px; }
+.dos { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 20px; }
+.tabla-wrap { overflow-x: auto; }
+</style>
+<div class="wrap">
+
+<header>
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Prueba de oleada · 20/10/2026</span>
+  <h1>Oleada B-KOR-2010-01 en el plano</h1>
+  <p class="lead">A las 3:15 la acción planificada cogió las <strong>10 primeras tiendas de la noche</strong> (1.050 u, sin pasar de 2.000), creó la oleada B-KOR-2010-01 y repartió lo reservado en <strong>5 INT por zonas dinámicas y uno de MU</strong>. Cada INT es un tramo seguido de la nave, cortado para que todos lleven un trabajo parecido.</p>
+</header>
+
+<section>
+  <div class="kpis">
+    <div class="kpi"><span class="v">10</span><span class="l">tiendas en la oleada</span></div>
+    <div class="kpi"><span class="v">981 u</span><span class="l">reservadas en los 6 INT (de 1.050 u pedidas)</span></div>
+    <div class="kpi"><span class="v" id="kmInt">–</span><span class="l">andando con los INT por zonas</span></div>
+    <div class="kpi"><span class="v">6,5 km</span><span class="l">como se hace hoy, 3 OUT por vuelta (cálculo de la acción)</span></div>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Las cinco zonas de hoy</span>
+  <h2>Por dónde va cada INT</h2>
+  <p>Cada color es un INT. Todos salen del SORTER y vuelven a él. Los círculos son los huecos donde se para: cuanto más grande, más unidades se cogen allí.</p>
+  <div class="map-box"><svg id="todas" viewBox="0 0 1000 400" role="img" aria-label="Los cinco recorridos de la oleada"></svg></div>
+  <div class="tabla-wrap"><table class="tabla">
+    <thead><tr><th>INT</th><th>Zona</th><th>Tramo</th><th class="r">Uds</th><th class="r">Movimientos</th><th class="r">Paradas</th><th class="r">Metros</th></tr></thead>
+    <tbody id="tablaInt"></tbody>
+  </table></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Un INT cada vez</span>
+  <h2>El recorrido de cada picker</h2>
+  <div class="chips" id="chips" role="tablist" aria-label="Elegir INT"></div>
+  <div class="map-box"><svg id="ruta" viewBox="0 0 1000 400" role="img" aria-label="Recorrido del INT seleccionado"></svg></div>
+  <p class="note" id="rutaInfo"></p>
+  <div class="minis" id="minis"></div>
+  <p class="note">Los metros son una estimación sobre el plano simplificado de la nave, con el mismo cálculo que el ejemplo del día de 10.000 u: se cambia de pasillo solo por los transversales (tras P03, central y tras P24).</p>
+</section>
+
+<section class="salto">
+  <div class="dos">
+    <div>
+      <span class="eyebrow">Sin lineal</span>
+      <h2>ZX · cajas en MU</h2>
+      <p>Lo que está en las ubicaciones MU no tiene lineal y va en su propio INT (EFFEC/INT/66195): 84 u en 29 movimientos.</p>
+      <table class="tabla"><thead><tr><th>Ubicación</th><th class="r">Movimientos</th><th class="r">Uds</th></tr></thead><tbody id="tablaZx"></tbody></table>
+    </div>
+    <div>
+      <span class="eyebrow">Tiendas</span>
+      <h2>Las 10 tiendas</h2>
+      <p>OUT 19903 a 19912. Salen del SORTER y esperan a que se validen los INT.</p>
+      <ul class="tiendas">
+        <li><b>K1</b>Maquinista</li><li><b>K7</b>Islazul</li><li><b>K8</b>Itaroa</li><li><b>K9</b>Ballonti</li><li><b>K10</b>Maxcenter</li>
+        <li><b>K17</b>Mallorca</li><li><b>K22</b>Vitoria</li><li><b>K24</b>Valladolid</li><li><b>K26</b>Magic</li><li><b>K29</b>Marineda</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+</div>
+<script>
+(function () {
+  var NS = 'http://www.w3.org/2000/svg';
+  var PARADAS = {"D1":[[24,18,1],[43,5,1],[43,7,1],[43,8,1],[43,12,1],[43,13,1],[43,14,1],[43,15,1],[43,16,2],[45,3,1],[44,5,2],[45,7,1],[45,12,2],[44,13,1],[44,14,3],[45,14,4],[45,15,2],[44,17,2],[45,17,1],[47,6,1],[46,9,1],[46,11,3],[46,13,4],[47,13,4],[46,14,5],[47,14,3],[46,15,2],[47,15,1],[46,16,2],[46,17,3],[48,2,3],[48,4,1],[49,4,1],[48,6,1],[49,6,2],[48,10,2],[48,14,1],[48,15,1],[49,17,2],[50,9,2],[50,10,1],[50,12,2],[51,15,1],[50,16,1],[50,17,2],[51,17,2],[52,2,1],[52,4,1],[52,9,1],[52,11,2],[52,14,1],[52,15,1],[52,16,1],[53,17,2],[55,1,1],[54,5,3],[55,5,3],[54,8,1],[54,10,1],[55,11,1],[55,12,1],[54,15,2],[55,16,1],[56,5,1],[57,9,1],[57,14,1],[58,6,1],[59,6,20],[59,9,6],[59,11,15],[59,12,12],[58,13,1],[59,13,4],[60,5,2],[60,15,3],[62,6,1],[63,6,5]],"D2":[[63,6,1],[62,8,1],[63,9,1],[63,14,1],[63,17,1],[65,0,1],[64,7,3],[64,8,3],[65,8,1],[65,10,1],[64,11,1],[64,12,3],[67,10,1],[67,15,1],[66,16,1],[67,16,1],[67,17,1],[68,2,3],[68,5,1],[69,8,1],[68,10,3],[68,11,1],[69,11,1],[69,12,1],[69,13,1],[69,24,1],[69,34,1],[69,35,2],[70,6,1],[71,13,3],[71,14,2],[71,15,2],[70,25,1],[71,25,1],[70,30,1],[71,30,1],[70,31,1],[71,33,1],[70,34,5],[71,37,1],[71,38,2],[73,5,1],[72,13,1],[72,14,1],[73,20,1],[73,26,1],[72,27,2],[73,27,4],[72,35,1],[73,35,2],[72,36,1],[73,36,3],[72,37,3],[73,37,2],[74,6,1],[74,12,2],[74,15,2],[74,34,1],[74,35,1],[75,36,1],[74,37,1],[77,21,1],[77,23,2],[77,30,1],[77,31,1],[77,34,1],[77,36,1],[79,4,1],[78,10,1],[79,16,1],[78,17,2],[78,26,1],[79,26,1],[79,28,3],[79,29,1],[79,30,4],[79,37,1],[78,38,1],[79,38,3],[81,13,2],[81,22,1],[81,23,3],[81,24,1],[81,25,1],[81,26,3],[80,28,2],[80,29,4]],"D3":[[80,29,1],[80,34,1],[81,36,1],[83,13,1],[83,15,4],[82,18,2],[82,19,1],[82,20,2],[83,23,1],[82,25,1],[82,27,1],[83,30,1],[83,31,1],[83,34,1],[82,36,3],[84,7,1],[85,11,1],[85,20,2],[85,22,1],[85,23,2],[85,26,1],[85,31,1],[85,32,1],[84,33,2],[85,33,1],[85,34,1],[85,35,1],[84,36,5],[84,38,3],[86,2,1],[86,4,3],[86,5,2],[87,8,12],[86,10,1],[87,10,3],[87,11,6],[87,12,3],[86,13,3],[87,13,2],[87,15,2],[86,23,2],[87,23,2],[87,25,1],[87,26,1],[86,27,2],[87,27,1],[86,28,1],[86,29,1],[87,29,5],[86,32,1],[86,33,3],[87,38,1],[89,2,1],[88,11,1],[89,12,1],[88,13,2],[88,21,3],[88,24,3],[88,25,3],[88,26,1],[88,28,1],[89,32,1],[89,35,2],[91,11,2],[90,14,1],[90,16,4],[91,22,5],[90,31,3],[91,32,1],[93,2,12],[92,3,2],[93,10,1],[92,14,2],[92,16,1],[93,19,1],[93,23,2],[93,26,3],[93,27,1],[92,28,1]],"D4":[[93,28,1],[93,29,1],[93,32,2],[93,37,2],[94,5,12],[94,16,1],[95,16,3],[95,23,1],[94,24,1],[95,24,4],[94,25,1],[95,27,1],[94,28,1],[94,32,3],[94,33,1],[94,34,4],[95,37,1],[96,5,1],[96,9,1],[96,11,1],[97,12,2],[96,14,2],[96,21,1],[97,24,1],[97,29,1],[97,35,1],[99,0,1],[98,15,2],[98,23,1],[98,24,1],[98,26,1],[99,28,2],[99,29,1],[99,32,1],[98,36,1],[98,38,2],[101,2,1],[101,9,1],[100,11,1],[101,17,2],[101,18,1],[100,23,3],[100,24,3],[101,30,5],[101,32,1],[101,33,1],[103,5,2],[102,11,1],[102,12,1],[102,30,4],[102,33,1],[103,33,1],[102,34,2],[105,13,1],[104,21,1],[105,38,1],[106,13,1],[106,14,4],[106,15,1],[107,25,3],[107,26,2],[107,29,1],[107,30,2],[107,34,3],[106,38,1],[108,2,2],[108,4,2],[109,4,1],[109,5,2],[109,6,2],[109,10,3],[108,15,1],[109,17,1],[108,18,1],[108,22,1],[108,27,1],[109,27,1],[108,30,1],[109,36,1],[110,6,2],[111,14,1],[111,15,1],[110,26,1],[111,29,7],[111,30,14]],"D5":[[111,31,14],[111,34,1],[110,37,1],[112,4,1],[113,17,3],[113,23,7],[113,24,7],[112,25,2],[113,25,7],[112,29,21],[112,32,8],[112,34,1],[115,3,1],[114,5,1],[114,7,4],[114,10,1],[114,11,2],[115,11,1],[114,18,1],[114,22,7],[114,24,14],[114,25,14],[116,9,1],[118,1,1],[118,3,2],[118,5,2],[118,7,2],[118,8,1],[118,9,7],[118,10,19],[118,11,16],[118,12,21],[129,12,1],[129,13,4],[129,14,2],[130,4,4],[130,12,1],[130,13,1],[133,0,3],[133,3,1],[133,5,1],[133,10,1],[133,11,1],[132,13,3],[133,13,5],[132,14,3],[133,14,1],[132,15,3],[133,15,2],[133,16,3],[134,0,3],[134,1,1],[134,2,5],[134,5,2],[134,8,1],[134,13,7],[134,15,1],[136,0,2]]};
+  var INFO = {
+    D1: ['EFFEC/INT/66190', 'L24–L63', 180, 98], D2: ['EFFEC/INT/66191', 'L62–L81', 137, 107],
+    D3: ['EFFEC/INT/66192', 'L80–L93', 165, 101], D4: ['EFFEC/INT/66193', 'L93–L111', 162, 103],
+    D5: ['EFFEC/INT/66194', 'L110–L136', 253, 81]
+  };
+  var ZX = [['MU-05', 7, 32], ['MU-06', 6, 32], ['MU-07', 7, 9], ['MU-08', 9, 11]];
+  function col(n) { return 'var(--z' + n.slice(1) + ')'; }
+  function aisleX(n) { return 30 + 2 * Math.floor(n / 2) - 0.5; }
+  function posY(p) {
+    if (p <= 17) {
+      if (p === 0) return 29.3;
+      if (p <= 3) return 2 + (p - 0.5) * 1.5;
+      return 9 + (p - 3.5) * (20 / 14);
+    }
+    p = Math.min(p, 36);
+    if (p <= 24) return 31 + (p - 17.5) * (12 / 7);
+    return 45.5 + (p - 24.5) * (12.5 / 12);
+  }
+  var CRUCES = [7.75, 30, 44.25], SALIDA = [26, 30];
+  function trazar(paradas) {
+    var x = SALIDA[0], y = SALIDA[1], d = 0, pts = [[x, y]];
+    function ir(tx, ty) {
+      if (Math.abs(tx - x) < 0.01) { d += Math.abs(ty - y); pts.push([tx, ty]); }
+      else {
+        var mejor = CRUCES[0], v = 1e9;
+        CRUCES.forEach(function (c) { var w = Math.abs(y - c) + Math.abs(ty - c); if (w < v) { v = w; mejor = c; } });
+        d += v + Math.abs(tx - x);
+        pts.push([x, mejor], [tx, mejor], [tx, ty]);
+      }
+      x = tx; y = ty;
+    }
+    paradas.forEach(function (s) { ir(aisleX(s[0]), posY(s[1])); });
+    ir(SALIDA[0], SALIDA[1]);
+    return { metros: d, pts: pts };
+  }
+  function rackX(n) { var a = aisleX(n); return n % 2 === 0 ? a - 0.95 : a + 0.35; }
+  function base(s, detalle) {
+    while (s.firstChild) s.removeChild(s.firstChild);
+    var X0 = 40, SX = 5.4, Y0 = 34, SY = 5.2;
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt) n.textContent = txt; s.appendChild(n); return n; }
+    var mx = function (m) { return X0 + m * SX; }, my = function (m) { return Y0 + m * SY; };
+    e('rect', { x: mx(0), y: my(0), width: 176 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 4 });
+    e('rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+    for (var l = 1; l <= 136; l++) {
+      var tr = l <= 120 ? [[2, 6.5], [9, 29], [31, 43], [45.5, 58]] : [[2, 6.5], [9, 29]];
+      tr.forEach(function (t) { e('rect', { x: mx(rackX(l)), y: my(t[0]), width: 0.6 * SX, height: (t[1] - t[0]) * SY, fill: 'var(--muted)', opacity: .18 }); });
+    }
+    CRUCES.forEach(function (c) { e('line', { x1: mx(26), y1: my(c), x2: mx(170), y2: my(c), stroke: 'var(--muted)', 'stroke-width': 1, 'stroke-dasharray': '4 5', opacity: .6 }); });
+    if (detalle) {
+      e('text', { x: mx(13), y: my(31), 'text-anchor': 'middle', 'font-family': 'var(--f-display)', 'font-size': 18, 'font-weight': 700, fill: 'var(--ink)' }, 'SORTER');
+      [1, 24, 40, 63, 80, 93, 111, 120, 136].forEach(function (l) {
+        e('text', { x: mx(aisleX(l)), y: my(64), 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'L' + (l < 10 ? '0' + l : l));
+      });
+      e('text', { x: mx(28), y: my(1.2), 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'P01–P17');
+      e('text', { x: mx(28), y: my(59.3), 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'P18–P38');
+    }
+    return { e: e, mx: mx, my: my };
+  }
+  function pintar(b, n, grosor, puntos) {
+    var r = trazar(PARADAS[n]);
+    b.e('polyline', { points: r.pts.map(function (p) { return b.mx(p[0]) + ',' + b.my(p[1]); }).join(' '), fill: 'none', stroke: col(n), 'stroke-width': grosor, 'stroke-linejoin': 'round', opacity: .9 });
+    if (puntos) PARADAS[n].forEach(function (p) {
+      b.e('circle', { cx: b.mx(aisleX(p[0])), cy: b.my(posY(p[1])), r: Math.min(12, 2.5 + Math.sqrt(p[2]) * 1.3), fill: col(n), stroke: 'var(--panel)', 'stroke-width': 1 });
+    });
+    return r;
+  }
+  function sorter(b, r) { b.e('circle', { cx: b.mx(SALIDA[0]), cy: b.my(SALIDA[1]), r: r, fill: 'var(--accent)', stroke: 'var(--ink)', 'stroke-width': 1.5 }); }
+
+  var NOMBRES = Object.keys(PARADAS), metros = {}, total = 0;
+  NOMBRES.forEach(function (n) { metros[n] = trazar(PARADAS[n]).metros; total += metros[n]; });
+  function fmt(v) { return String(Math.round(v)).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  document.getElementById('kmInt').textContent = (total / 1000).toFixed(1).replace('.', ',') + ' km';
+
+  var bt = base(document.getElementById('todas'), true);
+  NOMBRES.forEach(function (n) { pintar(bt, n, 2, true); });
+  sorter(bt, 7);
+
+  var filas = '';
+  NOMBRES.forEach(function (n) {
+    var i = INFO[n];
+    filas += '<tr><td class="m">' + i[0] + '</td><td><span class="dot" style="background:' + col(n) + '"></span>' + n + '</td><td>' + i[1] + '</td><td class="r">' + i[2] + '</td><td class="r">' + i[3] + '</td><td class="r">' + PARADAS[n].length + '</td><td class="r">' + fmt(metros[n]) + '</td></tr>';
+  });
+  filas += '<tr><td class="m">EFFEC/INT/66195</td><td><span class="dot" style="background:var(--zx)"></span>ZX</td><td>MU-05 a MU-08</td><td class="r">84</td><td class="r">29</td><td class="r">–</td><td class="r">–</td></tr>';
+  document.getElementById('tablaInt').innerHTML = filas;
+  document.getElementById('tablaZx').innerHTML = ZX.map(function (z) { return '<tr><td class="m">' + z[0] + '</td><td class="r">' + z[1] + '</td><td class="r">' + z[2] + '</td></tr>'; }).join('');
+
+  var ruta = document.getElementById('ruta'), chips = document.getElementById('chips'), info = document.getElementById('rutaInfo');
+  function seleccionar(n) {
+    var b = base(ruta, true);
+    var r = pintar(b, n, 2.4, true);
+    sorter(b, 7);
+    Array.prototype.forEach.call(chips.children, function (c) { c.setAttribute('aria-selected', c.dataset.int === n ? 'true' : 'false'); });
+    var pas = {};
+    PARADAS[n].forEach(function (p) { pas[Math.floor(p[0] / 2)] = 1; });
+    info.textContent = INFO[n][0] + ' · ' + n + ' · ' + INFO[n][1] + ' · ' + INFO[n][2] + ' uds · ' + PARADAS[n].length + ' paradas · ' + Object.keys(pas).length + ' pasillos · unos ' + fmt(r.metros) + ' m ida y vuelta desde el SORTER';
+  }
+  var minis = document.getElementById('minis');
+  NOMBRES.forEach(function (n) {
+    var c = document.createElement('button');
+    c.type = 'button'; c.dataset.int = n; c.setAttribute('role', 'tab');
+    c.innerHTML = '<i style="background:' + col(n) + '"></i>' + n + ' · ' + INFO[n][1];
+    c.addEventListener('click', function () { seleccionar(n); });
+    chips.appendChild(c);
+    var card = document.createElement('button');
+    card.type = 'button'; card.className = 'mini-card';
+    card.innerHTML = '<span class="h"><b>' + n + '</b><span>' + INFO[n][2] + ' u · ' + PARADAS[n].length + ' paradas · ' + fmt(metros[n]) + ' m</span></span>';
+    var s = document.createElementNS(NS, 'svg');
+    s.setAttribute('viewBox', '30 20 960 340'); s.setAttribute('aria-label', 'Recorrido ' + n);
+    card.appendChild(s);
+    card.addEventListener('click', function () { seleccionar(n); ruta.scrollIntoView({ behavior: 'smooth', block: 'center' }); });
+    minis.appendChild(card);
+    var b = base(s, false); pintar(b, n, 7, false); sorter(b, 14);
+  });
+  seleccionar('D1');
+})();
+</script>
+</body></html>

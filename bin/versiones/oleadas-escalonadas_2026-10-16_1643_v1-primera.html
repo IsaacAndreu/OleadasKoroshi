@@ -1,0 +1,394 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head><body><title>Oleadas escalonadas KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: misma columna y tokens que «Reparto por zonas KOROSHI»; la pieza central es el cronograma de pickers y U */
+:root {
+  --bg: #f3f4f2; --panel: #ffffff; --ink: #1d2327; --muted: #5d676d; --line: #d5d9d6; --floor: #e6e8e4;
+  --accent: #e0a100; --accent-ink: #6b4d00;
+  --oa: #00798c; --ob: #d1495b; --oc: #5b9a3c; --od: #7a4cc2; --oe: #e07b1a;
+  --ok: #2e7d4f; --bad: #b3261e;
+  --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+  --f-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+    --accent: #f2b81c; --accent-ink: #f2b81c;
+    --oa: #2fb3c6; --ob: #ef6f80; --oc: #82c463; --od: #a687e6; --oe: #f59a52; --ok: #6cc495; --bad: #f08a80;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15191b; --panel: #1d2326; --ink: #e6e9e7; --muted: #9aa4a9; --line: #333c40; --floor: #252c2f;
+  --accent: #f2b81c; --accent-ink: #f2b81c;
+  --oa: #2fb3c6; --ob: #ef6f80; --oc: #82c463; --od: #a687e6; --oe: #f59a52; --ok: #6cc495; --bad: #f08a80;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1000px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 64px; display: grid; gap: 52px; }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; line-height: 1.1; margin: 0; text-wrap: balance; }
+h1 { font-size: clamp(2.3rem, 6vw, 3.4rem); }
+h2 { font-size: 1.9rem; }
+h3 { font-size: 1.3rem; font-weight: 600; }
+p { margin: 0; max-width: 68ch; }
+section { display: grid; gap: 18px; min-width: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tape { height: 10px; border-radius: 2px; max-width: 220px; background: repeating-linear-gradient(-45deg, var(--accent) 0 14px, var(--ink) 14px 28px); }
+.lead { font-size: 1.12rem; }
+.note { font-size: .88rem; color: var(--muted); }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; }
+.scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); }
+th { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); font-weight: 500; }
+td.r, th.r { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--f-mono); }
+.m { font-family: var(--f-mono); }
+.tag { display: inline-block; min-width: 26px; text-align: center; font-family: var(--f-mono); font-weight: 500; font-size: .8rem; padding: 1px 6px; border-radius: 3px; color: #fff; }
+.tA { background: var(--oa); } .tB { background: var(--ob); } .tC { background: var(--oc); } .tD { background: var(--od); } .tE { background: var(--oe); }
+.rot td { text-align: center; } .rot td:first-child, .rot th:first-child { text-align: left; }
+.pasos { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; counter-reset: p; }
+.paso { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 8px; align-content: start; }
+.paso::before { counter-increment: p; content: counter(p); width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: #1d2327; font-family: var(--f-display); font-weight: 700; }
+.paso p { font-size: .92rem; color: var(--muted); }
+.controles { display: flex; flex-wrap: wrap; gap: 16px 28px; align-items: end; }
+.grupo { display: grid; gap: 6px; }
+.grupo > span { font-family: var(--f-mono); font-size: .72rem; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+.seg button { font: inherit; font-size: .88rem; padding: 6px 12px; border: 0; background: var(--panel); color: var(--ink); cursor: pointer; border-right: 1px solid var(--line); }
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; }
+.kpi { border-top: 3px solid var(--ink); padding-top: 8px; display: grid; gap: 2px; }
+.kpi .v { font-family: var(--f-display); font-size: 2.3rem; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: .85rem; color: var(--muted); }
+.kpi.ok .v { color: var(--ok); } .kpi.bad .v { color: var(--bad); }
+.gantt svg { display: block; width: 100%; min-width: 760px; height: auto; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: .85rem; color: var(--muted); align-items: center; }
+.leyenda i { display: inline-block; width: 12px; height: 12px; border-radius: 2px; vertical-align: -1px; margin-right: 5px; }
+.estado { font-family: var(--f-mono); font-size: .8rem; font-weight: 500; }
+.estado.ok { color: var(--ok); } .estado.bad { color: var(--bad); }
+.callout { background: var(--panel); border-left: 4px solid var(--accent); padding: 16px 18px; display: grid; gap: 8px; border-radius: 0 6px 6px 0; }
+.callout ul, .lista { margin: 0; padding-left: 1.1em; display: grid; gap: 6px; }
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; align-items: start; }
+.hipo { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+.hipo div { border: 1px dashed var(--accent); border-radius: 6px; padding: 10px 12px; background: var(--panel); display: grid; gap: 2px; }
+.hipo b { font-family: var(--f-mono); font-weight: 500; }
+.hipo span { font-size: .85rem; color: var(--muted); }
+
+@page { size: A4; margin: 12mm 12mm 14mm; }
+@media print {
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  :root { --bg: #ffffff; }
+  body { font-size: 11pt; }
+  .wrap { max-width: none; padding: 0; gap: 22px; }
+  section { gap: 12px; }
+  section.salto { break-before: page; }
+  h1 { font-size: 28pt; } h2 { font-size: 19pt; }
+  h2, h3, .eyebrow { break-after: avoid; }
+  .interactivo { display: none !important; }
+  .gantt svg { min-width: 0; }
+  .scroll { overflow: visible; }
+  .panel, .paso, .kpi, .kpis, .callout, .hipo, table, tr, .gantt { break-inside: avoid; }
+  .pasos { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .paso { padding: 10px 12px; gap: 4px; }
+  .paso::before { width: 22px; height: 22px; font-size: 10pt; }
+  .paso p { font-size: 8.8pt; line-height: 1.35; }
+  .lead { font-size: 11.5pt; }
+  .rot th, .rot td { padding: 4px 8px; }
+  .kpis { grid-template-columns: repeat(4, 1fr); }
+  .kpi .v { font-size: 20pt; }
+  .solo-pantalla { display: none; }
+  .solo-papel { display: grid !important; }
+}
+.solo-papel { display: none; }
+</style>
+
+<div class="wrap">
+
+<header style="display:grid;gap:14px">
+  <div class="tape" aria-hidden="true"></div>
+  <span class="eyebrow">KOROSHI · Pedidos de tienda · Simulación con el día de 10.000 u (10/09/2026)</span>
+  <h1>Oleadas escalonadas por zona</h1>
+  <p class="lead">El picking empieza a las 3:00 y las oleadas a las 6:00. Cada picker tiene su zona y recoge su zona <b>oleada por oleada</b>. Cada uno empieza por una oleada distinta, así a las 6:00 las cinco U ya tienen ropa para trabajar.</p>
+</header>
+
+<section>
+  <span class="eyebrow">La idea</span>
+  <h2>Cómo funciona</h2>
+  <div class="pasos">
+    <div class="paso"><h3>5 oleadas iguales</h3><p>El sistema reparte las tiendas del día en 5 oleadas, de la A a la E, de unas 2.000 u cada una. Cada oleada va a una U: la A a la U1, la B a la U2… la E a la U5.</p></div>
+    <div class="paso"><h3>Un lote por zona y oleada</h3><p>«Z1-B» es todo lo que la oleada B necesita de la zona 1. Si un lote pasa de 500 u se parte en dos (Z2-A1 y Z2-A2).</p></div>
+    <div class="paso"><h3>Cada picker, su zona</h3><p>Andy hace la Z1, Ayub la Z2, Pep la Z3, Jordi la Z4 y Carlos la Z5. Cada uno carga en la PDA los lotes de su zona.</p></div>
+    <div class="paso"><h3>Empiezan escalonados</h3><p>Andy empieza por la A, Ayub por la B, Pep por la C… Cuando acaba un lote lo deja en su U y sigue con la letra siguiente.</p></div>
+    <div class="paso"><h3>A las 6:00 todas las U trabajan</h3><p>Cada U ya tiene la ropa de varias zonas. Va leyendo lo que ha llegado y sigue a medida que llegan más lotes.</p></div>
+    <div class="paso"><h3>Quien acaba, ayuda</h3><p>Las zonas no pesan igual cada día. Quien termina su zona coge un lote pendiente de la zona más cargada.</p></div>
+  </div>
+  <div class="panel scroll">
+    <table class="rot">
+      <thead><tr><th>Orden de lotes</th><th>1.º</th><th>2.º</th><th>3.º</th><th>4.º</th><th>5.º</th></tr></thead>
+      <tbody id="rotacion"></tbody>
+    </table>
+  </div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Los datos del día</span>
+  <h2>Qué hay que recoger</h2>
+  <p>51 tiendas y 10.196 u repartidas en 5 oleadas equilibradas. Al cruzar zona y oleada salen 32 lotes. Las zonas no pesan igual: este día la Z2 tenía 18 veces más unidades que la Z5.</p>
+  <div class="cols">
+    <div class="panel scroll"><table><thead><tr><th>Oleada</th><th>U</th><th class="r">Tiendas</th><th class="r">Uds</th></tr></thead><tbody id="tOleadas"></tbody></table></div>
+    <div class="panel scroll"><table><thead><tr><th>Zona</th><th>Picker</th><th class="r">Lotes</th><th class="r">Uds</th><th class="r">Lecturas</th></tr></thead><tbody id="tZonas"></tbody></table></div>
+  </div>
+  <div class="hipo">
+    <div><b>20 s · 10 s</b><span>por lectura de hueco (dos hipótesis: alta y baja)</span></div>
+    <div><b>4 s</b><span>por unidad cogida y leída</span></div>
+    <div><b>0,8 m/s</b><span>andando con el carro</span></div>
+    <div><b>5 min</b><span>por lote para dejarlo en la U y validarlo</span></div>
+    <div><b>425 u/h</b><span>por U leyendo, desde las 6:00</span></div>
+  </div>
+  <p class="note">Los tiempos son hipótesis: hay que afinarlos con los tiempos reales. No incluye los viajes extra si la caja del carro se llena antes de acabar el lote.</p>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Simulación</span>
+  <h2>Cronograma de pickers y U</h2>
+  <div class="controles interactivo">
+    <div class="grupo"><span>Pickers</span><div class="seg" id="cPickers"><button type="button" data-v="4">4</button><button type="button" data-v="5">5</button><button type="button" data-v="6">6</button></div></div>
+    <div class="grupo"><span>Zonas</span><div class="seg" id="cModo"><button type="button" data-v="fija">Fijas</button><button type="button" data-v="ayuda">Con ayuda</button></div></div>
+    <div class="grupo"><span>Lectura de hueco</span><div class="seg" id="cHipo"><button type="button" data-v="20">20 s</button><button type="button" data-v="10">10 s</button></div></div>
+  </div>
+  <p class="note interactivo" id="aviso"></p>
+  <p class="note" id="escenario"></p>
+  <div class="kpis" id="kpis"></div>
+  <div class="panel gantt scroll"><svg id="gantt" viewBox="0 0 1000 420" role="img" aria-label="Cronograma de lotes por picker y lectura en cada U"></svg></div>
+  <div class="leyenda"><span><i class="tA"></i>Oleada A · U1</span><span><i class="tB"></i>B · U2</span><span><i class="tC"></i>C · U3</span><span><i class="tD"></i>D · U4</span><span><i class="tE"></i>E · U5</span><span><i style="background:var(--floor);border:1px solid var(--line)"></i>U esperando ropa</span></div>
+  <div class="panel scroll"><table><thead><tr><th>U</th><th class="r">Uds a las 6:00</th><th class="r">Último lote llega</th><th class="r">Tiempo esperando</th><th class="r">Termina</th></tr></thead><tbody id="tU"></tbody></table></div>
+</section>
+
+<section class="salto">
+  <span class="eyebrow">Comparativa</span>
+  <h2>¿A qué hora se acaba?</h2>
+  <p>Todas las combinaciones con el mismo día de 10.000 u. Picking desde las 3:00 y oleadas desde las 6:00 con 5 U.</p>
+  <div class="panel scroll"><table><thead><tr><th>Pickers</th><th>Zonas</th><th>Lectura de hueco</th><th class="r">Horas de picking</th><th class="r">Acaba el picking</th><th class="r">Acaban las U</th><th>Antes de las 11:00</th></tr></thead><tbody id="tComp"></tbody></table></div>
+  <div class="callout">
+    <h3>Qué se ve</h3>
+    <ul id="conclusiones"></ul>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">Antes de ponerlo en marcha</span>
+  <h2>Lo que hay que comprobar</h2>
+  <div class="pasos">
+    <div class="paso"><h3>Tiempos reales</h3><p>Medir en Odoo cuánto se tarda hoy por lectura y por unidad. Entre 10 s y 20 s por lectura cambia la hora de fin en varias horas.</p></div>
+    <div class="paso"><h3>Caja del carro</h3><p>Cuántas prendas caben. Si un lote no cabe, el picker deja la caja en la U, valida lo que lleva (entrega parcial) y vuelve. Cada viaje extra son unos 175 m.</p></div>
+    <div class="paso"><h3>Leer una oleada a medias</h3><p>Las U empiezan a leer antes de que lleguen todos los lotes. El programa de oleadas tiene que volver a cargar la oleada cuando llega un lote nuevo. Hay que probarlo.</p></div>
+  </div>
+</section>
+
+</div>
+
+<script>
+(function () {
+  var OLEADAS = { A: [2016, 10], B: [2064, 10], C: [2045, 10], D: [2049, 10], E: [2022, 11] };
+  // [lote, zona, oleada, uds, lecturas (producto-hueco), paradas, metros, tramo] · leído de Odoo, día 10/09/2026
+  var LOTES = /*LOTES*/null;
+  var PICKERS = ['Andy', 'Ayub', 'Pep', 'Jordi', 'Carlos', 'Apoyo'];
+  var ZONAS = ['Z1', 'Z2', 'Z3', 'Z4', 'Z5'];
+  var LETRAS = ['A', 'B', 'C', 'D', 'E'];
+  var INICIO = 3.25, U_INICIO = 6, U_RATE = 425, ENTREGA = 5 / 60, MARGEN = 1.0;
+
+  function horas(l, sLect) { return (l[4] * sLect + l[3] * 4 + l[6] / 0.8) / 3600 + ENTREGA; }
+  function hm(h) { var m = Math.round(h * 60); return String(Math.floor(m / 60)).padStart(2, '0') + ':' + String(m % 60).padStart(2, '0'); }
+  function fmt(n) { return Math.round(n).toLocaleString('es-ES'); }
+
+  // Cola de cada zona en orden escalonado: la zona i empieza por la letra i
+  function colaZona(i) {
+    var orden = [];
+    for (var k = 0; k < 5; k++) orden.push(LETRAS[(i + k) % 5]);
+    var cola = [];
+    orden.forEach(function (o) { LOTES.forEach(function (l) { if (l[1] === ZONAS[i] && l[2] === o) cola.push(l); }); });
+    return cola;
+  }
+
+  function simular(nP, modo, sLect) {
+    var colas = ZONAS.map(function (z, i) { return colaZona(i); });
+    // Con 4 pickers nadie tiene la Z5: sus lotes van a la cola de quien la tenga más ligera al final (con ayuda) o a Jordi (fijas)
+    var dueno = [0, 1, 2, 3, 4];
+    if (nP === 4) { colas[3] = colas[3].concat(colas[4]); colas[4] = []; dueno = [0, 1, 2, 3]; }
+    var pk = [];
+    for (var p = 0; p < nP; p++) pk.push({ nombre: nP === 4 && p === 3 ? 'Jordi (Z4+Z5)' : PICKERS[p], zona: p < 5 ? p : -1, t: INICIO, bloques: [] });
+    var llegadas = [];
+    function restante(c) { var s = 0; c.forEach(function (l) { s += horas(l, sLect); }); return s; }
+    var vivo = true;
+    while (vivo) {
+      vivo = false;
+      // el picker que antes queda libre coge su siguiente lote
+      var orden = pk.slice().sort(function (a, b) { return a.t - b.t; });
+      for (var j = 0; j < orden.length; j++) {
+        var q = orden[j], lote = null;
+        if (q.zona >= 0 && q.zona < colas.length && colas[q.zona].length) lote = colas[q.zona].shift();
+        else if (modo === 'ayuda') {
+          var mayor = -1, val = 0;
+          colas.forEach(function (c, i) { var r = restante(c); if (c.length > 1 && r > val) { val = r; mayor = i; } });
+          if (mayor >= 0) lote = colas[mayor].pop();
+        }
+        if (lote) {
+          var d = horas(lote, sLect) * MARGEN;
+          q.bloques.push({ l: lote, ini: q.t, fin: q.t + d });
+          llegadas.push({ o: lote[2], t: q.t + d, u: lote[3] });
+          q.t += d; vivo = true; break;
+        }
+      }
+    }
+    var finPicking = Math.max.apply(null, pk.map(function (q) { return q.t; }));
+    // Lectura en cada U: lee lo que ha llegado a 425 u/h desde las 6:00
+    var us = LETRAS.map(function (o, i) {
+      var ll = llegadas.filter(function (x) { return x.o === o; }).sort(function (a, b) { return a.t - b.t; });
+      var t = U_INICIO, leido = 0, llegado = 0, espera = 0, tramos = [], a6 = 0;
+      ll.forEach(function (x) { if (x.t <= U_INICIO) a6 += x.u; });
+      var k = 0;
+      while (k < ll.length && ll[k].t <= t) { llegado += ll[k].u; k++; }
+      while (leido < OLEADAS[o][0] - 0.5) {
+        if (llegado - leido < 0.5) {
+          if (k >= ll.length) break;
+          var ini = t; t = Math.max(t, ll[k].t); espera += t - ini; if (t > ini) tramos.push({ ini: ini, fin: t, tipo: 'espera' });
+          while (k < ll.length && ll[k].t <= t) { llegado += ll[k].u; k++; }
+          continue;
+        }
+        var prox = k < ll.length ? ll[k].t : Infinity;
+        var tLeer = (llegado - leido) / U_RATE;
+        var hasta = Math.min(t + tLeer, prox);
+        tramos.push({ ini: t, fin: hasta, tipo: 'lee' });
+        leido += (hasta - t) * U_RATE; t = hasta;
+        while (k < ll.length && ll[k].t <= t + 1e-9) { llegado += ll[k].u; k++; }
+      }
+      return { o: o, fin: t, espera: espera, a6: a6, ultimo: ll.length ? ll[ll.length - 1].t : U_INICIO, tramos: tramos };
+    });
+    var finU = Math.max.apply(null, us.map(function (u) { return u.fin; }));
+    var hPick = 0; LOTES.forEach(function (l) { hPick += horas(l, sLect); });
+    return { pk: pk, us: us, finPicking: finPicking, finU: finU, hPick: hPick };
+  }
+
+  // ---- tablas fijas
+  var rot = '';
+  ZONAS.forEach(function (z, i) {
+    rot += '<tr><td>' + PICKERS[i] + ' · ' + z + '</td>';
+    for (var k = 0; k < 5; k++) { var o = LETRAS[(i + k) % 5]; rot += '<td><span class="tag t' + o + '">' + z + '-' + o + '</span></td>'; }
+    rot += '</tr>';
+  });
+  document.getElementById('rotacion').innerHTML = rot;
+  var to = '';
+  LETRAS.forEach(function (o, i) { to += '<tr><td><span class="tag t' + o + '">' + o + '</span></td><td>U' + (i + 1) + '</td><td class="r">' + OLEADAS[o][1] + '</td><td class="r">' + fmt(OLEADAS[o][0]) + '</td></tr>'; });
+  document.getElementById('tOleadas').innerHTML = to;
+  var tz = '';
+  ZONAS.forEach(function (z, i) {
+    var ls = LOTES.filter(function (l) { return l[1] === z; }), u = 0, lec = 0;
+    ls.forEach(function (l) { u += l[3]; lec += l[4]; });
+    tz += '<tr><td>' + z + '</td><td>' + PICKERS[i] + '</td><td class="r">' + ls.length + '</td><td class="r">' + fmt(u) + '</td><td class="r">' + fmt(lec) + '</td></tr>';
+  });
+  document.getElementById('tZonas').innerHTML = tz;
+
+  // ---- cronograma
+  var NS = 'http://www.w3.org/2000/svg';
+  function dibujar(svg, r) {
+    while (svg.firstChild) svg.removeChild(svg.firstChild);
+    var X0 = 120, X1 = 985, T0 = 3, T1 = Math.max(14, Math.ceil(r.finU + 0.5)), FILA = 30, Y0 = 34;
+    var filas = r.pk.length + 5 + 1, alto = Y0 + filas * FILA + 30;
+    svg.setAttribute('viewBox', '0 0 1000 ' + alto);
+    function x(t) { return X0 + (t - T0) / (T1 - T0) * (X1 - X0); }
+    function e(tag, at, txt) { var n = document.createElementNS(NS, tag); for (var a in at) n.setAttribute(a, at[a]); if (txt !== undefined) n.textContent = txt; svg.appendChild(n); return n; }
+    for (var h = T0; h <= T1; h++) {
+      e('line', { x1: x(h), x2: x(h), y1: Y0 - 8, y2: alto - 24, stroke: 'var(--line)', 'stroke-width': h === 6 || h === 11 ? 2 : 1, 'stroke-dasharray': h === 11 ? '5 4' : '' });
+      e('text', { x: x(h), y: Y0 - 14, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 11, fill: 'var(--muted)' }, String(h).padStart(2, '0') + ':00');
+    }
+    e('text', { x: x(11) + 4, y: alto - 10, 'font-family': 'var(--f-mono)', 'font-size': 10, fill: 'var(--muted)' }, 'objetivo 11:00');
+    var y = Y0;
+    r.pk.forEach(function (q) {
+      e('text', { x: 8, y: y + 19, 'font-family': 'var(--f-body)', 'font-size': 12, fill: 'var(--ink)' }, q.nombre);
+      q.bloques.forEach(function (b) {
+        e('rect', { x: x(b.ini), y: y + 4, width: Math.max(1, x(b.fin) - x(b.ini) - 1), height: FILA - 8, rx: 2, fill: 'var(--o' + b.l[2].toLowerCase() + ')' });
+        if (x(b.fin) - x(b.ini) > 34) e('text', { x: (x(b.ini) + x(b.fin)) / 2, y: y + 19, 'text-anchor': 'middle', 'font-family': 'var(--f-mono)', 'font-size': 9.5, fill: '#fff' }, b.l[0]);
+      });
+      y += FILA;
+    });
+    y += FILA / 2;
+    e('line', { x1: 8, x2: X1, y1: y - 4, y2: y - 4, stroke: 'var(--ink)', 'stroke-width': 1 });
+    r.us.forEach(function (u, i) {
+      e('text', { x: 8, y: y + 19, 'font-family': 'var(--f-body)', 'font-size': 12, fill: 'var(--ink)' }, 'U' + (i + 1) + ' · oleada ' + u.o);
+      u.tramos.forEach(function (t) {
+        if (t.fin - t.ini < 1 / 120) return;
+        e('rect', { x: x(t.ini), y: y + 6, width: Math.max(1, x(t.fin) - x(t.ini)), height: FILA - 12, rx: 2,
+          fill: t.tipo === 'lee' ? 'var(--o' + u.o.toLowerCase() + ')' : 'var(--floor)', stroke: t.tipo === 'lee' ? 'none' : 'var(--line)', opacity: t.tipo === 'lee' ? .55 : 1 });
+      });
+      e('text', { x: x(u.fin) + 5, y: y + 19, 'font-family': 'var(--f-mono)', 'font-size': 10.5, fill: 'var(--ink)' }, hm(u.fin));
+      y += FILA;
+    });
+  }
+
+  function kpis(r) {
+    var ok = r.finU <= 11 + 1e-9;
+    var a6 = 0; r.us.forEach(function (u) { a6 += u.a6; });
+    var esp = 0; r.us.forEach(function (u) { esp += u.espera; });
+    return '<div class="kpi"><span class="v">' + hm(r.finPicking) + '</span><span class="l">acaba el picking</span></div>' +
+      '<div class="kpi ' + (ok ? 'ok' : 'bad') + '"><span class="v">' + hm(r.finU) + '</span><span class="l">acaban las oleadas</span></div>' +
+      '<div class="kpi"><span class="v">' + fmt(a6) + '</span><span class="l">uds en las U a las 6:00</span></div>' +
+      '<div class="kpi"><span class="v">' + Math.round(esp * 60) + ' min</span><span class="l">esperando ropa (suma de las 5 U)</span></div>';
+  }
+
+  var estado = { p: 5, m: 'ayuda', s: 20 };
+  var svg = document.getElementById('gantt');
+  function pintar() {
+    var r = simular(estado.p, estado.m, estado.s);
+    dibujar(svg, r);
+    document.getElementById('kpis').innerHTML = kpis(r);
+    var tu = '';
+    r.us.forEach(function (u, i) {
+      tu += '<tr><td><span class="tag t' + u.o + '">' + u.o + '</span> U' + (i + 1) + '</td><td class="r">' + fmt(u.a6) + '</td><td class="r">' + hm(u.ultimo) + '</td><td class="r">' + Math.round(u.espera * 60) + ' min</td><td class="r">' + hm(u.fin) + '</td></tr>';
+    });
+    document.getElementById('tU').innerHTML = tu;
+    document.getElementById('escenario').textContent = 'Escenario: ' + estado.p + ' pickers, zonas ' + (estado.m === 'fija' ? 'fijas' : 'con ayuda') + ', ' + estado.s + ' s por lectura de hueco.';
+    document.getElementById('aviso').textContent =estado.p === 4 ? 'Con 4 pickers, Jordi lleva la Z4 y la Z5.' : (estado.p === 6 ? 'Con 6 pickers, la sexta persona no tiene zona: ayuda siempre a la zona más cargada.' : '');
+    [['cPickers', estado.p], ['cModo', estado.m], ['cHipo', estado.s]].forEach(function (c) {
+      Array.prototype.forEach.call(document.getElementById(c[0]).children, function (b) { b.setAttribute('aria-pressed', String(b.dataset.v) === String(c[1]) ? 'true' : 'false'); });
+    });
+  }
+  function enlazar(id, clave, num) {
+    document.getElementById(id).addEventListener('click', function (ev) {
+      var b = ev.target.closest('button'); if (!b) return;
+      estado[clave] = num ? Number(b.dataset.v) : b.dataset.v;
+      if (estado.p === 6 && estado.m === 'fija') estado.m = 'ayuda';
+      pintar();
+    });
+  }
+  enlazar('cPickers', 'p', true); enlazar('cModo', 'm', false); enlazar('cHipo', 's', true);
+  pintar();
+
+  // ---- comparativa
+  var comp = '', filas = [];
+  [[4, 'ayuda'], [5, 'fija'], [5, 'ayuda'], [6, 'ayuda']].forEach(function (c) {
+    [20, 10].forEach(function (s) {
+      var r = simular(c[0], c[1], s); filas.push({ p: c[0], m: c[1], s: s, r: r });
+      var ok = r.finU <= 11 + 1e-9;
+      comp += '<tr><td>' + c[0] + '</td><td>' + (c[1] === 'fija' ? 'Fijas' : 'Con ayuda') + '</td><td>' + s + ' s</td><td class="r">' + (r.hPick).toFixed(1).replace('.', ',') + ' h</td><td class="r">' + hm(r.finPicking) + '</td><td class="r">' + hm(r.finU) + '</td><td><span class="estado ' + (ok ? 'ok' : 'bad') + '">' + (ok ? 'Sí' : 'No') + '</span></td></tr>';
+    });
+  });
+  document.getElementById('tComp').innerHTML = comp;
+  function buscar(p, m, s) { return filas.filter(function (f) { return f.p === p && f.m === m && f.s === s; })[0].r; }
+  var f5 = buscar(5, 'fija', 20), a5 = buscar(5, 'ayuda', 20), a5b = buscar(5, 'ayuda', 10), a6 = buscar(6, 'ayuda', 20), a4b = buscar(4, 'ayuda', 10);
+  var conc = [
+    'Con las zonas fijas, la Z2 marca el final: Ayub acaba a las ' + hm(f5.pk[1].t) + ' mientras Carlos acaba la Z5 a las ' + hm(f5.pk[4].t) + '. Con ayuda, el picking acaba a las ' + hm(a5.finPicking) + '.',
+    'A las 6:00 las cinco U tienen ropa para empezar. Lo que marca el final es el último lote de cada oleada: la U no puede acabar antes de recibirlo.',
+    'Lo que más pesa es el tiempo por lectura de hueco: con 5 pickers y ayuda se acaba a las ' + hm(a5.finU) + ' con 20 s y a las ' + hm(a5b.finU) + ' con 10 s. Hay que medirlo.',
+    'Un sexto picker de apoyo deja el final en ' + hm(a6.finU) + ' con la hipótesis alta. Con 4 pickers y la hipótesis baja se acaba a las ' + hm(a4b.finU) + '.',
+    'Separar por oleada en el picking cuesta tiempo: cada hueco se visita una vez por oleada (4.462 lecturas en lugar de 1.681). Con la hipótesis alta son ' + a5.hPick.toFixed(1).replace('.', ',') + ' h de picking, frente a unas 23 h si cada zona se recogiera de una vez para todas las oleadas.'
+  ];
+  document.getElementById('conclusiones').innerHTML = conc.map(function (c) { return '<li>' + c + '</li>'; }).join('');
+})();
+</script>
+</body></html>
