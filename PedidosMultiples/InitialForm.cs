@@ -1478,7 +1478,7 @@ namespace PedidosMultiples
 				form.StartPosition = FormStartPosition.CenterParent;
 				form.MinimizeBox = false;
 				form.MaximizeBox = false;
-				form.ClientSize = new Size(380, 150);
+				form.ClientSize = new Size(380, 200);
 				Label etiqueta = new Label
 				{
 					Text = "Bahía a imprimir:",
@@ -1515,6 +1515,13 @@ namespace PedidosMultiples
 					Size = new Size(110, 34),
 					DialogResult = DialogResult.Cancel
 				};
+				// Primer dia: todas las bahias de golpe (de la 1 a la 10)
+				Button imprimirTodas = new Button
+				{
+					Text = "Imprimir de la 1 a la 10",
+					Location = new Point(120, 148),
+					Size = new Size(240, 34)
+				};
 				imprimir.Click += delegate
 				{
 					int bahia = (int)numero.Value;
@@ -1527,6 +1534,20 @@ namespace PedidosMultiples
 						}
 					}
 				};
+				imprimirTodas.Click += delegate
+				{
+					int impresas = 0;
+					for (int bahia = 1; bahia <= 10; bahia++)
+					{
+						if (!ImprimirEtiquetaBahia(bahia))
+						{
+							break;
+						}
+						impresas++;
+					}
+					estado.Text = impresas == 10 ? "Impresas las bahías 1 a 10" : ("Impresas " + impresas + " de 10: revisar la impresora");
+				};
+				form.Controls.Add(imprimirTodas);
 				form.Controls.Add(etiqueta);
 				form.Controls.Add(numero);
 				form.Controls.Add(estado);
