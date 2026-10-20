@@ -523,6 +523,7 @@ namespace PedidosMultiples
 			}
 			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta de caja de prueba", null, imprimirEtiquetaPrueba_Click);
 			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiqueta CAMBIAR-CAJA", null, imprimirEtiquetaCambiarCaja_Click);
+			opcionesToolStripMenuItem.DropDownItems.Add("Imprimir etiquetas de bahía (SEQ)", null, imprimirEtiquetaBahia_Click);
 		}
 
 		private void resetFormOnDbChange()
@@ -1462,6 +1463,125 @@ namespace PedidosMultiples
 			DibujarTextoAjustado(g, "CAMBIAR-CAJA", x, y0 + alto * 0.73f, ancho, alto * 0.05f, FontStyle.Bold, StringAlignment.Center);
 			DibujarTextoAjustado(g, "Leer este código y después", x, y0 + alto * 0.83f, ancho, alto * 0.05f, FontStyle.Regular, StringAlignment.Center);
 			DibujarTextoAjustado(g, "el SEQ de la caja llena", x, y0 + alto * 0.89f, ancho, alto * 0.05f, FontStyle.Regular, StringAlignment.Center);
+		}
+
+		// Etiquetas de bahia (101,6 x 152,4 mm) con el codigo del SEQ (001, 002...), para pegar fijas en
+		// cada bahia de la U: al leer una prenda se deja en su bahia y se escanea esta etiqueta para confirmar.
+		// Se imprimen de una en una: cada clic en Imprimir saca la bahia del numero y pasa a la siguiente.
+		// Solo imprime: no toca Odoo, ni la base de datos, ni la oleada cargada.
+		private void imprimirEtiquetaBahia_Click(object sender, EventArgs e)
+		{
+			using (Form form = new Form())
+			{
+				form.Text = "Etiquetas de bahía";
+				form.FormBorderStyle = FormBorderStyle.FixedDialog;
+				form.StartPosition = FormStartPosition.CenterParent;
+				form.MinimizeBox = false;
+				form.MaximizeBox = false;
+				form.ClientSize = new Size(380, 150);
+				Label etiqueta = new Label
+				{
+					Text = "Bahía a imprimir:",
+					Location = new Point(20, 25),
+					AutoSize = true,
+					Font = new System.Drawing.Font("Microsoft Sans Serif", 12f)
+				};
+				NumericUpDown numero = new NumericUpDown
+				{
+					Minimum = 1m,
+					Maximum = 999m,
+					Value = 1m,
+					Location = new Point(190, 20),
+					Width = 90,
+					Font = new System.Drawing.Font("Microsoft Sans Serif", 14f)
+				};
+				Label estado = new Label
+				{
+					Text = "",
+					Location = new Point(20, 65),
+					AutoSize = true,
+					Font = new System.Drawing.Font("Microsoft Sans Serif", 10f)
+				};
+				Button imprimir = new Button
+				{
+					Text = "Imprimir",
+					Location = new Point(120, 100),
+					Size = new Size(110, 34)
+				};
+				Button cerrar = new Button
+				{
+					Text = "Cerrar",
+					Location = new Point(250, 100),
+					Size = new Size(110, 34),
+					DialogResult = DialogResult.Cancel
+				};
+				imprimir.Click += delegate
+				{
+					int bahia = (int)numero.Value;
+					if (ImprimirEtiquetaBahia(bahia))
+					{
+						estado.Text = "Impresa la bahía " + bahia + " (SEQ " + bahia.ToString("D" + seqLength) + ")";
+						if (numero.Value < numero.Maximum)
+						{
+							numero.Value += 1m;
+						}
+					}
+				};
+				form.Controls.Add(etiqueta);
+				form.Controls.Add(numero);
+				form.Controls.Add(estado);
+				form.Controls.Add(imprimir);
+				form.Controls.Add(cerrar);
+				form.AcceptButton = imprimir;
+				form.CancelButton = cerrar;
+				form.ShowDialog(this);
+			}
+			scanInput.Select();
+		}
+
+		private bool ImprimirEtiquetaBahia(int bahia)
+		{
+			string seq = bahia.ToString("D" + seqLength);
+			try
+			{
+				using (PrintDocument pd = new PrintDocument())
+				{
+					pd.PrintController = new StandardPrintController();
+					pd.PrintPage += delegate(object printSender, PrintPageEventArgs printE)
+					{
+						printE.Graphics.TranslateTransform(0f - printE.PageSettings.HardMarginX, 0f - printE.PageSettings.HardMarginY);
+						DibujarEtiquetaBahia(printE.Graphics, new RectangleF(0f, 0f, 400f, 600f), bahia, seq);
+					};
+					pd.PrinterSettings.PrinterName = ReturnSetting("imp_tick").ToString();
+					pd.DefaultPageSettings.PaperSize = new PaperSize("KOROSHI 101,6 x 152,4 mm", 400, 600);
+					pd.DefaultPageSettings.Margins = new Margins(0, 0, 0, 0);
+					pd.DefaultPageSettings.Landscape = false;
+					pd.Print();
+				}
+				return true;
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex?.ToString() ?? "", "Error", MessageBoxButtons.OK, MessageBoxIcon.Hand);
+				return false;
+			}
+		}
+
+		private static void DibujarEtiquetaBahia(Graphics g, RectangleF area, int bahia, string seq)
+		{
+			float margen = area.Width * 0.04f;
+			float x = area.Left + margen;
+			float ancho = area.Width - 2f * margen;
+			float alto = area.Height * 0.94f;
+			float y0 = area.Top + area.Height * 0.04f;
+			g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+			g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.Half;
+			DibujarTextoAjustado(g, "BAHÍA", x, y0 + alto * 0.01f, ancho, alto * 0.10f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, bahia.ToString(), x, y0 + alto * 0.11f, ancho, alto * 0.34f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, "SEQ " + seq, x, y0 + alto * 0.46f, ancho, alto * 0.08f, FontStyle.Bold, StringAlignment.Center);
+			DibujarCodigoBarras(g, seq, x, y0 + alto * 0.56f, ancho, alto * 0.26f);
+			DibujarTextoAjustado(g, seq, x, y0 + alto * 0.83f, ancho, alto * 0.05f, FontStyle.Bold, StringAlignment.Center);
+			DibujarTextoAjustado(g, "Dejar la prenda en esta bahía y leer este código", x, y0 + alto * 0.91f, ancho, alto * 0.05f, FontStyle.Regular, StringAlignment.Center);
 		}
 
 		// ---------------- Modo matricula KOROSHI (EFFE) ----------------
