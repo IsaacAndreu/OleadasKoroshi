@@ -80,6 +80,9 @@ MODO_PLANIFICADO = False
 PLAN_MAX_UDS = 2000              # uds que junta (una oleada)
 PLAN_MAX_OUT = 10                # tope de OUT (tiendas) por oleada
 PLAN_MIN_UDS_OUT = 20            # no se cogen OUT con menos uds (pedidos de material para la tienda)
+# PLAN_LLENAR = True: de las tiendas validas elige las (como mucho PLAN_MAX_OUT) que juntas se acercan
+# mas a PLAN_MAX_UDS sin pasarse; a igualdad, las que llegaron antes. False = por orden de llegada.
+PLAN_LLENAR = True
 # Oleada propia: las OUT elegidas salen de su agrupacion del dia (TIENDA dd-mm) y pasan a una
 # agrupacion nueva, en curso, para que el programa de oleadas cargue solo estas tiendas.
 OLEADA_PROPIA = False
@@ -171,17 +174,56 @@ for p in outs:
         errores.append('%s: %s' % (p.name, motivo))
 
 if MODO_PLANIFICADO:
-    # Por orden de llegada (la busqueda ya viene ordenada por nombre): se coge cada tienda si no
-    # pasa de PLAN_MAX_UDS; si no cabe se prueba la siguiente. Maximo PLAN_MAX_OUT tiendas.
+    # Maximo PLAN_MAX_OUT tiendas (una por bahia) y PLAN_MAX_UDS uds. Con PLAN_LLENAR se eligen las que
+    # mas se acercan a PLAN_MAX_UDS; si no, por orden de llegada (la busqueda viene ordenada por nombre).
     elegidas = []
     uds_elegidas = 0.0
-    for v in validas:
-        if len(elegidas) >= PLAN_MAX_OUT:
-            break
-        if uds_elegidas + v[0] > PLAN_MAX_UDS:
-            continue
-        elegidas.append(v[1])
-        uds_elegidas += v[0]
+    if PLAN_LLENAR:
+        # Mochila: alcanzables[k] = {uds: (uds antes, indice de la tienda)} con k tiendas.
+        # Se recorren en orden de llegada y se guarda el primer camino que llega a cada suma,
+        # asi a igualdad de unidades se quedan las tiendas que llegaron antes.
+        tope = int(PLAN_MAX_UDS)
+        alcanzables = []
+        for k in range(PLAN_MAX_OUT + 1):
+            alcanzables.append({})
+        alcanzables[0][0] = None
+        for i in range(len(validas)):
+            u_i = int(round(validas[i][0]))
+            k = min(i, PLAN_MAX_OUT - 1)
+            while k >= 0:
+                for s in list(alcanzables[k].keys()):
+                    ns = s + u_i
+                    if ns <= tope and ns not in alcanzables[k + 1]:
+                        alcanzables[k + 1][ns] = (s, i)
+                k -= 1
+        mejor_k = 0
+        mejor_s = 0
+        for k in range(1, PLAN_MAX_OUT + 1):
+            for s in alcanzables[k]:
+                # a igualdad de uds, mas tiendas (se aprovechan las bahias)
+                if s > mejor_s or (s == mejor_s and k > mejor_k):
+                    mejor_s = s
+                    mejor_k = k
+        k = mejor_k
+        s = mejor_s
+        indices = []
+        while k > 0:
+            previo = alcanzables[k][s]
+            indices.append(previo[1])
+            s = previo[0]
+            k -= 1
+        indices.sort()
+        for i in indices:
+            elegidas.append(validas[i][1])
+            uds_elegidas += validas[i][0]
+    else:
+        for v in validas:
+            if len(elegidas) >= PLAN_MAX_OUT:
+                break
+            if uds_elegidas + v[0] > PLAN_MAX_UDS:
+                continue
+            elegidas.append(v[1])
+            uds_elegidas += v[0]
     outs = env['stock.picking'].browse(elegidas)
     texto_plan = 'KOROSHI REPARTIR INT ZONAS - PLANIFICADA: %d candidatas, %d validas, elegidas %d (%d uds): %s' % (
         len(validas) + len(saltadas), len(validas), len(outs), uds_elegidas, ', '.join(outs.mapped('name')) or 'ninguna')
