@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zonas de picking Z-2210</title>
+<style>
+:root{
+  --paper:#F4F6F8; --surface:#FFFFFF; --ink:#13283D; --muted:#5D6E80; --line:#D3DCE5;
+  --floor:#E9EEF3; --panel:#FFFFFF; --accent:#13283D;
+  --d1:#2F6FD6; --d2:#E07A1C; --d3:#239A58; --d4:#C4337A; --d5:#7650CF; --zx:#8A96A3;
+  --font:"Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --mono:Consolas, "Roboto Mono", Menlo, monospace;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--font)}
+.wrap{max-width:1300px;margin:0 auto;padding:20px 16px 40px}
+h1{margin:0 0 4px;font-size:clamp(22px,3vw,32px);line-height:1.1}
+.sub{margin:0 0 16px;color:var(--muted);font-size:14px}
+.map-box{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:8px;overflow-x:auto}
+.map-box svg{display:block;width:100%;min-width:760px;height:auto}
+table{width:100%;border-collapse:collapse;margin-top:18px;background:var(--surface);border:1px solid var(--line);border-radius:8px;overflow:hidden;font-size:15px}
+th,td{padding:9px 12px;border-bottom:1px solid var(--line);text-align:left}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);background:var(--paper)}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+tr:last-child td{border-bottom:0}
+.dot{display:inline-block;width:14px;height:14px;border-radius:3px;vertical-align:-2px;margin-right:8px}
+.z{font-weight:700;font-size:17px}
+.notes{margin:16px 0 0;padding-left:18px;color:var(--muted);font-size:14px;line-height:1.5}
+.notes b{color:var(--ink)}
+@media print{
+  @page{size:A4 landscape;margin:10mm}
+  html,body{background:#fff}
+  .wrap{max-width:none;padding:0}
+  .map-box{border:0;padding:0}
+  .map-box svg{min-width:0}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Zonas de picking · jueves 22/10 · Z-2210-D1…D5</h1>
+  <p class="sub">5 zonas, 1 ronda, 50 tiendas (cajas 01–50). Las zonas se cortan por pasillo: los dos lados de un pasillo (izquierda y derecha del pasillo central) son de la misma zona.</p>
+
+  <div class="map-box"><svg id="mapa" viewBox="0 0 1000 440" role="img" aria-label="Plano de NAU-2 con los lineales coloreados por zona"></svg></div>
+
+  <table>
+    <thead><tr><th>Zona</th><th>Lineales</th><th class="r">Uds</th><th class="r">Cajas (OUT)</th><th class="r">Tiempo estimado</th><th>Agrupación</th></tr></thead>
+    <tbody id="tabla"></tbody>
+  </table>
+
+  <ul class="notes">
+    <li><b>Tiempo estimado</b>: trabajo puro de la acción (20 s por lectura, 4 s por unidad, 15 s por lineal y caja). En la prueba del 21/10 el ritmo real fue más lento: cuenta unas 6–7 h por persona.</li>
+    <li><b>ZX</b>: 41 uds en ubicaciones sin lineal (MU, cajas sueltas…), 6 cajas. Las hace quien acabe primero.</li>
+    <li>Cada operario escanea la OUT de la caja, coge lo de su zona, escanea la matrícula CJ al cerrar la caja y valida. Si una OUT lleva 2 etiquetas (más de 80 l), son 2 cajas con su CJ cada una.</li>
+  </ul>
+</div>
+
+<script>
+(function () {
+  // Zonas del reparto Z-2210 (diagnóstico de la acción KOROSHI partir OUT zonas v6)
+  var ZONAS = [
+    { id: 'D1', desde: 1,   hasta: 73,  uds: 474, cajas: 49, min: 232 },
+    { id: 'D2', desde: 74,  hasta: 93,  uds: 505, cajas: 48, min: 234 },
+    { id: 'D3', desde: 94,  hasta: 107, uds: 570, cajas: 48, min: 236 },
+    { id: 'D4', desde: 108, hasta: 121, uds: 621, cajas: 47, min: 255 },
+    { id: 'D5', desde: 122, hasta: 136, uds: 586, cajas: 43, min: 217 }
+  ];
+  var ZX = { id: 'ZX', uds: 41, cajas: 6, min: 12 };
+  function zonaDe(l) {
+    for (var i = 0; i < ZONAS.length; i++) if (l >= ZONAS[i].desde && l <= ZONAS[i].hasta) return ZONAS[i];
+    return null;
+  }
+  function pad(n) { return n < 10 ? '0' + n : '' + n; }
+  function horas(m) { return Math.floor(m / 60) + ' h ' + pad(m % 60) + ' min'; }
+
+  // ---- Plano: eje X = metros desde los muelles, eje Y = ancho de la nave (0-60). Mismo plano que reparto-zonas-koroshi.html
+  var svg = document.getElementById('mapa');
+  var NS = 'http://www.w3.org/2000/svg';
+  var X0 = 22, SX = 5.2, Y0 = 92, SY = 5.0;
+  function mx(m) { return X0 + m * SX; }
+  function my(m) { return Y0 + m * SY; }
+  function el(tag, attrs, text) {
+    var e = document.createElementNS(NS, tag);
+    for (var a in attrs) e.setAttribute(a, attrs[a]);
+    if (text) e.textContent = text;
+    svg.appendChild(e); return e;
+  }
+  function xLineal(l) { return 30 + (l - 1); }  // L01 a ~30 m de los muelles, 1 m por lineal
+
+  // Suelo y muelles
+  el('rect', { x: mx(0), y: my(0), width: 186 * SX, height: 60 * SY, fill: 'var(--floor)', rx: 4 });
+  el('rect', { x: mx(0), y: my(0), width: 26 * SX, height: 60 * SY, fill: 'var(--panel)', stroke: 'var(--line)' });
+  el('text', { x: mx(13), y: my(27), 'text-anchor': 'middle', 'font-size': 17, 'font-weight': 700, fill: 'var(--ink)' }, 'MUELLES');
+  el('text', { x: mx(13), y: my(32), 'text-anchor': 'middle', 'font-family': 'var(--mono)', 'font-size': 11, fill: 'var(--muted)' }, 'expedición');
+
+  // Lineales: izquierda arriba (P01-P03 | pasillo | P04-P17), derecha abajo (P18-P24 | pasillo | P25-P36)
+  var tramos = [[2, 6.5], [9, 29], [31, 43], [45.5, 58]];
+  for (var l = 1; l <= 136; l++) {
+    var z = zonaDe(l);
+    if (!z) continue;
+    tramos.forEach(function (t) {
+      var y2 = t[1];
+      if (l >= 57 && l <= 62 && t[1] === 29) y2 = 25.5;  // garita en L57-L62 P16-P17
+      el('rect', { x: mx(xLineal(l)), y: my(t[0]), width: 0.62 * SX, height: (y2 - t[0]) * SY, fill: 'var(--' + z.id.toLowerCase() + ')' });
+    });
+  }
+  // Garita y pasillos
+  el('rect', { x: mx(86), y: my(25.8), width: 6 * SX, height: 3.2 * SY, fill: 'var(--panel)', stroke: 'var(--muted)', 'stroke-dasharray': '3 2' });
+  el('text', { x: mx(89), y: my(28.2), 'text-anchor': 'middle', 'font-family': 'var(--mono)', 'font-size': 9, fill: 'var(--muted)' }, 'garita');
+  el('line', { x1: mx(27), y1: my(30), x2: mx(186), y2: my(30), stroke: 'var(--accent)', 'stroke-width': 1.6, 'stroke-dasharray': '8 6' });
+  el('text', { x: mx(185), y: my(29), 'text-anchor': 'end', 'font-family': 'var(--mono)', 'font-size': 10, fill: 'var(--ink)' }, 'pasillo central');
+  el('text', { x: mx(185), y: my(16), 'text-anchor': 'end', 'font-family': 'var(--mono)', 'font-size': 10, fill: 'var(--muted)' }, 'IZQ · P01–P17');
+  el('text', { x: mx(185), y: my(52), 'text-anchor': 'end', 'font-family': 'var(--mono)', 'font-size': 10, fill: 'var(--muted)' }, 'DER · P18–P36');
+
+  // Rótulo de cada zona encima de la nave, con su tramo
+  ZONAS.forEach(function (z) {
+    var x1 = mx(xLineal(z.desde)), x2 = mx(xLineal(z.hasta) + 0.62);
+    var cx = (x1 + x2) / 2, c = 'var(--' + z.id.toLowerCase() + ')';
+    el('rect', { x: x1, y: 14, width: x2 - x1, height: 62, rx: 4, fill: c });
+    el('text', { x: cx, y: 42, 'text-anchor': 'middle', 'font-size': 24, 'font-weight': 800, fill: '#fff' }, z.id);
+    el('text', { x: cx, y: 62, 'text-anchor': 'middle', 'font-family': 'var(--mono)', 'font-size': 11, 'font-weight': 700, fill: '#fff' }, 'L' + pad(z.desde) + '–L' + pad(z.hasta));
+    el('line', { x1: x1, y1: 76, x2: x1, y2: my(60), stroke: c, 'stroke-width': 1, 'stroke-dasharray': '2 3', opacity: .7 });
+    // Grande en el suelo, a cada lado del pasillo central
+    [15, 47].forEach(function (yy) {
+      if (z.hasta - z.desde < 6) return;
+      el('rect', { x: cx - 19, y: my(yy) - 14, width: 38, height: 24, rx: 4, fill: 'var(--panel)', stroke: c, 'stroke-width': 2 });
+      el('text', { x: cx, y: my(yy) + 4, 'text-anchor': 'middle', 'font-size': 15, 'font-weight': 800, fill: 'var(--ink)' }, z.id);
+    });
+  });
+  // Números de lineal en los cortes
+  var marcas = [1];
+  ZONAS.forEach(function (z) { marcas.push(z.hasta); if (z.hasta < 136) marcas.push(z.hasta + 1); });
+  marcas.forEach(function (l, i) {
+    var x = mx(xLineal(l) + 0.31);
+    var abajo = (i % 2 === 1);
+    el('text', { x: x, y: my(60) + (abajo ? 30 : 16), 'text-anchor': 'middle', 'font-family': 'var(--mono)', 'font-size': 10, fill: 'var(--ink)' }, 'L' + pad(l));
+  });
+  // ZX
+  el('rect', { x: mx(2), y: my(60) + 6, width: 22 * SX, height: 26, rx: 4, fill: 'var(--zx)' });
+  el('text', { x: mx(13), y: my(60) + 23, 'text-anchor': 'middle', 'font-size': 12, 'font-weight': 700, fill: '#fff' }, 'ZX · fuera de lineal');
+
+  // ---- Tabla
+  var filas = '';
+  ZONAS.concat([ZX]).forEach(function (z) {
+    var tramo = z.desde ? 'L' + pad(z.desde) + ' – L' + pad(z.hasta) : 'sin lineal (MU, cajas sueltas…)';
+    filas += '<tr><td><span class="dot" style="background:var(--' + z.id.toLowerCase() + ')"></span><span class="z">' + z.id + '</span></td>' +
+      '<td>' + tramo + '</td><td class="r">' + z.uds + '</td><td class="r">' + z.cajas + '</td>' +
+      '<td class="r">~' + horas(z.min) + '</td><td>Z-2210-' + z.id + '</td></tr>';
+  });
+  filas += '<tr><td><b>Total</b></td><td></td><td class="r"><b>2.797</b></td><td class="r"><b>241</b></td><td></td><td></td></tr>';
+  document.getElementById('tabla').innerHTML = filas;
+})();
+</script>
+</body>
+</html>
