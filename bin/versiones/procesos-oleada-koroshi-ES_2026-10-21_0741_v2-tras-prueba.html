@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Procesos oleada KOROSHI</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 14mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10.5pt; line-height: 1.38; color: #111; margin: 0; background: #fff; }
+.wrap { max-width: 182mm; margin: 0 auto; padding: 0 3mm; }
+h1 { font-size: 22pt; margin: 0 0 2mm; }
+h2 { font-size: 14pt; margin: 7mm 0 2mm; padding: 1.5mm 3mm; background: #111; color: #fff; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.5mm 0; }
+.sub { color: #444; margin-bottom: 4mm; }
+.cap { border-top: 4px solid #e0a100; padding-top: 3mm; margin-bottom: 4mm; }
+ol, ul { margin: 1mm 0 2mm; padding-left: 6mm; }
+li { margin: .8mm 0; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 9.6pt; break-inside: avoid; }
+th, td { border: 1px solid #999; padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+th { background: #eee; }
+.r { text-align: right; }
+.m { font-family: "Courier New", monospace; font-size: 9.6pt; background: #f2f2f2; padding: 0 1mm; }
+.caja { border: 1.5px solid #111; border-radius: 2mm; padding: 2.5mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.alerta { border-left: 5px solid #c8372d; background: #fbeeed; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.ok { border-left: 5px solid #2e9a52; background: #edf7f0; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.nuevo { border-left: 5px solid #e0a100; background: #fdf6e3; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.check li { list-style: none; position: relative; padding-left: 6mm; }
+.check li::before { content: ""; position: absolute; left: 0; top: 1.2mm; width: 3.2mm; height: 3.2mm; border: 1.3px solid #111; }
+.flujo { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; margin: 3mm 0; }
+.flujo div { border: 1.5px solid #111; border-radius: 2mm; padding: 2mm; font-size: 9pt; break-inside: avoid; }
+.flujo b { display: block; font-size: 10pt; }
+.tag { display: inline-block; background: #e0a100; color: #111; font-size: 8pt; font-weight: 700; padding: 0 1.5mm; border-radius: 1mm; vertical-align: middle; }
+.salto { break-before: page; }
+.pie { font-size: 8.5pt; color: #555; margin-top: 6mm; border-top: 1px solid #999; padding-top: 2mm; }
+@media (max-width: 640px) { .flujo { grid-template-columns: repeat(2, 1fr); } table { font-size: 8.8pt; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cap">
+  <h1>Oleadas KOROSHI · todos los procesos</h1>
+  <p class="sub">Desde que entran los pedidos de tienda hasta que las cajas están etiquetadas y listas para expedir. <b>Versión 2 · 21/10/2026, 7:41</b>, con lo aprendido en la prueba de hoy (oleada B-KOR-2110-01). Lo nuevo va marcado con <span class="tag">NUEVO</span>.</p>
+</div>
+
+<h2>0 · El día de un vistazo</h2>
+<div class="flujo">
+  <div><b>~1:00</b>Entran los pedidos de tienda (OUT de PED. TIENDAS).</div>
+  <div><b>~2:15</b>La acción planificada crea la oleada <span class="m">B-KOR-ddmm-01</span> y los INT por zonas.</div>
+  <div><b>antes de las 6:00</b>Preparar la U: carteles de bahía, cajas, baúles, PC e impresora.</div>
+  <div><b>6:00</b>Empiezan los 5 pickers, cada uno con su INT (su zona).</div>
+  <div><b>6:15 →</b>Llegan baúles a la U. <b>La oleada todavía NO se puede cargar</b> en el programa (ver apartado 4).</div>
+  <div><b>Traspaso</b>Validar lo leído de los INT (pendiente para el resto) + "Comprobar disponibilidad" en las OUT. Ahora sí: cargar la oleada.</div>
+  <div><b>En la U</b>Leer prenda → dejarla en su bahía → escanear el cartel de la bahía. Caja llena: CAMBIAR-CAJA + bahía.</div>
+  <div><b>Tienda terminada</b>La última caja se cierra sola; validar la OUT en Odoo; retractilar y a expedición.</div>
+</div>
+
+<h2>1 · La acción planificada (noche, en Odoo)</h2>
+<p><b>Qué es:</b> la acción planificada que ejecuta <span class="m">KOROSHI_crear_INT_zonas_PLANIFICADA_2026-10-21_v3-10tiendas-2000u.py</span> una sola vez de madrugada. Hoy ha funcionado: log «HECHO», INT 66207–66212.</p>
+<h3>Qué hace</h3>
+<ol>
+  <li>Busca las OUT de tienda (PED. TIENDAS) <b>creadas hoy</b> (desde las 0:00, hora local), en estado Preparado. <b>Nunca coge pedidos del día anterior.</b></li>
+  <li><b>Se salta</b> las que no valen: pedidos de material (<b>menos de 20 u</b>), las que ya tienen unidades leídas, las que están en otra agrupación…</li>
+  <li><span class="tag">NUEVO</span> Elige <b>como máximo 10 tiendas</b> (una por bahía) cuya suma <b>se acerque más a 2.000 u</b>. Si hay empate, gana la combinación con más tiendas.</li>
+  <li>Crea <b>5 INT</b> (uno por picker): <span class="m">KOR-ddmm-D1</span> … <span class="m">D5</span>. Cada INT es un tramo seguido de lineales, cortado para que todos duren lo mismo (lecturas + prendas + viajes según volumen y distancia).</li>
+  <li>Lo que está fuera de lineal (NAVE2, MU…) va en un INT aparte: <span class="m">KOR-ddmm-ZX-a</span>.</li>
+  <li>Las OUT pasan a salir del SORTER y quedan <b>En espera</b> hasta que se validen los INT.</li>
+  <li>Crea la oleada <span class="m">B-KOR-ddmm-01</span> (en curso) con esas OUT.</li>
+</ol>
+<h3>Parámetros importantes</h3>
+<table>
+  <tr><th>Parámetro</th><th>Valor</th><th>Para qué</th></tr>
+  <tr><td class="m">PLAN_MAX_OUT</td><td>10</td><td>Tiendas por oleada = bahías de la U</td></tr>
+  <tr><td class="m">PLAN_MAX_UDS</td><td>2000</td><td>Unidades objetivo de la oleada</td></tr>
+  <tr><td class="m">PLAN_LLENAR</td><td>True</td><td>Elegir las tiendas que más se acercan a 2.000 u (no por orden de llegada)</td></tr>
+  <tr><td class="m">PLAN_MIN_UDS_OUT</td><td>20</td><td>No coger pedidos de material</td></tr>
+  <tr><td class="m">REPARTO_POR_TIEMPO</td><td>True</td><td>5 zonas que acaban a la misma hora</td></tr>
+  <tr><td class="m">SIMULAR</td><td>False (planificada) / True (prueba)</td><td>True no deja nada hecho: solo enseña el resultado</td></tr>
+</table>
+<h3>Cómo saber qué ha hecho</h3>
+<ul>
+  <li><b>Ajustes › Técnico › Registros</b>, buscar "KOROSHI REPARTIR": la línea "PLANIFICADA" (qué OUT ha cogido, cuáles se ha saltado y por qué) y la "HECHO" (los INT, con uds, viajes y hora estimada de fin de cada zona).</li>
+  <li>Agrupaciones: tiene que existir <span class="m">B-KOR-ddmm-01</span> en curso.</li>
+</ul>
+<div class="alerta"><b>Si pone "DESHECHO" o no hay nada:</b> no se ha cambiado nada. Se trabaja como siempre con la agrupación TIENDA.</div>
+<div class="alerta"><b>A las 6:00, quien crea la agrupación TIENDA dd-mm no debe meter las OUT de la B-KOR.</b></div>
+
+<h2 class="salto">2 · Preparar la U (antes de las 6:00)</h2>
+<h3>La U: 10 bahías · 20 palets</h3>
+<ul>
+  <li>10 palets a un lado y 10 al otro. <b>Cada bahía = 2 palets = 1 tienda.</b></li>
+  <li><b>Bahía = SEQ:</b> el programa numera las tiendas de la oleada 001, 002… por orden de OUT. El SEQ 001 es la bahía 1…</li>
+  <li><b>Cartel fijo en cada bahía</b> con su código de barras (001…010): <b>Opciones › Imprimir etiquetas de bahía (SEQ)</b>, de una en una o con el botón <b>«Imprimir de la 1 a la 10»</b>.</li>
+</ul>
+<h3>Cajas de 60×40×40</h3>
+<ul>
+  <li><b>4 cajas por palet = 8 posiciones por bahía.</b> Una sola caja abierta por bahía a la vez.</li>
+  <li>Cajas por tienda ≈ <b>litros del pedido ÷ 75</b> (±1 caja). Si necesita más de 8, las cerradas se apilan en el mismo palet (hasta ~32 por bahía).</li>
+</ul>
+<h3>Material</h3>
+<ul class="check">
+  <li>5 carros con 2 baúles cada uno + baúles de recambio junto a la U (ver apartado 7: hoy caben ~15 prendas por baúl).</li>
+  <li>PC de la U con el programa nuevo, empresa <b>EFFECTIVE</b>, e impresora de etiquetas (la Zebra en <span class="m">imp_tick</span>).</li>
+  <li>Cartel <b>CAMBIAR-CAJA</b> a mano de quien lee.</li>
+  <li>Lista de tiendas de la oleada con su SEQ.</li>
+</ul>
+
+<h2>3 · Picking (pickers)</h2>
+<ol>
+  <li>Cada picker coge su INT: <span class="m">KOR-ddmm-D1</span> … <span class="m">D5</span>. Solo hace los lineales de su tramo.</li>
+  <li>Carro con <b>2 baúles</b>. <b>Recorrer los huecos en el orden del INT</b> (pasillo por pasillo, de la entrada hacia el fondo).</li>
+  <li>Cuando los 2 baúles están llenos, <b>vuelve a la U</b>, los deja y sale otra vez con 2 vacíos.</li>
+  <li>El primero que acabe hace el <b>ZX</b> (prendas sin lineal).</li>
+  <li>Si un hueco está vacío o faltan unidades: apuntarlo y seguir.</li>
+</ol>
+<div class="nuevo"><span class="tag">NUEVO</span> <b>Hoy:</b> D1 fue el más lento porque no siguió el orden del INT: empezó por el fondo, volvió atrás y dejó media zona para el final. D5 empezó por el final y fue hacia la salida. <b>Seguir el orden del INT ahorra metros.</b> Ver el plano de recorridos real vs previsto.</div>
+
+<h2 class="salto">4 · Odoo durante la mañana: el traspaso <span class="tag">NUEVO</span></h2>
+<div class="alerta"><b>Lo que pasó hoy:</b> con los pickers trabajando, <b>la oleada no se puede cargar en el programa</b>. El programa solo carga OUT <b>Preparadas</b>, y mientras los INT no se validan, las OUT están <b>En espera</b> (sus prendas todavía no están en el SORTER).</div>
+<h3>Opción A · Esperar</h3>
+<p>Validar cada INT cuando su picker termina del todo. Lo más seguro, pero la U no empieza hasta que acaban los pickers (≈ 2 h perdidas).</p>
+<h3>Opción B · Traspasar lo ya leído (recomendada)</h3>
+<ol>
+  <li><b>Avisar al picker de ese INT que pare un momento</b> (que no lea con la PDA mientras se valida).</li>
+  <li>En el INT: <b>Validar</b> → <b>«Crear pedido pendiente»</b>. Lo leído pasa al SORTER; lo que falta queda en un INT nuevo con el mismo origen <span class="m">KOR-ddmm-Dn</span>, y <b>el picker sigue con ese INT nuevo</b>.</li>
+  <li>En las OUT de la oleada: <b>«Comprobar disponibilidad»</b>.</li>
+  <li><b>Todas las OUT tienen que quedar Preparadas</b> antes de cargar la oleada. Si falta alguna, el programa numera los SEQ distinto y <b>no coinciden con las bahías</b>.</li>
+  <li>En el programa: cerrar las cajas abiertas (CAMBIAR-CAJA + bahía) y <b>volver a cargar la oleada</b>. Ojo: al recargar, el contador de cajas vuelve a empezar en 1.</li>
+</ol>
+<p>Todo esto lo hace de golpe la acción <span class="m">KOROSHI_traspasar_leido_INT</span>: valida lo leído de los INT del día, crea los pendientes, comprueba la disponibilidad de las OUT y dice cuántas han quedado Preparadas. Primero se prueba con <span class="m">SIMULAR = True</span>.</p>
+<div class="alerta"><b>Error visto hoy:</b> «El registro no existe o ha sido eliminado (stock.move …)» al validar el INT D1 con pendiente. <b>Odoo lo deshizo todo:</b> los INT siguen Preparados, no se creó ningún pendiente y las OUT siguen En espera. Causa probable: el INT tiene <b>dos líneas del mismo artículo</b> en huecos distintos, y al crear el pendiente Odoo las junta y borra una. Hasta que esté arreglado: <b>Opción A</b>, o hacer el traspaso cuando el INT esté entero.</div>
+
+<h2 class="salto">5 · En la U con el programa</h2>
+<h3>Cargar la oleada</h3>
+<ol>
+  <li>Abrir el programa nuevo, empresa <b>EFFECTIVE</b>.</li>
+  <li>Escanear o escribir <span class="m">B-KOR-ddmm-01</span>. Salen las tiendas con su SEQ (001, 002…).</li>
+  <li>Comprobar que salen <b>las 10 tiendas</b> y que el SEQ de cada una coincide con su bahía.</li>
+</ol>
+<h3>Por cada prenda</h3>
+<div class="caja">
+  <ol>
+    <li><b>Leer la prenda.</b> La pantalla muestra el <b>SEQ en grande</b>.</li>
+    <li><b>Dejarla en la caja abierta</b> de esa bahía.</li>
+    <li><b>Escanear el cartel de la bahía.</b> Pantalla verde <b>CONFIRMADO</b>.</li>
+  </ol>
+  <p>Si se escanea una bahía que no toca: pantalla roja <b>"SEQ incorrecta"</b> → sacar la prenda y volver a empezar.</p>
+</div>
+<h3>Caja llena</h3>
+<ol>
+  <li>Escanear <b>CAMBIAR-CAJA</b> y después <b>el cartel de la bahía</b>.</li>
+  <li>El programa cierra la caja en Odoo (acción 1838), que le da su <b>matrícula CJ</b>.</li>
+  <li>Sale la <b>etiqueta</b> (tienda, OUT, número de caja y matrícula). Pegarla, precintar y apilar.</li>
+</ol>
+<h3>Tienda terminada</h3>
+<ul>
+  <li>Al leer la última prenda de una tienda, el programa cierra solo la última caja e imprime su etiqueta.</li>
+  <li><b>La OUT no se valida sola:</b> validarla en Odoo.</li>
+  <li>Palets de la bahía: retractilar y llevar a expedición.</li>
+</ul>
+<h3>Otras opciones del programa</h3>
+<table>
+  <tr><th>Qué</th><th>Dónde</th></tr>
+  <tr><td>Carteles de bahía (uno a uno o los 10)</td><td>Opciones › Imprimir etiquetas de bahía (SEQ)</td></tr>
+  <tr><td>Cartel CAMBIAR-CAJA</td><td>Opciones › Imprimir etiqueta CAMBIAR-CAJA</td></tr>
+  <tr><td>Probar la impresora sin Odoo</td><td>Opciones › Imprimir etiqueta de caja de prueba</td></tr>
+  <tr><td>Reimprimir una caja cerrada</td><td>Casilla <b>«Imp. Etiq.»</b>: <span class="m">SEQ</span> (última caja) o <span class="m">SEQ-n</span>, p. ej. <span class="m">003-2</span></td></tr>
+  <tr><td>El programa se ha cerrado a mitad</td><td>Volver a abrirlo › <b>Ultimo pedido</b> › "Cargar último pedido?" Sí</td></tr>
+</table>
+
+<h2>6 · Problemas frecuentes</h2>
+<table>
+  <tr><th>Qué pasa</th><th>Qué hacer</th></tr>
+  <tr><td>La oleada no sale en el programa</td><td>Las OUT están En espera: hacer el traspaso (apartado 4) o esperar a validar los INT. La oleada tiene que estar "En curso".</td></tr>
+  <tr><td>Salen menos de 10 tiendas</td><td>Alguna OUT no está Preparada: <b>no leer</b>, los SEQ no coinciden con las bahías. Volver a «Comprobar disponibilidad».</td></tr>
+  <tr><td>«El registro no existe… stock.move» al validar un INT</td><td>No ha cambiado nada (Odoo lo deshace). No repetir: avisar y seguir con la Opción A.</td></tr>
+  <tr><td>"SEQ incorrecta"</td><td>La prenda es de otra bahía: sacarla y volver a leer.</td></tr>
+  <tr><td>"ERROR: CAJA NO CERRADA"</td><td>Repetir CAMBIAR-CAJA + bahía. Si vuelve a fallar, apuntar el mensaje y avisar.</td></tr>
+  <tr><td>Hueco vacío o faltan prendas</td><td>Apuntar hueco, producto y unidades. La tienda quedará con prendas pendientes como siempre.</td></tr>
+  <tr><td>Un baúl pesa demasiado</td><td>Partirlo en dos (máximo 15 kg por persona).</td></tr>
+</table>
+
+<h2 class="salto">7 · Números de hoy y de referencia <span class="tag">NUEVO</span></h2>
+<h3>La oleada de hoy: B-KOR-2110-01</h3>
+<table>
+  <tr><th>INT</th><th>Zona</th><th>Lineales</th><th class="r">Uds</th><th class="r">Avance a las 7:12</th></tr>
+  <tr><td>66207</td><td>D1</td><td>L17–L83</td><td class="r">340</td><td class="r">38 %</td></tr>
+  <tr><td>66208</td><td>D2</td><td>L84–L103</td><td class="r">425</td><td class="r">59 %</td></tr>
+  <tr><td>66209</td><td>D3</td><td>L102–L121</td><td class="r">280</td><td class="r">66 %</td></tr>
+  <tr><td>66210</td><td>D4</td><td>L122–L125</td><td class="r">215</td><td class="r">53 %</td></tr>
+  <tr><td>66211</td><td>D5</td><td>L125–L134</td><td class="r">242</td><td class="r">54 %</td></tr>
+  <tr><td>66212</td><td>ZX</td><td>NAVE2</td><td class="r">1</td><td class="r">–</td></tr>
+  <tr><th colspan="3">10 tiendas · empezaron 6:10–6:20</th><th class="r">1.503</th><th></th></tr>
+</table>
+<ul>
+  <li><b>Implantación:</b> 11 artículos van con todas las tallas a las 10 tiendas (831 u, la mitad de la oleada), casi todos chaquetas (JA) y tops (TR).</li>
+  <li><b>Ritmo real:</b> ~130–160 prendas/hora por picker.</li>
+</ul>
+<h3>Referencia</h3>
+<table>
+  <tr><th>Concepto</th><th>Valor</th></tr>
+  <tr><td>Lectura en la U</td><td>~225 prendas/hora por persona (1.500 u ≈ 6,7 h de una persona)</td></tr>
+  <tr><td>Baúl</td><td>Hoy ~15 prendas (chaquetas); ~25 con prenda variada. 2.000 u ≈ 80–130 baúles llenos; 10.000 u ≈ 400–650</td></tr>
+  <tr><td>Caja de envío 60×40×40</td><td>~75 litros de producto</td></tr>
+  <tr><td>Bahía</td><td>2 palets, 8 cajas abiertas; hasta ~32 cajas apiladas</td></tr>
+  <tr><td>Andar con carro</td><td>~0,8 m/s</td></tr>
+</table>
+<div class="alerta"><b>El cuello de botella sigue siendo la lectura en la U.</b> Con una sola persona leyendo, la oleada de hoy son casi 7 h. Para ganar tiempo: más gente leyendo, empezar a leer antes (traspaso) o no pasar por la U (apartado 8).</div>
+
+<h2>8 · Alternativa en estudio: sin oleada ni U <span class="tag">NUEVO</span></h2>
+<p>Para los pedidos que quedan fuera de la oleada: <b>cada pedido se parte en una OUT por zona</b>, y cada operario coge su zona con <b>una caja por tienda</b> en el carro, directamente en la caja de envío.</p>
+<ul>
+  <li>Las OUT nuevas tienen el mismo <b>Origen</b> (pedido <span class="m">S-…</span>). Cada zona tiene su agrupación <span class="m">Z-ddmm-D1</span>… (solo es la lista del operario, no pasa por la U).</li>
+  <li>La etiqueta de cada caja lleva: número de tienda (01–10, igual en todas las zonas), zona, tienda, pedido y código de barras de la OUT. En el muelle se juntan las cajas con el mismo número.</li>
+  <li>Con los 10 últimos pedidos de hoy (479 u): 44 OUT, ~30–35 min de picking por zona, ~1 h en total con 5 personas, sin lectura en la U.</li>
+  <li>Acción <span class="m">KOROSHI_partir_OUT_zonas</span> (primero en modo DIAGNÓSTICO). No toca las OUT de la oleada.</li>
+</ul>
+
+<h2>9 · Qué apuntar</h2>
+<table>
+  <tr><th style="width:22%">Quién / qué</th><th>Datos</th></tr>
+  <tr><td>Cada picker</td><td>Zona · hora de inicio · hora de cada vuelta a la U · hora de fin · incidencias</td></tr>
+  <tr><td>Odoo</td><td>Hora de cada traspaso / validación de INT · OUT que no quedan Preparadas · errores</td></tr>
+  <tr><td>U</td><td>Hora en que empieza a leer · personas leyendo · hora de fin de cada tienda · cajas por tienda · errores de SEQ</td></tr>
+  <tr><td>Expedición</td><td>Palets por tienda · hora de retractilado</td></tr>
+</table>
+<p class="pie">Documentos relacionados: guía del programa de la U (v2), recorridos de la oleada B-KOR-2110-01 (real vs previsto, con metros), OUT por zonas de los 10 últimos pedidos, carteles de bahías (PDF A4). Acciones: KOROSHI_crear_INT_zonas (planificada v3), KOROSHI_traspasar_leido_INT, KOROSHI_partir_OUT_zonas.</p>
+</div>
+</body>
+</html>

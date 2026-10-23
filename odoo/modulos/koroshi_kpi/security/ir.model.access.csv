@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_kpi_dia_user,koroshi.kpi.dia usuario,model_koroshi_kpi_dia,stock.group_stock_user,1,1,1,0
+access_koroshi_kpi_dia_manager,koroshi.kpi.dia responsable,model_koroshi_kpi_dia,stock.group_stock_manager,1,1,1,1
+access_koroshi_kpi_peso_user,koroshi.kpi.peso.tipo usuario,model_koroshi_kpi_peso_tipo,stock.group_stock_user,1,0,0,0
+access_koroshi_kpi_peso_manager,koroshi.kpi.peso.tipo responsable,model_koroshi_kpi_peso_tipo,stock.group_stock_manager,1,1,1,1
+access_koroshi_kpi_falta_user,koroshi.kpi.falta usuario,model_koroshi_kpi_falta,stock.group_stock_user,1,0,0,0
+access_koroshi_kpi_falta_manager,koroshi.kpi.falta responsable,model_koroshi_kpi_falta,stock.group_stock_manager,1,1,1,1

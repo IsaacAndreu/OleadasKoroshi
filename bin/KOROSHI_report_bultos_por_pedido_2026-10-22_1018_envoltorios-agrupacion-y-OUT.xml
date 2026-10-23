@@ -1,0 +1,15 @@
+<!-- Vista koroshi.report_bultos_pedido_lote (informe 1850, modelo stock.picking.batch) -->
+<t t-name="koroshi.report_bultos_pedido_lote">
+    <!-- KOROSHI Bultos por pedido desde AGRUPACIONES (stock.picking.batch): los pedidos con alguna OUT en ellas -->
+    <t t-set="seleccion" t-value="'agrupaciones ' + ', '.join(docs.mapped('name'))"/>
+    <t t-set="docs" t-value="docs.mapped('picking_ids').filtered(lambda p: p.picking_type_code == 'outgoing').mapped('sale_id')"/>
+    <t t-call="koroshi.report_bultos_pedido"/>
+</t>
+
+<!-- Vista koroshi.report_bultos_pedido_out (informe 1851, modelo stock.picking) -->
+<t t-name="koroshi.report_bultos_pedido_out">
+    <!-- KOROSHI Bultos por pedido desde OUT (stock.picking): los pedidos de las OUT seleccionadas, uno por fila -->
+    <t t-set="seleccion" t-value="'de %d OUT seleccionadas' % len(docs)"/>
+    <t t-set="docs" t-value="docs.mapped('sale_id')"/>
+    <t t-call="koroshi.report_bultos_pedido"/>
+</t>

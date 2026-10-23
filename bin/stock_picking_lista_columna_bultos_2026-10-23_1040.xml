@@ -1,0 +1,15 @@
+<!--
+Columna "Bultos" (number_of_packages, con total abajo) en la lista de transferencias (stock.picking).
+Sale en todas las listas de albaranes que usan la vista estandar stock.vpicktree, incluida la que se abre
+desde el boton "Entrega" del pedido de venta (todas las OUT del pedido y, abajo, la suma de bultos).
+Creada en Odoo el 23/10/2026 por JSON-RPC, sin tocar ningun modulo:
+  - ir.ui.view 6052 "stock.picking.tree.koroshi.bultos" (hereda de la 633 stock.vpicktree, prioridad 100)
+Es "optional show": cada usuario la puede ocultar con el menu de columnas de la lista.
+Para quitarla: borrar la vista 6052 (Ajustes > Tecnico > Vistas).
+Probado: pedido S-6665003325 (K34), 5 OUT, total 12 bultos.
+-->
+<data>
+    <field name="count_done" position="after">
+        <field name="number_of_packages" string="Bultos" sum="Bultos" optional="show"/>
+    </field>
+</data>

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Estado oleada 2110</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--ink:#1d1d1b;--muted:#6b6a65;--line:#dedcd4;--ok:#2e9a52;--warn:#c98a00;--bad:#c8372d;--bar:#e9e7e0;
+--z1:#2f7d4f;--z2:#1f5fbf;--z3:#b5562a;--z4:#7a4bb0;--z5:#b08a12;--zx:#6b6a65}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171716;--card:#211f1e;--ink:#eeece6;--muted:#a3a19a;--line:#3a3835;--bar:#33312e}}
+:root[data-theme="dark"]{--bg:#171716;--card:#211f1e;--ink:#eeece6;--muted:#a3a19a;--line:#3a3835;--bar:#33312e}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,Segoe UI,sans-serif}
+main{max-width:1000px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:26px;margin:0 0 4px}h2{font-size:19px;margin:30px 0 10px}
+.sub{color:var(--muted);margin:0 0 18px}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px}
+.kpi b{display:block;font-size:26px}.kpi span{color:var(--muted);font-size:13px}
+.zona{display:grid;grid-template-columns:70px 1fr;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.zona:last-child{border-bottom:0}
+.z{display:inline-block;padding:3px 9px;border-radius:6px;color:#fff;font-weight:800;font-size:16px;text-align:center}
+.barra{height:16px;background:var(--bar);border-radius:8px;overflow:hidden;margin:4px 0}
+.barra i{display:block;height:100%}
+.fila{display:flex;flex-wrap:wrap;gap:4px 16px;font-size:13.5px;color:var(--muted)}
+.fila b{color:var(--ink)}
+.estado{font-weight:700}
+.ok{color:var(--ok)}.warn{color:var(--warn)}.bad{color:var(--bad)}
+.aviso{border-left:5px solid var(--warn);background:var(--card);padding:12px 14px;border-radius:6px;margin:12px 0}
+.aviso.rojo{border-left-color:var(--bad)}.aviso.verde{border-left-color:var(--ok)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:6px 8px;border-bottom:1px solid var(--line);text-align:left}
+th{color:var(--muted);font-size:12.5px}
+.r{text-align:right}
+.mono{font-family:ui-monospace,Consolas,monospace;font-size:13px}
+.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<main>
+<h1>Cómo va la oleada B-KOR-2110-01</h1>
+<p class="sub">Datos de Odoo a las <b>7:43</b> del 21/10/2026 · 10 tiendas · 1.503 u · picking empezado a las 6:10–6:20.</p>
+
+<div class="grid" id="kpis"></div>
+
+<h2>Avance por zona</h2>
+<div class="card" id="zonas"></div>
+
+<h2>Qué falta</h2>
+<div class="card scroll"><table id="falta"></table></div>
+
+<h2>Qué haría ahora</h2>
+<div class="aviso verde"><b>D5 ya está terminado y validado (7:39).</b> 242 u en 1 h 19 min.</div>
+<div class="aviso"><b>D2, D3 y D4 acaban sobre las 7:50–8:00.</b> A D2 le quedan 7 u (L84 y L95) y a D4 23 u, todas en L122: si esos huecos están vacíos, apuntarlo y validar.</div>
+<div class="aviso rojo"><b>D1 va tarde: le quedan 130 u, casi todo de L43 a L53.</b> Solo, acabaría hacia las <b>8:40</b>. Si el de D5 (ya libre) y el de D2 cuando acabe le ayudan, uno con L43–L47 y otro con L48–L53, acabaría hacia las <b>8:05–8:10</b>. Antes, comprobar que la PDA deja leer el mismo INT desde dos terminales a la vez.</div>
+<div class="aviso"><b>Las 10 OUT siguen En espera.</b> El programa no puede cargar la oleada hasta que estén validados los 6 INT (también el ZX, de 1 u en NAVE2) y se haga «Comprobar disponibilidad» en las OUT. Con D1 ayudado, <b>la U puede empezar a leer hacia las 8:15</b>.</div>
+<div class="aviso"><b>La U:</b> 1.503 u a ~225 u/h son unas <b>6 h 40 min con una persona</b> (acabaría hacia las 15:00) o ~3 h 20 min con dos.</div>
+</main>
+<script>
+// [zona, INT, uds, leidas, huecos hechos, huecos total, inicio, ultima lectura, estado]
+var Z=[
+ ["D1","66207",340,210,130,205,"6:10","7:43","assigned"],
+ ["D2","66208",425,416,141,147,"6:16","7:43","assigned"],
+ ["D3","66209",280,249,105,124,"6:17","7:43","assigned"],
+ ["D4","66210",215,192,71,80,"6:17","7:43","assigned"],
+ ["D5","66211",242,242,93,93,"6:20","7:39","done"],
+ ["ZX","66212",1,0,0,1,"","","assigned"]
+];
+var FALTA=[
+ ["D1","L43 8 · L44 18 · L45 3 · L46 22 · L47 16 · L48 11 · L49 5 · L50 16 · L51 6 · L52 10 · L53 2 · L56 2 · sueltas: L69, L72, L73, L75, L82 (8 u)"],
+ ["D2","L84 5 · L95 2"],
+ ["D3","L104 1 · L105 4 · L106 9 · L107 2 · L108 2 · L109 3 · L110 4 · L113 5 · L114 1"],
+ ["D4","L122 23"],
+ ["ZX","NAVE2 1"]
+];
+var COL={D1:"var(--z1)",D2:"var(--z2)",D3:"var(--z3)",D4:"var(--z4)",D5:"var(--z5)",ZX:"var(--zx)"};
+function m(h){if(!h)return 0;var p=h.split(":");return +p[0]*60+ +p[1];}
+function hm(x){x=Math.round(x);return Math.floor(x/60)+":"+("0"+(x%60)).slice(-2);}
+var AHORA=m("7:43"),tot=0,leido=0,html="";
+Z.forEach(function(z){tot+=z[2];leido+=z[3];
+ var pct=z[2]?Math.round(100*z[3]/z[2]):0,min=m(z[7])-m(z[6]),ritmo=min>0?Math.round(z[3]*60/min):0,est,fin;
+ if(z[8]==="done"){est='<span class="estado ok">Terminado y validado a las '+z[7]+'</span>';}
+ else if(z[0]==="ZX"){est='<span class="estado warn">Pendiente (1 u en NAVE2)</span>';}
+ else{var mph=min/z[4];fin=AHORA+(z[5]-z[4])*mph;est='<span class="estado '+(fin>m("8:15")?"bad":"warn")+'">Acaba hacia las '+hm(fin)+'</span>';}
+ html+='<div class="zona"><span class="z" style="background:'+COL[z[0]]+'">'+z[0]+'</span><div><div class="fila"><span><b>'+z[3]+' de '+z[2]+' u</b> ('+pct+' %)</span><span>huecos '+z[4]+'/'+z[5]+'</span>'+(ritmo?'<span>'+ritmo+' u/h</span>':'')+'<span>INT/'+z[1]+'</span>'+est+'</div><div class="barra"><i style="width:'+pct+'%;background:'+COL[z[0]]+'"></i></div></div></div>';});
+document.getElementById("zonas").innerHTML=html;
+document.getElementById("kpis").innerHTML=[
+ [Math.round(100*leido/tot)+" %",leido+" de "+tot+" u cogidas"],["1 de 6","INT terminados (D5)"],["~8:40","fin de D1 si va solo · ~8:10 con ayuda"],["0 de 10","OUT Preparadas: la U aún no puede leer"]
+].map(function(k){return '<div class="card kpi"><b>'+k[0]+'</b><span>'+k[1]+'</span></div>';}).join("");
+document.getElementById("falta").innerHTML='<tr><th>Zona</th><th>Unidades que faltan por lineal</th></tr>'+FALTA.map(function(f){return '<tr><td><span class="z" style="background:'+COL[f[0]]+';font-size:13px">'+f[0]+'</span></td><td class="mono">'+f[1]+'</td></tr>';}).join("");
+</script>
+</body>
+</html>

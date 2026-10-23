@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulación zonas</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#5d6672;--ln:#dfe3e8;--ac:#1f6feb;--ok:#dff3e4;--ko:#fde8e8;--in:#fff}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--ok:#1e3a26;--ko:#4a2326;--in:#0f1317}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--ok:#1e3a26;--ko:#4a2326;--in:#0f1317}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+.ctl{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0;background:var(--card);border:1px solid var(--ln);border-radius:8px;padding:12px}
+.ctl label{display:block;font-size:12px;color:var(--mut);margin-bottom:3px}
+.ctl input{width:100%;box-sizing:border-box;font:600 18px system-ui,Arial;padding:6px 8px;border:1px solid var(--ln);border-radius:6px;background:var(--in);color:var(--tx)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+.k{background:var(--card);border:1px solid var(--ln);border-radius:8px;padding:10px 12px}.k b{display:block;font-size:22px}
+.k.ok{background:var(--ok)}.k.ko{background:var(--ko)}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 9px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}
+.n{text-align:right}td.ok{background:var(--ok)}td.ko{background:var(--ko)}tr.sel td{font-weight:700}
+ul{padding-left:20px}li{margin:4px 0}
+</style></head><body><main>
+<h1>Simulación de picking por zonas</h1>
+<div class="mut">Base: simulación de 8 zonas con los pedidos del 21/10 (4.344 u, 50 tiendas), escalada a las unidades que pongas, con la misma mezcla de artículos y el mismo tamaño de pedido. Tiempo = modelo de la acción × 3,1 (lo que pasó el 21/10). Cambia los valores y se recalcula todo.</div>
+
+<div class="ctl">
+  <div><label for="u">Unidades</label><input id="u" type="number" min="100" step="500" value="10000"></div>
+  <div><label for="p">Personas (zonas)</label><input id="p" type="number" min="1" max="30" value="8"></div>
+  <div><label for="ini">Hora de inicio</label><input id="ini" type="time" value="05:00"></div>
+  <div><label for="sal">Salida (todo fuera)</label><input id="sal" type="time" value="13:00"></div>
+  <div><label for="e1">Agrupar + expedir mín. (min)</label><input id="e1" type="number" min="0" step="15" value="60"></div>
+  <div><label for="e2">Agrupar + expedir máx. (min)</label><input id="e2" type="number" min="0" step="15" value="90"></div>
+  <div><label for="r">Ritmo (u/h por persona)</label><input id="r" type="number" min="20" step="5" value="141"></div>
+</div>
+
+<div class="kpis" id="kpis"></div>
+
+<h2 id="tz">Zonas</h2>
+<div class="wrap"><table><thead><tr><th>Zona</th><th>Tramo (con 8 zonas)</th><th class="n">Uds</th><th class="n">OUT</th><th class="n">Tiempo picking</th></tr></thead><tbody id="zonas"></tbody></table></div>
+<p class="mut">Con un número de personas distinto de 8 la acción vuelve a cortar los lineales; el reparto por zona es orientativo (proporcional al de 8 zonas).</p>
+
+<h2>Cuánto se tarda según las personas</h2>
+<div class="wrap"><table><thead><tr><th>Personas</th><th class="n">Picking</th><th class="n">+ agrupar y expedir</th><th class="n">Fin (desde la hora de inicio)</th><th class="n">Empezar como muy tarde</th></tr></thead><tbody id="esc"></tbody></table></div>
+<p class="mut">Verde: sale antes de la hora de salida · rojo: no llega. La fila en negrita es la de las personas que has puesto.</p>
+
+<h2>Supuestos</h2>
+<ul>
+<li>Ritmo 141 u/h por persona = la zona más lenta del 21/10, con caja cerrada y matrícula. <b>Prudente:</b> pon 98 u/h (ritmo medio del 21/10 contando 5 personas).</li>
+<li>Rondas de 25 tiendas: cada operario pasa por su zona una vez por ronda.</li>
+<li>Agrupar cajas y expedir va al final; si alguien empieza con las primeras rondas mientras se sigue cogiendo, se gana parte de ese tiempo.</li>
+<li>Las OUT «En espera» (sin stock) no entran en las zonas.</li>
+</ul>
+</main>
+<script>
+// Simulacion 8 zonas con los pedidos del 21/10 (minutos del modelo de la accion)
+var BASE = {uds: 4344, tiendas: 50, factor: 3.1, ronda: 25, zonas: [
+  {z:'D1',t:'L2-L54',u:309,o:42,m:74},{z:'D2',t:'L55-L74',u:319,o:45,m:76},{z:'D3',t:'L75-L88',u:332,o:46,m:79},
+  {z:'D4',t:'L89-L101',u:507,o:47,m:77},{z:'D5',t:'L102-L104',u:1033,o:38,m:82},{z:'D6',t:'L105-L121',u:487,o:45,m:81},
+  {z:'D7',t:'L122-L126',u:890,o:30,m:76},{z:'D8',t:'L127-L136',u:436,o:38,m:52},{z:'ZX',t:'fuera de lineal',u:31,o:9,m:0}]};
+var RITMO_BASE = 141;  // u/h por persona que sale del modelo x 3,1
+function $(id){return document.getElementById(id)}
+function num(id, def){var v = parseFloat($(id).value); return isNaN(v) ? def : v}
+function mins(id, def){var v = $(id).value; if(!v) return def; var p = v.split(':'); return parseInt(p[0],10)*60 + parseInt(p[1],10)}
+function hm(m){m = Math.round(m); return Math.floor(m/60) + ' h ' + ('0' + (m % 60)).slice(-2)}
+function hora(m){m = Math.round(m); var d = ''; if(m >= 1440){d = ' (+' + Math.floor(m/1440) + 'd)'; m = m % 1440} if(m < 0){m += 1440; d = ' (día antes)'} return ('0' + Math.floor(m/60)).slice(-2) + ':' + ('0' + (m % 60)).slice(-2) + d}
+function fmt(n){return Math.round(n).toLocaleString('es-ES')}
+function calc(){
+  var U = num('u', 10000), P = Math.max(1, Math.round(num('p', 8))), ini = mins('ini', 300), sal = mins('sal', 780);
+  var e1 = num('e1', 60), e2 = Math.max(e1, num('e2', 90)), ritmo = num('r', RITMO_BASE);
+  var k = U / BASE.uds, kr = RITMO_BASE / ritmo;
+  var zs = BASE.zonas.filter(function(z){return z.z != 'ZX'});
+  var hp = 0, maxz = 0;
+  zs.forEach(function(z){var r = z.m * BASE.factor * k * kr; hp += r; if(r > maxz) maxz = r});
+  var deseq = maxz / (hp / zs.length);
+  var pick = function(n){return hp / n * deseq};
+  var tiendas = Math.round(BASE.tiendas * k), rondas = Math.ceil(tiendas / BASE.ronda);
+  var outs = 0; BASE.zonas.forEach(function(z){outs += z.o}); outs = Math.round(outs * k);
+  var pk = pick(P), fin1 = ini + pk + e1, fin2 = ini + pk + e2, llega = fin2 <= sal;
+  var disp = sal - ini - e2, nec = disp > 0 ? Math.ceil(hp * deseq / disp) : null;
+  $('kpis').innerHTML =
+    '<div class="k"><span class="mut">Tiendas</span><b>~' + tiendas + '</b></div>' +
+    '<div class="k"><span class="mut">Rondas de 25</span><b>' + rondas + '</b></div>' +
+    '<div class="k"><span class="mut">OUT / cajas (mín.)</span><b>~' + fmt(outs) + '</b></div>' +
+    '<div class="k"><span class="mut">Picking con ' + P + ' personas</span><b>~' + hm(pk) + '</b></div>' +
+    '<div class="k ' + (llega ? 'ok' : 'ko') + '"><span class="mut">Fin (con expedición)</span><b>' + hora(fin1) + ' – ' + hora(fin2) + '</b></div>' +
+    '<div class="k"><span class="mut">Empezar como muy tarde</span><b>' + hora(sal - pk - e2) + '</b></div>' +
+    '<div class="k"><span class="mut">Personas para salir a las ' + hora(sal) + '</span><b>' + (nec ? '~' + nec : 'imposible') + '</b></div>';
+  $('tz').textContent = 'Zonas con ' + P + ' personas';
+  var f = 8 / P, h = '';
+  BASE.zonas.forEach(function(z){
+    var r = z.m * BASE.factor * k * kr * f;
+    h += '<tr><td><b>' + z.z + '</b></td><td>' + z.t + '</td><td class="n"><b>' + fmt(z.u * k * f) + '</b></td><td class="n">' + fmt(z.o * k) +
+         '</td><td class="n">' + (z.m ? '~' + hm(r) : 'la hace la última zona') + '</td></tr>';
+  });
+  $('zonas').innerHTML = P == 8 ? h : h.replace(/<tr>/g, '<tr class="mut">');
+  var lista = [6, 8, 10, 12, 14, 16]; if(lista.indexOf(P) < 0){lista.push(P); lista.sort(function(a,b){return a-b})}
+  var e = '';
+  lista.forEach(function(n){
+    var p = pick(n), f2 = ini + p + e2;
+    e += '<tr' + (n == P ? ' class="sel"' : '') + '><td>' + n + '</td><td class="n">' + hm(p) + '</td><td class="n">' + hm(p + e1) + ' – ' + hm(p + e2) +
+         '</td><td class="n ' + (f2 <= sal ? 'ok' : 'ko') + '">' + hora(ini + p + e1) + ' – ' + hora(f2) + '</td><td class="n">' + hora(sal - p - e2) + '</td></tr>';
+  });
+  $('esc').innerHTML = e;
+}
+['u','p','ini','sal','e1','e2','r'].forEach(function(id){$(id).addEventListener('input', calc)});
+calc();
+</script>
+</body></html>

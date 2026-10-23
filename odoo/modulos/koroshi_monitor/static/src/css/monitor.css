@@ -1,0 +1,100 @@
+/* KOROSHI Monitor zonas: los mismos estilos que estado-OUT-agrupaciones-Z-*.html, solo dentro de .o_koroshi_monitor */
+.o_koroshi_monitor {
+    --km-bg: #f7f6f2; --km-card: #fff; --km-ink: #1d1d1b; --km-muted: #6b6a65; --km-line: #dedcd4; --km-bar: #e9e7e0;
+    --km-ok: #2e9a52; --km-cur: #d08a00; --km-pend: #b9b6ad;
+    --km-z1: #2f7d4f; --km-z2: #1f5fbf; --km-z3: #b5562a; --km-z4: #7a4bb0; --km-z5: #b08a12; --km-zx: #6b6a65;
+    background: var(--km-bg); color: var(--km-ink); font-size: 15px; line-height: 1.45;
+    height: 100%; overflow: auto;
+}
+.o_koroshi_monitor main { max-width: 1150px; margin: 0 auto; padding: 24px 16px 60px; }
+.o_koroshi_monitor h1 { font-size: 26px; margin: 0; font-weight: 700; }
+.o_koroshi_monitor h2 { font-size: 19px; margin: 30px 0 10px; font-weight: 700; }
+.o_koroshi_monitor .km-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; margin-bottom: 4px; }
+.o_koroshi_monitor .km-ctl { display: flex; gap: 8px; align-items: center; }
+.o_koroshi_monitor .km-ctl select { padding: 4px 8px; border: 1px solid var(--km-line); border-radius: 6px; background: var(--km-card); }
+.o_koroshi_monitor .km-sub { color: var(--km-muted); margin: 0 0 18px; }
+.o_koroshi_monitor .km-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.o_koroshi_monitor .km-card { background: var(--km-card); border: 1px solid var(--km-line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
+.o_koroshi_monitor .km-kpi b { display: block; font-size: 26px; }
+.o_koroshi_monitor .km-kpi span { color: var(--km-muted); font-size: 13px; }
+.o_koroshi_monitor .km-z { display: inline-block; min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 6px; color: #fff; font-weight: 800; }
+.o_koroshi_monitor .km-zona { display: grid; grid-template-columns: 60px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--km-line); }
+.o_koroshi_monitor .km-zona:last-child { border-bottom: 0; }
+.o_koroshi_monitor .km-barra { height: 16px; background: var(--km-bar); border-radius: 8px; overflow: hidden; margin: 4px 0; display: flex; }
+.o_koroshi_monitor .km-barra i { display: block; height: 100%; }
+.o_koroshi_monitor .km-fila { display: flex; flex-wrap: wrap; gap: 4px 16px; font-size: 13.5px; color: var(--km-muted); }
+.o_koroshi_monitor .km-fila b { color: var(--km-ink); }
+.o_koroshi_monitor .km-ley { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--km-muted); margin: 6px 0 10px; }
+.o_koroshi_monitor .km-ley i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.o_koroshi_monitor .km-scroll { overflow-x: auto; }
+.o_koroshi_monitor table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+.o_koroshi_monitor th, .o_koroshi_monitor td { padding: 6px 7px; border-bottom: 1px solid var(--km-line); text-align: left; white-space: nowrap; }
+.o_koroshi_monitor th { color: var(--km-muted); font-size: 12px; font-weight: 600; }
+.o_koroshi_monitor td.r, .o_koroshi_monitor th.r { text-align: right; }
+.o_koroshi_monitor tr.km-tot td { font-weight: 700; }
+.o_koroshi_monitor .m { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
+.o_koroshi_monitor .km-cel { display: inline-block; min-width: 74px; padding: 3px 6px; border-radius: 5px; font-size: 12px; text-align: center; }
+.o_koroshi_monitor .km-hecha { background: var(--km-ok); color: #fff; }
+.o_koroshi_monitor .km-curso { background: var(--km-cur); color: #fff; }
+.o_koroshi_monitor .km-pend { background: var(--km-bar); color: var(--km-muted); }
+.o_koroshi_monitor .km-mini { width: 90px; height: 8px; background: var(--km-bar); border-radius: 4px; overflow: hidden; display: inline-block; vertical-align: middle; margin-right: 6px; }
+.o_koroshi_monitor .km-mini i { display: block; height: 100%; }
+.o_koroshi_monitor details { margin: 0; }
+.o_koroshi_monitor details summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.o_koroshi_monitor .km-nota { color: var(--km-muted); font-size: 13px; }
+.o_koroshi_monitor .km-hora { display: grid; grid-template-columns: 44px 1fr 60px; gap: 10px; align-items: center; font-variant-numeric: tabular-nums; }
+.o_koroshi_monitor .km-hora .km-barra { margin: 3px 0; }
+.o_koroshi_monitor .km-hora b { text-align: right; }
+.o_koroshi_monitor td small { color: var(--km-muted); font-family: system-ui, sans-serif; }
+.o_koroshi_monitor .km-aviso { background: #fff4e0; border-color: #e3b45a; margin-top: 12px; }
+.o_koroshi_monitor tr.km-parada td { background: #fff4e0; }
+.o_koroshi_monitor .km-kpi b small { font-size: 14px; font-weight: 400; color: var(--km-muted); }
+/* v1.4: parcial (falta stock, ya cogido lo que habia) y sin stock */
+.o_koroshi_monitor { --km-par: #7a4bb0; --km-sin: #6b6a65; }
+.o_koroshi_monitor .km-parcial { background: var(--km-par); color: #fff; }
+.o_koroshi_monitor .km-sinstock { background: #fff; color: var(--km-sin); border: 1px dashed var(--km-sin); }
+.o_koroshi_monitor .km-falta { color: #b5562a; font-weight: 700; font-size: 12px; }
+.o_koroshi_monitor td.km-arts { white-space: normal; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+/* v1.7: franja grande, filas con color, chips de tiendas y modo pantalla (TV) */
+.o_koroshi_monitor .km-hero { padding: 18px 20px; }
+.o_koroshi_monitor .km-hero-top { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px 36px; }
+.o_koroshi_monitor .km-hero-pct { font-size: 64px; font-weight: 800; line-height: 1; font-variant-numeric: tabular-nums; }
+.o_koroshi_monitor .km-hero-pct small { font-size: 28px; font-weight: 700; color: var(--km-muted); }
+.o_koroshi_monitor .km-hero-dato b { display: block; font-size: 38px; font-weight: 800; line-height: 1.05; font-variant-numeric: tabular-nums; }
+.o_koroshi_monitor .km-hero-dato span { color: var(--km-muted); font-size: 14px; }
+.o_koroshi_monitor .km-hero-barra { height: 26px; background: var(--km-bar); border-radius: 13px; overflow: hidden; margin: 14px 0 10px; }
+.o_koroshi_monitor .km-hero-barra i { display: block; height: 100%; background: var(--km-ok); }
+.o_koroshi_monitor .km-hero-pie { color: var(--km-muted); font-size: 14px; }
+.o_koroshi_monitor .km-hero-pie b { color: var(--km-ink); }
+.o_koroshi_monitor tr.km-r-hecha td { background: #eaf5ee; }
+.o_koroshi_monitor tr.km-r-curso td { background: #fff6e2; }
+.o_koroshi_monitor tr.km-r-parcial td { background: #f1eaf9; }
+.o_koroshi_monitor tr.km-parada td { background: #fde4dc; }
+.o_koroshi_monitor .km-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.o_koroshi_monitor .km-chip { display: inline-block; padding: 4px 10px; border-radius: 7px; background: var(--km-bar); font-size: 14px; color: var(--km-muted); }
+.o_koroshi_monitor .km-chip b { color: var(--km-ink); }
+.o_koroshi_monitor .km-chip-ok { background: #eaf5ee; }
+.o_koroshi_monitor .km-chip-ok b { color: var(--km-ok); }
+.o_koroshi_monitor .km-card > details { margin-top: 8px; }
+
+/* Modo pantalla: sin el menu de Odoo, letra grande para verlo de lejos en la pantalla vertical */
+body.km-tv .o_main_navbar { display: none !important; }
+body.km-tv .o_action_manager { height: 100vh; }
+.o_koroshi_monitor .km-tvmain { max-width: none; padding: 16px 22px 30px; font-size: 20px; }
+.o_koroshi_monitor .km-tvmain h1 { font-size: 30px; }
+.o_koroshi_monitor .km-tvmain h2 { font-size: 26px; margin: 22px 0 10px; }
+.o_koroshi_monitor .km-tvmain .km-hero-pct { font-size: 120px; }
+.o_koroshi_monitor .km-tvmain .km-hero-pct small { font-size: 48px; }
+.o_koroshi_monitor .km-tvmain .km-hero-dato b { font-size: 64px; }
+.o_koroshi_monitor .km-tvmain .km-hero-dato span, .o_koroshi_monitor .km-tvmain .km-hero-pie { font-size: 20px; }
+.o_koroshi_monitor .km-tvmain .km-hero-barra { height: 40px; border-radius: 20px; }
+.o_koroshi_monitor .km-tvmain table { font-size: 21px; }
+.o_koroshi_monitor .km-tvmain th { font-size: 16px; }
+.o_koroshi_monitor .km-tvmain .m { font-size: 20px; }
+.o_koroshi_monitor .km-tvmain .km-cel { font-size: 17px; min-width: 120px; padding: 4px 8px; }
+.o_koroshi_monitor .km-tvmain .km-mini { width: 120px; height: 12px; }
+.o_koroshi_monitor .km-tvmain .km-chip { font-size: 22px; padding: 6px 12px; }
+.o_koroshi_monitor .km-tvmain .km-aviso { font-size: 19px; }
+/* v1.7: el contenedor de Odoo es flex: sin esto la pagina se salia de ancho en pantallas estrechas */
+.o_koroshi_monitor main { width: 100%; min-width: 0; box-sizing: border-box; }
+.o_koroshi_monitor .km-card { max-width: 100%; overflow-x: auto; }

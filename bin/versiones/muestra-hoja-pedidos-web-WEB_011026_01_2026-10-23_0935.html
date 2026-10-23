@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Hoja pedidos web</title>
+<style>
+:root{--bg:#e9e9e9;--paper:#fff;--tx:#000;--mut:#555}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#202124}}
+:root[data-theme="dark"]{--bg:#202124}
+body{margin:0;background:var(--bg);font:10pt Arial,Helvetica,sans-serif;color:var(--tx)}
+.hoja{background:var(--paper);max-width:190mm;margin:16px auto;padding:12mm 10mm;box-shadow:0 1px 6px rgba(0,0,0,.25)}
+h3{text-align:center;margin:0 0 2mm}.sub{text-align:center;font-size:9pt;margin-bottom:3mm}
+table{width:100%;border-collapse:collapse}td{padding:.8mm 1mm}
+thead tr{border-bottom:1.5px solid #000;font-weight:bold}tbody tr{border-bottom:.5px solid #999}
+.r{text-align:right}.tot{border-top:1.5px solid #000;font-weight:bold}.cort td{text-align:center;color:var(--mut);font-style:italic}
+.firma td{border:1px solid #000;height:22mm;vertical-align:top;padding:1.5mm}
+.nota{max-width:190mm;margin:0 auto 24px;color:#333;font:13px system-ui,Arial;padding:0 16px}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .nota{color:#ccc}}
+</style></head><body>
+<div class="hoja">
+<h3>PEDIDOS WEB 01/10/2026</h3>
+<div class="sub">WEB_011026_01 · 59 pedidos · 112 uds</div>
+<table>
+<thead><tr><td>Fecha de transferencia</td><td>Documento origen</td><td>Referencia</td><td>Marca</td><td>Transportista</td><td class="r">Done Quantity</td></tr></thead>
+<tbody>
+<tr><td>2026-10-01 10:48:19</td><td>W-0000054356</td><td>EFFEC/OUT/17636</td><td>KOROSHI</td><td>SEUR</td><td class="r">2</td></tr>
+<tr><td>2026-10-01 10:48:20</td><td>W-0000054355-03</td><td>EFFEC/OUT/17637</td><td>KOROSHI</td><td>SEUR</td><td class="r">1</td></tr>
+<tr><td>2026-10-01 10:48:20</td><td>W-5930007499</td><td>EFFEC/OUT/17638</td><td>KOROSHI</td><td>SEUR</td><td class="r">1</td></tr>
+<tr><td>2026-10-01 10:48:20</td><td>W-0000054357-02</td><td>EFFEC/OUT/17639</td><td>KOROSHI</td><td>SEUR</td><td class="r">2</td></tr>
+<tr><td>2026-10-01 10:48:21</td><td>W-0000054358</td><td>EFFEC/OUT/17640</td><td>KOROSHI</td><td>SEUR</td><td class="r">1</td></tr>
+<tr><td>2026-10-01 10:48:21</td><td>W-0000054359</td><td>EFFEC/OUT/17641</td><td>KOROSHI</td><td>SEUR</td><td class="r">3</td></tr>
+<tr><td>2026-10-01 10:48:21</td><td>W-0000054360</td><td>EFFEC/OUT/17642</td><td>KOROSHI</td><td>SEUR</td><td class="r">1</td></tr>
+<tr><td>2026-10-01 10:48:22</td><td>W-0000054362-03</td><td>EFFEC/OUT/17643</td><td>KOROSHI</td><td>SEUR</td><td class="r">1</td></tr>
+<tr class="cort"><td colspan="6">… 49 pedidos más (en Odoo salen todos) …</td></tr>
+<tr><td>2026-10-01 10:48:40</td><td>W-0000054432</td><td>EFFEC/OUT/17746</td><td>KOROSHI</td><td>SEUR</td><td class="r">3</td></tr>
+<tr><td>2026-10-01 10:48:40</td><td>W-0000054430-02</td><td>EFFEC/OUT/17747</td><td>KOROSHI</td><td>SEUR</td><td class="r">2</td></tr>
+<tr class="tot"><td colspan="5">TOTAL 59 pedidos</td><td class="r">112</td></tr>
+</tbody></table>
+<table class="firma" style="margin-top:10mm"><tr><td style="width:40%">Recogido por (SEUR): nombre</td><td style="width:25%">Fecha y hora</td><td style="width:35%">Firma</td></tr></table>
+</div>
+<p class="nota">Muestra con los datos reales de la agrupación WEB_011026_01 (Odoo, 23/10/2026). En Odoo se imprimiría desde la agrupación WEB_… o seleccionando las OUT › Imprimir › «KOROSHI Pedidos web».</p>
+</body></html>

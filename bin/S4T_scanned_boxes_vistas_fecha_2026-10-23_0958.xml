@@ -1,0 +1,34 @@
+<!--
+S4T Integration > Scanned boxes (s4t.box.registry): columna Fecha escaneo y Escaneado por, filtros y agrupar por dia.
+Creadas en Odoo el 23/10/2026 desde la interfaz (JSON-RPC), SIN tocar el modulo api_s4t_batch_update_PROD:
+  - ir.ui.view 6050 "s4t.box.registry.tree.koroshi.fecha" (hereda de la lista 5972, prioridad 99)
+  - ir.ui.view 6051 "s4t.box.registry.search.koroshi" (busqueda; el modulo no tenia ninguna)
+Para quitarlo: borrar las vistas 6050 y 6051 (Ajustes > Tecnico > Vistas).
+La fecha es create_date (cuando se escaneo la CJ en Odoo), que ya existia en las 2.529 cajas.
+-->
+<data>
+    <!-- 6050: lista -->
+    <data>
+        <field name="name" position="after">
+            <field name="create_date" string="Fecha escaneo"/>
+            <field name="create_uid" string="Escaneado por"/>
+        </field>
+    </data>
+    <!-- 6051: busqueda -->
+    <search string="Cajas escaneadas">
+        <field name="name" string="Matrícula"/>
+        <field name="create_uid" string="Escaneado por"/>
+        <filter name="f_hoy" string="Hoy" domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d 00:00:00'))]"/>
+        <filter name="f_fecha" string="Fecha escaneo" date="create_date"/>
+        <separator/>
+        <filter name="f_pendiente" string="Pendiente" domain="[('state', '=', 'draft')]"/>
+        <filter name="f_enviado" string="Enviado" domain="[('state', '=', 'sent')]"/>
+        <filter name="f_error" string="Error" domain="[('state', '=', 'error')]"/>
+        <group expand="0" string="Agrupar por">
+            <filter name="g_dia" string="Día" context="{'group_by': 'create_date:day'}"/>
+            <filter name="g_semana" string="Semana" context="{'group_by': 'create_date:week'}"/>
+            <filter name="g_estado" string="Estado" context="{'group_by': 'state'}"/>
+            <filter name="g_usuario" string="Escaneado por" context="{'group_by': 'create_uid'}"/>
+        </group>
+    </search>
+</data>

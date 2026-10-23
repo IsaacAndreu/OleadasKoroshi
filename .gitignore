@@ -4,3 +4,9 @@ bin/Release/Pendientes/
 obj/
 .vs/
 *.user
+
+# Caché de Python, bloqueos de Excel abiertos y pruebas sueltas
+__pycache__/
+*.pyc
+~$*
+odoo/modulos/_prueba_*

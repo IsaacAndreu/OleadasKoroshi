@@ -1,0 +1,75 @@
+<t t-name="koroshi.report_bultos_pedido">
+    <!--
+    KOROSHI - BULTOS POR PEDIDO, para hacer las etiquetas del transportista.
+    Informe "KOROSHI Bultos por pedido" del modelo sale.order (Imprimir desde la lista de pedidos).
+    Una fila por pedido seleccionado, ordenados por numero de tienda (K):
+      bultos = matriculas CJ distintas con uds en las OUT del pedido (ya cuenta las juntadas: la
+      OUT pequena se queda sin matricula y sus prendas van en la caja grande), uds servidas,
+      OUT validadas / total, delegacion y transit (misma lista que las etiquetas), matriculas.
+    AVISO en rojo si hay OUT sin validar o uds leidas sin matricula en OUT sin validar: los bultos
+    pueden cambiar. Si el campo "Numero de bultos" de las OUT no suma lo mismo, tambien avisa.
+    -->
+    <t t-call="web.basic_layout">
+        <t t-set="orden" t-value="[x[1] for x in sorted([(((s.partner_shipping_id.name or '').split(', ')[-1].split(' ')[0][1:]).zfill(4), s.id) for s in docs])]"/>
+        <t t-set="delegaciones" t-value="{1: ('CASTELLBISBAL', 24), 7: ('LEGANÉS', 48), 8: ('PAMPLONA', 24), 9: ('BILBAO', 24), 10: ('BILBAO', 24), 22: ('VITORIA', 24), 24: ('VALLADOLID', 48), 26: ('FRANQUESES', 24), 29: ('CORUÑA', 48), 31: ('MURCIA', 24), 33: ('ZARAGOZA', 24), 34: ('CASTELLBISBAL', 24), 37: ('SALAMANCA', 48), 38: ('BILBAO', 24), 39: ('IRÚN', 48), 40: ('VALLADOLID', 48), 41: ('SANTANDER', 48), 42: ('CASTELLBISBAL', 24), 43: ('BENAVENTE', 48), 44: ('GERONA', 24), 45: ('LOGROÑO', 24), 46: ('IRÚN', 24), 47: ('BENAVENTE', 48), 48: ('VALENCIA', 24), 49: ('IRÚN', 48), 55: ('ZARAGOZA', 24), 56: ('MÁLAGA', 48), 57: ('SAN FERNANDO', 48), 58: ('BURGOS', 24), 59: ('GRANADA', 48), 60: ('GIJÓN', 48), 61: ('VALENCIA', 24), 62: ('LEGANÉS', 48), 63: ('SAN FERNANDO', 48), 65: ('CASTELLBISBAL', 24), 67: ('MURCIA', 24), 68: ('SEVILLA', 48), 69: ('TARRAGONA', 24), 70: ('TARRAGONA', 24), 72: ('CASTELLBISBAL', 24), 73: ('LLEIDA', 24), 74: ('CASTELLÓN', 24), 75: ('CASTELLBISBAL', 24), 76: ('LEGANÉS', 48), 78: ('SAN FERNANDO', 48), 79: ('SAN FERNANDO', 48), 80: ('GERONA', 24), 81: ('SAN FERNANDO', 48), 83: ('IRÚN', 24)}"/>
+        <t t-set="tot_b" t-value="sum([len(set([ml.result_package_id.id for ml in s.env['stock.picking'].search([('origin', '=', s.name), ('picking_type_code', '=', 'outgoing'), ('state', '!=', 'cancel')]).mapped('move_line_ids') if ml.qty_done &gt; 0 and ml.result_package_id])) for s in docs])"/>
+        <t t-set="tot_u" t-value="int(sum([sum([ml.qty_done for ml in s.env['stock.picking'].search([('origin', '=', s.name), ('picking_type_code', '=', 'outgoing'), ('state', '!=', 'cancel')]).mapped('move_line_ids')]) for s in docs]))"/>
+        <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #000; font-size: 10pt;">
+            <h2 style="margin: 0 0 2mm; font-size: 16pt;">Bultos por pedido · KOROSHI</h2>
+            <div style="font-size: 9pt; color: #555; margin-bottom: 4mm;">
+                <t t-esc="len(docs)"/> pedidos · sacado de Odoo el <t t-esc="context_timestamp(datetime.datetime.now()).strftime('%d/%m/%Y %H:%M')"/>.
+                Bultos = matrículas (CJ) con unidades en las OUT del pedido; las cajas juntadas cuentan una sola vez.
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 2px solid #000; text-align: left;">
+                        <th style="padding: 2mm 1.5mm;">Pedido</th>
+                        <th style="padding: 2mm 1.5mm;">Tienda</th>
+                        <th style="padding: 2mm 1.5mm;">Delegación</th>
+                        <th style="padding: 2mm 1.5mm; text-align: right; font-size: 12pt;">BULTOS</th>
+                        <th style="padding: 2mm 1.5mm; text-align: right;">Uds</th>
+                        <th style="padding: 2mm 1.5mm; text-align: right;">OUT validadas</th>
+                        <th style="padding: 2mm 1.5mm;">Matrículas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <t t-foreach="docs.browse(orden)" t-as="s">
+                        <t t-set="tienda" t-value="(s.partner_shipping_id.name or '').split(', ')[-1]"/>
+                        <t t-set="kcod" t-value="tienda.split(' ')[0][1:]"/>
+                        <t t-set="dt" t-value="delegaciones.get(kcod.isdigit() and int(kcod) or 0)"/>
+                        <t t-set="outs" t-value="s.env['stock.picking'].search([('origin', '=', s.name), ('picking_type_code', '=', 'outgoing'), ('state', '!=', 'cancel')])"/>
+                        <t t-set="lineas" t-value="[ml for ml in outs.mapped('move_line_ids') if ml.qty_done &gt; 0]"/>
+                        <t t-set="cajas" t-value="sorted(set([ml.result_package_id.name for ml in lineas if ml.result_package_id]))"/>
+                        <t t-set="uds" t-value="int(sum([ml.qty_done for ml in lineas]))"/>
+                        <t t-set="sin_validar" t-value="len([p for p in outs if p.state != 'done'])"/>
+                        <t t-set="sueltas" t-value="int(sum([ml.qty_done for ml in lineas if not ml.result_package_id and ml.state != 'done']))"/>
+                        <t t-set="campo" t-value="sum(outs.mapped('number_of_packages'))"/>
+                        <tr style="border-bottom: 1px solid #bbb; vertical-align: top;">
+                            <td style="padding: 2mm 1.5mm; font-family: 'Courier New', monospace; font-weight: 700; white-space: nowrap;" t-esc="s.name"/>
+                            <td style="padding: 2mm 1.5mm; font-weight: 700;" t-esc="tienda"/>
+                            <td style="padding: 2mm 1.5mm;"><t t-esc="dt and dt[0] or '-'"/><t t-if="dt"> · <t t-esc="dt[1]"/> h</t></td>
+                            <td style="padding: 2mm 1.5mm; text-align: right; font-size: 16pt; font-weight: 900;" t-esc="len(cajas)"/>
+                            <td style="padding: 2mm 1.5mm; text-align: right;" t-esc="uds"/>
+                            <td t-attf-style="padding: 2mm 1.5mm; text-align: right; {{'color: #c00; font-weight: 700;' if sin_validar else ''}}"><t t-esc="len(outs) - sin_validar"/> / <t t-esc="len(outs)"/></td>
+                            <td style="padding: 2mm 1.5mm; font-size: 8pt; font-family: 'Courier New', monospace;">
+                                <t t-esc="', '.join(cajas)"/>
+                                <div t-if="sin_validar or sueltas" style="color: #c00; font-family: Arial, sans-serif; font-weight: 700; font-size: 8.5pt;">
+                                    OJO: <t t-if="sin_validar"><t t-esc="sin_validar"/> OUT sin validar</t><t t-if="sueltas"> · <t t-esc="sueltas"/> uds leídas sin matrícula</t>. Los bultos pueden cambiar.
+                                </div>
+                                <div t-if="campo != len(cajas) and not sin_validar" style="color: #a60; font-family: Arial, sans-serif; font-size: 8pt;">
+                                    El campo «Número de bultos» de las OUT suma <t t-esc="campo"/>.
+                                </div>
+                            </td>
+                        </tr>
+                    </t>
+                    <tr style="border-top: 2px solid #000; font-weight: 900;">
+                        <td style="padding: 2mm 1.5mm;" colspan="3">TOTAL</td>
+                        <td style="padding: 2mm 1.5mm; text-align: right; font-size: 16pt;" t-esc="tot_b"/>
+                        <td style="padding: 2mm 1.5mm; text-align: right;" t-esc="tot_u"/>
+                        <td colspan="2"/>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </t>
+</t>

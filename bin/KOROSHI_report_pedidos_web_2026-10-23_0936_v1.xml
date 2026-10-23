@@ -1,0 +1,59 @@
+<t t-name="koroshi.report_pedidos_web">
+    <!--
+    KOROSHI - Hoja de pedidos web para la recogida (la que Betty hacia a mano en Excel).
+    Vista QWeb para dos informes: "KOROSHI Pedidos web" del modelo stock.picking.batch (la agrupacion
+    WEB_ddmmaa_nn) y del modelo stock.picking (OUT seleccionadas en la lista).
+    Una sola hoja con todas las OUT (no canceladas), ordenadas por hora de validacion, con el total de
+    pedidos y unidades y la casilla de firma del transportista.
+    TRANSPORTISTA: en Odoo las OUT web llevan "RECOGE CLIENTE"; en la hoja va el que recoge (SEUR).
+    -->
+    <t t-call="web.basic_layout">
+        <t t-set="transportista" t-value="'SEUR'"/>
+        <t t-set="outs" t-value="(docs._name == 'stock.picking.batch' and docs.mapped('picking_ids') or docs).filtered(lambda p: p.state != 'cancel')"/>
+        <t t-set="outs" t-value="outs.sorted(key=lambda p: (p.date_done or p.scheduled_date, p.name))"/>
+        <t t-set="primera" t-value="outs and (outs[0].date_done or outs[0].scheduled_date)"/>
+        <t t-set="lotes" t-value="', '.join(sorted(set(outs.mapped('batch_id.name'))))"/>
+        <t t-set="total_uds" t-value="int(sum(outs.mapped('move_line_ids.qty_done')))"/>
+        <div class="page" style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt; color: #000;">
+            <h3 style="text-align: center; margin: 0 0 2mm 0; font-weight: bold;">
+                PEDIDOS WEB <t t-esc="primera and context_timestamp(primera).strftime('%d/%m/%Y') or ''"/>
+            </h3>
+            <div style="text-align: center; font-size: 9pt; margin-bottom: 3mm;">
+                <t t-esc="lotes"/> · <t t-esc="len(outs)"/> pedidos · <t t-esc="total_uds"/> uds
+            </div>
+            <table style="width: 100%; border-collapse: collapse;">
+                <thead>
+                    <tr style="border-bottom: 1.5px solid #000; font-weight: bold;">
+                        <td style="padding: 1mm;">Fecha de transferencia</td>
+                        <td style="padding: 1mm;">Documento origen</td>
+                        <td style="padding: 1mm;">Referencia</td>
+                        <td style="padding: 1mm;">Marca</td>
+                        <td style="padding: 1mm;">Transportista</td>
+                        <td style="padding: 1mm; text-align: right;">Done Quantity</td>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr t-foreach="outs" t-as="p" style="border-bottom: 0.5px solid #999;">
+                        <td style="padding: 0.8mm 1mm;"><t t-esc="p.date_done and context_timestamp(p.date_done).strftime('%Y-%m-%d %H:%M:%S') or 'sin validar'"/></td>
+                        <td style="padding: 0.8mm 1mm;" t-esc="p.origin or ''"/>
+                        <td style="padding: 0.8mm 1mm;" t-esc="p.name"/>
+                        <td style="padding: 0.8mm 1mm;" t-esc="p.x_studio_marca.name or ''"/>
+                        <td style="padding: 0.8mm 1mm;" t-esc="transportista"/>
+                        <td style="padding: 0.8mm 1mm; text-align: right;" t-esc="int(sum(p.move_line_ids.mapped('qty_done')))"/>
+                    </tr>
+                    <tr style="border-top: 1.5px solid #000; font-weight: bold;">
+                        <td style="padding: 1mm;" colspan="5">TOTAL <t t-esc="len(outs)"/> pedidos</td>
+                        <td style="padding: 1mm; text-align: right;" t-esc="total_uds"/>
+                    </tr>
+                </tbody>
+            </table>
+            <table style="width: 100%; margin-top: 10mm; border-collapse: collapse; page-break-inside: avoid;">
+                <tr>
+                    <td style="width: 40%; border: 1px solid #000; height: 22mm; vertical-align: top; padding: 1.5mm;">Recogido por (<t t-esc="transportista"/>): nombre</td>
+                    <td style="width: 25%; border: 1px solid #000; vertical-align: top; padding: 1.5mm;">Fecha y hora</td>
+                    <td style="width: 35%; border: 1px solid #000; vertical-align: top; padding: 1.5mm;">Firma</td>
+                </tr>
+            </table>
+        </div>
+    </t>
+</t>

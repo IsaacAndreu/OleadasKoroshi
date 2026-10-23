@@ -1,0 +1,85 @@
+<t t-name="koroshi.report_etiqueta_tienda">
+    <!--
+    KOROSHI - Etiqueta de TIENDA para organizar los palets en expediciones.
+    Vista QWeb para el informe "KOROSHI Etiqueta tienda (palet)" del modelo stock.picking
+    (Imprimir desde la lista de OUT). Formato de papel 19 (4x6", margen lateral 0).
+    Una etiqueta por TIENDA (pedido de venta) aunque se seleccionen varias OUT de la misma
+    tienda, ordenadas por numero de K. Lleva: numero de tienda enorme, nombre, delegacion y
+    transit (misma lista que la etiqueta de zona), pedido con codigo de barras, cajas previstas
+    (matriculas ETQ ZONA) y cerradas (paquetes CJ con uds), y casilla para apuntar los bultos.
+    wkhtmltopdf: sin flex, todo con tablas y medidas fijas.
+    -->
+    <t t-call="web.basic_layout">
+        <t t-set="pedidos" t-value="docs.mapped('sale_id')"/>
+        <t t-set="orden" t-value="[x[1] for x in sorted([(((s.partner_shipping_id.name or '').split(', ')[-1].split(' ')[0][1:]).zfill(4), s.id) for s in pedidos])]"/>
+        <!-- Delegacion de transporte y transit time por tienda (lista del 21/10/2026). Tienda sin delegacion: sale la provincia -->
+        <t t-set="delegaciones" t-value="{1: ('CASTELLBISBAL', 24), 7: ('LEGANÉS', 48), 8: ('PAMPLONA', 24), 9: ('BILBAO', 24), 10: ('BILBAO', 24), 22: ('VITORIA', 24), 24: ('VALLADOLID', 48), 26: ('FRANQUESES', 24), 29: ('CORUÑA', 48), 31: ('MURCIA', 24), 33: ('ZARAGOZA', 24), 34: ('CASTELLBISBAL', 24), 37: ('SALAMANCA', 48), 38: ('BILBAO', 24), 39: ('IRÚN', 48), 40: ('VALLADOLID', 48), 41: ('SANTANDER', 48), 42: ('CASTELLBISBAL', 24), 43: ('BENAVENTE', 48), 44: ('GERONA', 24), 45: ('LOGROÑO', 24), 46: ('IRÚN', 24), 47: ('BENAVENTE', 48), 48: ('VALENCIA', 24), 49: ('IRÚN', 48), 55: ('ZARAGOZA', 24), 56: ('MÁLAGA', 48), 57: ('SAN FERNANDO', 48), 58: ('BURGOS', 24), 59: ('GRANADA', 48), 60: ('GIJÓN', 48), 61: ('VALENCIA', 24), 62: ('LEGANÉS', 48), 63: ('SAN FERNANDO', 48), 65: ('CASTELLBISBAL', 24), 67: ('MURCIA', 24), 68: ('SEVILLA', 48), 69: ('TARRAGONA', 24), 70: ('TARRAGONA', 24), 72: ('CASTELLBISBAL', 24), 73: ('LLEIDA', 24), 74: ('CASTELLÓN', 24), 75: ('CASTELLBISBAL', 24), 76: ('LEGANÉS', 48), 78: ('SAN FERNANDO', 48), 79: ('SAN FERNANDO', 48), 80: ('GERONA', 24), 81: ('SAN FERNANDO', 48), 83: ('IRÚN', 24)}"/>
+        <t t-foreach="pedidos.browse(orden)" t-as="s">
+            <t t-set="nombre" t-value="s.partner_shipping_id.name or ''"/>
+            <t t-set="tienda" t-value="nombre.split(', ')[-1]"/>
+            <t t-set="kno" t-value="tienda.split(' ')[0]"/>
+            <t t-set="kresto" t-value="' - '.join(tienda.split(' - ')[1:]) or tienda[len(kno):].strip(' -')"/>
+            <t t-set="kcod" t-value="kno[1:]"/>
+            <t t-set="knum" t-value="kcod.isdigit() and int(kcod) or 0"/>
+            <t t-set="prov" t-value="s.partner_shipping_id.state_id and s.partner_shipping_id.state_id.name.split(' (')[0].strip(' -') or ''"/>
+            <t t-set="dt" t-value="delegaciones.get(knum)"/>
+            <t t-set="deleg" t-value="dt and dt[0] or ('PROV. ' + prov.upper())"/>
+            <t t-set="transit" t-value="dt and ('%s h' % dt[1]) or ''"/>
+            <t t-set="deleg_pt" t-value="len(deleg) &lt;= 16 and 22 or (len(deleg) &lt;= 20 and 18 or 15)"/>
+            <t t-set="k_pt" t-value="len(kno) &lt;= 2 and 190 or (len(kno) &lt;= 3 and 160 or 120)"/>
+            <t t-set="outs" t-value="s.env['stock.picking'].search([('origin', '=', s.name), ('picking_type_code', '=', 'outgoing'), ('state', '!=', 'cancel')])"/>
+            <t t-set="uds" t-value="int(sum([m.product_uom_qty for m in outs.mapped('move_lines') if m.state != 'cancel']))"/>
+            <t t-set="previstas" t-value="s.env['zebra.label'].search_count([('note', 'in', ['ETQ ZONA ' + n for n in outs.mapped('name')])])"/>
+            <t t-set="cerradas" t-value="len(set([ml.result_package_id.id for ml in outs.mapped('move_line_ids') if ml.qty_done &gt; 0 and ml.result_package_id]))"/>
+            <div class="page" style="page-break-after: always; font-family: Arial, Helvetica, sans-serif; color: #000; padding: 0 3mm;">
+                <table style="width: 100%; border-collapse: collapse;">
+                    <tr>
+                        <td style="font-size: 9pt; letter-spacing: 1px; font-weight: 700;">KOROSHI · PALET TIENDA</td>
+                        <td style="font-size: 9pt; text-align: right;" t-esc="s.partner_shipping_id.city or ''"/>
+                    </tr>
+                </table>
+                <div t-attf-style="font-size: {{k_pt}}pt; font-weight: 900; line-height: 0.95; text-align: center; white-space: nowrap; letter-spacing: -2px; margin-top: 1mm;" class="koroshi-k" t-esc="kno"/>
+                <div class="koroshi-tienda" style="font-size: 30pt; font-weight: 900; text-align: center; white-space: nowrap; overflow: hidden; line-height: 1.1;" t-esc="kresto"/>
+                <div style="background: #000; color: #fff; text-align: center; padding: 1.5mm 2mm 2mm; margin-top: 2mm;">
+                    <div style="font-size: 7.5pt; letter-spacing: 2px;">DELEGACIÓN<t t-if="transit"> · TRANSIT <t t-esc="transit"/></t></div>
+                    <div t-attf-style="font-size: {{deleg_pt}}pt; font-weight: 900; line-height: 1.1; white-space: nowrap;" t-esc="deleg"/>
+                </div>
+                <div style="border: 3px solid #000; margin-top: 2mm; text-align: center; padding: 0.5mm 0 1mm;">
+                    <div style="font-size: 7.5pt; font-weight: 800; letter-spacing: 3px;">PEDIDO</div>
+                    <div style="font-size: 24pt; font-weight: 900; line-height: 1.05;" t-esc="s.name"/>
+                    <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', s.name, 800, 120)" style="width: 80%; height: 10mm; margin-top: 0.5mm;"/>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; margin-top: 2mm; text-align: center;">
+                    <tr>
+                        <td style="width: 33%; border: 2px solid #000; padding: 1mm 0;">
+                            <div style="font-size: 7.5pt; font-weight: 800; letter-spacing: 1px;">UDS</div>
+                            <div style="font-size: 20pt; font-weight: 900;" t-esc="uds"/>
+                        </td>
+                        <td style="width: 33%; border: 2px solid #000; padding: 1mm 0;">
+                            <div style="font-size: 7.5pt; font-weight: 800; letter-spacing: 1px;">CAJAS PREVISTAS</div>
+                            <div style="font-size: 20pt; font-weight: 900;" t-esc="previstas or '-'"/>
+                        </td>
+                        <td style="width: 34%; border: 2px solid #000; padding: 1mm 0;">
+                            <div style="font-size: 7.5pt; font-weight: 800; letter-spacing: 1px;">CAJAS CERRADAS</div>
+                            <div style="font-size: 20pt; font-weight: 900;" t-esc="cerradas"/>
+                        </td>
+                    </tr>
+                </table>
+                <div style="border: 2px solid #000; margin-top: 2mm; height: 16mm; padding: 1mm 2mm;">
+                    <div style="font-size: 8pt; font-weight: 800; letter-spacing: 1px;">BULTOS EN EL PALET (a mano)</div>
+                </div>
+            </div>
+        </t>
+        <!-- Nombre de tienda lo mas grande posible: empieza en 30 pt y baja hasta que cabe en una linea -->
+        <script>
+            var kts = document.getElementsByClassName('koroshi-tienda');
+            for (var i = 0; kts.length > i; i++) {
+                var s = 30;
+                kts[i].style.fontSize = s + 'pt';
+                while (s > 12) {
+                    if (kts[i].scrollWidth > kts[i].clientWidth) { s = s - 1; kts[i].style.fontSize = s + 'pt'; } else { break; }
+                }
+            }
+        </script>
+    </t>
+</t>
