@@ -1,0 +1,21 @@
+<data>
+    <!--
+    KOROSHI - Pestana "Juntar cajas" en el pedido de venta (S-6665...).
+    Vista heredada de sale.order.form (id 1391). Tipo: Formulario. Modo: Extension. Prioridad: 99.
+    Casillas x_cj_pequena y x_cj_destino (campos Char creados a mano en sale.order).
+    El boton llama a la accion de servidor "KOROSHI Juntar matriculas" (id 1844, modelo sale.order).
+    Solo sale en pedidos de Koroshi (s4t_remote_id distinto de 0).
+    -->
+    <xpath expr="//notebook" position="inside">
+        <page string="Juntar cajas" name="koroshi_juntar_cajas" attrs="{'invisible': [('s4t_remote_id', '=', 0)]}">
+            <field name="s4t_remote_id" invisible="1"/>
+            <group string="Meter una caja pequeña dentro de otra del mismo pedido">
+                <field name="x_cj_pequena" placeholder="1. Escanear la CJ pequeña"/>
+                <field name="x_cj_destino" placeholder="2. Escanear la CJ grande donde se meten las uds"/>
+            </group>
+            <button name="1844" type="action" string="Juntar" class="btn-primary"
+                    confirm="¿Juntar la CJ pequeña dentro de la CJ destino? Se hace en real."/>
+            <span class="text-muted" style="margin-left: 12px;">Con las dos casillas vacías, el botón enseña las cajas pequeñas del pedido.</span>
+        </page>
+    </xpath>
+</data>

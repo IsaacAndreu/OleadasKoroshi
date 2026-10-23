@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada vez que se instala o actualiza el modulo: crea las fichas por metodo y recalcula todos los dias
+         que ya tienen ficha (solo escribe en koroshi.kpi.dia) -->
+    <function model="koroshi.kpi.dia" name="recalcular_todo"/>
+</odoo>

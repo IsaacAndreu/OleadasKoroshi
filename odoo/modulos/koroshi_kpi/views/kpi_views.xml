@@ -1,0 +1,234 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Dias ======================= -->
+    <record id="view_koroshi_kpi_dia_tree" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.tree</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="arch" type="xml">
+            <tree string="KOROSHI KPI" decoration-muted="hp_total == 0" decoration-info="horas_estimadas"
+                  decoration-bf="metodo == 'mixto'">
+                <field name="fecha"/>
+                <field name="metodo"/>
+                <field name="horas_estimadas" invisible="1"/>
+                <field name="uds" sum="Uds"/>
+                <field name="skus" optional="hide"/>
+                <field name="profundidad_sku" optional="show"/>
+                <field name="pedidos" sum="Pedidos" optional="show"/>
+                <field name="outs" sum="OUT" optional="hide"/>
+                <field name="cajas" sum="Cajas" optional="show"/>
+                <field name="uds_caja" optional="hide"/>
+                <field name="peso_ud" optional="show"/>
+                <field name="peso_total" sum="Peso (kg)" optional="show"/>
+                <field name="volumen_ud" optional="hide"/>
+                <field name="volumen_total" sum="Volumen (m3)" optional="show"/>
+                <field name="metros_ud" optional="show"/>
+                <field name="metros_total" sum="Metros" optional="show"/>
+                <field name="personas_total" sum="Personas"/>
+                <field name="horas_reloj" widget="float_time" optional="show"/>
+                <field name="hp_picking" sum="Horas picking" widget="float_time" optional="show"/>
+                <field name="hp_packing" sum="Horas packing/U" widget="float_time" optional="hide"/>
+                <field name="hp_expedicion" sum="Horas expedición" widget="float_time" optional="hide"/>
+                <field name="hp_total" sum="Horas" widget="float_time"/>
+                <field name="uds_persona"/>
+                <field name="uds_hora_persona"/>
+                <field name="s_ud_picking"/>
+                <field name="s_ud_andando" optional="show"/>
+                <field name="s_ud_leyendo" optional="show"/>
+                <field name="s_ud_packing" optional="show"/>
+                <field name="s_ud_expedicion" optional="show"/>
+                <field name="s_ud_total"/>
+                <button name="action_recalcular" type="object" string="Recalcular" icon="fa-refresh"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_dia_form" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.form</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="arch" type="xml">
+            <form string="KOROSHI KPI">
+                <header>
+                    <button name="action_recalcular" type="object" string="Recalcular de Odoo" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="fecha"/></h1>
+                        <field name="metodo"/>
+                    </div>
+                    <div class="alert alert-info" role="status" attrs="{'invisible': [('horas_estimadas', '=', False)]}">
+                        Horas estimadas por las cajas cerradas (cuántas OUT o zonas cierran caja a la vez cada cuarto de hora).
+                        Si apuntas personas y horas a mano abajo, mandan las tuyas.
+                    </div>
+                    <field name="horas_estimadas" invisible="1"/>
+                    <group>
+                        <group string="KPI clave">
+                            <field name="s_ud_total"/>
+                            <field name="s_ud_picking"/>
+                            <field name="s_ud_andando"/>
+                            <field name="s_ud_leyendo"/>
+                            <field name="s_ud_packing"/>
+                            <field name="s_ud_expedicion"/>
+                            <field name="uds_hora_persona"/>
+                            <field name="uds_persona"/>
+                        </group>
+                        <group string="Horas y personas">
+                            <field name="hp_total" widget="float_time"/>
+                            <field name="personas_total"/>
+                            <field name="hp_picking" widget="float_time"/>
+                            <field name="h_andando" widget="float_time"/>
+                            <field name="h_leyendo" widget="float_time"/>
+                            <field name="hp_packing" widget="float_time"/>
+                            <field name="hp_expedicion" widget="float_time"/>
+                            <field name="horas_reloj" widget="float_time"/>
+                        </group>
+                    </group>
+                    <group string="Estimado por las cajas (de Odoo)">
+                        <group>
+                            <field name="pick_personas_auto"/>
+                            <field name="pick_hp_auto" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="pack_hp_auto" widget="float_time"/>
+                        </group>
+                    </group>
+                    <group string="A mano: personas y horas de cada una (si se dejan a 0 se usa lo estimado)">
+                        <group>
+                            <field name="pick_personas"/>
+                            <field name="pick_horas" widget="float_time"/>
+                            <field name="pack_personas"/>
+                            <field name="pack_horas" widget="float_time"/>
+                        </group>
+                        <group>
+                            <field name="exp_personas"/>
+                            <field name="exp_horas" widget="float_time"/>
+                            <field name="velocidad"/>
+                            <field name="tipo_pedido"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Unidades (de Odoo)">
+                            <field name="uds"/>
+                            <field name="lineas"/>
+                            <field name="skus"/>
+                            <field name="profundidad_sku"/>
+                            <field name="pedidos"/>
+                            <field name="outs"/>
+                            <field name="cajas"/>
+                            <field name="uds_caja"/>
+                            <field name="primera_caja"/>
+                            <field name="ultima_caja"/>
+                        </group>
+                        <group string="Peso, volumen y metros">
+                            <field name="peso_total"/>
+                            <field name="peso_ud"/>
+                            <field name="volumen_total"/>
+                            <field name="volumen_ud"/>
+                            <field name="uds_volumen_estimado"/>
+                            <field name="metros_total"/>
+                            <field name="metros_ud"/>
+                            <field name="recorridos"/>
+                            <field name="recalculado"/>
+                        </group>
+                    </group>
+                    <field name="notas" placeholder="Notas del día (incidencias, quién ha venido...)"/>
+                    <p class="text-muted">
+                        Unidades: las de las cajas cerradas ese día (y las de OUT validadas sin caja). Peso: tabla de pesos por
+                        tipo (estimada). Volumen: el del producto en Odoo o, si no tiene, los litros del tipo. Metros: recorrido de
+                        cada OUT (o de cada INT de oleada) por el plano de la nave, saliendo y volviendo a expediciones.
+                        Horas andando = metros ÷ velocidad; leyendo = horas de picking − andando.
+                    </p>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_dia_pivot" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.pivot</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="arch" type="xml">
+            <pivot string="KOROSHI KPI">
+                <field name="fecha" interval="week" type="row"/>
+                <field name="uds" type="measure"/>
+                <field name="hp_total" type="measure"/>
+                <field name="s_ud_total" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_dia_graph" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.graph</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="arch" type="xml">
+            <graph string="Segundos por prenda" type="bar">
+                <field name="fecha" interval="day" type="row"/>
+                <field name="s_ud_total" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_dia_search" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.search</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="fecha"/>
+                <field name="metodo"/>
+                <filter name="f_fecha" string="Día" date="fecha"/>
+                <filter name="f_sin_horas" string="Sin horas" domain="[('hp_total', '=', 0)]"/>
+                <filter name="f_estimadas" string="Horas estimadas" domain="[('horas_estimadas', '=', True)]"/>
+                <separator/>
+                <filter name="f_por_metodo" string="Por método" domain="[('metodo', '!=', 'mixto')]"/>
+                <filter name="f_completo" string="Día completo" domain="[('metodo', '=', 'mixto')]"/>
+                <separator/>
+                <filter name="f_tradicional" string="Tradicional" domain="[('metodo', '=', 'tradicional')]"/>
+                <filter name="f_zonas" string="Zonas" domain="[('metodo', '=', 'zonas')]"/>
+                <filter name="f_oleada" string="Oleada" domain="[('metodo', '=', 'oleada')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_dia" string="Día" context="{'group_by': 'fecha:day'}"/>
+                    <filter name="g_semana" string="Semana" context="{'group_by': 'fecha:week'}"/>
+                    <filter name="g_mes" string="Mes" context="{'group_by': 'fecha:month'}"/>
+                    <filter name="g_metodo" string="Método" context="{'group_by': 'metodo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_dia" model="ir.actions.act_window">
+        <field name="name">KOROSHI KPI por día</field>
+        <field name="res_model">koroshi.kpi.dia</field>
+        <field name="view_mode">tree,form,pivot,graph</field>
+        <field name="context">{'search_default_f_por_metodo': 1, 'search_default_g_dia': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Crea la ficha de un día y pulsa «Recalcular de Odoo».</p>
+            <p>Cada noche se crea sola la ficha del día. Apunta a mano las personas y las horas de cada fase.</p>
+        </field>
+    </record>
+
+    <!-- ======================= Pesos y litros por tipo ======================= -->
+    <record id="view_koroshi_kpi_peso_tipo_tree" model="ir.ui.view">
+        <field name="name">koroshi.kpi.peso.tipo.tree</field>
+        <field name="model">koroshi.kpi.peso.tipo</field>
+        <field name="arch" type="xml">
+            <tree string="Pesos por tipo" editable="bottom" decoration-warning="estimado">
+                <field name="codigo"/>
+                <field name="name"/>
+                <field name="gramos"/>
+                <field name="litros"/>
+                <field name="estimado"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_peso_tipo" model="ir.actions.act_window">
+        <field name="name">Pesos y litros por tipo</field>
+        <field name="res_model">koroshi.kpi.peso.tipo</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <menuitem id="menu_koroshi_kpi_root" name="KOROSHI KPI" parent="stock.menu_stock_root" sequence="90"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_kpi_dia" name="KPI por día" parent="menu_koroshi_kpi_root"
+              action="action_koroshi_kpi_dia" sequence="10"/>
+    <menuitem id="menu_koroshi_kpi_peso_tipo" name="Pesos y litros por tipo" parent="menu_koroshi_kpi_root"
+              action="action_koroshi_kpi_peso_tipo" sequence="20"/>
+</odoo>

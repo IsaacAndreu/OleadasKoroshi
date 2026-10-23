@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Resumen oleada 21-10</title>
+<style>
+@page { size: A4 portrait; margin: 14mm 14mm 15mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10.2pt; line-height: 1.38; color: #111; margin: 0; background: #fff; }
+.wrap { max-width: 182mm; margin: 0 auto; padding: 0 3mm; }
+.cap { border-top: 5px solid #e0a100; padding-top: 3mm; margin-bottom: 3mm; }
+.eyebrow { font-size: 8.5pt; letter-spacing: .08em; text-transform: uppercase; color: #555; }
+h1 { font-size: 21pt; margin: 1mm 0 1mm; }
+.sub { color: #444; margin: 0 0 3mm; }
+h2 { font-size: 13pt; margin: 6mm 0 2mm; padding: 1.3mm 3mm; background: #111; color: #fff; break-after: avoid; }
+h3 { font-size: 11pt; margin: 3.5mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.4mm 0; }
+ul, ol { margin: 1mm 0 2mm; padding-left: 5.5mm; }
+li { margin: .7mm 0; }
+.kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 2.5mm; margin: 3mm 0 2mm; }
+.kpi { border: 1.4px solid #111; border-radius: 2mm; padding: 2.2mm 2.8mm; break-inside: avoid; }
+.kpi b { display: block; font-size: 17pt; line-height: 1.1; }
+.kpi span { font-size: 8.6pt; color: #444; }
+table { width: 100%; border-collapse: collapse; margin: 1.5mm 0 2.5mm; font-size: 9.1pt; break-inside: avoid; }
+th, td { border: 1px solid #999; padding: 1.2mm 1.8mm; text-align: left; vertical-align: top; }
+th { background: #eee; font-size: 8.6pt; }
+td.r, th.r { text-align: right; white-space: nowrap; }
+tr.tot td { font-weight: 700; background: #f6f6f6; }
+.m { font-family: "Courier New", monospace; font-size: 9pt; }
+.ok { border-left: 5px solid #2e9a52; background: #edf7f0; padding: 2mm 3mm; margin: 2.5mm 0; break-inside: avoid; }
+.alerta { border-left: 5px solid #c8372d; background: #fbeeed; padding: 2mm 3mm; margin: 2.5mm 0; break-inside: avoid; }
+.nota { border-left: 5px solid #e0a100; background: #fdf6e3; padding: 2mm 3mm; margin: 2.5mm 0; break-inside: avoid; }
+.bar { height: 3.2mm; background: #e6e6e6; position: relative; min-width: 30mm; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: #111; }
+.linea { display: grid; grid-template-columns: 16mm 1fr; gap: 0 3mm; margin: 0; }
+.linea div { padding: 1mm 0; border-bottom: 1px solid #ddd; font-size: 9.3pt; }
+.linea div:nth-child(odd) { font-weight: 700; }
+.salto { break-before: page; }
+.pie { font-size: 8pt; color: #555; margin-top: 5mm; border-top: 1px solid #999; padding-top: 2mm; }
+@media (max-width: 640px) { .kpis { grid-template-columns: repeat(2, 1fr); } table { font-size: 8.4pt; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="cap">
+  <div class="eyebrow">KOROSHI · Effective Logistics · Informe de la prueba</div>
+  <h1>Oleada B-KOR-2110-01 · picking por zonas</h1>
+  <p class="sub">Primera prueba real del picking por zonas con lectura en la U. Miércoles 21/10/2026. Datos sacados de Odoo a las 9:30.</p>
+</div>
+
+<div class="kpis">
+  <div class="kpi"><b>10</b><span>tiendas en la oleada (1.620 u pedidas)</span></div>
+  <div class="kpi"><b>1.498</b><span>u cogidas de 1.503 con stock (99,7 %)</span></div>
+  <div class="kpi"><b>≈ 2 h 10</b><span>de picking con 5 personas (6:10 → 8:20)</span></div>
+  <div class="kpi"><b>≈ 180</b><span>u/hora por persona de media</span></div>
+</div>
+
+<div class="ok"><b>Resultado:</b> el reparto automático por zonas ha funcionado. 4 de las 5 zonas acabaron entre las 7:39 y las 7:55 (1 h 20 – 1 h 40) y se ha cogido el 99,7 % de lo que tenía stock. Odoo confirma que todo lo registrado es el artículo correcto y del hueco previsto. La U empezó a leer a las 9:14.</div>
+<div class="alerta"><b>Lo que hay que corregir:</b> la oleada no se puede cargar en la U mientras se está cogiendo; la PDA deja líneas «fantasma» al escanear un artículo equivocado y eso bloqueaba la validación; y hay stock mal ubicado en 14 huecos. Detalle en el apartado 4.</div>
+
+<h2>1 · Cómo se ha hecho</h2>
+<ol>
+  <li><b>2:15</b> · La acción planificada de Odoo elige las 10 tiendas del día (pedidos de tienda de hoy, de 20 u o más) que más se acercan a 2.000 u, y crea la oleada <span class="m">B-KOR-2110-01</span>.</li>
+  <li>Reparte lo reservado en <b>5 INT por zonas</b> (D1–D5), tramos seguidos de lineales cortados para que todos tarden lo mismo (lecturas, unidades y viajes según volumen y distancia), y un INT <b>ZX</b> para NAVE2.</li>
+  <li><b>6:10–6:20</b> · Cada operario coge su zona con carro de 2 baúles y lleva los baúles al SORTER / U.</li>
+  <li>Se valida cada INT, se comprueba la disponibilidad de las 10 OUT y la U lee prenda a prenda y la deja en la bahía de su tienda (SEQ 001–010).</li>
+</ol>
+<table>
+  <tr><th>SEQ</th><th>Tienda</th><th>OUT</th><th class="r">Pedido</th><th class="r">Reservado en SORTER</th><th class="r">Sin stock</th></tr>
+  <tr><td>001</td><td>K8 Itaroa</td><td class="m">20062</td><td class="r">151</td><td class="r">146</td><td class="r">5</td></tr>
+  <tr><td>002</td><td>K22 Vitoria</td><td class="m">20066</td><td class="r">146</td><td class="r">142</td><td class="r">4</td></tr>
+  <tr><td>003</td><td>K33 Puerto Venecia</td><td class="m">20071</td><td class="r">187</td><td class="r">150</td><td class="r">37</td></tr>
+  <tr><td>004</td><td>K41 Santander</td><td class="m">20076</td><td class="r">172</td><td class="r">154</td><td class="r">18</td></tr>
+  <tr><td>005</td><td>K42 Splau</td><td class="m">20077</td><td class="r">171</td><td class="r">164</td><td class="r">7</td></tr>
+  <tr><td>006</td><td>K45 Logroño Berceo</td><td class="m">20080</td><td class="r">216</td><td class="r">196</td><td class="r">20</td></tr>
+  <tr><td>007</td><td>K46 Irún</td><td class="m">20081</td><td class="r">141</td><td class="r">132</td><td class="r">9</td></tr>
+  <tr><td>008</td><td>K48 Bonaire</td><td class="m">20082</td><td class="r">137</td><td class="r">123</td><td class="r">14</td></tr>
+  <tr><td>009</td><td>K65 Baricentro</td><td class="m">20093</td><td class="r">158</td><td class="r">138</td><td class="r">20</td></tr>
+  <tr><td>010</td><td>K83 Garbera New</td><td class="m">20107</td><td class="r">141</td><td class="r">137</td><td class="r">4</td></tr>
+  <tr class="tot"><td></td><td>Total</td><td></td><td class="r">1.620</td><td class="r">1.482</td><td class="r">138</td></tr>
+</table>
+<p style="font-size:8.8pt;color:#444">«Sin stock»: 117 u que no tenían stock al crear la oleada y 21 u que no aparecieron en el hueco. De esas 21, 16 se encontraron después (INT/66213, 9:13) y están en el SORTER pendientes de reservar; 5 no han aparecido.</p>
+
+<h2>2 · Resultado por zona</h2>
+<table>
+  <tr><th>Zona</th><th>Lineales</th><th class="r">Huecos</th><th class="r">Uds</th><th>Empieza → acaba</th><th class="r">Tiempo</th><th class="r">u/h</th><th class="r">Metros previstos → hechos</th></tr>
+  <tr><td><b>D1</b></td><td>L17–L83</td><td class="r">165</td><td class="r">319 / 340</td><td>6:10 → ≈ 8:20</td><td class="r">≈ 2 h 10</td><td class="r">~147</td><td class="r">1,41 → 1,54 km</td></tr>
+  <tr><td><b>D2</b></td><td>L84–L103</td><td class="r">108</td><td class="r">425 / 425</td><td>6:16 → ≈ 7:50</td><td class="r">≈ 1 h 34</td><td class="r">~270</td><td class="r">0,94 → 1,07 km</td></tr>
+  <tr><td><b>D3</b></td><td>L102–L121</td><td class="r">80</td><td class="r">280 / 280</td><td>6:16 → ≈ 7:55</td><td class="r">≈ 1 h 40</td><td class="r">~170</td><td class="r">0,80 → 0,83 km</td></tr>
+  <tr><td><b>D4</b></td><td>L122–L125</td><td class="r">23</td><td class="r">215 / 215</td><td>6:17 → 7:48</td><td class="r">1 h 31</td><td class="r">~142</td><td class="r">0,32 → 0,20 km</td></tr>
+  <tr><td><b>D5</b></td><td>L125–L134</td><td class="r">44</td><td class="r">242 / 242</td><td>6:20 → 7:39</td><td class="r">1 h 19</td><td class="r">~184</td><td class="r">0,52 → 0,43 km</td></tr>
+  <tr><td><b>ZX</b></td><td>NAVE2</td><td class="r">1</td><td class="r">1 / 1</td><td>–</td><td class="r">–</td><td class="r">–</td><td class="r">–</td></tr>
+  <tr class="tot"><td>Total</td><td></td><td class="r">421</td><td class="r">1.482 / 1.503</td><td>6:10 → ≈ 8:20</td><td class="r">8 h 13 pers.</td><td class="r">~180</td><td class="r">4,0 → 4,1 km</td></tr>
+</table>
+<p style="font-size:8.8pt;color:#444">Metros: recorrido simplificado entre huecos, sin contar las vueltas a la U para vaciar baúles. «Uds»: cogidas en el primer pase / reservadas. D1 dejó 21 u (12 huecos) sin coger; 16 se recogieron después.</p>
+
+<h3>Por qué unas zonas van más rápido que otras: la implantación</h3>
+<p>Hoy había implantación: <b>11 artículos con todas las tallas a las 10 tiendas (831 u, la mitad de la oleada)</b>.</p>
+<table>
+  <tr><th>Zona</th><th>Implantación</th><th class="r">u por hueco (implantación)</th><th class="r">u por hueco (resto)</th><th class="r">u/h</th><th class="r">Huecos/h</th></tr>
+  <tr><td>D1</td><td>0 %</td><td class="r">–</td><td class="r">1,9</td><td class="r">~147</td><td class="r">~83</td></tr>
+  <tr><td>D2</td><td>62 % · tops TR (pequeños)</td><td class="r">12,0</td><td class="r">1,6</td><td class="r">~270</td><td class="r">~77</td></tr>
+  <tr><td>D3</td><td>56 % · TR y chaquetas</td><td class="r">7,4</td><td class="r">1,7</td><td class="r">~170</td><td class="r">~55</td></tr>
+  <tr><td>D4</td><td>100 % · chaquetas</td><td class="r">6,3</td><td class="r">–</td><td class="r">~142</td><td class="r">~22</td></tr>
+  <tr><td>D5</td><td>81 % · chaquetas</td><td class="r">5,7</td><td class="r">2,0</td><td class="r">~184</td><td class="r">~43</td></tr>
+</table>
+<ul>
+  <li><b>D2</b> es la más rápida en unidades porque cogía 12 tops de golpe en cada hueco y llenaba poco los baúles. En huecos por hora va igual que D1.</li>
+  <li><b>D4</b> también es todo implantación, pero de <b>chaquetas</b>: llenaba los baúles enseguida (~15 por baúl) y tenía que ir y volver a la U todo el rato.</li>
+  <li><b>D1</b> no tenía implantación: muchas paradas de 1–2 prendas en 66 lineales. Además empezó por el fondo y volvió hacia la entrada, en vez de seguir el orden del INT: es la que más ha andado (1,54 km).</li>
+</ul>
+
+<h2>3 · Material: baúles y cajas</h2>
+<table>
+  <tr><th>Concepto</th><th>Dato</th></tr>
+  <tr><td>Baúles llenos</td><td><b>105</b> · ≈ 14 prendas por baúl (≈ 90 litros). Con chaquetas, unas 15 por baúl.</td></tr>
+  <tr><td>Volumen cogido</td><td>≈ 9.400 litros (con el volumen de cada artículo en Odoo)</td></tr>
+  <tr><td>Cajas de envío 60×40×40</td><td><b>≈ 125–130</b> (≈ 75 litros útiles por caja; ≈ 13 por tienda). ≈ 1,2 cajas por baúl.</td></tr>
+  <tr><td>Previsión para 2.000 u</td><td>≈ 80–130 baúles llenos y ≈ 170 cajas, según cuántas chaquetas haya</td></tr>
+</table>
+
+<h2>4 · Incidencias y qué se ha hecho</h2>
+<table>
+  <tr><th style="width:24%">Qué pasó</th><th style="width:40%">Causa</th><th>Solución</th></tr>
+  <tr><td><b>La oleada no se podía cargar en la U</b> mientras se cogía</td><td>El programa solo carga OUT Preparadas, y las OUT esperan a que se validen los INT.</td><td>Hoy: esperar al final de cada INT (≈ 1 h de U parada). Preparada la acción para traspasar lo ya leído a media mañana (validar a medias + comprobar disponibilidad).</td></tr>
+  <tr><td><b>Error al validar los INT</b>: «el registro no existe (stock.move…)»</td><td>Cuando el operario escanea un artículo que no es, la PDA deja una línea «fantasma» (0 u). Al validar, Odoo crea un movimiento para ella, junta movimientos del mismo artículo y borra uno.</td><td>Hoy: acción que borra esas líneas (17) antes de validar; después se validó todo sin error. Mañana: nueva versión de la acción de zonas (un movimiento por artículo), que evita el problema de raíz.</td></tr>
+  <tr><td><b>Prendas equivocadas en los huecos</b></td><td>En los 17 escaneos fallidos, Odoo no tiene ese artículo en ese hueco: hay <b>stock mal ubicado en 14 huecos</b>. La PDA no cuenta la prenda equivocada, pero no avisa claro y puede acabar en el baúl.</td><td>Revisar en la U las prendas que no son de ninguna tienda. Recuento de los 14 huecos. Indicar a los operarios: si la PDA no suma, la prenda no va al baúl.</td></tr>
+  <tr><td><b>Se pulsó «Force Availability»</b> en la oleada (9:05)</td><td>Ese botón marca todo como hecho sin reservar stock (1.620 u, 1.182 líneas).</td><td>Deshecho con una acción a las 9:10: las 10 OUT quedaron Preparadas con 1.482 u reservadas y 0 hechas. <b>No usar ese botón ni «Hecho» en la oleada.</b></td></tr>
+  <tr><td><b>21 u no encontradas</b> en D1</td><td>Huecos saltados o vacíos (stock mal ubicado).</td><td>Quedaron en un INT pendiente; se encontraron 16. Las 5 restantes, a recuento.</td></tr>
+</table>
+
+<h2>5 · Cronología</h2>
+<div class="linea">
+  <div>2:15</div><div>La acción planificada crea la oleada y los 6 INT (D1–D5, ZX).</div>
+  <div>6:10</div><div>Empiezan los 5 operarios (D1 6:10; D2, D3, D4 6:16–6:17; D5 6:20).</div>
+  <div>≈ 7:15</div><div>Primer error al validar un INT (líneas fantasma). No se pierde nada: Odoo lo deshace.</div>
+  <div>7:39</div><div>D5 terminado y validado.</div>
+  <div>7:48–7:55</div><div>D4, D2 y D3 terminan de leer.</div>
+  <div>≈ 8:10</div><div>Se borran las 17 líneas fantasma; D2 y D3 se validan sin error (8:12–8:13).</div>
+  <div>8:20–8:27</div><div>ZX, D1 (con 21 u pendientes) y D4 validados.</div>
+  <div>9:05</div><div>Se pulsa «Force Availability» por error; deshecho a las 9:10.</div>
+  <div>9:11</div><div>Las 10 OUT Preparadas: 1.482 u reservadas en el SORTER.</div>
+  <div>9:13–9:14</div><div>Se recogen 16 de las 21 u pendientes. La U empieza a leer.</div>
+</div>
+
+<h2>6 · Próximos pasos</h2>
+<ol>
+  <li><b>Hoy:</b> «Comprobar disponibilidad» otra vez en las 10 OUT para reservar las 16 u encontradas a las 9:13. Validar cada OUT cuando su tienda esté terminada en la U.</li>
+  <li><b>Lectura en la U:</b> con una persona a ~225 u/h, 1.500 u son ≈ 6 h 40. Es el cuello de botella: decidir cuántas personas leen o empezar a leer antes, traspasando lo ya cogido a media mañana.</li>
+  <li><b>Mañana:</b> poner la versión nueva de la acción de zonas (un movimiento por artículo), después de probarla en simulación.</li>
+  <li>Recuento de los 14 huecos con stock mal ubicado y de las 5 u que no han aparecido.</li>
+  <li>Formación rápida: seguir el orden del INT (D1) y no echar al baúl lo que la PDA no suma.</li>
+  <li>En estudio, para los pedidos que no van en la oleada: partir cada pedido en una OUT por zona, sin pasar por la U. Hoy se ha probado con 25 tiendas (1.696 u, 118 OUT en 6 zonas).</li>
+</ol>
+
+<p class="pie">Fuente: Odoo 13 (empresa Effective Logistics), lectura de INT/66207–66213, OUT de la oleada B-KOR-2110-01 y stock del SORTER. Horas en hora local. Tiempos de fin de D2 y D3 aproximados (Odoo pone la misma hora a todas las líneas al validar). Informe generado el 21/10/2026 a las 9:30.</p>
+</div>
+</body>
+</html>

@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Tipos segun koroshishop.com (product_type). Gramos ESTIMADOS (la web no da pesos reales: 0 g o 300 g fijos):
+         pesar 10 prendas de cada tipo y corregir. Litros: media del volumen de Odoo, oct 2026 -->
+    <data noupdate="1">
+        <record id="peso_tipo_ja" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">JA</field><field name="name">Chaqueta / cazadora / abrigo</field>
+            <field name="gramos">800</field><field name="litros">8.4</field>
+        </record>
+        <record id="peso_tipo_tr" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">TR</field><field name="name">Jersey / punto</field>
+            <field name="gramos">400</field><field name="litros">3.6</field>
+        </record>
+        <record id="peso_tipo_pt" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">PT</field><field name="name">Pantalón / vaquero</field>
+            <field name="gramos">450</field><field name="litros">2.5</field>
+        </record>
+        <record id="peso_tipo_ml" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ML</field><field name="name">Camiseta manga larga</field>
+            <field name="gramos">200</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_mc" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">MC</field><field name="name">Camiseta manga corta</field>
+            <field name="gramos">160</field><field name="litros">1.2</field>
+        </record>
+        <record id="peso_tipo_ms" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">MS</field><field name="name">Camiseta sin mangas</field>
+            <field name="gramos">130</field><field name="litros">1.0</field>
+        </record>
+        <record id="peso_tipo_su" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">SU</field><field name="name">Sudadera</field>
+            <field name="gramos">500</field><field name="litros">4.6</field>
+        </record>
+        <record id="peso_tipo_cl" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">CL</field><field name="name">Camisa / sobrecamisa</field>
+            <field name="gramos">250</field><field name="litros">3.3</field>
+        </record>
+        <record id="peso_tipo_cc" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">CC</field><field name="name">Camisa niño</field>
+            <field name="gramos">150</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_bl" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">BL</field><field name="name">Blusa / camisa mujer</field>
+            <field name="gramos">180</field><field name="litros">0.9</field>
+        </record>
+        <record id="peso_tipo_tp" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">TP</field><field name="name">Top</field>
+            <field name="gramos">130</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_pl" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">PL</field><field name="name">Polo manga larga</field>
+            <field name="gramos">280</field><field name="litros">2.0</field>
+        </record>
+        <record id="peso_tipo_pc" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">PC</field><field name="name">Polo manga corta</field>
+            <field name="gramos">220</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_vs" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">VS</field><field name="name">Vestido / mono</field>
+            <field name="gramos">300</field><field name="litros">1.9</field>
+        </record>
+        <record id="peso_tipo_fa" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">FA</field><field name="name">Falda</field>
+            <field name="gramos">250</field><field name="litros">1.6</field>
+        </record>
+        <record id="peso_tipo_ps" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">PS</field><field name="name">Pantalón corto / bermuda</field>
+            <field name="gramos">250</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_wa" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">WA</field><field name="name">Bañador</field>
+            <field name="gramos">180</field><field name="litros">1.0</field>
+        </record>
+        <record id="peso_tipo_un" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">UN</field><field name="name">Ropa interior</field>
+            <field name="gramos">100</field><field name="litros">0.8</field>
+        </record>
+        <record id="peso_tipo_zn" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZN</field><field name="name">Pijama</field>
+            <field name="gramos">350</field><field name="litros">2.5</field>
+        </record>
+        <record id="peso_tipo_xc" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">XC</field><field name="name">Calzado (par, con caja)</field>
+            <field name="gramos">900</field><field name="litros">11.9</field>
+        </record>
+        <record id="peso_tipo_zt" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZT</field><field name="name">Calcetines / leotardos</field>
+            <field name="gramos">80</field><field name="litros">0.5</field>
+        </record>
+        <record id="peso_tipo_zc" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZC</field><field name="name">Cinturón</field>
+            <field name="gramos">150</field><field name="litros">0.8</field>
+        </record>
+        <record id="peso_tipo_zb" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZB</field><field name="name">Bolso</field>
+            <field name="gramos">500</field><field name="litros">14.5</field>
+        </record>
+        <record id="peso_tipo_za" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZA</field><field name="name">Mochila</field>
+            <field name="gramos">600</field><field name="litros">10.0</field>
+        </record>
+        <record id="peso_tipo_ha" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">HA</field><field name="name">Gorro / gorra</field>
+            <field name="gramos">100</field><field name="litros">0.8</field>
+        </record>
+        <record id="peso_tipo_hs" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">HS</field><field name="name">Bufanda / gorro y bufanda</field>
+            <field name="gramos">150</field><field name="litros">1.0</field>
+        </record>
+        <record id="peso_tipo_sg" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">SG</field><field name="name">Gafas de sol</field>
+            <field name="gramos">50</field><field name="litros">0.3</field>
+        </record>
+        <record id="peso_tipo_bi" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">BI</field><field name="name">Bisutería</field>
+            <field name="gramos">30</field><field name="litros">0.1</field>
+        </record>
+        <record id="peso_tipo_ts" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">TS</field><field name="name">Conjunto niña</field>
+            <field name="gramos">250</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_sm" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">SM</field><field name="name">Conjunto niño</field>
+            <field name="gramos">250</field><field name="litros">1.5</field>
+        </record>
+        <record id="peso_tipo_zf" model="koroshi.kpi.peso.tipo">
+            <field name="codigo">ZF</field><field name="name">Pañuelo</field>
+            <field name="gramos">60</field><field name="litros">0.2</field>
+        </record>
+    </data>
+</odoo>

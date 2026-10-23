@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Compactar lineales</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#5d6672;--ln:#dfe3e8;--ac:#1f6feb;--hl:#e6eefc}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--hl:#1d2b44}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--hl:#1d2b44}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1050px;margin:0 auto;padding:20px 16px}h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+.k{background:var(--card);border:1px solid var(--ln);border-radius:8px;padding:10px 12px}.k b{display:block;font-size:22px}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 9px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}
+.n{text-align:right}tr.hl td{background:var(--hl);font-weight:600}ul{padding-left:20px}li{margin:5px 0}
+</style></head><body><main>
+<h1>Compactar lineales — cuánto cuesta y qué se gana</h1>
+<div class="mut">Stock de KOROSHI en Odoo a las 16:30 del 21/10/2026: huecos «Lxx Pxx Cx» y las cajas KO_ que hay dentro. «Ocupado» = hueco con alguna unidad en Odoo. No se sabe por Odoo lo llenos que están físicamente: hay que confirmarlo en la nave.</div>
+
+<div class="kpis">
+<div class="k"><span class="mut">Lineales con stock</span><b>137</b></div>
+<div class="k"><span class="mut">Huecos ocupados</span><b>9.540 de 21.700</b></div>
+<div class="k"><span class="mut">Ocupación media</span><b>44 %</b></div>
+<div class="k"><span class="mut">Cajas KO en huecos</span><b>50.790</b></div>
+<div class="k"><span class="mut">Unidades en huecos</span><b>~346.000</b></div>
+</div>
+<p class="mut">Los lineales del fondo (L108–L136) y unos cuantos del medio (L23–24, L37–38, L43–44, L51–52, L57–58, L70–89) van al 20–35 % de huecos ocupados. L135 y L136 casi vacíos (5–6 huecos).</p>
+
+<h2>Cuántos lineales se pueden vaciar</h2>
+<div class="wrap"><table>
+<thead><tr><th>Llenar los que quedan al</th><th class="n">Lineales que se vacían</th><th class="n">Quedan con stock</th><th class="n">Huecos a mover</th><th class="n">Cajas KO a mover</th><th class="n">Unidades</th><th class="n">Horas-persona (1–1,5 min/caja)</th><th class="n">Noches con 4 personas (8 h)</th></tr></thead>
+<tbody>
+<tr class="hl"><td>70 %</td><td class="n">50</td><td class="n">87</td><td class="n">2.209</td><td class="n">6.443</td><td class="n">~102.000</td><td class="n">107 – 161 h</td><td class="n">3,5 – 5</td></tr>
+<tr><td>80 %</td><td class="n">61</td><td class="n">76</td><td class="n">2.874</td><td class="n">8.183</td><td class="n">~137.000</td><td class="n">136 – 205 h</td><td class="n">4,5 – 6,5</td></tr>
+<tr><td>90 %</td><td class="n">70</td><td class="n">67</td><td class="n">3.472</td><td class="n">11.010</td><td class="n">~170.000</td><td class="n">184 – 275 h</td><td class="n">6 – 8,5</td></tr>
+</tbody></table></div>
+<p class="mut">Recomendado 70 %: deja sitio para lo que entra. Se mueve caja KO entera con carro (varias cajas por viaje). En Odoo la caja KO es una ubicación: si se cambia la caja de hueco (ubicación padre) se mueve todo su stock sin hacer un traslado línea a línea. Si hubiera que hacer traslados internos artículo a artículo, el tiempo se multiplica por 3–5.</p>
+
+<h2>Qué se gana en el picking</h2>
+<ul>
+<li>El picking recorre <b>87 lineales en vez de 137</b> (−36 % de pasillo). Se reduce el <b>andar</b>, no las paradas: se siguen cogiendo los mismos huecos.</li>
+<li>Andar es ~25–30 % del tiempo de picking yendo OUT a OUT → <b>ahorro de ~9–11 %</b>. Con 10.000 u (~71 h-persona de picking): <b>~6–8 h-persona al día</b>; con 8 personas, <b>terminar ~50–60 min antes</b>.</li>
+<li>Se recupera en ~<b>15–20 días</b> de trabajo (107–161 h ÷ 7 h/día).</li>
+<li>Con 10.000 u, 8 personas y salida a las 13:00, ese ahorro <b>no basta</b> por sí solo: pasa de empezar a la 01:45 a empezar sobre las 02:45.</li>
+</ul>
+
+<h2>Qué ganaría más que compactar</h2>
+<ul>
+<li><b>Una pasada por zona</b> (carro con las cajas de las 25 tiendas de la ronda) en vez de ir OUT a OUT: el 21/10 se calculó ~17 km andando OUT a OUT contra ~3,5 km en una pasada (−80 % de andar). Es más ahorro que compactar y no cuesta mover stock.</li>
+<li><b>Ubicar por rotación (ABC):</b> los artículos que más salen, en los lineales centrales y a altura de mano. Si se compacta, hacerlo así: llevar lo que más sale hacia el centro y vaciar el fondo (L108–L136), que además es un tramo seguido.</li>
+<li><b>Juntar huecos del mismo artículo:</b> la mitad de los artículos (14.829 de 29.928) están en más de un hueco. Juntarlos reduce paradas; se puede hacer a la vez que se compacta.</li>
+</ul>
+
+<h2>Cómo lo haría</h2>
+<ul>
+<li>Por las noches o en horas valle, por tramos: primero el fondo L122–L136 (400 huecos ocupados, ~1.530 cajas KO, ~17.500 u: 1–1,5 noches con 4 personas).</li>
+<li>Cada noche, una lista en Odoo de qué cajas KO van a qué hueco (se puede sacar con una acción en modo diagnóstico) y al moverlas escanear caja + hueco nuevo.</li>
+<li>No mezclar con el picking del día siguiente: dejar el tramo terminado y cuadrado en Odoo antes de las zonas.</li>
+</ul>
+</main></body></html>

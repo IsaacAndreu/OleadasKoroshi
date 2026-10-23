@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_koroshi_monitor" model="ir.actions.client">
+        <field name="name">Monitor picking KOROSHI</field>
+        <field name="tag">koroshi_monitor</field>
+    </record>
+
+    <!-- v1.3: en la barra de Inventario, al lado de KOROSHI KPI (que va en la 90) -->
+    <menuitem id="menu_koroshi_monitor"
+              name="Monitor picking"
+              parent="stock.menu_stock_root"
+              action="action_koroshi_monitor"
+              sequence="91"
+              groups="stock.group_stock_user"/>
+</odoo>

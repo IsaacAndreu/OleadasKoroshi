@@ -7,8 +7,9 @@
 #   1. Comprueba TODAS las OUT seleccionadas. Si alguna no vale, no hace nada y avisa.
 #   2. Quita la reserva de las OUT (asi quedan libres las unidades de los huecos).
 #   3. Crea los INT por zona (max MAX_UDS_INT uds, trozos iguales, orden de recorrido):
-#      EFFEC/Stock -> SORTER, un movimiento por producto y hueco, con origen = el hueco
-#      exacto donde estaba reservada la OUT.
+#      EFFEC/Stock -> SORTER, UN movimiento por producto con UNA linea reservada por hueco
+#      (el hueco exacto donde estaba reservada la OUT). Con un movimiento por (producto, hueco)
+#      Odoo los fusionaba al validar a medias y daba "El registro no existe (stock.move ...)".
 #   4. Confirma y reserva los INT y comprueba que cada movimiento queda reservado
 #      entero y del mismo hueco. Si no, deshace TODO (no queda nada a medias).
 #   5. Pone origen SORTER a las OUT, que quedan en espera hasta que se validen los INT.
@@ -92,6 +93,9 @@ ZONA_HORARIA = 'Europe/Madrid'   # Odoo guarda las fechas en UTC: el dia (OUT de
 # Para hacerlo de verdad hay que poner SIMULAR = False.
 SIMULAR = True
 LINEAS_SIMULAR = 3               # lineas de ejemplo de cada INT en el aviso
+# Solo con SIMULAR: valida a medias el primer INT (una linea si, otra no) con "Crear pedido pendiente",
+# que es lo que fallaba el 21/10. Si sale el aviso con "Prueba validar a medias: OK", el arreglo funciona.
+PROBAR_VALIDAR_PARCIAL = True
 # Estimacion de km (plano simplificado de NAU-2): para comparar con como se hace hoy
 OUT_POR_VUELTA_HOY = 3           # cuantas OUT lleva hoy un picker en cada vuelta
 # -----------------------------------------------------------------------------
@@ -521,18 +525,28 @@ for p in outs:
 ints = env['stock.picking']
 resumen = []
 fallos_previos = []
+esperado = {}        # movimiento.id -> {hueco.id: uds} para comprobar la reserva
 for etiqueta, lineas_t in trozos_int:
-    # Un movimiento por (producto, hueco)
-    movs = {}
-    orden_movs = []
+    # UN movimiento por producto (sale de EFFEC/Stock) y UNA linea reservada por hueco.
+    # Antes era un movimiento por (producto, hueco): al validar un INT a medias con
+    # "Crear pedido pendiente", Odoo fusiona los movimientos del mismo producto, borra uno
+    # y da el error "El registro no existe o ha sido eliminado (stock.move ...)".
+    movs = {}            # producto.id -> [producto, uds]
+    orden_movs = []      # productos por orden de recorrido (primer hueco)
+    huecos = {}          # (producto.id, hueco.id) -> [producto, hueco, uds]
+    orden_huecos = []    # (producto, hueco) por orden de recorrido
     uds_t = 0.0
     outs_t = {}
     for x in lineas_t:
+        if x[5].id not in movs:
+            movs[x[5].id] = [x[5], 0.0]
+            orden_movs.append(x[5].id)
+        movs[x[5].id][1] += x[6]
         clave = (x[5].id, x[4].id)
-        if clave not in movs:
-            movs[clave] = [x[5], x[4], 0.0]
-            orden_movs.append(clave)
-        movs[clave][2] += x[6]
+        if clave not in huecos:
+            huecos[clave] = [x[5], x[4], 0.0]
+            orden_huecos.append(clave)
+        huecos[clave][2] += x[6]
         uds_t += x[6]
         outs_t[x[7].id] = 1
     picking = env['stock.picking'].create({
@@ -542,10 +556,9 @@ for etiqueta, lineas_t in trozos_int:
         'company_id': COMPANY_ID,
         'origin': etiqueta,
     })
-    creados = []      # (movimiento, hueco, uds) para volver a comprobarlos tras confirmar
-    for clave in orden_movs:
-        producto = movs[clave][0]
-        hueco = movs[clave][1]
+    mov_de = {}          # producto.id -> movimiento
+    for pid in orden_movs:
+        producto = movs[pid][0]
         movimiento = env['stock.move'].create({
             'name': producto.display_name,
             'picking_id': picking.id,
@@ -553,28 +566,32 @@ for etiqueta, lineas_t in trozos_int:
             'company_id': COMPANY_ID,
             'product_id': producto.id,
             'product_uom': producto.uom_id.id,
-            'product_uom_qty': movs[clave][2],
-            'location_id': hueco.id,
+            'product_uom_qty': movs[pid][1],
+            'location_id': stock_loc.id,
             'location_dest_id': sorter.id,
         })
-        # Al crear, el movimiento puede heredar las ubicaciones del albaran:
-        # se vuelven a fijar el hueco exacto y el SORTER antes de confirmar
-        if movimiento.location_id.id != hueco.id or movimiento.location_dest_id.id != sorter.id:
-            movimiento.write({'location_id': hueco.id, 'location_dest_id': sorter.id})
-        creados.append((movimiento, hueco, movs[clave][2]))
-    # Confirmar SIN fusionar: con action_confirm() Odoo junta los movimientos del mismo
-    # producto (aunque salgan de huecos distintos) y luego reserva todo de un solo hueco.
+        if movimiento.location_id.id != stock_loc.id or movimiento.location_dest_id.id != sorter.id:
+            movimiento.write({'location_id': stock_loc.id, 'location_dest_id': sorter.id})
+        mov_de[pid] = movimiento
+        esperado[movimiento.id] = {}
     picking.move_lines._action_confirm(merge=False)
-    for movimiento, hueco, uds_m in creados:
+    # Reservar cada hueco exacto, por orden de recorrido (asi las lineas salen en ese orden).
+    # No se usa action_assign(): podria reservar de otro hueco del mismo producto.
+    for clave in orden_huecos:
+        producto = huecos[clave][0]
+        hueco = huecos[clave][1]
+        uds_h = huecos[clave][2]
+        movimiento = mov_de[clave[0]]
         if not movimiento.exists():
-            fallos_previos.append('%s: un movimiento de %s se ha fusionado con otro' % (etiqueta, hueco.complete_name))
+            fallos_previos.append('%s: el movimiento de %s ha desaparecido al confirmar' % (etiqueta, producto.display_name))
             continue
-        if movimiento.location_id.id != hueco.id or movimiento.location_dest_id.id != sorter.id:
-            movimiento.write({'location_id': hueco.id, 'location_dest_id': sorter.id})
-        if abs(movimiento.product_uom_qty - uds_m) > 0.001:
-            fallos_previos.append('%s: %s en %s tiene %d uds y deberia tener %d' % (
-                etiqueta, movimiento.product_id.display_name, hueco.complete_name, movimiento.product_uom_qty, uds_m))
-    picking.action_assign()
+        esperado[movimiento.id][hueco.id] = uds_h
+        disponible = env['stock.quant']._get_available_quantity(producto, hueco, strict=True)
+        cogido = movimiento._update_reserved_quantity(uds_h, disponible, hueco, strict=True)
+        if abs(cogido - uds_h) > 0.001:
+            fallos_previos.append('%s: %s en %s - reservado %d de %d (disponible %d)' % (
+                etiqueta, producto.display_name, hueco.complete_name, cogido, uds_h, disponible))
+    picking.move_lines._recompute_state()
     ints |= picking
     resumen.append((etiqueta, picking, uds_t, len(orden_movs), len(outs_t)))
 
@@ -583,11 +600,18 @@ fallos = fallos_previos[:]
 for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     for m in picking.move_lines:
         reservado = 0.0
+        por_hueco = {}
         for ml in m.move_line_ids:
-            if ml.location_id.id != m.location_id.id:
-                fallos.append('%s: %s reservado en %s y no en %s' % (etiqueta, m.product_id.display_name,
-                                                                     ml.location_id.complete_name, m.location_id.complete_name))
+            if ml.location_id.id not in esperado.get(m.id, {}):
+                fallos.append('%s: %s reservado en %s, que no es uno de sus huecos' % (
+                    etiqueta, m.product_id.display_name, ml.location_id.complete_name))
+            por_hueco[ml.location_id.id] = por_hueco.get(ml.location_id.id, 0.0) + ml.product_uom_qty
             reservado += ml.product_uom_qty
+        for h_id in esperado.get(m.id, {}):
+            if abs(por_hueco.get(h_id, 0.0) - esperado[m.id][h_id]) > 0.001:
+                fallos.append('%s: %s en %s - reservado %d de %d' % (
+                    etiqueta, m.product_id.display_name, env['stock.location'].browse(h_id).complete_name,
+                    por_hueco.get(h_id, 0.0), esperado[m.id][h_id]))
         if abs(reservado - m.product_uom_qty) > 0.001:
             fallos.append('%s: %s en %s - reservado %d de %d' % (etiqueta, m.product_id.display_name,
                                                                 m.location_id.complete_name, reservado, m.product_uom_qty))
@@ -637,8 +661,8 @@ for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
     total += uds_t
     lin_min = 9999
     lin_max = 0
-    for m in picking.move_lines:
-        nombre_h = m.location_id.complete_name or ''
+    for ml in picking.move_line_ids:
+        nombre_h = ml.location_id.complete_name or ''
         pos_l = nombre_h.find(' - L')
         if pos_l >= 0:
             num = ''
@@ -654,8 +678,8 @@ for etiqueta, picking, uds_t, n_movs, n_outs in resumen:
                     lin_max = int(num)
     tramo = lin_max and ('L%02d-L%02d' % (lin_min, lin_max)) or 'sin lineal'
     est = estimado.get(etiqueta, (0, 0, 0, ''))
-    lineas_log.append('   %s | %s | %s | %d uds | %d movimientos | %d OUT | ~%d min, %d viajes, %d l, acaba ~%s | %s' % (
-        picking.name, etiqueta, tramo, uds_t, n_movs, n_outs, est[0], est[1], est[2], est[3], picking.state))
+    lineas_log.append('   %s | %s | %s | %d uds | %d productos, %d huecos | %d OUT | ~%d min, %d viajes, %d l, acaba ~%s | %s' % (
+        picking.name, etiqueta, tramo, uds_t, n_movs, len(picking.move_line_ids), n_outs, est[0], est[1], est[2], est[3], picking.state))
 lineas_log.append('Total: %d INT, %d uds' % (len(resumen), total))
 lineas_log.append(texto_km)
 
@@ -680,6 +704,26 @@ if SIMULAR:
                 break
             lineas_log.append('      %s | %s | %d' % (ml.location_id.name, ml.product_id.display_name, ml.product_uom_qty))
             n += 1
+    if PROBAR_VALIDAR_PARCIAL and ints:
+        # Como el picker: lee una linea si y otra no, y se valida con "Crear pedido pendiente"
+        prueba = ints[0]
+        n = 0
+        leidas = 0.0
+        for ml in prueba.move_line_ids:
+            if n % 2 == 0:
+                ml.write({'qty_done': ml.product_uom_qty})
+                leidas += ml.product_uom_qty
+            n += 1
+        wiz = env['stock.backorder.confirmation'].create({'pick_ids': [(4, prueba.id)]})
+        wiz.process()
+        pendiente = env['stock.picking'].search([('backorder_id', '=', prueba.id)], limit=1)
+        uds_pend = 0.0
+        for ml in pendiente.move_line_ids:
+            uds_pend += ml.product_uom_qty
+        lineas_log.append('')
+        lineas_log.append('Prueba validar a medias: OK. %s (%s) -> %s con %d uds al SORTER; pendiente %s con %d uds reservadas en %d huecos (%s)' % (
+            prueba.name, prueba.origin, prueba.state, leidas, pendiente.name or 'NINGUNO', uds_pend,
+            len(pendiente.move_line_ids), pendiente.state or ''))
     lineas_log.append('')
     lineas_log.append('Es una simulacion: al lanzar este aviso Odoo deshace todo. No queda ningun INT ni ningun cambio en las OUT.')
     lineas_log.append('Para hacerlo de verdad: SIMULAR = False.')

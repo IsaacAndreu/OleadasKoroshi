@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Análisis métodos picking</title>
+<style>
+:root{--bg:#f7f6f2;--card:#fff;--tx:#1d1d1b;--mut:#6b6a65;--ln:#dedcd4;--ok:#2e9a52;--ko:#c0392b;--hl:#fff4e0;--bar:#e9e7e0;--a:#1f5fbf;--b:#b5562a;--c:#2f7d4f}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121416;--card:#1b1f24;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--hl:#3a2f1a;--bar:#2c333b}}
+:root[data-theme="dark"]{--bg:#121416;--card:#1b1f24;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--hl:#3a2f1a;--bar:#2c333b}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:24px 16px 60px}
+h1{font-size:24px;margin:0 0 4px}h2{font-size:18px;margin:30px 0 10px}.mut{color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin:16px 0}
+.k{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:12px 14px}.k b{display:block;font-size:22px}.k span{color:var(--mut);font-size:13px}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:10px}
+table{border-collapse:collapse;width:100%;font-size:13.5px}th,td{padding:7px 9px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}
+th{color:var(--mut);font-size:12px}.n{text-align:right}tr.hl td{background:var(--hl)}
+.bien{color:var(--ok);font-weight:700}.mal{color:var(--ko);font-weight:700}
+.bars{display:grid;grid-template-columns:120px 1fr 70px;gap:6px 10px;align-items:center;font-size:13.5px}
+.bar{height:14px;background:var(--bar);border-radius:7px;overflow:hidden}.bar i{display:block;height:100%}
+ul{padding-left:20px}li{margin:6px 0}
+.card{background:var(--card);border:1px solid var(--ln);border-radius:10px;padding:14px 16px}
+</style></head><body><main>
+<h1>Miércoles, jueves y hoy: qué método rinde más</h1>
+<p class="mut">KOROSHI, pedidos de tienda. Datos de Odoo a las 7:39 del 23/10: cada matrícula CJ (caja cerrada) con su hora y sus unidades. Hoy va al ~17 %: lo de hoy es solo la primera hora y media.</p>
+
+<div class="kpis">
+<div class="k"><b>~81 u/h</b><span>por persona hoy (tradicional, 7 personas) — el mejor ritmo real medido sin U</span></div>
+<div class="k"><b>13,5 u/caja</b><span>hoy, contra 6,8 el jueves con zonas: la mitad de cajas</span></div>
+<div class="k"><b>1 OUT/pedido</b><span>hoy, contra 4,7 el jueves: XPO y bultos sin líos</span></div>
+<div class="k"><b>~14:05</b><span>hora prevista de fin hoy (4.527 u a ~580 u/h)</span></div>
+</div>
+
+<h2>Resumen por día y método</h2>
+<div class="wrap"><table>
+<thead><tr><th>Día</th><th>Método</th><th class="n">Uds en caja</th><th class="n">Pedidos</th><th class="n">OUT</th><th class="n">OUT/pedido</th><th class="n">Cajas</th><th class="n">Uds/caja</th><th>Cajas de … a …</th><th class="n">Personas</th><th class="n">u/h por persona</th></tr></thead>
+<tbody>
+<tr><td>Mié 21</td><td>Oleada + U</td><td class="n">1.325</td><td class="n">10</td><td class="n">10</td><td class="n">1</td><td class="n">94</td><td class="n">14,1</td><td>9:45 – 16:45 (U)</td><td class="n">5 picking + 1 U</td><td class="n">~85–95 *</td></tr>
+<tr><td>Mié 21</td><td>Zonas (Z-2110, 5 zonas)</td><td class="n">1.517</td><td class="n">21</td><td class="n">71</td><td class="n">3,4</td><td class="n">137</td><td class="n">11,1</td><td>9:19 – 12:54 (+D4 hasta 14:20)</td><td class="n">7–8</td><td class="n">~65 (98 si fueran 5)</td></tr>
+<tr><td>Mié 21</td><td>Tradicional (14 pedidos)</td><td class="n">1.290</td><td class="n">18</td><td class="n">18</td><td class="n">1</td><td class="n">103</td><td class="n">12,5</td><td>6:15 – 9:30</td><td class="n">?</td><td class="n">~76 **</td></tr>
+<tr><td>Jue 22</td><td>Zonas (Z-2210, 5 zonas + ZX)</td><td class="n">2.696</td><td class="n">50</td><td class="n">236</td><td class="n mal">4,7</td><td class="n">398</td><td class="n mal">6,8</td><td>7:41 – 16:41</td><td class="n">5–6 ***</td><td class="n">~77</td></tr>
+<tr class="hl"><td>Vie 23 (en curso)</td><td>Tradicional (TIENDA 23-10)</td><td class="n">745</td><td class="n">10</td><td class="n">10</td><td class="n bien">1</td><td class="n">55</td><td class="n bien">13,5</td><td>6:18 – 7:37</td><td class="n">6–7</td><td class="n bien">~81</td></tr>
+</tbody></table></div>
+<p class="mut">«Personas» y «u/h por persona» salen de las cajas cerradas cada cuarto de hora (cuántas OUT o zonas cierran caja a la vez); son estimaciones. * Oleada: picking 6:10–8:25 (~8 h-persona) + U ~7 h. ** Miércoles tradicional: no sabemos cuánta gente había. *** Jueves: una persona por zona; si había más gente por zona, el ritmo real por persona es más bajo.</p>
+
+<h2>Unidades por persona y hora</h2>
+<div class="card bars">
+<span>Oleada + U (mié)</span><div class="bar"><i style="width:90%;background:var(--a)"></i></div><b>~90</b>
+<span>Zonas (mié)</span><div class="bar"><i style="width:65%;background:var(--b)"></i></div><b>~65</b>
+<span>Zonas (jue)</span><div class="bar"><i style="width:77%;background:var(--b)"></i></div><b>~77</b>
+<span>Tradicional (mié)</span><div class="bar"><i style="width:76%;background:var(--c)"></i></div><b>~76</b>
+<span>Tradicional (hoy)</span><div class="bar"><i style="width:81%;background:var(--c)"></i></div><b>~81</b>
+</div>
+<p class="mut">La oleada sale bien por persona, pero todo pasa por un solo puesto de U (~230 u/h): con más volumen la U es el cuello de botella y el día se alarga (el miércoles se leyó hasta las 16:45).</p>
+
+<h2>Jueves con zonas, zona por zona</h2>
+<div class="wrap"><table>
+<thead><tr><th>Zona</th><th class="n">Uds</th><th class="n">OUT</th><th class="n">Cajas</th><th class="n">Uds/caja</th><th>Primera – última caja</th></tr></thead>
+<tbody>
+<tr><td>D1</td><td class="n">382</td><td class="n">44</td><td class="n">45</td><td class="n">8,5</td><td>8:20 – 16:22</td></tr>
+<tr><td>D2</td><td class="n">504</td><td class="n">48</td><td class="n">62</td><td class="n">8,1</td><td>8:25 – 15:10</td></tr>
+<tr><td>D3</td><td class="n">570</td><td class="n">48</td><td class="n">96</td><td class="n mal">5,9</td><td>8:25 – 16:41</td></tr>
+<tr><td>D4</td><td class="n">613</td><td class="n">47</td><td class="n">101</td><td class="n mal">6,1</td><td>7:49 – 16:28</td></tr>
+<tr><td>D5</td><td class="n">586</td><td class="n">43</td><td class="n">86</td><td class="n mal">6,8</td><td>7:41 – 15:25</td></tr>
+<tr><td>ZX</td><td class="n">41</td><td class="n">6</td><td class="n">8</td><td class="n">5,1</td><td>8:06 – 10:21</td></tr>
+</tbody></table></div>
+<p class="mut">El jueves se partió en 236 OUT para 50 pedidos: cada zona hacía ~45 OUT, casi una caja por OUT y muchas medio vacías. Por eso salieron 398 cajas para 2.696 u, hubo que juntar cajas en el muelle y los bultos de XPO no cuadraban (K34: 20 en Odoo, 16 físicos). Además el día se alargó: de 7:41 a 16:41 con la parada de 13:00 a 14:00.</p>
+
+<h2>Hoy (tradicional), primera hora y media</h2>
+<div class="wrap"><table>
+<thead><tr><th>Hora</th><th class="n">Uds en caja</th><th class="n">Personas cerrando cajas</th></tr></thead>
+<tbody>
+<tr><td>6:00 – 7:00</td><td class="n">421</td><td class="n">4 → 7</td></tr>
+<tr><td>7:00 – 7:39</td><td class="n">324</td><td class="n">6 – 7</td></tr>
+</tbody></table></div>
+<ul>
+<li>Equipo a <b>~580 u/h</b>; con 4.527 u el monitor da <b>fin hacia las 14:05</b> si se mantiene el ritmo y la gente.</li>
+<li>OUT grandes (40–175 u) y <b>~14 u por caja</b>: menos cajas, menos etiquetas, una etiqueta XPO por tienda sin mezclar.</li>
+<li>Cada persona hace pedidos enteros: en la primera hora las OUT grandes (126–152 u) llevan ~90–100 u cogidas, a ~90 u/h. Una OUT de ~150 u sale en ~1 h 40.</li>
+</ul>
+
+<h2>Conclusiones</h2>
+<ul>
+<li><b>Por persona, los tres métodos rinden parecido: 75–90 u/h.</b> Ninguno es claramente más rápido cogiendo. Las zonas no han dado la mejora esperada porque se va OUT a OUT igual, pero con 4–5 veces más OUT.</li>
+<li><b>Lo que cambia es lo de después:</b> el tradicional da la mitad de cajas que las zonas (13,5 contra 6,8 u/caja), una OUT por pedido y bultos que cuadran con XPO. El jueves se perdió mucho tiempo juntando cajas y cuadrando bultos.</li>
+<li><b>La oleada</b> coge rápido, pero depende de un solo puesto de U: para más volumen haría falta más de una U.</li>
+<li><b>Hoy acaba hacia las 14:00</b> con 6–7 personas. Para 10.000 u al ritmo de hoy (~81 u/h por persona) hacen falta ~125 horas-persona: unas <b>16 personas</b> 8 horas, o 12 personas empezando antes.</li>
+<li>Para afinar los números: apuntar cada día <b>cuántas personas</b> y de qué hora a qué hora. El monitor ya da una estimación en directo («personas cogiendo ahora»).</li>
+</ul>
+</main></body></html>

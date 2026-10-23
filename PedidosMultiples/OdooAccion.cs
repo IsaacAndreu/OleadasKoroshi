@@ -102,8 +102,9 @@ namespace PedidosMultiples
 				{ "limit", 1 },
 				{ "context", ContextoEmpresa(companyId) }
 			};
-			object[] ids = (object[])Modelos().ExecuteKw(db, uid, password, "stock.picking", "search", new object[1] { domain }, kwargs);
-			return (ids.Length > 0) ? Convert.ToInt32(ids[0]) : 0;
+			// search devuelve una lista de enteros: XML-RPC.NET la entrega como int[] (no object[])
+			Array ids = Modelos().ExecuteKw(db, uid, password, "stock.picking", "search", new object[1] { domain }, kwargs) as Array;
+			return (ids != null && ids.Length > 0) ? Convert.ToInt32(ids.GetValue(0)) : 0;
 		}
 
 		// Ejecuta la accion de servidor accionId sobre el albaran pickingId.

@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Monitor zonas Z-2210</title>
+<style>
+:root{
+  --bg:#f6f7f9; --card:#fff; --ink:#15181d; --muted:#626b78; --line:#e3e6eb;
+  --bar:#e9ecf1; --ok:#1f8a5b; --run:#2f6fdb; --idle:#9aa3af; --warn:#c77700;
+  --d1:#2f6fdb; --d2:#7a4fd6; --d3:#d0457c; --d4:#d97a1e; --d5:#1f8a8a; --zx:#6b7280;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#111418; --card:#1a1e24; --ink:#e8ebf0; --muted:#9aa3af; --line:#2a3039;
+    --bar:#262c35; --ok:#3fbf86; --run:#6c9cff; --idle:#6b7380; --warn:#f0a43a;
+    --d1:#6c9cff; --d2:#a585ff; --d3:#ff7aa8; --d4:#ffa654; --d5:#4cc7c7; --zx:#9aa3af;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#111418; --card:#1a1e24; --ink:#e8ebf0; --muted:#9aa3af; --line:#2a3039;
+  --bar:#262c35; --ok:#3fbf86; --run:#6c9cff; --idle:#6b7380; --warn:#f0a43a;
+  --d1:#6c9cff; --d2:#a585ff; --d3:#ff7aa8; --d4:#ffa654; --d5:#4cc7c7; --zx:#9aa3af;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+.wrap{max-width:1180px;margin:0 auto;padding:20px 16px 40px}
+h1{font-size:22px;margin:0 0 2px}
+.sub{color:var(--muted);margin:0 0 18px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}
+.kpi .l{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.04em}
+.kpi .s{color:var(--muted);font-size:12px}
+.bar{height:8px;background:var(--bar);border-radius:99px;overflow:hidden;margin-top:6px}
+.bar > i{display:block;height:100%;border-radius:99px}
+.zones{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+.zone{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--z);border-radius:10px;padding:14px}
+.zone h2{margin:0;font-size:20px;display:flex;align-items:center;gap:10px}
+.pill{font-size:11px;font-weight:700;padding:2px 8px;border-radius:99px;color:#fff;text-transform:uppercase;letter-spacing:.04em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:4px 14px;margin-top:10px;font-variant-numeric:tabular-nums}
+.grid2 div{display:flex;justify-content:space-between;border-bottom:1px dashed var(--line);padding:2px 0}
+.grid2 span:first-child{color:var(--muted)}
+.big{font-size:15px;margin-top:8px}
+.big b{font-size:22px}
+details{margin-top:10px}
+summary{cursor:pointer;color:var(--muted);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:6px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:4px 6px;border-bottom:1px solid var(--line)}
+th{color:var(--muted);font-weight:600}
+td.n,th.n{text-align:right}
+.sec{margin:26px 0 8px;font-size:16px}
+.hours{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;overflow-x:auto}
+.hrow{display:flex;align-items:center;gap:8px;margin:4px 0}
+.hrow .lab{width:34px;font-weight:700}
+.hrow .track{flex:1;display:flex;gap:2px;height:20px}
+.hrow .track i{display:block;height:100%;border-radius:3px}
+.note{color:var(--muted);font-size:12.5px;margin-top:22px}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-bottom:6px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:4px;vertical-align:-1px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Monitor de zonas · Z-2210</h1>
+  <p class="sub" id="sub"></p>
+  <div class="kpis" id="kpis"></div>
+  <div class="zones" id="zones"></div>
+  <h3 class="sec">Unidades leídas por hora</h3>
+  <div class="hours" id="hours"></div>
+  <p class="note">
+    Foto de Odoo (agrupaciones Z-2210-D1…D5 y ZX), no se actualiza sola. «Leídas» = unidades con cantidad hecha en las OUT;
+    «en caja» = leídas que ya están en una matrícula CJ cerrada. Ritmo = leídas desde la primera lectura de la zona hasta la hora de la foto
+    (trabajo real, no incluye pausas futuras). Hora local.
+  </p>
+</div>
+<script>
+const D = {"now":"2026-10-22T06:17:17.604Z","juntadas":3,
+"zones":{"D5":{"outs":43,"done":3,"abiertas":40,"ped":614,"leidas":57,"encaja":46,"cajas":6,"tiendas":43,"primera":"2026-10-22 05:41:50","ultima":"2026-10-22 06:10:28","pend":[["12","20820","K33 - PUERTO VENECIA",59,0,0],["48","20957","K83 - GARBERA NEW",30,0,0],["22","20859","K46 - IRÚN",22,0,0],["09","20419","K26 - MAGIC",20,0,0],["23","20433","K48 - BONAIRE",20,0,0],["33","20443","K63 - ALCALÁ MAGNA",20,0,0],["50","20460","K86 - L'ALJUB (ELX)",20,0,0],["25","20435","K55 - C.C. GRANCASA",18,0,0],["28","20438","K58 - EL MIRADOR",18,0,0],["08","20805","K24 - VALLADOLID",18,0,0],["10","20420","K29 - MARINEDA",17,0,0],["26","20436","K56 - ROSALEDA",17,0,0],["43","20453","K78 - PLAZA NORTE 2",16,0,0],["07","20801","K22 - VITORIA",16,0,0],["17","20841","K41 - SANTANDER",15,0,0],["21","20855","K45 - LOGROÑO BERCEO",15,0,0],["49","20459","K85 - PLATJA D'ARO",14,0,0],["16","20837","K40 - PALENCIA",14,0,0],["18","20845","K42 - SPLAU",14,0,0],["34","20906","K65 - BARICENTRO",14,0,0],["27","20879","K57 - LAS ROSAS",13,0,0],["32","20898","K62 - XANADU",13,0,0],["35","20910","K68 - SEVILLA LAGOH",13,0,0],["42","20937","K77 - CC SANT CUGAT",13,0,0],["11","20816","K31 - CONDOMINA",12,0,0],["29","20887","K59 - NEVADA SHOPPING",12,0,0],["31","20893","K61 - LA VITAL",12,0,0],["13","20825","K34 - GRAN VIA 2",11,0,0],["15","20833","K38 - ARTEA",11,0,0],["38","20921","K72 - DIAGONAL MAR",10,0,0],["39","20925","K73 - C/CARME 11-13 (LLEIDA)",10,0,0],["40","20929","K74 - CC SALERA",10,0,0],["41","20933","12 (BARCELONA)",10,0,0],["05","20795","K10 - MAXCENTER",14,10,0],["24","20867","K49 - URBIL",2,0,0],["14","20829","K37 - SALAMANCA",1,0,0],["19","20849","K43 - LEÓN",1,0,0],["36","20914","K69 - TARRAGONA",1,0,0],["46","20950","K81 - LA VAGUADA",1,0,0],["02","20782","K7 - ISLAZUL",1,1,0]]},
+"D1":{"outs":49,"done":0,"abiertas":49,"ped":546,"leidas":15,"encaja":0,"cajas":0,"tiendas":49,"primera":null,"ultima":null,"pend":[["03","20413","K8 - ITAROA",56,0,0],["17","20427","K41 - SANTANDER",37,0,0],["45","20455","K80 - GRAN JONQUERA",29,0,0],["12","20817","K33 - PUERTO VENECIA",27,0,0],["07","20417","K22 - VITORIA",23,0,0],["18","20428","K42 - SPLAU",23,0,0],["32","20442","K62 - XANADU",20,0,0],["38","20918","K72 - DIAGONAL MAR",19,0,0],["48","20954","K83 - GARBERA NEW",18,0,0],["22","20856","K46 - IRÚN",16,0,0],["06","20416","K17 - MALLORCA",15,0,0],["05","20792","K10 - MAXCENTER",14,0,0],["08","20802","K24 - VALLADOLID",13,0,0],["16","20834","K40 - PALENCIA",13,0,0],["15","20830","K38 - ARTEA",12,0,0],["19","20429","K43 - LEÓN",11,0,0],["25","20868","K55 - C.C. GRANCASA",11,0,0],["26","20872","K56 - ROSALEDA",10,0,0],["28","20880","K58 - EL MIRADOR",10,0,0],["14","20424","K37 - SALAMANCA",9,0,0],["35","20907","K68 - SEVILLA LAGOH",9,0,0],["42","20934","K77 - CC SANT CUGAT",9,0,0],["44","20454","K79 - PARQUE CORREDOR",8,0,0],["09","20806","K26 - MAGIC",8,0,0],["11","20813","K31 - CONDOMINA",8,0,0],["29","20884","K59 - NEVADA SHOPPING",8,0,0],["39","20922","K73 - C/CARME 11-13 (LLEIDA)",8,0,0],["23","20860","K48 - BONAIRE",7,0,0],["34","20903","K65 - BARICENTRO",7,0,0],["43","20938","K78 - PLAZA NORTE 2",7,0,0],["30","20440","K60 - LOS PRADOS",6,0,0],["47","20457","K82 - PARQUE PRINCIPADO",6,0,0],["04","20787","K9 - BALLONTI",6,0,0],["27","20876","K57 - LAS ROSAS",6,0,0],["46","20947","K81 - LA VAGUADA",5,0,0],["36","20446","K69 - TARRAGONA",4,0,0],["13","20822","K34 - GRAN VIA 2",4,0,0],["20","20850","K44 - GIRONA",4,0,0],["21","20852","K45 - LOGROÑO BERCEO",3,0,0],["31","20890","K61 - LA VITAL",3,0,0],["37","20915","K70 - REUS",3,0,0],["41","20930","12 (BARCELONA)",3,0,0],["02","20412","K7 - ISLAZUL",14,12,0],["24","20864","K49 - URBIL",2,0,0],["33","20899","K63 - ALCALÁ MAGNA",2,0,0],["40","20926","K74 - CC SALERA",2,0,0],["49","20958","K85 - PLATJA D'ARO",2,0,0],["50","20962","K86 - L'ALJUB (ELX)",2,0,0],["01","20774","K1 - MAQUINISTA",4,3,0]]},
+"D2":{"outs":48,"done":0,"abiertas":48,"ped":524,"leidas":0,"encaja":0,"cajas":0,"tiendas":48,"primera":null,"ultima":null,"pend":[["48","20458","K83 - GARBERA NEW",81,0,0],["12","20818","K33 - PUERTO VENECIA",41,0,0],["22","20432","K46 - IRÚN",30,0,0],["17","20838","K41 - SANTANDER",28,0,0],["21","20431","K45 - LOGROÑO BERCEO",23,0,0],["05","20793","K10 - MAXCENTER",20,0,0],["04","20414","K9 - BALLONTI",18,0,0],["03","20783","K8 - ITAROA",17,0,0],["18","20842","K42 - SPLAU",16,0,0],["32","20895","K62 - XANADU",14,0,0],["09","20807","K26 - MAGIC",13,0,0],["08","20803","K24 - VALLADOLID",12,0,0],["23","20861","K48 - BONAIRE",12,0,0],["43","20939","K78 - PLAZA NORTE 2",12,0,0],["33","20900","K63 - ALCALÁ MAGNA",11,0,0],["38","20919","K72 - DIAGONAL MAR",11,0,0],["07","20798","K22 - VITORIA",10,0,0],["40","20927","K74 - CC SALERA",9,0,0],["15","20831","K38 - ARTEA",8,0,0],["29","20885","K59 - NEVADA SHOPPING",8,0,0],["20","20430","K44 - GIRONA",7,0,0],["24","20434","K49 - URBIL",7,0,0],["46","20456","K81 - LA VAGUADA",7,0,0],["28","20881","K58 - EL MIRADOR",7,0,0],["42","20935","K77 - CC SANT CUGAT",7,0,0],["49","20959","K85 - PLATJA D'ARO",7,0,0],["16","20835","K40 - PALENCIA",6,0,0],["37","20447","K70 - REUS",5,0,0],["10","20810","K29 - MARINEDA",5,0,0],["25","20869","K55 - C.C. GRANCASA",5,0,0],["27","20877","K57 - LAS ROSAS",5,0,0],["30","20888","K60 - LOS PRADOS",5,0,0],["39","20923","K73 - C/CARME 11-13 (LLEIDA)",5,0,0],["47","20951","K82 - PARQUE PRINCIPADO",5,0,0],["02","20779","K7 - ISLAZUL",4,0,0],["06","20796","K17 - MALLORCA",4,0,0],["11","20814","K31 - CONDOMINA",4,0,0],["13","20823","K34 - GRAN VIA 2",4,0,0],["14","20826","K37 - SALAMANCA",4,0,0],["19","20846","K43 - LEÓN",4,0,0],["36","20911","K69 - TARRAGONA",4,0,0],["44","20943","K79 - PARQUE CORREDOR",4,0,0],["01","20775","K1 - MAQUINISTA",3,0,0],["35","20908","K68 - SEVILLA LAGOH",3,0,0],["41","20931","12 (BARCELONA)",3,0,0],["26","20873","K56 - ROSALEDA",2,0,0],["31","20891","K61 - LA VITAL",2,0,0],["34","20904","K65 - BARICENTRO",2,0,0]]},
+"D4":{"outs":47,"done":2,"abiertas":45,"ped":663,"leidas":41,"encaja":38,"cajas":6,"tiendas":47,"primera":"2026-10-22 05:49:24","ultima":"2026-10-22 06:16:49","pend":[["12","20819","K33 - PUERTO VENECIA",52,0,0],["48","20956","K83 - GARBERA NEW",31,0,0],["38","20448","K72 - DIAGONAL MAR",27,0,0],["17","20840","K41 - SANTANDER",27,0,0],["05","20415","K10 - MAXCENTER",25,0,0],["15","20425","K38 - ARTEA",24,0,0],["27","20437","K57 - LAS ROSAS",21,0,0],["42","20452","K77 - CC SANT CUGAT",21,0,0],["35","20445","K68 - SEVILLA LAGOH",20,0,0],["39","20449","K73 - C/CARME 11-13 (LLEIDA)",20,0,0],["16","20426","K40 - PALENCIA",19,0,0],["34","20444","K65 - BARICENTRO",18,0,0],["41","20451","12 (BARCELONA)",18,0,0],["29","20439","K59 - NEVADA SHOPPING",17,0,0],["22","20858","K46 - IRÚN",17,0,0],["11","20421","K31 - CONDOMINA",16,0,0],["13","20423","K34 - GRAN VIA 2",16,0,0],["40","20450","K74 - CC SALERA",16,0,0],["32","20897","K62 - XANADU",15,0,0],["31","20441","K61 - LA VITAL",14,0,0],["21","20854","K45 - LOGROÑO BERCEO",14,0,0],["28","20883","K58 - EL MIRADOR",14,0,0],["18","20844","K42 - SPLAU",13,0,0],["23","20863","K48 - BONAIRE",13,0,0],["26","20875","K56 - ROSALEDA",13,0,0],["43","20941","K78 - PLAZA NORTE 2",13,0,0],["25","20871","K55 - C.C. GRANCASA",12,0,0],["33","20902","K63 - ALCALÁ MAGNA",12,0,0],["49","20961","K85 - PLATJA D'ARO",12,0,0],["07","20800","K22 - VITORIA",11,0,0],["09","20809","K26 - MAGIC",11,0,0],["10","20812","K29 - MARINEDA",11,0,0],["08","20804","K24 - VALLADOLID",10,0,0],["50","20964","K86 - L'ALJUB (ELX)",9,0,0],["04","20789","K9 - BALLONTI",16,12,2],["19","20848","K43 - LEÓN",3,0,0],["36","20913","K69 - TARRAGONA",3,0,0],["46","20949","K81 - LA VAGUADA",3,0,0],["14","20828","K37 - SALAMANCA",2,0,0],["24","20866","K49 - URBIL",1,0,0],["37","20916","K70 - REUS",1,0,0],["44","20945","K79 - PARQUE CORREDOR",1,0,0],["45","20946","K80 - GRAN JONQUERA",1,0,0],["47","20953","K82 - PARQUE PRINCIPADO",1,0,0],["02","20781","K7 - ISLAZUL",3,3,0]]},
+"D3":{"outs":48,"done":0,"abiertas":48,"ped":586,"leidas":0,"encaja":0,"cajas":0,"tiendas":48,"primera":null,"ultima":null,"pend":[["12","20422","K33 - PUERTO VENECIA",74,0,0],["48","20955","K83 - GARBERA NEW",60,0,0],["08","20418","K24 - VALLADOLID",32,0,0],["17","20839","K41 - SANTANDER",22,0,0],["38","20920","K72 - DIAGONAL MAR",19,0,0],["03","20784","K8 - ITAROA",17,0,0],["22","20857","K46 - IRÚN",17,0,0],["16","20836","K40 - PALENCIA",16,0,0],["21","20853","K45 - LOGROÑO BERCEO",15,0,0],["09","20808","K26 - MAGIC",14,0,0],["26","20874","K56 - ROSALEDA",14,0,0],["41","20932","12 (BARCELONA)",14,0,0],["18","20843","K42 - SPLAU",13,0,0],["05","20794","K10 - MAXCENTER",12,0,0],["07","20799","K22 - VITORIA",12,0,0],["25","20870","K55 - C.C. GRANCASA",12,0,0],["43","20940","K78 - PLAZA NORTE 2",12,0,0],["04","20788","K9 - BALLONTI",11,0,0],["15","20832","K38 - ARTEA",11,0,0],["32","20896","K62 - XANADU",11,0,0],["33","20901","K63 - ALCALÁ MAGNA",11,0,0],["49","20960","K85 - PLATJA D'ARO",11,0,0],["01","20776","K1 - MAQUINISTA",10,0,0],["11","20815","K31 - CONDOMINA",10,0,0],["29","20886","K59 - NEVADA SHOPPING",10,0,0],["34","20905","K65 - BARICENTRO",10,0,0],["35","20909","K68 - SEVILLA LAGOH",10,0,0],["39","20924","K73 - C/CARME 11-13 (LLEIDA)",10,0,0],["27","20878","K57 - LAS ROSAS",9,0,0],["50","20963","K86 - L'ALJUB (ELX)",9,0,0],["10","20811","K29 - MARINEDA",8,0,0],["13","20824","K34 - GRAN VIA 2",8,0,0],["23","20862","K48 - BONAIRE",8,0,0],["28","20882","K58 - EL MIRADOR",8,0,0],["31","20892","K61 - LA VITAL",8,0,0],["40","20928","K74 - CC SALERA",8,0,0],["42","20936","K77 - CC SANT CUGAT",8,0,0],["02","20780","K7 - ISLAZUL",4,0,0],["20","20851","K44 - GIRONA",4,0,0],["24","20865","K49 - URBIL",3,0,0],["06","20797","K17 - MALLORCA",2,0,0],["19","20847","K43 - LEÓN",2,0,0],["44","20944","K79 - PARQUE CORREDOR",2,0,0],["14","20827","K37 - SALAMANCA",1,0,0],["30","20889","K60 - LOS PRADOS",1,0,0],["36","20912","K69 - TARRAGONA",1,0,0],["46","20948","K81 - LA VAGUADA",1,0,0],["47","20952","K82 - PARQUE PRINCIPADO",1,0,0]]},
+"ZX":{"outs":6,"done":1,"abiertas":5,"ped":41,"leidas":14,"encaja":10,"cajas":2,"tiendas":6,"primera":"2026-10-22 06:06:14","ultima":"2026-10-22 06:12:38","pend":[["12","20821","K33 - PUERTO VENECIA",25,11,1],["37","20917","K70 - REUS",11,0,0],["31","20894","K61 - LA VITAL",1,0,0],["43","20942","K78 - PLAZA NORTE 2",1,0,0],["04","20791","K9 - BALLONTI",1,1,0]]}},
+"hourly":{"D1":{"7":3,"8":12},"D5":{"7":31,"8":26},"D4":{"7":16,"8":25},"ZX":{"8":14}},
+"rd":{"D1":{"a":"2026-10-22 05:58:29","b":"2026-10-22 06:09:26"},"D5":{"a":"2026-10-22 05:46:09","b":"2026-10-22 06:16:08"},"D4":{"a":"2026-10-22 05:53:28","b":"2026-10-22 06:16:49"},"ZX":{"a":"2026-10-22 06:06:20","b":"2026-10-22 06:16:28"}}};
+
+const ORDER=["D1","D2","D3","D4","D5","ZX"];
+const RANGOS={D1:"L01–L73",D2:"L74–L93",D3:"L94–L107",D4:"L108–L121",D5:"L122–L136",ZX:"fuera de zona"};
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const utc=s=>new Date(s.replace(' ','T')+'Z');
+const hm=d=>d.toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'});
+const fmt=n=>Math.round(n).toLocaleString('es-ES');
+const now=new Date(D.now);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+let T={ped:0,leidas:0,encaja:0,outs:0,done:0,cajas:0};
+ORDER.forEach(z=>{const o=D.zones[z]; if(!o)return; for(const k in T)T[k]+=o[k];});
+const enMarcha=ORDER.filter(z=>D.rd[z]).length;
+
+document.getElementById('sub').textContent =
+  'Foto de Odoo a las '+hm(now)+' del '+now.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit',year:'numeric'})+
+  ' · '+enMarcha+' de '+ORDER.length+' zonas en marcha';
+
+const pct=(a,b)=>b?Math.round(100*a/b):0;
+const kpi=(l,v,s,p,c)=>`<div class="kpi"><div class="l">${l}</div><div class="v">${v}</div>${s?`<div class="s">${s}</div>`:''}${p!=null?`<div class="bar"><i style="width:${p}%;background:${c||css('--run')}"></i></div>`:''}</div>`;
+document.getElementById('kpis').innerHTML =
+  kpi('Uds leídas', fmt(T.leidas), 'de '+fmt(T.ped)+' · '+pct(T.leidas,T.ped)+' %', pct(T.leidas,T.ped)) +
+  kpi('Uds en caja', fmt(T.encaja), pct(T.encaja,T.ped)+' % del total', pct(T.encaja,T.ped), css('--ok')) +
+  kpi('Cajas cerradas', fmt(T.cajas), 'matrículas CJ con unidades') +
+  kpi('OUT validadas', T.done+' / '+T.outs, pct(T.done,T.outs)+' %', pct(T.done,T.outs), css('--ok')) +
+  kpi('Uds pendientes', fmt(T.ped-T.leidas), 'por leer') +
+  kpi('Cajas juntadas hoy', D.juntadas, 'con «Juntar cajas»');
+
+const estado=(z,o)=>{
+  if(o.outs && o.done===o.outs) return ['Terminada',css('--ok')];
+  if(D.rd[z]) return ['En marcha',css('--run')];
+  return ['Sin empezar',css('--idle')];
+};
+document.getElementById('zones').innerHTML = ORDER.filter(z=>D.zones[z]).map(z=>{
+  const o=D.zones[z], r=D.rd[z]; const [st,stc]=estado(z,o);
+  let ritmo='—', fin='—', ini='—', ult='—';
+  if(r){ ini=hm(utc(r.a)); ult=hm(utc(r.b));
+    const h=Math.max((now-utc(r.a))/3600000, 1/60); const uh=o.leidas/h; ritmo=fmt(uh)+' u/h';
+    const rest=o.ped-o.leidas; if(uh>0){ const hh=rest/uh; fin=(hh>=1?Math.floor(hh)+' h ':'')+Math.round((hh%1)*60)+' min'; } }
+  const p=pct(o.leidas,o.ped), pc=pct(o.encaja,o.ped);
+  const filas=o.pend.slice(0,12).map(x=>`<tr><td>${esc(x[0])}</td><td>${esc(x[1])}</td><td>${esc(x[2])}</td><td class="n">${x[4]} / ${x[3]}</td><td class="n">${x[5]}</td></tr>`).join('');
+  return `<section class="zone" style="--z:var(--${z.toLowerCase()})">
+    <h2>${z} <span class="pill" style="background:${stc}">${st}</span><span style="margin-left:auto;font-size:12px;color:var(--muted);font-weight:500">${RANGOS[z]}</span></h2>
+    <div class="big"><b>${fmt(o.leidas)}</b> / ${fmt(o.ped)} uds leídas · ${p} %</div>
+    <div class="bar" style="position:relative"><i style="width:${p}%;background:var(--z)"></i></div>
+    <div class="grid2">
+      <div><span>En caja</span><span>${fmt(o.encaja)} uds (${pc} %)</span></div>
+      <div><span>Cajas cerradas</span><span>${o.cajas}</span></div>
+      <div><span>OUT validadas</span><span>${o.done} / ${o.outs}</span></div>
+      <div><span>Tiendas</span><span>${o.tiendas}</span></div>
+      <div><span>Primera lectura</span><span>${ini}</span></div>
+      <div><span>Última lectura</span><span>${ult}</span></div>
+      <div><span>Ritmo</span><span>${ritmo}</span></div>
+      <div><span>Le queda a este ritmo</span><span>${fin}</span></div>
+    </div>
+    <details><summary>OUT abiertas con más uds por leer (${o.abiertas})</summary>
+      <table><thead><tr><th>Caja</th><th>OUT</th><th>Tienda</th><th class="n">Leídas / pedidas</th><th class="n">CJ</th></tr></thead><tbody>${filas}</tbody></table>
+    </details>
+  </section>`;
+}).join('');
+
+// Por hora
+const horas=[]; ORDER.forEach(z=>{const h=D.hourly[z]; if(h)Object.keys(h).forEach(k=>{if(!horas.includes(+k))horas.push(+k)});});
+horas.sort((a,b)=>a-b);
+let max=1; horas.forEach(h=>{let s=0; ORDER.forEach(z=>{s+=(D.hourly[z]||{})[h]||0}); max=Math.max(max,s);});
+document.getElementById('hours').innerHTML =
+  '<div class="legend">'+ORDER.map(z=>`<span><i style="background:var(--${z.toLowerCase()})"></i>${z}</span>`).join('')+'</div>'+
+  (horas.length? horas.map(h=>{let s=0; const segs=ORDER.map(z=>{const v=(D.hourly[z]||{})[h]||0; s+=v; return v?`<i title="${z}: ${v} uds" style="width:${100*v/max}%;background:var(--${z.toLowerCase()})"></i>`:'';}).join('');
+    return `<div class="hrow"><span class="lab">${String(h).padStart(2,'0')}h</span><span class="track">${segs}</span><span style="width:60px;text-align:right;font-variant-numeric:tabular-nums">${s} uds</span></div>`;}).join('')
+  : '<p class="s">Todavía no hay lecturas.</p>');
+</script>
+</body>
+</html>

@@ -1,0 +1,40 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Simulación 10.000 u</title>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1b1f24;--mut:#5d6672;--ln:#dfe3e8;--ac:#1f6feb;--ok:#dff3e4;--ko:#fde8e8}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--ok:#1e3a26;--ko:#4a2326}}
+:root[data-theme="dark"]{--bg:#111418;--card:#1a1f25;--tx:#e6e9ed;--mut:#9aa4af;--ln:#2c333b;--ac:#58a6ff;--ok:#1e3a26;--ko:#4a2326}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.45 system-ui,Segoe UI,Arial,sans-serif}
+main{max-width:1100px;margin:0 auto;padding:20px 16px}
+h1{font-size:22px;margin:0 0 4px}h2{font-size:17px;margin:28px 0 8px}.mut{color:var(--mut)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:16px 0}
+.k{background:var(--card);border:1px solid var(--ln);border-radius:8px;padding:10px 12px}.k b{display:block;font-size:22px}
+.wrap{overflow-x:auto;background:var(--card);border:1px solid var(--ln);border-radius:8px}
+table{border-collapse:collapse;width:100%;font-size:13px}th,td{padding:6px 9px;border-bottom:1px solid var(--ln);text-align:left;white-space:nowrap}
+.n{text-align:right}.ok{background:var(--ok)}.ko{background:var(--ko)}ul{padding-left:20px}li{margin:4px 0}
+</style></head><body><main>
+<h1>Simulación 10.000 u por zonas — salida a las 13:00</h1>
+<div class="mut">Base: la simulación de 8 zonas con los pedidos del 21/10 (4.344 u, 50 tiendas), escalada a 10.000 u con la misma mezcla de artículos y el mismo tamaño de pedido. Tiempo = modelo de la acción × 3.1 (lo que pasó el 21/10). Agrupar cajas y expedir: 1 h – 1 h 30 al final. Todo tiene que estar fuera a las <b>13:00</b>.</div>
+<div class="kpis">
+<div class="k"><span class="mut">Tiendas</span><b>~115</b></div>
+<div class="k"><span class="mut">Rondas de 25</span><b>5</b></div>
+<div class="k"><span class="mut">OUT / cajas (mín.)</span><b>~783</b></div>
+<div class="k"><span class="mut">Picking, zona más larga (8 p.)</span><b>~9 h 45</b></div>
+<div class="k"><span class="mut">Con agrupar + expedir</span><b>10 h 45 – 11 h 15</b></div>
+</div>
+<h2>Zonas con 8 personas</h2>
+<div class="wrap"><table><tr><th>Zona</th><th>Tramo</th><th class="n">Uds</th><th class="n">OUT</th><th class="n">Tiempo picking</th></tr><tr><td><b>D1</b></td><td>L2-L54</td><td class="n"><b>711</b></td><td class="n">97</td><td class="n">~8 h 48</td></tr><tr><td><b>D2</b></td><td>L55-L74</td><td class="n"><b>734</b></td><td class="n">104</td><td class="n">~9 h 02</td></tr><tr><td><b>D3</b></td><td>L75-L88</td><td class="n"><b>764</b></td><td class="n">106</td><td class="n">~9 h 24</td></tr><tr><td><b>D4</b></td><td>L89-L101</td><td class="n"><b>1.167</b></td><td class="n">108</td><td class="n">~9 h 09</td></tr><tr><td><b>D5</b></td><td>L102-L104</td><td class="n"><b>2.378</b></td><td class="n">87</td><td class="n">~9 h 45</td></tr><tr><td><b>D6</b></td><td>L105-L121</td><td class="n"><b>1.121</b></td><td class="n">104</td><td class="n">~9 h 38</td></tr><tr><td><b>D7</b></td><td>L122-L126</td><td class="n"><b>2.049</b></td><td class="n">69</td><td class="n">~9 h 02</td></tr><tr><td><b>D8</b></td><td>L127-L136</td><td class="n"><b>1.004</b></td><td class="n">87</td><td class="n">~6 h 11</td></tr><tr><td><b>ZX</b></td><td>fuera de lineal</td><td class="n"><b>71</b></td><td class="n">21</td><td class="n">la hace D8</td></tr></table></div>
+<h2>Cuánto se tarda según las personas</h2>
+<div class="wrap"><table><tr><th>Personas (zonas)</th><th class="n">Picking</th><th class="n">+ agrupar y expedir</th><th class="n">Inicio 3:00 → fin</th><th class="n">Inicio 5:00 → fin</th><th class="n">Inicio 6:00 → fin</th><th class="n">Empezar como muy tarde</th></tr><tr><td><b>8</b></td><td class="n">9 h 45</td><td class="n">10 h 45 – 11 h 15</td><td class="n ko">13:45 – 14:15</td><td class="n ko">15:45 – 16:15</td><td class="n ko">16:45 – 17:15</td><td class="n"><b>01:45</b></td></tr><tr><td><b>10</b></td><td class="n">7 h 48</td><td class="n">8 h 48 – 9 h 18</td><td class="n ok">11:48 – 12:18</td><td class="n ko">13:48 – 14:18</td><td class="n ko">14:48 – 15:18</td><td class="n"><b>03:42</b></td></tr><tr><td><b>12</b></td><td class="n">6 h 30</td><td class="n">7 h 30 – 8 h 00</td><td class="n ok">10:30 – 11:00</td><td class="n ko">12:30 – 13:00</td><td class="n ko">13:30 – 14:00</td><td class="n"><b>05:00</b></td></tr><tr><td><b>14</b></td><td class="n">5 h 34</td><td class="n">6 h 34 – 7 h 04</td><td class="n ok">09:34 – 10:04</td><td class="n ok">11:34 – 12:04</td><td class="n ko">12:34 – 13:04</td><td class="n"><b>05:56</b></td></tr></table></div>
+<p class="mut">Verde: sale antes de las 13:00 · rojo: no llega. «Empezar como muy tarde» = hora de inicio para tenerlo todo fuera a las 13:00 contando 1 h 30 de expedición. Con más personas se hacen más zonas (N_ZONAS = personas) y la acción las vuelve a equilibrar. Horas-persona de picking: ~71 h 00.</p>
+<h2>Para tenerlo todo fuera a las 13:00</h2>
+<ul><li>Empezando a las <b>3:00</b>: ~<b>10 personas</b> de picking (zonas) + las de expedición.</li><li>Empezando a las <b>5:00</b>: ~<b>12 personas</b> de picking (zonas) + las de expedición.</li><li>Empezando a las <b>6:00</b>: ~<b>15 personas</b> de picking (zonas) + las de expedición.</li></ul>
+<h2>Supuestos y riesgos</h2>
+<ul>
+<li>Ritmo: ~140 u/h por persona con caja cerrada y matrícula (la zona más lenta del 21/10). <b>Escenario prudente:</b> si fuera el ritmo medio del 21/10 contando 5 personas (~98 u/h), con 8 personas el picking sería de unas <b>12 h 45</b> en vez de 9 h 45. Con las etiquetas ya impresas con CJ y menos OUT pequeñas debería ir más rápido que el 21/10.</li>
+<li>5 rondas: cada operario pasa 5 veces por su zona. Si la última ronda queda pequeña, ajustar TIENDAS_POR_RONDA.</li>
+<li>~783 OUT → ~783 etiquetas y cajas como mínimo. Hacen falta cajas montadas y sitio para dejarlas en el lineal.</li>
+<li>Agrupar y expedir (1 h – 1 h 30) va al final; si una persona empieza con las primeras rondas mientras se sigue cogiendo, se gana parte de ese tiempo.</li>
+<li>Las OUT «En espera» (sin stock) no entran en las zonas.</li>
+</ul>
+</main></body></html>

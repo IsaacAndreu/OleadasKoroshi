@@ -1,0 +1,91 @@
+<t t-name="koroshi.report_etiqueta_zona">
+    <!--
+    KOROSHI - Etiqueta de caja para el picking por zonas (OUT + matricula + delegacion + pedido).
+    Vista QWeb (tipo QWeb) para el informe "KOROSHI Etiqueta zona" del modelo stock.picking.
+    Una etiqueta 4x6" (101,6 x 152,4 mm) por cada matricula CJ reservada para la OUT
+    (zebra.label con nota "ETQ ZONA <OUT>", las reserva la accion KOROSHI_etiquetas_zona).
+    Si la OUT aun no tiene matriculas, sale una sola etiqueta con la casilla de matricula vacia.
+    Delegacion y transit time: lista por tienda (21/10/2026); tienda sin delegacion: sale la provincia.
+    wkhtmltopdf: sin flex, todo con tablas y medidas fijas.
+    -->
+    <t t-call="web.basic_layout">
+        <t t-foreach="docs" t-as="o">
+            <t t-set="cjs" t-value="o.env['zebra.label'].search([('note', '=', 'ETQ ZONA ' + o.name)], order='sequence_number')"/>
+            <t t-set="zona" t-value="o.batch_id and o.batch_id.name.split('-')[-1] or ''"/>
+            <t t-set="nota" t-value="o.note or ''"/>
+            <t t-set="caja" t-value="('CAJA ' in nota) and nota.split('CAJA ')[1][:2] or ''"/>
+            <t t-set="nombre" t-value="o.partner_id.name or ''"/>
+            <t t-set="tienda" t-value="nombre[:1] == 'K' and nombre or nombre.split(', ')[-1]"/>
+            <t t-set="kcod" t-value="tienda.split(' ')[0][1:]"/>
+            <t t-set="knum" t-value="kcod.isdigit() and int(kcod) or 0"/>
+            <t t-set="prov" t-value="o.partner_id.state_id and o.partner_id.state_id.name.split(' (')[0].strip(' -') or ''"/>
+            <!-- Delegacion de transporte y transit time por tienda (lista del 21/10/2026). Tienda sin delegacion: sale la provincia -->
+            <t t-set="delegaciones" t-value="{1: ('CASTELLBISBAL', 24), 7: ('LEGANÉS', 48), 8: ('PAMPLONA', 24), 9: ('BILBAO', 24), 10: ('BILBAO', 24), 22: ('VITORIA', 24), 24: ('VALLADOLID', 48), 26: ('FRANQUESES', 24), 29: ('CORUÑA', 48), 31: ('MURCIA', 24), 33: ('ZARAGOZA', 24), 34: ('CASTELLBISBAL', 24), 37: ('SALAMANCA', 48), 38: ('BILBAO', 24), 39: ('IRÚN', 48), 40: ('VALLADOLID', 48), 41: ('SANTANDER', 48), 42: ('CASTELLBISBAL', 24), 43: ('BENAVENTE', 48), 44: ('GERONA', 24), 45: ('LOGROÑO', 24), 46: ('IRÚN', 24), 47: ('BENAVENTE', 48), 48: ('VALENCIA', 24), 49: ('IRÚN', 48), 55: ('ZARAGOZA', 24), 56: ('MÁLAGA', 48), 57: ('SAN FERNANDO', 48), 58: ('BURGOS', 24), 59: ('GRANADA', 48), 60: ('GIJÓN', 48), 61: ('VALENCIA', 24), 62: ('LEGANÉS', 48), 63: ('SAN FERNANDO', 48), 65: ('CASTELLBISBAL', 24), 67: ('MURCIA', 24), 68: ('SEVILLA', 48), 69: ('TARRAGONA', 24), 70: ('TARRAGONA', 24), 72: ('CASTELLBISBAL', 24), 73: ('LLEIDA', 24), 74: ('CASTELLÓN', 24), 75: ('CASTELLBISBAL', 24), 76: ('LEGANÉS', 48), 78: ('SAN FERNANDO', 48), 79: ('SAN FERNANDO', 48), 80: ('GERONA', 24), 81: ('SAN FERNANDO', 48), 83: ('IRÚN', 24)}"/>
+            <t t-set="dt" t-value="delegaciones.get(knum)"/>
+            <t t-set="deleg" t-value="dt and dt[0] or ('PROV. ' + prov.upper())"/>
+            <t t-set="transit" t-value="dt and ('%s h' % dt[1]) or ''"/>
+            <t t-set="deleg_pt" t-value="len(deleg) &lt;= 16 and 22 or (len(deleg) &lt;= 20 and 18 or 15)"/>
+            <t t-set="tienda_pt" t-value="min(30, int(340 / max(len(tienda), 1)))"/>
+            <t t-set="uds" t-value="int(sum(o.move_line_ids.mapped('product_uom_qty')) or sum(o.move_line_ids.mapped('qty_done')))"/>
+            <t t-set="total" t-value="len(cjs) or 1"/>
+            <t t-set="otras" t-value="' · '.join(sorted(set([b.split('-')[-1] for b in o.env['stock.picking'].search([('origin', '=', o.origin), ('id', '!=', o.id), ('picking_type_code', '=', 'outgoing'), ('batch_id.name', '=like', 'Z-%')]).mapped('batch_id.name')]))) if o.origin else ''"/>
+            <t t-foreach="cjs or [False]" t-as="cj">
+                <div class="page" style="page-break-after: always; font-family: Arial, Helvetica, sans-serif; color: #000;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <tr>
+                            <td style="vertical-align: bottom;">
+                                <div style="font-size: 8pt; letter-spacing: 1px;">KOROSHI · PICKING POR ZONAS</div>
+                                <div style="font-size: 28pt; font-weight: 900; border: 2.5px solid #000; padding: 0 3mm; display: inline-block; line-height: 1.15;" t-esc="zona"/>
+                            </td>
+                            <td style="text-align: right; vertical-align: bottom;">
+                                <div style="font-size: 8pt;">CAJA TIENDA</div>
+                                <div style="font-size: 44pt; font-weight: 900; line-height: 0.95;" t-esc="caja"/>
+                            </td>
+                        </tr>
+                    </table>
+                    <div style="background: #000; color: #fff; text-align: center; padding: 1.5mm 2mm 2mm; margin-top: 1.5mm;">
+                        <div style="font-size: 7.5pt; letter-spacing: 2px;">DELEGACIÓN<t t-if="transit"> · TRANSIT <t t-esc="transit"/></t></div>
+                        <div t-attf-style="font-size: {{deleg_pt}}pt; font-weight: 900; line-height: 1.1; white-space: nowrap;" t-esc="deleg"/>
+                    </div>
+                    <div class="koroshi-tienda" t-attf-style="font-size: {{tienda_pt}}pt; font-weight: 900; white-space: nowrap; overflow: hidden; line-height: 1.05; margin-top: 1.5mm;" t-esc="tienda"/>
+                    <div style="font-size: 9pt; line-height: 1.15;"><t t-esc="o.partner_id.city or ''"/> · <b><t t-esc="uds"/> uds</b></div>
+                    <div style="border: 3px solid #000; margin-top: 1.5mm; text-align: center; padding: 0.5mm 0 1mm;">
+                        <div style="font-size: 7.5pt; font-weight: 800; letter-spacing: 3px;">PEDIDO</div>
+                        <div style="font-size: 26pt; font-weight: 900; line-height: 1.05;" t-esc="o.origin or ''"/>
+                        <img t-if="o.origin" t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', o.origin, 800, 120)" style="width: 80%; height: 11mm; margin-top: 0.5mm;"/>
+                    </div>
+                    <div style="border: 2px solid #000; text-align: center; font-size: 13pt; font-weight: 800; margin-top: 1.5mm;">
+                        CAJA <t t-esc="cj_index + 1"/>
+                        <t t-if="otras"><span style="font-size: 9pt; font-weight: 700;"> · tienda también en <t t-esc="otras"/></span></t>
+                    </div>
+                    <div style="border-top: 1.5px solid #000; margin-top: 1.5mm; padding-top: 1mm;">
+                        <table style="width: 100%; font-size: 8.5pt; font-weight: 700;"><tr><td>1 · ESCANEAR PARA ABRIR EN LA PDA</td><td style="text-align: right;">OUT</td></tr></table>
+                        <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', o.name, 800, 140)" style="width: 100%; height: 15mm;"/>
+                        <div style="font-family: 'Courier New', monospace; font-size: 12pt; font-weight: 700; text-align: center;" t-esc="o.name"/>
+                    </div>
+                    <div style="border-top: 1.5px solid #000; margin-top: 1mm; padding-top: 1mm;">
+                        <table style="width: 100%; font-size: 8.5pt; font-weight: 700;"><tr><td>2 · ESCANEAR AL CERRAR LA CAJA</td><td style="text-align: right;">MATRÍCULA</td></tr></table>
+                        <t t-if="cj">
+                            <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', cj.name, 800, 160)" style="width: 100%; height: 18mm;"/>
+                            <div style="font-family: 'Courier New', monospace; font-size: 15pt; font-weight: 700; text-align: center;" t-esc="cj.name"/>
+                        </t>
+                        <t t-if="not cj">
+                            <div style="height: 18mm; border: 1.5px dashed #000; text-align: center; font-size: 10pt; padding-top: 6mm;">SIN MATRÍCULA: usar una CJ preimpresa</div>
+                        </t>
+                    </div>
+                </div>
+            </t>
+        </t>
+        <!-- Tienda lo mas grande posible: empieza en 30 pt y baja hasta que cabe en una linea. Sin JS se queda con tienda_pt -->
+        <script>
+            var kts = document.getElementsByClassName('koroshi-tienda');
+            for (var i = 0; kts.length > i; i++) {
+                var s = 30;
+                kts[i].style.fontSize = s + 'pt';
+                while (s > 12) {
+                    if (kts[i].scrollWidth > kts[i].clientWidth) { s = s - 1; kts[i].style.fontSize = s + 'pt'; } else { break; }
+                }
+            }
+        </script>
+    </t>
+</t>

@@ -1,0 +1,38 @@
+<t t-name="koroshi.report_etiqueta_tienda">
+    <!--
+    KOROSHI - Etiquetas de TIENDA para los palets de expediciones: SOLO EL NUMERO (K43).
+    v2 (22/10/2026): salen TODAS las tiendas de Koroshi (direcciones K... de DIGITAL E-GLOBAL
+    XPERIENCE, SL), una por etiqueta, ordenadas por numero, sin uds ni nada mas. No depende de las
+    OUT seleccionadas: con seleccionar una cualquiera e Imprimir ya salen todas.
+    Se quitan los numeros de 4 cifras (K7777, de prueba).
+    Informe "KOROSHI Etiqueta tienda (palet)" del modelo stock.picking. Formato de papel 19 (4x6").
+    El numero empieza en 300 pt y baja hasta que cabe en el ancho (sin JS: tamano fijo por cifras).
+    -->
+    <t t-call="web.basic_layout">
+        <t t-set="tiendas" t-value="docs.env['res.partner'].search([('parent_id.name', '=', 'DIGITAL E-GLOBAL XPERIENCE, SL'), ('name', '=like', 'K%')])"/>
+        <t t-set="ks" t-value="sorted(set([int(t.name.split(' ')[0][1:]) for t in tiendas if t.name.split(' ')[0][1:].isdigit() and len(t.name.split(' ')[0]) &lt;= 4]))"/>
+        <t t-foreach="ks" t-as="k">
+            <t t-set="kno" t-value="'K%d' % k"/>
+            <t t-set="k_pt" t-value="len(kno) &lt;= 2 and 290 or 200"/>
+            <div class="page" style="page-break-after: always; font-family: Arial, Helvetica, sans-serif; color: #000; padding: 0 2mm;">
+                <table style="width: 100%; height: 145mm; border-collapse: collapse; table-layout: fixed;">
+                    <tr>
+                        <td style="vertical-align: middle; text-align: center;">
+                            <div class="koroshi-k" t-attf-style="font-size: {{k_pt}}pt; font-weight: 900; line-height: 0.9; white-space: nowrap; letter-spacing: -4px; overflow: hidden;" t-esc="kno"/>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </t>
+        <script>
+            var kts = document.getElementsByClassName('koroshi-k');
+            for (var i = 0; kts.length > i; i++) {
+                var s = 300;
+                kts[i].style.fontSize = s + 'pt';
+                while (s > 60) {
+                    if (kts[i].scrollWidth > kts[i].clientWidth) { s = s - 5; kts[i].style.fontSize = s + 'pt'; } else { break; }
+                }
+            }
+        </script>
+    </t>
+</t>

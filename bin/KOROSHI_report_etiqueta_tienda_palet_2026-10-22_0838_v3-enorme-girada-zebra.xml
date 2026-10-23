@@ -1,0 +1,49 @@
+<t t-name="koroshi.report_etiqueta_tienda">
+    <!--
+    KOROSHI - Etiquetas de TIENDA para los palets de expediciones: SOLO EL NUMERO (K43), ENORME.
+    v3 (22/10/2026): para impresora ZEBRA 4x6" (101,6 x 152,4 mm). Formato de papel 20
+    "KOROSHI 4x6 sin margen (tiendas)" (102 x 152 mm, margenes 0). El numero va GIRADO a lo largo
+    de la etiqueta y ocupa la etiqueta entera: se ajusta al largo (148 mm) y se estira en alto hasta
+    llenar el ancho (98 mm), como mucho 1,8 veces.
+    Salen TODAS las tiendas de Koroshi (direcciones K... de DIGITAL E-GLOBAL XPERIENCE, SL), una por
+    etiqueta, ordenadas por numero. No depende de las OUT seleccionadas. Sin K7777 (prueba).
+    Informe "KOROSHI Etiquetas tiendas (todas, solo K)" del modelo stock.picking.
+    wkhtmltopdf: medidas fijas en mm, -webkit-transform para girar.
+    -->
+    <t t-call="web.basic_layout">
+        <t t-set="tiendas" t-value="docs.env['res.partner'].search([('parent_id.name', '=', 'DIGITAL E-GLOBAL XPERIENCE, SL'), ('name', '=like', 'K%')])"/>
+        <t t-set="ks" t-value="sorted(set([int(t.name.split(' ')[0][1:]) for t in tiendas if t.name.split(' ')[0][1:].isdigit() and len(t.name.split(' ')[0]) &lt;= 4]))"/>
+        <t t-foreach="ks" t-as="k">
+            <div t-attf-style="position: relative; width: 102mm; height: 151mm; overflow: hidden; margin: 0; padding: 0; {{'' if k_last else 'page-break-after: always;'}}">
+                <div style="position: absolute; left: 51mm; top: 75.5mm; width: 148mm; height: 98mm; margin-left: -74mm; margin-top: -49mm; -webkit-transform: rotate(-90deg); transform: rotate(-90deg);">
+                    <table style="width: 148mm; height: 98mm; border-collapse: collapse; table-layout: fixed;">
+                        <tr>
+                            <td style="vertical-align: middle; text-align: center; padding: 0;">
+                                <span class="koroshi-k" style="display: inline-block; font-family: Arial, Helvetica, sans-serif; font-size: 200pt; font-weight: 900; line-height: 1; white-space: nowrap; color: #000;" t-esc="'K%d' % k"/>
+                            </td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+        </t>
+        <script>
+            // Ajustar cada numero a la caja girada: ancho = 148 mm (largo de la etiqueta), alto = 98 mm.
+            var MM = 96 / 25.4;
+            var ANCHO = 144 * MM, ALTO = 94 * MM, ESTIRAR_MAX = 1.8;
+            var kts = document.getElementsByClassName('koroshi-k');
+            for (var i = 0; kts.length > i; i++) {
+                var el = kts[i];
+                var fs = 200;
+                el.style.fontSize = fs + 'pt';
+                var w = el.offsetWidth;
+                fs = fs * ANCHO / w;
+                el.style.fontSize = fs + 'pt';
+                // Altura de las letras (mayusculas y numeros) ~ 0,72 del tamano de letra
+                var alto_letra = 0.72 * fs * 96 / 72;
+                var sy = Math.min(ESTIRAR_MAX, Math.max(1, ALTO / alto_letra));
+                el.style.webkitTransform = 'scale(1, ' + sy + ')';
+                el.style.transform = 'scale(1, ' + sy + ')';
+            }
+        </script>
+    </t>
+</t>

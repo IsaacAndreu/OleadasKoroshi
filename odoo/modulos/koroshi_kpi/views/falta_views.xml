@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Faltas por dia (v1.3) ======================= -->
+    <record id="view_koroshi_kpi_falta_tree" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.tree</field>
+        <field name="model">koroshi.kpi.falta</field>
+        <field name="arch" type="xml">
+            <tree string="Faltas por día" create="false" edit="false"
+                  decoration-danger="motivo == 'sin_stock'" decoration-warning="motivo == 'no_cogido'"
+                  decoration-muted="motivo == 'cancelado'">
+                <field name="fecha"/>
+                <field name="tienda"/>
+                <field name="pedido"/>
+                <field name="out"/>
+                <field name="estado"/>
+                <field name="referencia"/>
+                <field name="product_id" optional="hide"/>
+                <field name="tipo" optional="show"/>
+                <field name="faltan" sum="Uds que faltan"/>
+                <field name="motivo"/>
+                <field name="pendiente_out" optional="show"/>
+                <field name="pedidas" optional="hide"/>
+                <field name="servidas" optional="hide"/>
+                <field name="recalculado" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_falta_pivot" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.pivot</field>
+        <field name="model">koroshi.kpi.falta</field>
+        <field name="arch" type="xml">
+            <pivot string="Faltas por día">
+                <field name="fecha" interval="day" type="row"/>
+                <field name="motivo" type="col"/>
+                <field name="faltan" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_falta_graph" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.graph</field>
+        <field name="model">koroshi.kpi.falta</field>
+        <field name="arch" type="xml">
+            <graph string="Uds que faltan por día" type="bar" stacked="True">
+                <field name="fecha" interval="day" type="row"/>
+                <field name="motivo" type="col"/>
+                <field name="faltan" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_falta_search" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.search</field>
+        <field name="model">koroshi.kpi.falta</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="tienda"/>
+                <field name="pedido"/>
+                <field name="out"/>
+                <field name="referencia"/>
+                <field name="product_id"/>
+                <field name="tipo"/>
+                <filter name="f_fecha" string="Día" date="fecha"/>
+                <separator/>
+                <filter name="f_sin_stock" string="Sin stock" domain="[('motivo', '=', 'sin_stock')]"/>
+                <filter name="f_no_cogido" string="No cogido (había stock)" domain="[('motivo', '=', 'no_cogido')]"/>
+                <filter name="f_pendiente" string="En pedido pendiente" domain="[('motivo', '=', 'pendiente')]"/>
+                <filter name="f_cancelado" string="No servido" domain="[('motivo', '=', 'cancelado')]"/>
+                <separator/>
+                <filter name="f_validadas" string="OUT validadas" domain="[('estado', '=', 'hecha')]"/>
+                <filter name="f_abiertas" string="OUT sin validar" domain="[('estado', '!=', 'hecha')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_dia" string="Día" context="{'group_by': 'fecha:day'}"/>
+                    <filter name="g_tienda" string="Tienda" context="{'group_by': 'tienda'}"/>
+                    <filter name="g_out" string="OUT" context="{'group_by': 'out'}"/>
+                    <filter name="g_motivo" string="Motivo" context="{'group_by': 'motivo'}"/>
+                    <filter name="g_articulo" string="Artículo" context="{'group_by': 'product_id'}"/>
+                    <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_falta" model="ir.actions.act_window">
+        <field name="name">Faltas por día</field>
+        <field name="res_model">koroshi.kpi.falta</field>
+        <field name="view_mode">tree,pivot,graph</field>
+        <field name="context">{'search_default_g_dia': 1, 'search_default_g_out': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay faltas sacadas todavía.</p>
+            <p>Pulsa «Recalcular faltas de hoy» o el botón Recalcular de la ficha del día en «KPI por día».
+               Cada noche se sacan solas las de hoy y ayer.</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_falta_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular faltas de hoy</field>
+        <field name="model_id" ref="model_koroshi_kpi_falta"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular_hoy()</field>
+    </record>
+
+    <menuitem id="menu_koroshi_kpi_falta" name="Faltas por día" parent="menu_koroshi_kpi_root"
+              action="action_koroshi_kpi_falta" sequence="15"/>
+    <menuitem id="menu_koroshi_kpi_falta_recalcular" name="Recalcular faltas de hoy" parent="menu_koroshi_kpi_root"
+              action="action_koroshi_kpi_falta_recalcular" sequence="16"/>
+</odoo>

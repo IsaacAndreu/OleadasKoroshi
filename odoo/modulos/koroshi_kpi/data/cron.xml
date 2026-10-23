@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada noche: ficha de hoy y recalcular hoy y ayer (solo escribe en koroshi.kpi.dia) -->
+    <record id="cron_koroshi_kpi" model="ir.cron">
+        <field name="name">KOROSHI KPI: recalcular hoy y ayer</field>
+        <field name="model_id" ref="model_koroshi_kpi_dia"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=21, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
