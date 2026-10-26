@@ -9,7 +9,7 @@ var core = require('web.core');
 var REFRESCO = 60000;
 var ZS = ['D1', 'D2', 'D3', 'D4', 'D5', 'ZX'];
 var COL = {D1: 'var(--km-z1)', D2: 'var(--km-z2)', D3: 'var(--km-z3)', D4: 'var(--km-z4)', D5: 'var(--km-z5)', ZX: 'var(--km-zx)'};
-var EST = {hecha: 'Hecha', curso: 'Cogiéndose', pend: 'Sin empezar', parcial: 'Parcial (falta stock)', sinstock: 'Sin stock'};
+var EST = {hecha: 'Hecha', curso: 'Cogiéndose', pend: 'Sin empezar', parcial: 'Parada (sin cerrar caja)', sinstock: 'Sin stock'};
 
 function e(s) { return _.escape(s === undefined || s === null ? '' : String(s)); }
 function n(x) { return Math.round(x).toLocaleString('es-ES'); }
@@ -233,7 +233,9 @@ Monitor.include({
             var p = base ? 100 * o.leido / base : 0, c = COLE[o.est] || 'var(--km-cur)';
             var cls = 'km-r-' + o.est + (o.parada ? ' km-parada' : '');
             var hace = o.hace === '' ? '' : 'hace ' + o.hace + ' min';
-            h += '<tr class="' + cls + '"><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span></td><td>' + e(o.tienda) + '</td>' +
+            // v1.8: hecha sin validar = ya cogido todo lo que hay; lo que falta (sin stock) debajo
+            var sv = o.sin_validar ? '<br><small>sin validar' + (o.falta ? ' · faltan ' + n(o.falta) : '') + '</small>' : '';
+            h += '<tr class="' + cls + '"><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span>' + sv + '</td><td>' + e(o.tienda) + '</td>' +
                 (tv ? '' : '<td class="m">' + e(o.pedido) + '</td>') + '<td class="m">' + e(o.out) +
                 (o.lote && !tv ? '<br><small>' + e(o.lote) + '</small>' : '') + '</td>' +
                 '<td><span class="km-mini"><i style="width:' + p + '%;background:' + c + '"></i></span>' + n(o.leido) + '/' + n(base) + '</td>' +
@@ -294,9 +296,9 @@ Monitor.include({
             (T.curso + T.parcial) + '</b> en marcha, <b>' + T.pend + '</b> sin empezar</div></div>';
 
         if (paradas.length) {
-            h += '<div class="km-card km-aviso"><b>' + paradas.length + ' OUT parciales (sin cerrar caja hace más de ' + (eq.parada_min || 20) + ' min):</b> ' +
+            h += '<div class="km-card km-aviso"><b>' + paradas.length + ' OUT hechas sin validar (sin cerrar caja hace más de ' + (eq.parada_min || 20) + ' min):</b> ' +
                 paradas.map(function (o) { return e(o.out) + ' ' + e(o.tienda) + ' (' + o.hace + ' min, faltan ' + n(o.falta) + ')'; }).join(' · ') +
-                '. Les faltan prendas (sin stock o no encontradas) o están a medias en una PDA: revisar y validar.' +
+                '. Se dan por hechas: les faltan prendas (sin stock o no encontradas). Validarlas en Odoo.' +
                 (tv ? '' : ' Detalle en KOROSHI KPI › Faltas por día.') + '</div>';
         }
 
@@ -305,7 +307,7 @@ Monitor.include({
                 [eq.activas || 0, 'personas cogiendo ahora (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)' +
                     (eq.activas && eq.uh ? ' · ~' + n(eq.uh / eq.activas) + ' u/h por persona' : '')],
                 [n(eq.cajas || 0), 'cajas cerradas' + (eq.cajas ? ' · ' + (T.l / eq.cajas).toFixed(1).replace('.', ',') + ' u por caja' : '')],
-                [T.parcial, 'parciales (falta stock, por validar)'],
+                [D.filter(function (o) { return o.sin_validar; }).length, 'hechas sin validar (con faltas de stock)'],
             ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
         }
 

@@ -60,3 +60,6 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   «Sin empezar» como fichas de tienda (K10 138 u…) con la lista plegada y «Hechas» plegadas. Botón **Modo pantalla**
   para la pantalla vertical del almacén: sin el menú de Odoo, letra grande y solo lo que se está cogiendo; se queda
   guardado en ese navegador (botón «Salir de pantalla» para volver). La K75 sale bien (su nombre lleva coma).
+- **v1.8:** las OUT que ya tienen cogido todo lo que hay (solo faltan prendas sin stock o no encontradas), o que llevan más
+  de 20 min sin cerrar caja, salen como **Hecha** con la nota «sin validar · faltan N», no como «parcial». El aviso de
+  arriba lista las que faltan por validar en Odoo.

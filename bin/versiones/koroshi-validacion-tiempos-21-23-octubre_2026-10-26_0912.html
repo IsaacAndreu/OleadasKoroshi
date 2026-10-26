@@ -1,0 +1,158 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KOROSHI · Validación de tiempos</title>
+<style>
+:root{--bg:#F6F5F1;--card:#FFFFFF;--ink:#1D1C1A;--muted:#6E6B64;--line:#E3E0D8;--soft:#EFEDE7;--bar:#CFCBC2;--red:#C0443A;--ok:#2F7A4E;--acc:#2F5D9E;--warn:#B7791F;--nav:rgba(246,245,241,.92)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}}
+:root[data-theme="dark"]{--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-size:14.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--nav);backdrop-filter:blur(8px)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--nav);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .in{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;padding:8px 14px;scrollbar-width:none}
+nav a{flex:0 0 auto;text-decoration:none;color:var(--muted);font-size:12.5px;padding:5px 10px;border-radius:8px;white-space:nowrap}
+nav a b{display:block;color:var(--ink);font-size:13px;font-weight:600}
+nav a:hover,nav a.on{background:var(--soft)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:30px;margin:0 0 6px;line-height:1.2}
+.lead{font-size:17px;color:var(--muted);max-width:62rem;margin:0 0 18px}
+.lead b{color:var(--ink)} .lead b.red{color:var(--red)}
+section{margin:44px 0 0}
+.sh{display:flex;align-items:baseline;gap:12px;margin:0 0 4px}
+.sh .num{font-family:Georgia,serif;font-size:22px;color:var(--muted)}
+h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:24px;margin:0}
+.sub{color:var(--muted);margin:0 0 14px;max-width:62rem}
+h3{font-size:15px;margin:0 0 2px}
+.n{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin:0 0 14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .t{font-size:12.5px;color:var(--muted)}
+.kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:30px;line-height:1.1;margin:4px 0}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.bad{border-color:var(--red)} .kpi.bad .v{color:var(--red)}
+.red{color:var(--red)} .ok{color:var(--ok)} .mut{color:var(--muted)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 9px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--soft)}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+tr.tot td{font-weight:700;border-top:1px solid var(--line)}
+tr.hl td{background:var(--soft);font-weight:700}
+tr.warnrow td{color:var(--red)} tr.warnrow td.hc{color:inherit} tr.sub td:first-child{padding-left:22px;color:var(--muted)}
+.dec{display:grid;gap:8px}
+.dec div{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tag{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.tag.done{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.pend{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.tag.rev{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px}
+.chip b{display:block;font-size:15px}
+.hb{display:grid;grid-template-columns:minmax(120px,190px) 1fr 130px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--soft)}
+.hb .nm{font-size:13.5px;font-weight:600}
+.hb .nm small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.tr{position:relative;height:20px}
+.tr i{position:absolute;left:0;top:0;height:100%;border-radius:5px}
+.hb .v{text-align:right;font-size:13px}
+.hb .v span{display:block;font-size:12px}
+@media (max-width:560px){.hb{grid-template-columns:1fr 100px}.hb .tr{grid-column:1/-1;grid-row:2}}
+.note{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:10px 14px;border-radius:0 10px 10px 0;font-size:13.5px;margin:10px 0}
+.note.red{border-color:var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);color:var(--ink)}
+svg text{font-family:"Segoe UI",system-ui,sans-serif;fill:var(--muted);font-size:11px}
+svg text.lab{fill:var(--ink);font-weight:600}
+.leg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:0 0 6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+td.hc{text-align:center;min-width:58px}
+td.hc b{display:block;font-size:13px}
+td.hc small{font-size:11px;opacity:.8}
+.hg{background:color-mix(in srgb,var(--ok) 26%,transparent)}
+.hy{background:color-mix(in srgb,#D9A62B 28%,transparent)}
+.hr{background:color-mix(in srgb,var(--red) 26%,transparent)}
+.hn{color:var(--muted)}
+.big{font-family:Georgia,serif;font-size:34px;line-height:1.1}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px}
+
+</style>
+</head>
+<body>
+<nav><div class="in" id="nav"><a href="#s0" class="on">0. Resumen<b>48 s/ud</b></a><a href="#s1">1. Fuentes<b>3</b></a><a href="#s2">2. Comparación<b>5 muestras</b></a><a href="#s3">3. Calibración<b>21/10</b></a><a href="#s4">4. Sensibilidad<b>pausas</b></a><a href="#s5">5. A 10.000<b>19–23 pers.</b></a><a href="#s6">6. Fuente de cada cifra<b></b></a><a href="#s7">7. Medir mejor<b></b></a></div></nav><div class="wrap" id="app">
+<section id="s0"><h1>KOROSHI · Validación de los tiempos de picking</h1>
+<p class="lead">Los tiempos por unidad que hemos dado eran <b>estimados</b>. Medidos con las horas a las que Odoo cierra cada caja, el tradicional del viernes sale a <b>48,4 s por ud</b> (no 44,2). Y el único día con horas apuntadas a mano, el tiempo real fue un <b>17% más</b> que el medido entre cajas y casi <b class="red">el doble</b> que el estimado. Para 10.000 uds harían falta <b>entre 19,2 y 22,5 personas cogiendo</b>, no 17,5.</p>
+<div class="kpis">
+ <div class="kpi"><div class="t">Tradicional vie 23, medido entre cajas</div><div class="v">48,4 s</div><div class="s">por ud · mediana 48,6 · 237 intervalos</div></div>
+ <div class="kpi"><div class="t">Lo que decía la estimación</div><div class="v">44,2 s</div><div class="s">por ud · cajas por cuarto de hora</div></div>
+ <div class="kpi bad"><div class="t">Estimación frente a lo apuntado (21/10)</div><div class="v">−47%</div><div class="s">28,4 s estimados · 54,0 s reales</div></div>
+ <div class="kpi"><div class="t">Apuntado frente a medido entre cajas</div><div class="v">+17%</div><div class="s">un solo dato: zonas del 21/10</div></div>
+ <div class="kpi bad"><div class="t">Personas para 10.000 uds (7 h)</div><div class="v">19,2–22,5</div><div class="s">antes decíamos 17,5</div></div>
+</div>
+<div class="note red"><b>Con qué fiabilidad:</b> el medido entre cajas es un dato de Odoo con muchas muestras, pero no ve el arranque de cada OUT ni las pausas. El ajuste por lo apuntado sale de <b>un solo día y un solo método</b>: hay que repetirlo con más días antes de dar el número por bueno.</div></section>
+<section id="s1"><div class="sh"><span class="num">1</span><h2>Las tres fuentes</h2></div>
+<p class="sub">Para saber cuánto se tarda por unidad hay que saber cuántas horas-persona se han trabajado. En KOROSHI todas las PDA entran con el mismo usuario y guardan las lecturas al validar, así que Odoo no sabe quién ha cogido cada prenda ni a qué hora. Lo que sí guarda es la hora a la que se cierra cada caja.</p>
+<div class="dec">
+ <div><span class="tag done">Apuntado</span><span><b>Horas apuntadas a mano</b> por el encargado: personas × horas de cada fase. Es lo más fiable, pero solo lo tenemos del miércoles 21 (oleada y zonas).</span><b>alta</b></div>
+ <div><span class="tag done">Medido</span><span><b>Intervalos entre cajas:</b> el tiempo entre el cierre de una caja y el de la siguiente de la misma OUT, dividido por las uds de la segunda. Sale de Odoo para cientos de cajas. No incluye el arranque de cada OUT (la primera caja) ni las pausas de más de 30 min. No sirve para la oleada (las cajas se cierran en la U).</span><b>media-alta</b></div>
+ <div><span class="tag rev">Estimado</span><span><b>Estimación por cuartos de hora:</b> cuántas OUT cierran caja a la vez cada 15 min = cuántas personas. Es lo que usaba el módulo KOROSHI KPI cuando no hay horas apuntadas. Se queda corta.</span><b>baja</b></div>
+</div></section>
+<section id="s2"><div class="sh"><span class="num">2</span><h2>Las tres fuentes, una al lado de otra</h2></div>
+<p class="sub">Segundos por unidad cogiendo. Medido: ponderado (tiempo total entre cajas ÷ uds) y, debajo, mediana y el 50% central de las cajas. Cobertura: parte de las uds del día que entran en la medida.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Día · método</th><th>Uds</th><th>Apuntado</th><th>Medido entre cajas</th><th>Mediana (p25–p75)</th><th>Cajas medidas</th><th>Cobertura</th><th>Estimado</th></tr></thead><tbody>
+<tr class=""><td>Mié 21 · Tradicional</td><td>1.341</td><td>—</td><td><b>58,0 s</b></td><td>57,0 (45,8–69,3)</td><td>81</td><td>56%</td><td><span class="red">55,0 s</span></td></tr>
+<tr class=""><td>Mié 21 · Zonas <span class="mut">(calibración)</span></td><td>1.586</td><td><b>54,0 s</b></td><td><b>46,1 s</b></td><td>42,5 (31,5–57,5)</td><td>63</td><td>29%</td><td><span class="red">28,4 s</span></td></tr>
+<tr class=""><td>Mié 21 · Oleada + U <span class="mut">(no aplica)</span></td><td>1.325</td><td><b>51,0 s</b></td><td>—</td><td>—</td><td>—</td><td>—</td><td>—</td></tr>
+<tr class=""><td>Jue 22 · Zonas</td><td>2.747</td><td>—</td><td><b>37,9 s</b></td><td>33,3 (26,0–41,2)</td><td>163</td><td>39%</td><td><span class="red">42,6 s</span></td></tr>
+<tr class="hl"><td>Vie 23 · Tradicional <span class="mut">(base)</span></td><td>4.199</td><td>—</td><td><b>48,4 s</b></td><td>48,6 (32,5–69,3)</td><td>237</td><td>67%</td><td><span class="red">44,2 s</span></td></tr>
+</tbody></table></div></div>
+<div class="note"><b>Oleada:</b> lo apuntado son 30,6 s por ud cogiendo y 20,4 s en la U (51 s en total). Sus cajas se cierran en la U a medida que llegan los INT, así que el tiempo entre cajas no mide el picking. <b>Zonas:</b> cada persona lleva varias tiendas a la vez, así que entre dos cajas de una tienda también coge para las demás: su medido es un máximo.</div>
+</section>
+<section id="s3"><div class="sh"><span class="num">3</span><h2>Calibración: zonas del miércoles 21</h2></div>
+<p class="sub">El único caso con las tres fuentes: 1.586 uds, 7 personas de 9:35 a 12:59 (23,8 horas-persona apuntadas).</p>
+<div class="card">
+<div class="hb"><div class="nm">Estimado (cuartos de hora)<small>12,5 horas-persona</small></div><div class="tr"><i style="width:52.6%;background:var(--red)"></i></div><div class="v"><b>28,4 s/ud</b></div></div>
+<div class="hb"><div class="nm">Medido entre cajas<small>63 cajas, pausas de más de 30 min fuera</small></div><div class="tr"><i style="width:85.4%;background:var(--acc)"></i></div><div class="v"><b>46,1 s/ud</b></div></div>
+<div class="hb"><div class="nm">Apuntado a mano<small>23,8 horas-persona</small></div><div class="tr"><i style="width:100.0%;background:var(--ok)"></i></div><div class="v"><b>54,0 s/ud</b></div></div>
+</div><p class="n">Lo apuntado es un 17% más que lo medido entre cajas: es el tiempo de arrancar cada OUT, ir a buscar el carro, pausas cortas y esperas. La estimación se queda en poco más de la mitad: por eso no la usamos más para decidir.</p></section>
+<section id="s4"><div class="sh"><span class="num">4</span><h2>Sensibilidad: qué cuenta como pausa</h2></div>
+<p class="sub">Si entre dos cajas pasa demasiado rato, se toma como pausa y no cuenta. Cambiar ese límite mueve poco el resultado: el dato es estable.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Día · método</th><th>Pausa &gt; 15 min</th><th>Pausa &gt; 30 min</th><th>Pausa &gt; 60 min</th></tr></thead><tbody>
+<tr><td>Tradicional · vie 23</td><td>43,2 s <span class="mut">· 52% uds</span></td><td>48,4 s <span class="mut">· 67% uds</span></td><td>52,8 s <span class="mut">· 69% uds</span></td></tr>
+<tr><td>Tradicional · mié 21</td><td>53,4 s <span class="mut">· 47% uds</span></td><td>58,0 s <span class="mut">· 56% uds</span></td><td>62,0 s <span class="mut">· 60% uds</span></td></tr>
+<tr><td>Zonas · jue 22</td><td>35,6 s <span class="mut">· 38% uds</span></td><td>37,9 s <span class="mut">· 39% uds</span></td><td>37,9 s <span class="mut">· 39% uds</span></td></tr>
+<tr><td>Zonas · mié 21</td><td>44,6 s <span class="mut">· 28% uds</span></td><td>46,1 s <span class="mut">· 29% uds</span></td><td>49,5 s <span class="mut">· 29% uds</span></td></tr>
+</tbody></table></div></div></section>
+<section id="s5"><div class="sh"><span class="num">5</span><h2>Qué cambia para 10.000 uds</h2></div>
+<p class="sub">Solo picking, de 6:00 a 13:00 (7 h). No cuenta juntar, etiquetar ni cargar.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Base (tradicional vie 23)</th><th>Fuente</th><th>s/ud</th><th>Uds/h-p</th><th>Horas-persona</th><th>Personas 7 h</th></tr></thead><tbody>
+<tr class=""><td>Lo que decíamos</td><td><span class="tag rev">Estimado</span></td><td>44,2</td><td>81</td><td>123</td><td><b>17,5</b></td></tr>
+<tr class="hl"><td>Medido entre cajas</td><td><span class="tag done">Medido</span></td><td>48,4</td><td>74</td><td>134</td><td><b>19,2</b></td></tr>
+<tr class=""><td>Medido + ajuste del 21/10 (×1,17)</td><td><span class="tag pend">Medido + 1 dato</span></td><td>56,7</td><td>63</td><td>157</td><td><b>22,5</b></td></tr>
+</tbody></table></div></div>
+<h3 style="margin-top:18px">Las palancas, rehechas con lo medido</h3>
+<p class="n">Andando: 10,3 s por ud (metros del plano ÷ 1 m/s, modelo). En la ubicación (leer, buscar, coger, meter en caja): el resto, 38,1 s. Las palancas son objetivos, no medidas.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Escenario</th><th>s/ud</th><th>Personas (medido)</th><th>Personas (con ajuste)</th></tr></thead><tbody>
+<tr><td>Hoy</td><td>48,4</td><td>19,2</td><td>22,5</td></tr>
+<tr><td>A · ubicación 9 s menos</td><td>39,4</td><td>15,6</td><td>18,3</td></tr>
+<tr><td>A + B · además andando de 10 a 5 s</td><td>34,1</td><td>13,5</td><td>15,9</td></tr>
+</tbody></table></div></div></section>
+<section id="s6"><div class="sh"><span class="num">6</span><h2>De dónde sale cada cifra</h2></div>
+<div class="card"><div class="tw"><table><thead><tr><th>Cifra</th><th>Fuente</th><th>Fiabilidad</th></tr></thead><tbody>
+<tr><td>Uds, líneas, SKU, pedidos, OUT</td><td>Odoo: OUT de PED. TIENDAS</td><td class="ok">alta</td></tr>
+<tr><td>Cajas y uds por caja</td><td>Odoo: matrículas CJ cerradas</td><td class="ok">alta</td></tr>
+<tr><td>Horas de la oleada y las zonas del 21/10</td><td>Apuntadas a mano por el encargado</td><td class="ok">alta</td></tr>
+<tr><td>Segundos por ud medidos</td><td>Odoo: hora de cierre de cada caja</td><td class="">media-alta</td></tr>
+<tr><td>Horas-persona del 22 y del 23, uds por hora-persona del informe KPI</td><td>Estimadas por cuartos de hora</td><td class="red">baja</td></tr>
+<tr><td>Metros y segundos andando</td><td>Modelo: plano del almacén y 1 m/s</td><td class="">media</td></tr>
+<tr><td>Peso</td><td>Estimado por tipo de prenda (sin pesar)</td><td class="red">baja</td></tr>
+<tr><td>Volumen</td><td>Odoo o estimado por tipo</td><td class="">media</td></tr>
+<tr><td>Palancas A y B</td><td>Objetivos</td><td class="">por probar</td></tr>
+</tbody></table></div></div></section>
+<section id="s7"><div class="sh"><span class="num">7</span><h2>Cómo medir mejor a partir de ahora</h2></div><div class="dec">
+ <div><span class="tag pend">1</span><span><b>Un usuario por PDA:</b> Odoo sabrá quién cierra cada caja y valida cada OUT, y el tiempo entre cajas se podrá medir por persona y con el arranque incluido.</span><b>IT</b></div>
+ <div><span class="tag pend">2</span><span><b>Horas apuntadas cada día:</b> entrada, salida y pausas de cada persona y en qué fase. Cada día da un dato más para el ajuste (hoy solo hay uno).</span><b>encargado</b></div>
+ <div><span class="tag pend">3</span><span><b>Cronometrar 30 líneas por persona y método:</b> leer la PDA, andar, buscar, coger y meter en caja. Así se parten los 38 s de la ubicación.</span><b>1 día</b></div>
+</div><p class="foot">Fuente: Odoo NATH_PRODUCTION (empresa 8), consultado el 26/10/2026: matrículas CJ cerradas del 21 al 23/10 y sus líneas; fichas de KOROSHI KPI; horas apuntadas el 21/10. Intervalos: entre cierres consecutivos de cajas de la misma OUT (cada caja se asigna a la OUT con más uds dentro), descartando los de más de 30 min.</p></section></div>
+</body></html>

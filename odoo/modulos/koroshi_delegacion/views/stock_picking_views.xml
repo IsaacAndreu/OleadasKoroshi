@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Lista de albaranes: columna Delegacion (se puede ocultar) -->
+    <record id="vpicktree_koroshi_delegacion" model="ir.ui.view">
+        <field name="name">stock.picking.tree.koroshi.delegacion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.vpicktree"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="koroshi_delegacion" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <!-- Buscar: escribir la delegacion y Agrupar por > Delegacion -->
+    <record id="view_picking_search_koroshi_delegacion" model="ir.ui.view">
+        <field name="name">stock.picking.search.koroshi.delegacion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="koroshi_delegacion"/>
+            </field>
+            <xpath expr="//group" position="inside">
+                <filter string="Delegación" name="groupby_koroshi_delegacion" context="{'group_by': 'koroshi_delegacion'}"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- Ficha del albaran: debajo del contacto -->
+    <record id="view_picking_form_koroshi_delegacion" model="ir.ui.view">
+        <field name="name">stock.picking.form.koroshi.delegacion</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_form"/>
+        <field name="arch" type="xml">
+            <field name="partner_id" position="after">
+                <field name="koroshi_delegacion" attrs="{'invisible': [('koroshi_delegacion', '=', False)]}"/>
+            </field>
+        </field>
+    </record>
+</odoo>

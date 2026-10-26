@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.4: Hoja de carga XPO por delegacion (Excel). Solo lee. -->
+    <record id="action_koroshi_hoja_carga_hoy" model="ir.actions.act_url">
+        <field name="name">Hoja de carga XPO de hoy</field>
+        <field name="url">/koroshi_kpi/hoja_carga</field>
+        <field name="target">self</field>
+    </record>
+
+    <!-- Desde la lista de albaranes: seleccionar las OUT > Accion > KOROSHI Hoja de carga XPO -->
+    <record id="action_koroshi_hoja_carga_seleccion" model="ir.actions.server">
+        <field name="name">KOROSHI Hoja de carga XPO</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list</field>
+        <field name="state">code</field>
+        <field name="code">ids = env.context.get('active_ids') or []
+action = {'type': 'ir.actions.act_url', 'target': 'self',
+          'url': '/koroshi_kpi/hoja_carga' + (ids and ('?ids=' + ','.join(map(str, ids))) or '')}</field>
+    </record>
+
+    <!-- En Inventario > Informes, para el almacen -->
+    <menuitem id="menu_koroshi_hoja_carga" name="Hoja de carga XPO de hoy" parent="stock.menu_warehouse_report"
+              action="action_koroshi_hoja_carga_hoy" sequence="5" groups="stock.group_stock_user"/>
+</odoo>

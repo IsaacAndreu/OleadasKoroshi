@@ -1,0 +1,37 @@
+/* Monitor picking Oriola: mismos estilos que el monitor de KOROSHI, solo dentro de .o_oriola_monitor */
+.o_oriola_monitor {
+    --om-bg: #f7f6f2; --om-card: #fff; --om-ink: #1d1d1b; --om-muted: #6b6a65; --om-line: #dedcd4; --om-bar: #e9e7e0;
+    --om-ok: #2e9a52; --om-cur: #d08a00; --om-per: #1f5fbf; --om-auto: #8a8780;
+    background: var(--om-bg); color: var(--om-ink); font-size: 15px; line-height: 1.45;
+    height: 100%; overflow: auto;
+}
+.o_oriola_monitor main { max-width: 1150px; margin: 0 auto; padding: 24px 16px 60px; width: 100%; min-width: 0; box-sizing: border-box; }
+.o_oriola_monitor h1 { font-size: 26px; margin: 0; font-weight: 700; }
+.o_oriola_monitor h2 { font-size: 19px; margin: 30px 0 10px; font-weight: 700; }
+.o_oriola_monitor .om-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; margin-bottom: 4px; }
+.o_oriola_monitor .om-ctl { display: flex; gap: 8px; align-items: center; }
+.o_oriola_monitor .om-ctl select { padding: 4px 8px; border: 1px solid var(--om-line); border-radius: 6px; background: var(--om-card); }
+.o_oriola_monitor .om-sub { color: var(--om-muted); margin: 0 0 18px; }
+.o_oriola_monitor .om-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
+.o_oriola_monitor .om-card { background: var(--om-card); border: 1px solid var(--om-line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; max-width: 100%; overflow-x: auto; }
+.o_oriola_monitor .om-kpi b { display: block; font-size: 26px; font-variant-numeric: tabular-nums; }
+.o_oriola_monitor .om-kpi b small { font-size: 14px; font-weight: 400; color: var(--om-muted); }
+.o_oriola_monitor .om-kpi span { color: var(--om-muted); font-size: 13px; }
+.o_oriola_monitor table { border-collapse: collapse; width: 100%; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+.o_oriola_monitor th, .o_oriola_monitor td { padding: 6px 7px; border-bottom: 1px solid var(--om-line); text-align: left; white-space: nowrap; }
+.o_oriola_monitor th { color: var(--om-muted); font-size: 12px; font-weight: 600; }
+.o_oriola_monitor td.r, .o_oriola_monitor th.r { text-align: right; }
+.o_oriola_monitor tr.om-tot td { font-weight: 700; }
+.o_oriola_monitor tr.om-activo td { background: #eaf5ee; }
+.o_oriola_monitor .om-punto { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--om-ok); margin-right: 6px; vertical-align: 1px; }
+.o_oriola_monitor .om-punto.off { background: var(--om-bar); }
+.o_oriola_monitor .om-nota { color: var(--om-muted); font-size: 13px; }
+.o_oriola_monitor .om-ley { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--om-muted); margin: 6px 0 10px; }
+.o_oriola_monitor .om-ley i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.o_oriola_monitor .om-hora { display: grid; grid-template-columns: 44px 1fr 70px; gap: 10px; align-items: center; }
+.o_oriola_monitor .om-barra { height: 16px; background: var(--om-bar); border-radius: 8px; overflow: hidden; margin: 3px 0; display: flex; }
+.o_oriola_monitor .om-barra i { display: block; height: 100%; }
+.o_oriola_monitor .om-hora b { text-align: right; }
+.o_oriola_monitor .om-mini { width: 90px; height: 8px; background: var(--om-bar); border-radius: 4px; overflow: hidden; display: inline-flex; vertical-align: middle; margin-right: 6px; }
+.o_oriola_monitor .om-mini i { display: block; height: 100%; }
+.o_oriola_monitor .om-error { background: #fde4dc; border-color: #e3a08a; }

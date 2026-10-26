@@ -36,3 +36,11 @@ por día y OUT con el total de uds, tabla dinámica (día × motivo) y gráfico.
   o validadas), **En pedido pendiente** (ya validada: quedó en su backorder) y **No servido** (validada sin pendiente).
 - Se saca con el botón Recalcular de la ficha del día completo, cada noche (hoy y ayer) y con el menú
   **Recalcular faltas de hoy**. Solo escribe en `koroshi.kpi.falta`.
+
+## Hoja de carga XPO (v1.4)
+
+**Inventario › Informes › Hoja de carga XPO de hoy** descarga un Excel con las OUT que tienen etiqueta XPO generada
+hoy, agrupadas por **delegación**: tiendas, pedidos, uds, bultos y **palets** (bultos ÷ cajas por palet, redondeando
+hacia arriba; 16 por defecto, en una celda amarilla que se puede cambiar). Hoja «Detalle» con una línea por pedido.
+También desde la lista de albaranes: seleccionar las OUT › Acción › **KOROSHI Hoja de carga XPO**.
+Avisa de OUT con bultos negativos y de pedidos sin etiqueta. Las tiendas sin delegación van solas. Solo lee.
