@@ -189,13 +189,17 @@ class KoroshiMonitor(http.Controller):
     def _fila(self, f):
         # v1.4: parcial = ya cogido todo lo que hay, solo falta lo que no hay (sin stock); sinstock = OUT en
         # espera sin nada que coger (pedido pendiente)
+        # v1.8: si ya se ha cogido todo lo que hay y solo falta lo que no hay (sin stock), la OUT esta HECHA
+        # aunque aun no se haya validado en Odoo (sin_validar); lo que falta se ensena aparte
         falta = max(f['u'] - f['disp'], 0.0)
+        sin_validar = False
         if f['_estado'] == 'done':
             est = 'hecha'
         elif f['disp'] <= 0.001 and f['leido'] <= 0:
             est = 'sinstock'
         elif f['leido'] > 0 and f['leido'] >= f['disp'] - 0.001 and falta > 0.001:
-            est = 'parcial'
+            est = 'hecha'
+            sin_validar = True
         elif f['leido'] > 0:
             est = 'curso'
         else:
@@ -216,7 +220,8 @@ class KoroshiMonitor(http.Controller):
             'pedido': f['pedido'], 'u': f['u'], 'huecos': len(f['_huecos']), 'lin': lin or '-',
             'leido': f['leido'], 'est': est, 'ini': self._hora(f['_a']), 'fin': self._hora(fin_dt),
             'min': mins, 'cajas': len(f['_cajas']), '_a': f['_a'], '_b': f['_b'],
-            'disp': f['disp'], 'falta': est != 'hecha' and falta or 0.0, 'faltas': f['faltas'],
+            'disp': f['disp'], 'falta': (est != 'hecha' or sin_validar) and falta or 0.0, 'faltas': f['faltas'],
+            'sin_validar': sin_validar,
         }
 
     @http.route('/koroshi_monitor/datos', type='json', auth='user')
@@ -312,10 +317,13 @@ class KoroshiMonitor(http.Controller):
                 d['parada'] = hace > PARADA_MIN
                 if not d['parada']:
                     activas += 1
-            # v1.4: cogiendose pero sin cerrar caja hace mas de PARADA_MIN (o de un dia anterior) = parcial: le
-            # faltan prendas (sin stock o no encontradas) y esta esperando validar; falta = todo lo que no se ha cogido
+            # v1.8: cogiendose pero sin cerrar caja hace mas de PARADA_MIN (o de un dia anterior) = ya no se esta
+            # cogiendo: se da por HECHA (sin validar); lo que no se ha cogido (sin stock o no encontrado) es lo que falta.
+            # Antes (v1.4) salia como "parcial".
             if d['est'] == 'curso' and (d['parada'] or not es_hoy):
-                d['est'] = 'parcial'
+                d['est'] = 'hecha'
+                d['sin_validar'] = True
+                d['falta'] = max(d['u'] - d['leido'], 0.0)
             if d['est'] == 'parcial':
                 d['falta'] = max(d['u'] - d['leido'], 0.0)
             d.pop('_a')

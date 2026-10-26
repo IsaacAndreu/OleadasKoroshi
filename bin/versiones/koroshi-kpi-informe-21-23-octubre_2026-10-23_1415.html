@@ -1,0 +1,207 @@
+<!DOCTYPE html><html lang="es"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KOROSHI · KPI de picking 21–23 octubre 2026</title>
+<style>
+:root{--bg:#F6F5F1;--card:#FFFFFF;--ink:#1D1C1A;--muted:#6E6B64;--line:#E3E0D8;--soft:#EFEDE7;--bar:#CFCBC2;--red:#C0443A;--ok:#2F7A4E;--acc:#2F5D9E;--warn:#B7791F;--nav:rgba(246,245,241,.92)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}}
+:root[data-theme="dark"]{--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-size:14.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--nav);backdrop-filter:blur(8px)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--nav);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .in{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;padding:8px 14px;scrollbar-width:none}
+nav a{flex:0 0 auto;text-decoration:none;color:var(--muted);font-size:12.5px;padding:5px 10px;border-radius:8px;white-space:nowrap}
+nav a b{display:block;color:var(--ink);font-size:13px;font-weight:600}
+nav a:hover,nav a.on{background:var(--soft)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:30px;margin:0 0 6px;line-height:1.2}
+.lead{font-size:17px;color:var(--muted);max-width:62rem;margin:0 0 18px}
+.lead b{color:var(--ink)} .lead b.red{color:var(--red)}
+section{margin:44px 0 0}
+.sh{display:flex;align-items:baseline;gap:12px;margin:0 0 4px}
+.sh .num{font-family:Georgia,serif;font-size:22px;color:var(--muted)}
+h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:24px;margin:0}
+.sub{color:var(--muted);margin:0 0 14px;max-width:62rem}
+h3{font-size:15px;margin:0 0 2px}
+.n{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin:0 0 14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .t{font-size:12.5px;color:var(--muted)}
+.kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:30px;line-height:1.1;margin:4px 0}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.bad{border-color:var(--red)} .kpi.bad .v{color:var(--red)}
+.red{color:var(--red)} .ok{color:var(--ok)} .mut{color:var(--muted)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 9px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--soft)}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+tr.tot td{font-weight:700;border-top:1px solid var(--line)}
+tr.hl td{background:var(--soft);font-weight:700}
+tr.warnrow td{color:var(--red)} tr.warnrow td.hc{color:inherit} tr.sub td:first-child{padding-left:22px;color:var(--muted)}
+.dec{display:grid;gap:8px}
+.dec div{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tag{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.tag.done{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.pend{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.tag.rev{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px}
+.chip b{display:block;font-size:15px}
+.hb{display:grid;grid-template-columns:minmax(120px,190px) 1fr 130px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--soft)}
+.hb .nm{font-size:13.5px;font-weight:600}
+.hb .nm small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.tr{position:relative;height:20px}
+.tr i{position:absolute;left:0;top:0;height:100%;border-radius:5px}
+.hb .v{text-align:right;font-size:13px}
+.hb .v span{display:block;font-size:12px}
+@media (max-width:560px){.hb{grid-template-columns:1fr 100px}.hb .tr{grid-column:1/-1;grid-row:2}}
+.note{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:10px 14px;border-radius:0 10px 10px 0;font-size:13.5px;margin:10px 0}
+.note.red{border-color:var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);color:var(--ink)}
+svg text{font-family:"Segoe UI",system-ui,sans-serif;fill:var(--muted);font-size:11px}
+svg text.lab{fill:var(--ink);font-weight:600}
+.leg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:0 0 6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+td.hc{text-align:center;min-width:58px}
+td.hc b{display:block;font-size:13px}
+td.hc small{font-size:11px;opacity:.8}
+.hg{background:color-mix(in srgb,var(--ok) 26%,transparent)}
+.hy{background:color-mix(in srgb,#D9A62B 28%,transparent)}
+.hr{background:color-mix(in srgb,var(--red) 26%,transparent)}
+.hn{color:var(--muted)}
+.big{font-family:Georgia,serif;font-size:34px;line-height:1.1}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px}
+tr.mut td{color:var(--muted)}
+</style>
+</head>
+<body>
+<nav><div class="in" id="nav"><a href="#s0" class="on">0. Resumen<b>9.642 uds</b></a><a href="#s1">1. Criterios<b>21–23/10</b></a><a href="#s2">2. Día a día<b>80 uds/h</b></a><a href="#s3">3. Por método<b>tradicional</b></a><a href="#s4">4. Tiempo por ud<b>45 s</b></a><a href="#s5">5. Cajas, peso, volumen<b>927 cajas</b></a><a href="#s6">6. Faltas<b>410 uds</b></a><a href="#s7">7. A 10.000 uds/día<b>~18 pers.</b></a></div></nav>
+<div class="wrap" id="app">
+<section id="s0"><h1>KOROSHI · KPI de picking del 21 al 23 de octubre de 2026</h1>
+<p class="lead">En tres días se han preparado <b>9.642 uds</b> de pedidos de tienda en <b>927 cajas</b>. Cogiendo, los tres métodos salen parecidos: <b>81 uds por hora-persona</b> el tradicional del jueves frente a 85 las zonas del miércoles. La diferencia está en las cajas: las zonas hacen <b class="red">7,3 uds por caja</b> frente a 13,5 del tradicional, casi el doble de cajas que juntar y expedir.</p>
+<div class="kpis">
+ <div class="kpi"><div class="t">Uds preparadas 21–23/10</div><div class="v">9.642</div><div class="s">159 pedidos · 423 OUT</div></div>
+ <div class="kpi"><div class="t">Uds por hora-persona (3 días)</div><div class="v">75</div><div class="s">48 s por ud · 128 horas-persona</div></div>
+ <div class="kpi"><div class="t">Uds por caja</div><div class="v">10,4</div><div class="s">zonas 7,3 · tradicional 13,5</div></div>
+ <div class="kpi"><div class="t">Metros por ud</div><div class="v">8,5</div><div class="s">82 km andados en 3 días</div></div>
+ <div class="kpi"><div class="t">Peso y volumen</div><div class="v">5,7 t</div><div class="s">65,8 m³ · 590 g por ud</div></div>
+ <div class="kpi bad"><div class="t">Faltas</div><div class="v">410</div><div class="s">uds pedidas que no salen · 156 el jueves sin stock</div></div>
+</div>
+<h3 style="margin-top:18px">Decisiones</h3><div class="dec">
+ <div><span class="tag done">Hecho</span><span>Jueves 23 todo en tradicional (1 OUT por pedido), sin zonas ni oleada</span><b>81 uds/h</b></div>
+ <div><span class="tag pend">Pendiente</span><span>Apuntar personas y horas reales cada día en la ficha (hoy son estimadas por las cajas)</span><b>manual</b></div>
+ <div><span class="tag pend">Pendiente</span><span>Carro multicaja de 2–3 tiendas: comprobar si la PDA coge varias OUT a la vez</span><b>prueba</b></div>
+ <div><span class="tag pend">Pendiente</span><span>Pesar 10 prendas de cada tipo: el peso por ud es estimado</span><b>estimado</b></div>
+</div></section>
+<section id="s1"><div class="sh"><span class="num">1</span><h2>Criterios</h2></div><div class="chips">
+ <div class="chip">Días<b>21, 22 y 23/10</b></div>
+ <div class="chip">Pedidos<b>PED. TIENDAS</b></div>
+ <div class="chip">Horas-persona<b>estimadas por cajas</b><span class="mut" style="font-size:12px">si no están apuntadas</span></div>
+ <div class="chip">Corte del jueves 23<b>11:52</b><span class="mut" style="font-size:12px">recalculado en Odoo</span></div>
+ <div class="chip">Velocidad andando<b>1 m/s</b><span class="mut" style="font-size:12px">con carro y paradas</span></div>
+ <div class="chip">Metros<b>plano del almacén</b><span class="mut" style="font-size:12px">recorrido por huecos</span></div>
+ <div class="chip">Peso<b>estimado por tipo</b><span class="mut" style="font-size:12px">pendiente de pesar</span></div>
+ <div class="chip">Volumen<b>Odoo o por tipo</b><span class="mut" style="font-size:12px">litros por prenda</span></div>
+</div><p class="n" style="margin-top:10px">Fuente: módulo KOROSHI KPI (Inventario › KOROSHI KPI), una ficha por día y método. Las horas estimadas salen de las cajas cerradas cada cuarto de hora: cuántas OUT (o zonas) cierran caja a la vez, rellenando huecos de hasta 30 minutos. El martes 21 la oleada y las zonas tienen las horas apuntadas a mano (oleada: 5 personas × 2,25 h + U 1 × 7,5 h; zonas: 7 × 3,4 h). Las horas son las de España.</p></section>
+<section id="s2"><div class="sh"><span class="num">2</span><h2>Día a día</h2></div>
+<p class="sub">El día completo, con todos los métodos juntos. El martes 21 cuenta las horas apuntadas de oleada y zonas más las estimadas del tradicional; el jueves 23 llega hasta las 11:52.</p>
+<div class="card"><div class="tw"><table><thead><tr><th></th><th>Martes 21</th><th>Miércoles 22</th><th>Jueves 23</th></tr></thead><tbody>
+<tr class=""><td>Uds</td><td>4.252</td><td>2.905</td><td>2.485</td></tr>
+<tr class=""><td>Líneas</td><td>3.219</td><td>2.251</td><td>2.033</td></tr>
+<tr class=""><td>SKU distintos</td><td>882</td><td>965</td><td>812</td></tr>
+<tr class=""><td>Profundidad por SKU (uds/SKU)</td><td>4,82</td><td>3,01</td><td>3,06</td></tr>
+<tr class=""><td>Pedidos</td><td>53</td><td>71</td><td>35</td></tr>
+<tr class=""><td>OUT</td><td>125</td><td>263</td><td>35</td></tr>
+<tr class=""><td>Cajas</td><td>342</td><td>402</td><td>183</td></tr>
+<tr class=""><td>Uds por caja</td><td>12,4</td><td>7,2</td><td>13,6</td></tr>
+<tr class=""><td>Primera caja</td><td>06:16</td><td>06:07</td><td>06:18</td></tr>
+<tr class=""><td>Última caja</td><td>16:58</td><td>16:41</td><td>11:51</td></tr>
+<tr class=""><td>Horas de reloj</td><td>10,7</td><td>10,6</td><td>5,5</td></tr>
+<tr class=""><td>Personas a la vez (máx., estimado)</td><td>10</td><td>6</td><td>8</td></tr>
+<tr class=""><td>Horas-persona</td><td>63,0</td><td>33,8</td><td>31,0</td></tr>
+<tr class="hl"><td>Uds por hora-persona</td><td>67</td><td>86</td><td>80</td></tr>
+<tr class=""><td>Segundos por ud</td><td>53,4</td><td>41,8</td><td>44,9</td></tr>
+<tr class=""><td>Metros andados</td><td>29.763</td><td>24.924</td><td>27.614</td></tr>
+<tr class=""><td>Metros por ud</td><td>7,00</td><td>8,58</td><td>11,11</td></tr>
+<tr class=""><td>Peso (kg)</td><td>2.448</td><td>1.982</td><td>1.261</td></tr>
+<tr class=""><td>Peso por ud (g)</td><td>576</td><td>682</td><td>508</td></tr>
+<tr class=""><td>Volumen (m³)</td><td>27,5</td><td>24,6</td><td>13,7</td></tr>
+</tbody></table></div></div>
+<div class="two"><div class="card"><h3>Uds por hora-persona</h3><p class="n">Día completo · picking + U</p>
+<div class="hb"><div class="nm">Martes 21<small>4.252 uds · 63,0 h-p</small></div><div class="tr"><i style="width:78.3%;background:var(--acc)"></i></div><div class="v"><b class="">67</b><span class="mut">53,4 s/ud</span></div></div><div class="hb"><div class="nm">Miércoles 22<small>2.905 uds · 33,8 h-p</small></div><div class="tr"><i style="width:100.0%;background:var(--acc)"></i></div><div class="v"><b class="">86</b><span class="mut">41,8 s/ud</span></div></div><div class="hb"><div class="nm">Jueves 23<small>2.485 uds · 31,0 h-p</small></div><div class="tr"><i style="width:93.1%;background:var(--acc)"></i></div><div class="v"><b class="">80</b><span class="mut">44,9 s/ud</span></div></div>
+</div><div class="card"><h3>Uds por caja</h3><p class="n">Cuantas menos, más cajas que cerrar, juntar y etiquetar</p>
+<div class="hb"><div class="nm">Martes 21<small>342 cajas</small></div><div class="tr"><i style="width:91.2%;background:var(--acc)"></i></div><div class="v"><b class="">12,4</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Miércoles 22<small>402 cajas</small></div><div class="tr"><i style="width:52.9%;background:var(--acc)"></i></div><div class="v"><b class="red">7,2</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Jueves 23<small>183 cajas</small></div><div class="tr"><i style="width:100.0%;background:var(--acc)"></i></div><div class="v"><b class="">13,6</b><span class="mut"></span></div></div>
+</div></div></section>
+<section id="s3"><div class="sh"><span class="num">3</span><h2>Por método</h2></div>
+<p class="sub">Cada ficha cuenta solo las OUT de su método: oleada = agrupaciones B-KOR (picking + puesto de U), zonas = agrupaciones Z-, tradicional = el resto. En gris, muestras de menos de 200 uds que no sirven para comparar.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Día · método</th><th>Uds</th><th>OUT</th><th>Cajas</th><th>Uds/caja</th><th>Horas-persona</th><th>Uds/h-p</th><th>s/ud</th><th>Metros/ud</th><th>Prof. SKU</th><th>Horas</th></tr></thead><tbody>
+<tr class=""><td>Martes 21 · Oleada (B-KOR + U)</td><td>1.325</td><td>10</td><td>94</td><td>14,1</td><td>18,8</td><td><b>71</b></td><td>50,9</td><td>4,45</td><td>3,18</td><td><span class="tag done">apuntadas</span></td></tr>
+<tr class=""><td>Martes 21 · Tradicional (1 OUT por pedido)</td><td>1.341</td><td>28</td><td>111</td><td>12,1</td><td>20,5</td><td><b>65</b></td><td>55,0</td><td>11,45</td><td>3,22</td><td><span class="tag pend">estimadas</span></td></tr>
+<tr class=""><td>Martes 21 · Zonas (Z-)</td><td>1.586</td><td>87</td><td>137</td><td>11,6</td><td>23,8</td><td><b>67</b></td><td>54,0</td><td>5,37</td><td>4,18</td><td><span class="tag done">apuntadas</span></td></tr>
+<tr class="mut"><td>Miércoles 22 · Oleada (B-KOR + U)</td><td>153</td><td>10</td><td>23</td><td>6,7</td><td>1,2</td><td>—</td><td>—</td><td>15,84</td><td>3,40</td><td><span class="tag pend">estimadas</span></td></tr>
+<tr class="mut"><td>Miércoles 22 · Tradicional (1 OUT por pedido)</td><td>5</td><td>1</td><td>5</td><td>1,0</td><td>0,2</td><td>—</td><td>—</td><td>0,00</td><td>1,67</td><td><span class="tag pend">estimadas</span></td></tr>
+<tr class=""><td>Miércoles 22 · Zonas (Z-)</td><td>2.747</td><td>252</td><td>374</td><td>7,3</td><td>32,2</td><td><b>85</b></td><td>42,3</td><td>8,19</td><td>2,97</td><td><span class="tag pend">estimadas</span></td></tr>
+<tr class=""><td>Jueves 23 · Tradicional (1 OUT por pedido)</td><td>2.418</td><td>31</td><td>179</td><td>13,5</td><td>30,0</td><td><b>81</b></td><td>44,7</td><td>10,52</td><td>3,09</td><td><span class="tag pend">estimadas</span></td></tr>
+<tr class="mut"><td>Jueves 23 · Zonas (Z-)</td><td>67</td><td>4</td><td>4</td><td>16,8</td><td>1,5</td><td>—</td><td>—</td><td>9,64</td><td>1,43</td><td><span class="tag pend">estimadas</span></td></tr>
+</tbody></table></div></div>
+<div class="two"><div class="card"><h3>Uds por hora-persona</h3><p class="n">Muestras de más de 1.000 uds · la oleada incluye el puesto de U</p>
+<div class="hb"><div class="nm">Oleada · 21<small>1.325 uds</small></div><div class="tr"><i style="width:83.0%;background:var(--acc)"></i></div><div class="v"><b class="">71</b><span class="mut">apuntadas</span></div></div><div class="hb"><div class="nm">Tradicional · 21<small>1.341 uds</small></div><div class="tr"><i style="width:76.8%;background:var(--acc)"></i></div><div class="v"><b class="">65</b><span class="mut">estimadas</span></div></div><div class="hb"><div class="nm">Zonas · 21<small>1.586 uds</small></div><div class="tr"><i style="width:78.2%;background:var(--acc)"></i></div><div class="v"><b class="">67</b><span class="mut">apuntadas</span></div></div><div class="hb"><div class="nm">Zonas · 22<small>2.747 uds</small></div><div class="tr"><i style="width:100.0%;background:var(--acc)"></i></div><div class="v"><b class="">85</b><span class="mut">estimadas</span></div></div><div class="hb"><div class="nm">Tradicional · 23<small>2.418 uds</small></div><div class="tr"><i style="width:94.6%;background:var(--acc)"></i></div><div class="v"><b class="">81</b><span class="mut">estimadas</span></div></div>
+</div><div class="card"><h3>Uds por caja</h3><p class="n">Rojo: menos de 9 uds por caja</p>
+<div class="hb"><div class="nm">Oleada · 21<small>94 cajas</small></div><div class="tr"><i style="width:100.0%;background:var(--acc)"></i></div><div class="v"><b class="">14,1</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Tradicional · 21<small>111 cajas</small></div><div class="tr"><i style="width:85.8%;background:var(--acc)"></i></div><div class="v"><b class="">12,1</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Zonas · 21<small>137 cajas</small></div><div class="tr"><i style="width:82.3%;background:var(--acc)"></i></div><div class="v"><b class="">11,6</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Zonas · 22<small>374 cajas</small></div><div class="tr"><i style="width:51.8%;background:var(--acc)"></i></div><div class="v"><b class="red">7,3</b><span class="mut"></span></div></div><div class="hb"><div class="nm">Tradicional · 23<small>179 cajas</small></div><div class="tr"><i style="width:95.7%;background:var(--acc)"></i></div><div class="v"><b class="">13,5</b><span class="mut"></span></div></div>
+</div></div>
+<div class="note"><b>Lectura:</b> la oleada coge rápido (30,6 s por ud cogiendo, 4,5 m por ud) pero luego la U añade 20,4 s por ud con una sola persona y deja la expedición esperando. Las zonas andan poco, pero parten cada pedido en muchas OUT: el miércoles 252 OUT para 60 pedidos. El tradicional anda más (10,5 m por ud) y aun así da el mismo rendimiento con la mitad de cajas.</div>
+</section>
+<section id="s4"><div class="sh"><span class="num">4</span><h2>Tiempo por unidad</h2></div>
+<p class="sub">Segundos por unidad, separando lo que se tarda andando (metros ÷ 1 m/s) de lo que se tarda leyendo y cogiendo. En la oleada se suma el puesto de U.</p>
+<div class="card"><h3>Segundos por ud</h3><div class="leg"><span><i style="background:var(--warn)"></i>Andando</span><span><i style="background:var(--acc)"></i>Leyendo y cogiendo</span><span><i style="background:var(--ok)"></i>U (oleada)</span></div>
+<svg width="100%" viewBox="0 0 360 160"><text x="0" y="21" class="lab">Oleada · 21</text><rect x="150.0" y="8" width="12.8" height="16" rx="3" fill="var(--warn)"></rect><rect x="162.8" y="8" width="75.9" height="16" rx="3" fill="var(--acc)"></rect><rect x="238.7" y="8" width="59.3" height="16" rx="3" fill="var(--ok)"></rect><text class="lab" x="303.1" y="21">50,9 s</text><text x="0" y="51" class="lab">Tradicional · 21</text><rect x="150.0" y="38" width="33.2" height="16" rx="3" fill="var(--warn)"></rect><rect x="183.2" y="38" width="126.8" height="16" rx="3" fill="var(--acc)"></rect><text class="lab" x="315.0" y="51">55,0 s</text><text x="0" y="81" class="lab">Zonas · 21</text><rect x="150.0" y="68" width="15.7" height="16" rx="3" fill="var(--warn)"></rect><rect x="165.7" y="68" width="141.7" height="16" rx="3" fill="var(--acc)"></rect><text class="lab" x="312.4" y="81">54,1 s</text><text x="0" y="111" class="lab">Zonas · 22</text><rect x="150.0" y="98" width="23.9" height="16" rx="3" fill="var(--warn)"></rect><rect x="173.9" y="98" width="99.2" height="16" rx="3" fill="var(--acc)"></rect><text class="lab" x="278.1" y="111">42,3 s</text><text x="0" y="141" class="lab">Tradicional · 23</text><rect x="150.0" y="128" width="30.5" height="16" rx="3" fill="var(--warn)"></rect><rect x="180.5" y="128" width="99.2" height="16" rx="3" fill="var(--acc)"></rect><text class="lab" x="284.7" y="141">44,6 s</text></svg>
+</div><div class="card"><div class="tw"><table><thead><tr><th>Día · método</th><th>Horas andando</th><th>Horas leyendo</th><th>s/ud andando</th><th>s/ud leyendo</th><th>s/ud U</th><th>% andando</th></tr></thead><tbody>
+<tr><td>Oleada · 21</td><td>1,6</td><td>9,6</td><td>4,4</td><td>26,1</td><td>20,4</td><td>14%</td></tr>
+<tr><td>Tradicional · 21</td><td>4,3</td><td>16,2</td><td>11,4</td><td>43,6</td><td>—</td><td>21%</td></tr>
+<tr><td>Zonas · 21</td><td>2,4</td><td>21,4</td><td>5,4</td><td>48,7</td><td>—</td><td>10%</td></tr>
+<tr><td>Zonas · 22</td><td>6,2</td><td>26,0</td><td>8,2</td><td>34,1</td><td>—</td><td>19%</td></tr>
+<tr><td>Tradicional · 23</td><td>7,1</td><td>22,9</td><td>10,5</td><td>34,1</td><td>—</td><td>24%</td></tr>
+</tbody></table></div></div></section>
+<section id="s5"><div class="sh"><span class="num">5</span><h2>Cajas, peso y volumen</h2></div>
+<p class="sub">Lo que sale del almacén cada día. El peso es estimado por tipo de prenda; el volumen, el de Odoo o el estimado por tipo.</p>
+<div class="kpis">
+ <div class="kpi"><div class="t">Cajas 21–23/10</div><div class="v">927</div><div class="s">10,4 uds por caja</div></div>
+ <div class="kpi"><div class="t">Peso</div><div class="v">5.692 kg</div><div class="s">6,1 kg por caja</div></div>
+ <div class="kpi"><div class="t">Volumen</div><div class="v">65,8 m³</div><div class="s">71 litros por caja</div></div>
+ <div class="kpi"><div class="t">Metros andados</div><div class="v">82,3 km</div><div class="s">89 m por caja</div></div>
+</div><div class="card"><div class="tw"><table><thead><tr><th>Día</th><th>Cajas</th><th>Peso (kg)</th><th>kg/caja</th><th>Volumen (m³)</th><th>Litros/caja</th><th>g/ud</th><th>Litros/ud</th></tr></thead><tbody>
+<tr><td>Martes 21</td><td>342</td><td>2.448</td><td>7,2</td><td>27,5</td><td>80</td><td>576</td><td>6,5</td></tr>
+<tr><td>Miércoles 22</td><td>402</td><td>1.982</td><td>4,9</td><td>24,6</td><td>61</td><td>682</td><td>8,5</td></tr>
+<tr><td>Jueves 23</td><td>183</td><td>1.261</td><td>6,9</td><td>13,7</td><td>75</td><td>508</td><td>5,5</td></tr>
+<tr class="tot"><td>Total</td><td>927</td><td>5.692</td><td>6,1</td><td>65,8</td><td>71</td><td>590</td><td>6,8</td></tr>
+</tbody></table></div></div></section>
+<section id="s6"><div class="sh"><span class="num">6</span><h2>Faltas</h2></div>
+<p class="sub">Uds pedidas que no han salido en su OUT, por motivo (Inventario › KOROSHI KPI › Faltas por día). El jueves 23 casi todo es falta de stock.</p>
+<div class="card"><h3>Uds que faltan por día</h3><div class="leg"><span><i style="background:var(--red)"></i>Sin stock</span><span><i style="background:var(--warn)"></i>En pedido pendiente</span><span><i style="background:var(--acc)"></i>No cogido (había stock)</span><span><i style="background:var(--bar)"></i>No servido (cancelado)</span></div>
+<svg width="100%" viewBox="0 0 360 100"><text x="0" y="21" class="lab">Martes 21</text><rect x="150.0" y="8" width="113.3" height="16" rx="3" fill="var(--bar)"></rect><text class="lab" x="268.3" y="21">126 uds</text><text x="0" y="51" class="lab">Miércoles 22</text><rect x="150.0" y="38" width="8.1" height="16" rx="3" fill="var(--red)"></rect><rect x="158.1" y="38" width="1.8" height="16" rx="3" fill="var(--acc)"></rect><rect x="159.9" y="38" width="85.4" height="16" rx="3" fill="var(--bar)"></rect><text class="lab" x="250.3" y="51">106 uds</text><text x="0" y="81" class="lab">Jueves 23</text><rect x="150.0" y="68" width="140.2" height="16" rx="3" fill="var(--red)"></rect><rect x="290.2" y="68" width="15.3" height="16" rx="3" fill="var(--warn)"></rect><rect x="305.5" y="68" width="4.5" height="16" rx="3" fill="var(--acc)"></rect><text class="lab" x="315.0" y="81">178 uds</text></svg>
+</div><div class="card"><div class="tw"><table><thead><tr><th>Motivo</th><th>Martes 21</th><th>Miércoles 22</th><th>Jueves 23</th><th>Total</th></tr></thead><tbody>
+<tr class="warnrow"><td>Sin stock</td><td>—</td><td>9</td><td>156</td><td>165</td></tr>
+<tr class=""><td>En pedido pendiente</td><td>—</td><td>—</td><td>17</td><td>17</td></tr>
+<tr class=""><td>No cogido (había stock)</td><td>—</td><td>2</td><td>5</td><td>7</td></tr>
+<tr class=""><td>No servido (cancelado)</td><td>126</td><td>95</td><td>—</td><td>221</td></tr>
+<tr class="tot"><td>Total</td><td>126</td><td>106</td><td>178</td><td>410</td></tr>
+<tr><td>% sobre las uds del día</td><td>3,0%</td><td>3,6%</td><td>7,2%</td><td>4,3%</td></tr>
+</tbody></table></div></div></section>
+<section id="s7"><div class="sh"><span class="num">7</span><h2>A 10.000 uds por día</h2></div>
+<p class="sub">Personas que harían falta cogiendo a la vez para 10.000 uds, con el rendimiento medido de cada método. Solo picking (y la U en la oleada): no cuenta juntar cajas, etiquetar ni cargar.</p>
+<div class="card"><div class="tw"><table><thead><tr><th>Método (dato)</th><th>Uds/h-p</th><th>Horas-persona</th><th>6 h<br><span class="mut" style="font-weight:400">de 7:00 a 13:00</span></th><th>7 h<br><span class="mut" style="font-weight:400">de 6:00 a 13:00</span></th><th>8 h<br><span class="mut" style="font-weight:400">de 6:00 a 14:00</span></th></tr></thead><tbody>
+<tr class="hl"><td>Tradicional · 23</td><td>81</td><td>124</td><td>20,7</td><td>17,7</td><td>15,5</td></tr>
+<tr class=""><td>Zonas · 22</td><td>85</td><td>117</td><td>19,6</td><td>16,8</td><td>14,7</td></tr>
+<tr class=""><td>Zonas · 21</td><td>67</td><td>150</td><td>25,0</td><td>21,4</td><td>18,8</td></tr>
+<tr class=""><td>Oleada · 21</td><td>71</td><td>142</td><td>23,6</td><td>20,2</td><td>17,7</td></tr>
+<tr class=""><td>Tradicional · 21</td><td>65</td><td>153</td><td>25,5</td><td>21,8</td><td>19,1</td></tr>
+</tbody></table></div></div>
+<div class="note"><b>Ojo:</b> el tradicional del martes 21 (65 uds/h-p) y el del jueves 23 (81) son el mismo método; el jueves la gente ya iba rodada y no había zonas ni oleada a la vez. Con horas apuntadas a mano el dato sería más fiable.</div>
+<p class="foot">Fuente: Odoo de KOROSHI (Effective Logistics), módulo KOROSHI KPI, fichas koroshi.kpi.dia y koroshi.kpi.falta consultadas el 23/10/2026. Horas-persona estimadas por las cajas salvo donde pone «apuntadas». Peso estimado por tipo de prenda.</p>
+</section></div>
+</body></html>

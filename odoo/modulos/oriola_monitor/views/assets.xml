@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="Monitor picking Oriola assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/oriola_monitor/static/src/css/monitor.css"/>
+            <script type="text/javascript" src="/oriola_monitor/static/src/js/monitor.js"/>
+        </xpath>
+    </template>
+</odoo>

@@ -30,10 +30,12 @@ v1.6: fuera la lista de faltantes de abajo y la columna "Sin stock": las faltas 
 KOROSHI KPI > Faltas por dia (modulo koroshi_kpi v1.3).
 v1.7: tiendas: franja grande arriba (% hecho, hora de fin, uds por coger), filas con color segun el estado,
 "Sin empezar" y "Hechas" plegadas, y Modo pantalla (sin menu de Odoo, letra grande) para la pantalla del almacen.
+v1.8: las OUT que ya tienen cogido todo lo que hay (solo faltan prendas sin stock o no encontradas) o que llevan mas de
+20 min sin cerrar caja salen como HECHAS (sin validar, con lo que falta), no como "parcial".
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

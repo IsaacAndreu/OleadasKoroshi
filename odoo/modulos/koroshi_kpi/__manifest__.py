@@ -21,10 +21,12 @@ al actualizar se crean y recalculan solas las fichas de los dias que ya habia.
 v1.3: Faltas por dia (Inventario > KOROSHI KPI > Faltas por dia): lo que piden los pedidos de tienda y no
 se ha cogido, por OUT, articulo y motivo (sin stock, no cogido, en pedido pendiente, no servido). Se saca
 con el boton Recalcular de la ficha del dia, cada noche y con el menu Recalcular faltas de hoy.
+v1.4: Hoja de carga XPO (Excel por delegacion con tiendas, pedidos, uds, bultos y palets): menu Inventario > Informes > Hoja de carga
+XPO de hoy, o seleccionar OUT en la lista de albaranes > Accion > KOROSHI Hoja de carga XPO.
 
 Solo escribe en sus propias tablas: no cambia albaranes, stock ni productos.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -36,6 +38,7 @@ Solo escribe en sus propias tablas: no cambia albaranes, stock ni productos.
         'data/recalcular.xml',
         'views/kpi_views.xml',
         'views/falta_views.xml',
+        'views/hoja_carga.xml',
     ],
     'installable': True,
     'application': False,
