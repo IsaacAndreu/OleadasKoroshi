@@ -52,6 +52,7 @@ PERSONAS = 8                     # personas cogiendo
 ZONAS = 4                        # v10: zonas de lineal (D1..D4); las demas personas hacen ZX y pedidos enteros
 ENTERA_MENOS_DE = 35             # v10: pedido con menos uds -> no se parte (una OUT, agrupacion T)
 MIN_UDS_OUT = 15                 # v10: ningun trozo de tienda con menos uds: se junta con la zona de al lado
+MIN_UDS_PEDIDO = 15              # v10b: pedido con menos uds reservadas -> no se coge (queda pendiente)
 ZONA_ENTERAS = 'T'               # v10: agrupaciones de pedidos enteros (T1, T2...)
 FACTOR_ENTERO = 1.25             # v10: un pedido entero cuesta mas por ud (tradicional 48 s/ud 23/10 vs zonas 38 s/ud 22/10)
 AUTO = True                      # v10: prueba cada combinacion de ZONAS_PRUEBA x ENTERA_PRUEBA y se queda con la que
@@ -334,6 +335,21 @@ prio.sort()
 orden = []
 for x in prio:
     orden.append(x[4])
+
+# v10b (27/10/2026): nunca un pedido de menos de MIN_UDS_PEDIDO uds (reservadas): no se toca, queda pendiente
+uds_por_pedido = {}
+for p in validas:
+    clave_p = p.origin or p.name
+    uds_por_pedido[clave_p] = uds_por_pedido.get(clave_p, 0.0) + uds_out[p.id]
+orden_ok = []
+for pid in orden:
+    q = Picking.browse(pid)
+    if uds_por_pedido[q.origin or q.name] < MIN_UDS_PEDIDO:
+        saltadas.append('%s (%s): pedido de %d uds (menos de %d)' % (
+            q.name, q.partner_id.name or '', uds_por_pedido[q.origin or q.name], MIN_UDS_PEDIDO))
+        continue
+    orden_ok.append(pid)
+orden = orden_ok
 
 # v10: pedido de cada OUT (en la prueba con agrupaciones ya partidas, un pedido son varias OUT) y sus uds
 ped_de = {}
