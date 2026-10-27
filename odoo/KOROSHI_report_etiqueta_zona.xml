@@ -26,13 +26,16 @@
     codigo de la OUT y el de la matricula para separarlos. Sin el script del nombre de la tienda (tambien corria
     sin tamano y lo dejaba siempre al minimo): tamano por longitud, maximo 16 pt.
     v14 (23/10/2026): la tienda (K grande + nombre, y ciudad · uds) centrada.
+    v15 (27/10/2026): la linea CAJA n · tienda tambien en ... siempre en una sola linea (con 8 zonas ocupaba 2 y la
+    matricula saltaba a la hoja siguiente); matricula con zonas a 70 mm para dejar margen.
+    v16 (27/10/2026): codigo de barras de la matricula mas bajo: 55 mm con zonas y 70 mm sin zonas.
     wkhtmltopdf: sin flex, todo con tablas y medidas fijas.
     -->
     <t t-call="web.basic_layout">
         <t t-foreach="docs" t-as="o">
             <t t-set="cjs" t-value="o.env['zebra.label'].search([('note', '=', 'ETQ ZONA ' + o.name)], order='sequence_number')"/>
             <t t-set="es_zona" t-value="bool(o.batch_id and o.batch_id.name.startswith('Z-'))"/>
-            <t t-set="alto_cj" t-value="es_zona and 73 or 85"/>
+            <t t-set="alto_cj" t-value="es_zona and 55 or 70"/>
             <t t-set="zona" t-value="es_zona and o.batch_id.name.split('-')[-1] or ''"/>
             <t t-set="nota" t-value="o.note or ''"/>
             <t t-set="caja" t-value="('CAJA ' in nota) and nota.split('CAJA ')[1][:2] or ''"/>
@@ -78,9 +81,9 @@
                         <div style="font-size: 20pt; font-weight: 900; line-height: 1;" t-esc="o.origin or ''"/>
                         <img t-if="o.origin" t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', o.origin, 800, 120)" style="width: 70%; height: 8mm; margin-top: 0.5mm;"/>
                     </div>
-                    <div style="border: 2px solid #000; text-align: center; font-size: 11pt; font-weight: 800; margin-top: 1mm;">
+                    <div style="border: 2px solid #000; text-align: center; font-size: 11pt; font-weight: 800; margin-top: 1mm; white-space: nowrap; overflow: hidden; height: 5.5mm; line-height: 5.5mm;">
                         CAJA <t t-esc="cj_index + 1"/>
-                        <t t-if="otras"><span style="font-size: 9pt; font-weight: 700;"> · tienda también en <t t-esc="otras"/></span></t>
+                        <t t-if="otras"><span t-attf-style="font-size: {{len(otras) &gt; 30 and 7 or 9}}pt; font-weight: 700;"> · tienda también en <t t-esc="otras"/></span></t>
                     </div>
                     <div style="border-top: 1.5px solid #000; margin-top: 1mm; padding-top: 0.5mm;">
                         <table style="width: 100%; font-size: 8.5pt; font-weight: 700;"><tr><td>1 · ESCANEAR PARA ABRIR EN LA PDA</td><td style="text-align: right;">OUT</td></tr></table>

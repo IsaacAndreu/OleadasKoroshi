@@ -1,0 +1,374 @@
+<title>Pruebas de picking KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Public+Sans:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: banda de cabecera con selector de dia fijo arriba; secciones apiladas en una columna de lectura,
+   con tablas y graficos de barras dibujados con divs a escala. Color de seguridad (naranja) solo para lo que pide atencion. */
+:root {
+  --bg: #f3f4f1; --surface: #fdfdfb; --ink: #1b2129; --muted: #59626e; --line: #d9dcd5; --track: #e6e8e3;
+  --accent: #c2541a; --accent-soft: #f6e3d6; --blue: #2c5f9e; --blue-soft: #dfe8f4; --ok: #2f7d50; --ok-soft: #e0efe5;
+  --warn: #a8700e; --bad: #b3352a; --bad-soft: #f6dedb;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", Arial, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #15191e; --surface: #1d2229; --ink: #e9ebe6; --muted: #a2aab4; --line: #313842; --track: #2a3038;
+  --accent: #e8874f; --accent-soft: #3d2a1f; --blue: #7ea8e0; --blue-soft: #22334a; --ok: #6cc08f; --ok-soft: #1f3529;
+  --warn: #e0a55a; --bad: #e3695e; --bad-soft: #3d2422; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #15191e; --surface: #1d2229; --ink: #e9ebe6; --muted: #a2aab4; --line: #313842; --track: #2a3038;
+  --accent: #e8874f; --accent-soft: #3d2a1f; --blue: #7ea8e0; --blue-soft: #22334a; --ok: #6cc08f; --ok-soft: #1f3529;
+  --warn: #e0a55a; --bad: #e3695e; --bad-soft: #3d2422; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15.5px; line-height: 1.5;
+  font-variant-numeric: tabular-nums; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--surface); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header.top { background: var(--surface); border-bottom: 1px solid var(--line); }
+header.top .wrap { padding-block: 26px 18px; display: grid; gap: 8px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); }
+h1, h2, h3 { font-family: var(--f-display); font-weight: 700; margin: 0; text-wrap: balance; letter-spacing: .005em; }
+h1 { font-size: clamp(30px, 5vw, 44px); line-height: 1.05; }
+h2 { font-size: 27px; line-height: 1.1; }
+h3 { font-size: 19px; }
+.lead { color: var(--muted); max-width: 66ch; margin: 0; font-size: 16.5px; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 9; background: var(--surface); border-bottom: 1px solid var(--line); }
+.bar .wrap { padding-block: 10px; display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; justify-content: space-between; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { font: 600 14px var(--f-body); border: 1px solid var(--line); background: var(--surface); color: var(--ink);
+  padding: 7px 13px; border-radius: 6px; cursor: pointer; }
+.chip small { display: block; font-weight: 500; font-size: 11.5px; color: var(--muted); }
+.chip[aria-pressed="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.chip[aria-pressed="true"] small { color: var(--surface); opacity: .75; }
+.chip:focus-visible, .tab:focus-visible, input:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+nav.tabs { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+.tab { font: 600 13.5px var(--f-body); color: var(--muted); text-decoration: none; padding: 6px 9px; border-radius: 5px; white-space: nowrap; }
+.tab:hover { background: var(--track); color: var(--ink); }
+main .wrap { padding-block: 10px 70px; display: grid; gap: 46px; }
+section { display: grid; gap: 16px; scroll-margin-top: 120px; min-width: 0; }
+.sh { display: grid; gap: 4px; }
+.sub { color: var(--muted); margin: 0; max-width: 70ch; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.tile { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 13px 14px; display: grid; gap: 2px; align-content: start; }
+.tile .v { font-family: var(--f-display); font-size: 32px; font-weight: 700; line-height: 1.05; }
+.tile .t { font-size: 13px; color: var(--muted); }
+.tile .s { font-size: 12.5px; color: var(--muted); }
+.tile.alert { border-color: var(--accent); background: var(--accent-soft); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; min-width: 0; }
+.dia-nota { font-size: 15px; display: grid; gap: 6px; }
+.dia-nota p { margin: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 420px), 1fr)); gap: 14px; }
+.rows { display: grid; gap: 9px; }
+.row { display: grid; grid-template-columns: minmax(110px, 170px) 1fr minmax(64px, auto); gap: 10px; align-items: center; }
+.row .n { font-weight: 600; font-size: 14px; }
+.row .n small { display: block; font-weight: 400; color: var(--muted); font-size: 12px; }
+.row .val { text-align: right; font-weight: 700; font-size: 14px; white-space: nowrap; }
+.track { height: 18px; background: var(--track); border-radius: 4px; overflow: hidden; display: flex; }
+.track i { display: block; height: 100%; }
+.legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.tw { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 7px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; color: var(--muted); font-weight: 600; }
+td.r, th.r { text-align: right; }
+tr.dim td { color: var(--muted); }
+.pill { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+.p-med { background: var(--blue-soft); color: var(--blue); }
+.p-apu { background: var(--ok-soft); color: var(--ok); }
+.p-est { background: var(--bad-soft); color: var(--bad); }
+.p-dia { background: var(--track); color: var(--muted); }
+.list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.list li { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px;
+  display: grid; grid-template-columns: auto 1fr; gap: 4px 10px; align-items: start; }
+.list li .pills { display: flex; gap: 4px; flex-wrap: wrap; grid-column: 2; }
+.list li b { font-weight: 600; }
+.list li[hidden] { display: none; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 6px; background: var(--accent); }
+.dot.ok { background: var(--ok); }
+.check { display: grid; gap: 8px; }
+.check label { display: grid; grid-template-columns: auto 1fr; gap: 10px; align-items: start; background: var(--surface);
+  border: 1px solid var(--line); border-radius: 8px; padding: 11px 12px; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--ok); }
+.check label:has(input:checked) span { color: var(--muted); text-decoration: line-through; }
+.calc { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr)); gap: 16px; }
+.ctl { display: grid; gap: 4px; }
+.ctl label { font-size: 13px; color: var(--muted); }
+.ctl output { font-family: var(--f-display); font-size: 22px; font-weight: 700; }
+.ctl input[type=range] { width: 100%; accent-color: var(--accent); }
+.big { font-family: var(--f-display); font-size: clamp(54px, 9vw, 84px); line-height: 1; font-weight: 700; color: var(--accent); }
+.result { display: flex; flex-wrap: wrap; gap: 8px 26px; align-items: end; }
+.result .sm { color: var(--muted); font-size: 14px; max-width: 46ch; }
+.toggle { display: flex; gap: 8px; align-items: center; font-size: 14px; }
+.note { border-left: 3px solid var(--warn); background: var(--surface); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 14px; color: var(--ink); }
+.foot { color: var(--muted); font-size: 12.5px; }
+@media (max-width: 560px) {
+  .row { grid-template-columns: 1fr minmax(56px, auto); }
+  .row .track { grid-column: 1 / -1; grid-row: 2; }
+}
+@media (prefers-reduced-motion: no-preference) { .track i { transition: width .35s ease; } }
+</style>
+
+<header class="top"><div class="wrap">
+  <div class="eyebrow">KOROSHI · Effective Logistics · almacén de Amposta</div>
+  <h1>Pruebas de picking del 21 al 23 de octubre</h1>
+  <p class="lead">Tres formas de preparar los pedidos de tienda en tres días: oleada con U, zonas y tradicional (una OUT por pedido). Elige un día arriba para ver qué pasó; las cifras salen de Odoo salvo donde pone otra cosa.</p>
+</div></header>
+
+<div class="bar"><div class="wrap">
+  <div class="chips" role="group" aria-label="Día">
+    <button class="chip" data-dia="all" aria-pressed="true">Los tres días<small>21–23/10</small></button>
+    <button class="chip" data-dia="21" aria-pressed="false">Miércoles 21<small>oleada y zonas</small></button>
+    <button class="chip" data-dia="22" aria-pressed="false">Jueves 22<small>zonas</small></button>
+    <button class="chip" data-dia="23" aria-pressed="false">Viernes 23<small>tradicional</small></button>
+  </div>
+  <nav class="tabs" aria-label="Secciones">
+    <a class="tab" href="#resumen">Resumen</a><a class="tab" href="#metodos">Métodos</a><a class="tab" href="#tiempos">Tiempos</a>
+    <a class="tab" href="#problemas">Problemas</a><a class="tab" href="#almacen">Qué pedimos</a><a class="tab" href="#diezmil">10.000 uds</a>
+  </nav>
+</div></div>
+
+<main><div class="wrap">
+
+<section id="resumen">
+  <div class="sh"><h2 id="t-resumen">Los tres días</h2><p class="sub" id="s-resumen"></p></div>
+  <div class="tiles" id="tiles"></div>
+  <div class="panel dia-nota" id="nota"></div>
+</section>
+
+<section id="metodos">
+  <div class="sh"><h2>Qué se hizo con cada método</h2>
+    <p class="sub">Unidades, OUT y cajas de cada método. Fíjate en las uds por caja: cuantas menos, más cajas que cerrar, juntar, etiquetar y cargar.</p></div>
+  <div class="two">
+    <div class="panel"><h3>Unidades por método</h3><div class="rows" id="b-uds"></div></div>
+    <div class="panel"><h3>Uds por caja</h3><div class="rows" id="b-caja"></div>
+      <p class="foot">En naranja, menos de 9 uds por caja.</p></div>
+  </div>
+  <div class="panel"><div class="tw"><table>
+    <thead><tr><th>Día · método</th><th class="r">Uds</th><th class="r">Pedidos</th><th class="r">OUT</th><th class="r">Cajas</th><th class="r">Uds/caja</th><th class="r">Recorrido</th></tr></thead>
+    <tbody id="t-met"></tbody></table></div>
+    <p class="foot">Recorrido: metros por ud según el plano de la nave (camino entre huecos). En gris, muestras de menos de 200 uds.</p></div>
+</section>
+
+<section id="tiempos">
+  <div class="sh"><h2>Cuánto se tarda por unidad</h2>
+    <p class="sub">Tres fuentes. <span class="pill p-med">Medido</span> sale de la hora a la que Odoo cierra cada caja (tiempo entre dos cajas de la misma OUT dividido por sus uds). <span class="pill p-apu">Apuntado</span> son las horas que apuntó el encargado; solo las hay del miércoles. <span class="pill p-est">Estimado</span> es lo que calculaba el informe con las cajas de cada cuarto de hora, y se queda corto.</p></div>
+  <div class="panel"><h3>Segundos por unidad</h3>
+    <div class="legend"><span><i style="background:var(--blue)"></i>Medido</span><span><i style="background:var(--ok)"></i>Apuntado</span><span><i style="background:var(--bad)"></i>Estimado</span></div>
+    <div class="rows" id="b-seg"></div>
+    <p class="foot">Zonas del jueves: cada persona lleva varias tiendas a la vez, así que su medido es un máximo. Oleada: sus cajas se cierran en la U, no se puede medir entre cajas; lo apuntado son 31 s cogiendo y 20 s en la U.</p></div>
+  <div class="note"><b>El miércoles en zonas</b> es el único caso con las tres fuentes: estimado 28 s, medido 46 s y apuntado 54 s. La estimación se quedaba en la mitad del tiempo real; por eso ahora usamos lo medido.</div>
+</section>
+
+<section id="problemas">
+  <div class="sh"><h2>Problemas que vimos</h2><p class="sub" id="s-prob"></p></div>
+  <ul class="list" id="l-prob"></ul>
+</section>
+
+<section id="almacen">
+  <div class="sh"><h2>Qué pedimos al almacén</h2>
+    <p class="sub">Puedes ir marcando lo que ya se hace; se queda guardado solo en este navegador.</p></div>
+  <div class="check" id="c-alm"></div>
+  <h3 style="margin-top:8px">Lo que ya está hecho en Odoo</h3>
+  <ul class="list" id="l-hecho"></ul>
+</section>
+
+<section id="diezmil">
+  <div class="sh"><h2>¿Cuánta gente para 10.000 uds?</h2>
+    <p class="sub">Mueve los valores. Solo cuenta el picking: juntar, etiquetar y cargar van aparte.</p></div>
+  <div class="panel">
+    <div class="calc">
+      <div class="ctl"><label for="r-uds">Unidades del día</label><output id="o-uds"></output><input type="range" id="r-uds" min="4000" max="20000" step="500" value="10000"></div>
+      <div class="ctl"><label for="r-seg">Segundos por unidad</label><output id="o-seg"></output><input type="range" id="r-seg" min="28" max="65" step="1" value="48"></div>
+      <div class="ctl"><label for="r-hor">Horas cogiendo (desde las 6:00)</label><output id="o-hor"></output><input type="range" id="r-hor" min="4" max="10" step="0.5" value="7"></div>
+    </div>
+    <div class="chips" role="group" aria-label="Escenario">
+      <button class="chip" data-seg="44">Lo que decíamos<small>44 s · estimado</small></button>
+      <button class="chip" data-seg="48" aria-pressed="true">Medido hoy<small>48 s · tradicional vie 23</small></button>
+      <button class="chip" data-seg="39">Mejora A<small>39 s · ubicación −9 s</small></button>
+      <button class="chip" data-seg="34">Mejoras A + B<small>34 s · y carro multicaja</small></button>
+    </div>
+    <label class="toggle" for="r-des"><input type="checkbox" id="r-des"> Sumar el desfase del miércoles (+17%: arrancar cada OUT, pausas cortas, esperas)</label>
+    <div class="result"><div class="big" id="o-per"></div>
+      <div class="sm" id="o-txt"></div></div>
+  </div>
+  <p class="foot">Mejora A: tener el artículo en su hueco de picking, no lanzar lo que no tiene stock y quitar pasos a la PDA. Mejora B: carro con 2 o 3 tiendas a la vez. Son objetivos por probar, no medidas.</p>
+</section>
+
+<p class="foot">Fuente: Odoo de KOROSHI (empresa Effective Logistics): pedidos de tienda, cajas con matrícula, módulo KOROSHI KPI y faltas por día, consultados el 26/10/2026. Horas del miércoles apuntadas por el encargado. Peso por prenda estimado por tipo (en Odoo no hay pesos).</p>
+</div></main>
+
+<script>
+(function () {
+  var D = {
+    '21': {nombre: 'Miércoles 21', uds: 4252, ped: 53, out: 125, caj: 342, kg: 2448, m3: 27.5, rec: 7.0, faltas: 126, ini: '6:16', fin: '16:58',
+      nota: ['Día de pruebas a la vez: la <b>oleada</b> (10 tiendas cogidas por artículo y repartidas en la U, con una persona en la U de 9:14 a ~16:45) y las <b>zonas</b> Z-2110 (7 personas de 9:35 a 12:59). El resto, en tradicional.',
+             'La U estuvo casi <b>1 hora parada</b> esperando los INT. Hubo líneas «fantasma» en los INT y alguien pulsó Forzar disponibilidad.'],
+      met: [['Oleada + U', 1325, 10, 10, 94, 4.45], ['Tradicional', 1341, 22, 28, 111, 11.45], ['Zonas', 1586, 21, 87, 137, 5.37]]},
+    '22': {nombre: 'Jueves 22', uds: 2905, ped: 71, out: 263, caj: 381, kg: 1982, m3: 24.6, rec: 8.6, faltas: 106, ini: '6:07', fin: '16:39',
+      nota: ['Día entero en <b>zonas</b> (Z-2210): cada pedido se partía en una OUT por zona. Salieron <b>252 OUT para 60 pedidos</b>.',
+             'Las cajas salieron a <b>7,8 uds por caja</b>: casi el doble de cajas que con el tradicional, y mucho trabajo de juntar matrículas antes de etiquetar.'],
+      met: [['Zonas', 2747, 60, 252, 353, 8.19], ['Oleada + U', 153, 10, 10, 23, 15.84], ['Tradicional', 5, 1, 1, 5, 0]]},
+    '23': {nombre: 'Viernes 23', uds: 4284, ped: 57, out: 57, caj: 309, kg: 2174, m3: 23.6, rec: 10.6, faltas: 79, ini: '6:18', fin: '16:56',
+      nota: ['Día entero en <b>tradicional</b>: una OUT por pedido, una persona coge el pedido entero de una tienda.',
+             '<b>13,8 uds por caja</b> y sin juntar. Se cargaron 355 bultos en 32 palets. Hubo que arreglar a mano K44, K59, K65 y K86 en expedición.'],
+      met: [['Tradicional', 4199, 52, 52, 304, 10.27], ['Zonas', 85, 5, 5, 5, 11.15]]}
+  };
+  var SEG = [
+    {dia: '21', n: 'Tradicional', med: 58.0, mn: 81, apu: null, est: 55.0},
+    {dia: '21', n: 'Zonas', med: 46.1, mn: 63, apu: 54.0, est: 28.4},
+    {dia: '21', n: 'Oleada + U', med: null, mn: 0, apu: 51.0, est: null},
+    {dia: '22', n: 'Zonas (máximo)', med: 37.9, mn: 163, apu: null, est: 42.6},
+    {dia: '23', n: 'Tradicional', med: 48.4, mn: 237, apu: null, est: 44.2}
+  ];
+  var PROB = [
+    {d: ['21'], t: 'Líneas «fantasma» en los INT', x: 'La PDA deja leer un artículo que el INT no pide; al validar daba error. Ahora hay un aviso que lo apunta.'},
+    {d: ['21'], t: 'Alguien pulsó «Forzar disponibilidad»', x: 'Hubo que deshacerlo con una acción. No se debe pulsar nunca.'},
+    {d: ['21'], t: 'La U, un embudo', x: 'Todo pasa por una persona; casi 1 hora parada esperando los INT.'},
+    {d: ['21', '22'], t: 'Etiquetas de GLS y XPO con bultos de más', x: 'Bultos escritos a mano o sumados por un módulo de Odoo (K69 con 11 en vez de 3, K77 con 6 en vez de 2).'},
+    {d: ['22'], t: 'Demasiadas cajas con zonas', x: '7,8 uds por caja y 252 OUT para 60 pedidos: mucho juntar y más errores.'},
+    {d: ['22', '23'], t: 'Compactar a mano sin «Juntar» y etiquetar antes de juntar', x: 'La etiqueta sale con bultos que no existen.'},
+    {d: ['23'], t: 'Cajas cerradas con la matrícula equivocada', x: 'De otra tienda (K44 con la del K43) o una preimpresa (K59).'},
+    {d: ['23'], t: 'Bultos negativos en las OUT', x: 'K58, K68, K75 y K77: un módulo suma y resta cada vez que se pone o quita una caja.'},
+    {d: ['21', '22', '23'], t: 'Cajas que se pierden y prendas leídas sin caja', x: 'Aparecen al cargar; hay que buscarlas.'},
+    {d: ['21', '22', '23'], t: 'Faltantes', x: 'Uds pedidas que no salieron, sobre todo por falta de stock.'}
+  ];
+  var ALM = [
+    'Cerrar cada caja con su matrícula, nunca con una preimpresa ni con la de otra tienda.',
+    'Primero juntar, después comprobar los bultos y al final etiquetar. No compactar a mano sin «Juntar».',
+    'Validar las OUT que el monitor marca como «Hecha · sin validar».',
+    'En los INT, coger solo lo que pide el INT; si se lee algo de más, devolverlo a su hueco.',
+    'No pulsar nunca «Forzar disponibilidad».',
+    'Apuntar cada día las personas y las horas de cada fase: entrada, salida y pausas.',
+    'Un usuario por PDA, para saber quién coge qué y cuánto tarda.'
+  ];
+  var HECHO = [
+    ['Monitor picking', 'Cómo van los pedidos de tienda del día; las OUT con faltas salen como «Hecha · sin validar». Modo pantalla para la tele.'],
+    ['Etiqueta de caja', 'Matrícula grande, la tienda en medio y la OUT.'],
+    ['Juntar y Comprobar bultos', 'Juntar cajas de un pedido y comprobar los bultos antes de la etiqueta de XPO.'],
+    ['Hoja de carga XPO', 'Por delegación, con palets (Inventario › Informes).'],
+    ['Delegaciones', 'Etiqueta «Delegación …» en cada tienda.'],
+    ['Aviso en los INT', 'Apunta cuando se lee algo que el INT no pide o de más. De momento no bloquea.']
+  ];
+
+  var n0 = function (x) { return Math.round(x).toLocaleString('es-ES'); };
+  var n1 = function (x) { return x.toLocaleString('es-ES', {minimumFractionDigits: 1, maximumFractionDigits: 1}); };
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) { return String(s).replace(/[&<>"]/g, function (c) { return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]; }); };
+  var dias = ['21', '22', '23'];
+
+  function suma(sel, k) { return sel.reduce(function (a, d) { return a + D[d][k]; }, 0); }
+  function barra(nombre, sub, v, max, txt, color) {
+    return '<div class="row"><div class="n">' + nombre + (sub ? '<small>' + sub + '</small>' : '') + '</div><div class="track"><i style="width:' +
+      (max ? Math.max(0, 100 * v / max) : 0) + '%;background:' + color + '"></i></div><div class="val">' + txt + '</div></div>';
+  }
+
+  function pintar(dia) {
+    var sel = dia === 'all' ? dias : [dia];
+    var uds = suma(sel, 'uds'), caj = suma(sel, 'caj'), ped = suma(sel, 'ped'), out = suma(sel, 'out'), fal = suma(sel, 'faltas');
+    var kg = suma(sel, 'kg'), m3 = suma(sel, 'm3');
+    $('t-resumen').textContent = dia === 'all' ? 'Los tres días' : D[dia].nombre;
+    $('s-resumen').textContent = dia === 'all' ? 'Del miércoles 21 al viernes 23, todos los métodos juntos.' :
+      'Primera caja a las ' + D[dia].ini + ' y última a las ' + D[dia].fin + '.';
+    var seg = dia === 'all' ? '48 s' : (dia === '23' ? '48 s' : (dia === '22' ? '38 s' : '46–58 s'));
+    var segSub = dia === 'all' ? 'tradicional vie 23, medido' : (dia === '23' ? 'tradicional, medido' : (dia === '22' ? 'zonas, medido (máximo)' : 'zonas 46 · tradicional 58, medido'));
+    $('tiles').innerHTML = [
+      ['Unidades', n0(uds), ped + ' pedidos · ' + out + ' OUT', ''],
+      ['Cajas', n0(caj), n1(uds / caj) + ' uds por caja', ''],
+      ['Segundos por ud', seg, segSub, ''],
+      ['Peso y volumen', n1(kg / 1000) + ' t', n1(m3) + ' m³ · peso estimado', ''],
+      ['Faltantes', n0(fal) + ' uds', n1(100 * fal / uds) + '% de lo pedido', 'alert']
+    ].map(function (t) { return '<div class="tile ' + t[3] + '"><div class="t">' + t[0] + '</div><div class="v">' + t[1] + '</div><div class="s">' + t[2] + '</div></div>'; }).join('');
+    $('nota').innerHTML = sel.map(function (d) {
+      return (dia === 'all' ? '<p><b>' + D[d].nombre + '.</b> ' : '<p>') + D[d].nota.join(' ') + '</p>';
+    }).join('');
+
+    // Metodos
+    var filas = [];
+    sel.forEach(function (d) { D[d].met.forEach(function (m) { filas.push({dia: d, n: m[0], uds: m[1], ped: m[2], out: m[3], caj: m[4], rec: m[5]}); }); });
+    var grandes = filas.filter(function (f) { return f.uds >= 200; });
+    var maxU = Math.max.apply(null, grandes.map(function (f) { return f.uds; }).concat([1]));
+    var maxC = Math.max.apply(null, grandes.map(function (f) { return f.uds / f.caj; }).concat([1]));
+    var et = function (f) { return dia === 'all' ? f.n + ' · ' + D[f.dia].nombre.split(' ')[0].slice(0, 3).toLowerCase() + ' ' + f.dia : f.n; };
+    $('b-uds').innerHTML = grandes.map(function (f) { return barra(et(f), f.out + ' OUT', f.uds, maxU, n0(f.uds), 'var(--blue)'); }).join('');
+    $('b-caja').innerHTML = grandes.map(function (f) {
+      var u = f.uds / f.caj; return barra(et(f), n0(f.caj) + ' cajas', u, maxC, n1(u), u < 9 ? 'var(--accent)' : 'var(--ok)');
+    }).join('');
+    $('t-met').innerHTML = filas.map(function (f) {
+      return '<tr class="' + (f.uds < 200 ? 'dim' : '') + '"><td>' + esc(D[f.dia].nombre) + ' · ' + esc(f.n) + '</td><td class="r">' + n0(f.uds) +
+        '</td><td class="r">' + f.ped + '</td><td class="r">' + f.out + '</td><td class="r">' + f.caj + '</td><td class="r">' + n1(f.uds / f.caj) +
+        '</td><td class="r">' + (f.rec ? n1(f.rec) + ' m/ud' : '—') + '</td></tr>';
+    }).join('');
+
+    // Tiempos
+    var ss = SEG.filter(function (s) { return sel.indexOf(s.dia) >= 0; });
+    var maxS = 60;
+    $('b-seg').innerHTML = ss.map(function (s) {
+      var nom = D[s.dia].nombre + ' · ' + s.n;
+      var h = '';
+      if (s.med) { h += barra(nom, 'medido · ' + s.mn + ' cajas', s.med, maxS, n1(s.med) + ' s', 'var(--blue)'); }
+      if (s.apu) { h += barra(s.med ? '' : nom, 'apuntado', s.apu, maxS, n1(s.apu) + ' s', 'var(--ok)'); }
+      if (s.est) { h += barra('', 'estimado', s.est, maxS, n1(s.est) + ' s', 'var(--bad)'); }
+      return h;
+    }).join('') || '<p class="foot">Ese día no hay tiempos que medir.</p>';
+
+    // Problemas
+    var visibles = 0;
+    $('l-prob').innerHTML = PROB.map(function (p) {
+      var ver = p.d.some(function (d) { return sel.indexOf(d) >= 0; });
+      if (ver) { visibles++; }
+      var extra = p.t === 'Faltantes' ? ' ' + n0(fal) + ' uds (' + n1(100 * fal / uds) + '%) ' + (dia === 'all' ? 'en los tres días.' : 'ese día.') : '';
+      return '<li' + (ver ? '' : ' hidden') + '><span class="dot"></span><div><b>' + esc(p.t) + '.</b> ' + esc(p.x) + extra + '</div><div class="pills">' +
+        p.d.map(function (d) { return '<span class="pill p-dia">' + D[d].nombre.split(' ')[0] + ' ' + d + '</span>'; }).join('') + '</div></li>';
+    }).join('');
+    $('s-prob').textContent = visibles + ' problemas ' + (dia === 'all' ? 'en los tres días.' : 'el ' + D[dia].nombre.toLowerCase() + '.');
+
+    document.querySelectorAll('.chip[data-dia]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.dia === dia)); });
+    try { localStorage.setItem('kp-dia', dia); } catch (e) { /* sin almacenamiento */ }
+  }
+
+  // Lista del almacen y hecho en Odoo
+  var marcados = {};
+  try { marcados = JSON.parse(localStorage.getItem('kp-alm') || '{}') || {}; } catch (e) { marcados = {}; }
+  $('c-alm').innerHTML = ALM.map(function (t, i) {
+    return '<label for="alm-' + i + '"><input type="checkbox" id="alm-' + i + '"' + (marcados[i] ? ' checked' : '') + '><span>' + esc(t) + '</span></label>';
+  }).join('');
+  $('c-alm').addEventListener('change', function (ev) {
+    var i = ev.target.id.split('-')[1]; marcados[i] = ev.target.checked;
+    try { localStorage.setItem('kp-alm', JSON.stringify(marcados)); } catch (e) { /* sin almacenamiento */ }
+  });
+  $('l-hecho').innerHTML = HECHO.map(function (h) {
+    return '<li><span class="dot ok"></span><div><b>' + esc(h[0]) + '.</b> ' + esc(h[1]) + '</div></li>';
+  }).join('');
+
+  // Calculadora 10.000
+  function calc() {
+    var u = +$('r-uds').value, s = +$('r-seg').value, h = +$('r-hor').value, des = $('r-des').checked;
+    var se = des ? s * 1.171 : s;
+    var hp = u * se / 3600, p = hp / h;
+    $('o-uds').textContent = n0(u) + ' uds';
+    $('o-seg').textContent = s + ' s' + (des ? ' → ' + n1(se) + ' s' : '');
+    var finH = 6 + h, fin = Math.floor(finH) + ':' + (finH % 1 ? '30' : '00');
+    $('o-hor').textContent = n1(h) + ' h · hasta las ' + fin;
+    $('o-per').textContent = n1(p);
+    $('o-txt').innerHTML = '<b>personas cogiendo a la vez</b><br>' + n0(hp) + ' horas-persona de picking para ' + n0(u) + ' uds a ' + n1(se) +
+      ' s por unidad, de 6:00 a ' + fin + '. Unas ' + n0(u / 13.8) + ' cajas con el tradicional.';
+    document.querySelectorAll('.chip[data-seg]').forEach(function (b) { b.setAttribute('aria-pressed', String(+b.dataset.seg === s)); });
+  }
+  ['r-uds', 'r-seg', 'r-hor', 'r-des'].forEach(function (id) { $(id).addEventListener('input', calc); });
+  document.querySelectorAll('.chip[data-seg]').forEach(function (b) {
+    b.addEventListener('click', function () { $('r-seg').value = b.dataset.seg; calc(); });
+  });
+  document.querySelectorAll('.chip[data-dia]').forEach(function (b) {
+    b.addEventListener('click', function () { pintar(b.dataset.dia); });
+  });
+
+  var inicial = 'all';
+  try { var g = localStorage.getItem('kp-dia'); if (g && (g === 'all' || D[g])) { inicial = g; } } catch (e) { /* sin almacenamiento */ }
+  pintar(inicial);
+  calc();
+})();
+</script>

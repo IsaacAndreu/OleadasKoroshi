@@ -2,7 +2,7 @@
 .o_koroshi_monitor {
     --km-bg: #f7f6f2; --km-card: #fff; --km-ink: #1d1d1b; --km-muted: #6b6a65; --km-line: #dedcd4; --km-bar: #e9e7e0;
     --km-ok: #2e9a52; --km-cur: #d08a00; --km-pend: #b9b6ad;
-    --km-z1: #2f7d4f; --km-z2: #1f5fbf; --km-z3: #b5562a; --km-z4: #7a4bb0; --km-z5: #b08a12; --km-zx: #6b6a65;
+    --km-z1: #2f7d4f; --km-z2: #1f5fbf; --km-z3: #b5562a; --km-z4: #7a4bb0; --km-z5: #b08a12; --km-z6: #0e7c86; --km-z7: #b03a6c; --km-z8: #5b6b1e; --km-zx: #6b6a65;
     background: var(--km-bg); color: var(--km-ink); font-size: 15px; line-height: 1.45;
     height: 100%; overflow: auto;
 }
@@ -98,3 +98,15 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.7: el contenedor de Odoo es flex: sin esto la pagina se salia de ancho en pantallas estrechas */
 .o_koroshi_monitor main { width: 100%; min-width: 0; box-sizing: border-box; }
 .o_koroshi_monitor .km-card { max-width: 100%; overflow-x: auto; }
+/* v1.9: zonas con 8 o mas zonas sin arrastrar: pagina mas ancha y casillas de la matriz compactas */
+/* v1.9: zonas a todo el ancho de la pantalla, de izquierda a derecha */
+.o_koroshi_monitor main.km-zonas { max-width: none; padding-left: 20px; padding-right: 20px; }
+.o_koroshi_monitor .km-matriz { font-size: 13.5px; width: 100%; }
+.o_koroshi_monitor .km-matriz th, .o_koroshi_monitor .km-matriz td { padding: 3px 4px; white-space: nowrap; text-align: center; }
+.o_koroshi_monitor .km-matriz td:nth-child(2), .o_koroshi_monitor .km-matriz th:nth-child(2) { text-align: left; }
+.o_koroshi_monitor .km-matriz td small { color: var(--km-muted); }
+.o_koroshi_monitor .km-matriz .km-cel { display: block; min-width: 46px; padding: 4px 4px; font-size: 13.5px; }
+.o_koroshi_monitor .km-matriz .km-z { min-width: 28px; padding: 1px 5px; font-size: 12px; }
+/* v1.9: tienda con todas sus OUT hechas: fila y casillas en gris (ya esta, no hay que mirarla) */
+.o_koroshi_monitor .km-matriz tr.km-r-lista td { background: #ecebe7; color: #8a8983; }
+.o_koroshi_monitor .km-matriz tr.km-r-lista .km-cel { background: #b9b6ad; color: #fff; }

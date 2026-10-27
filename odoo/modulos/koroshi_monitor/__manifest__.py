@@ -32,10 +32,14 @@ v1.7: tiendas: franja grande arriba (% hecho, hora de fin, uds por coger), filas
 "Sin empezar" y "Hechas" plegadas, y Modo pantalla (sin menu de Odoo, letra grande) para la pantalla del almacen.
 v1.8: las OUT que ya tienen cogido todo lo que hay (solo faltan prendas sin stock o no encontradas) o que llevan mas de
 20 min sin cerrar caja salen como HECHAS (sin validar, con lo que falta), no como "parcial".
+v1.9: R1 y R2 en pantallas separadas; zonas con 8 o mas zonas (D6-D8, ZX1...) sin arrastrar: pagina mas ancha, zonas en orden
+y la matriz tienda x zona con casillas compactas (uds leidas/total; la OUT y el estado al pasar el raton).
+Tiendas con todas sus OUT hechas: lista "listas para juntar" y su fila en gris en la matriz (no cambia de sitio).
+Zonas a todo el ancho de la pantalla, casillas que llenan la columna.
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.9.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
