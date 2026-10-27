@@ -40,6 +40,7 @@ MODO = 'DIAGNOSTICO'
 COMPANY_ID = 8
 TIPO_PEDIDO = 'PED. TIENDAS'
 PERSONAS = 8                     # una persona por zona = numero de zonas
+MIN_UDS_PEDIDO = 15              # v10b: pedido con menos uds reservadas -> no se coge (queda pendiente)
 HORA_INICIO = '08:00'            # cuando empieza el picking ('AHORA' = la hora actual)
 HORA_FIN = '13:00'               # cuando tiene que estar acabado
 RENDIMIENTO = 1.0                # 1.0 = ritmo del 22/10; 1.2 = un 20 % mas rapido (carros, etc.)
@@ -308,6 +309,21 @@ prio.sort()
 orden = []
 for x in prio:
     orden.append(x[4])
+
+# v10b (27/10/2026): nunca un pedido de menos de MIN_UDS_PEDIDO uds (reservadas): no se toca, queda pendiente
+uds_por_pedido = {}
+for p in validas:
+    clave_p = p.origin or p.name
+    uds_por_pedido[clave_p] = uds_por_pedido.get(clave_p, 0.0) + uds_out[p.id]
+orden_ok = []
+for pid in orden:
+    q = Picking.browse(pid)
+    if uds_por_pedido[q.origin or q.name] < MIN_UDS_PEDIDO:
+        saltadas.append('%s (%s): pedido de %d uds (menos de %d)' % (
+            q.name, q.partner_id.name or '', uds_por_pedido[q.origin or q.name], MIN_UDS_PEDIDO))
+        continue
+    orden_ok.append(pid)
+orden = orden_ok
 
 
 def evaluar(k):

@@ -36,10 +36,15 @@ v1.9: R1 y R2 en pantallas separadas; zonas con 8 o mas zonas (D6-D8, ZX1...) si
 y la matriz tienda x zona con casillas compactas (uds leidas/total; la OUT y el estado al pasar el raton).
 Tiendas con todas sus OUT hechas: lista "listas para juntar" y su fila en gris en la matriz (no cambia de sitio).
 Zonas a todo el ancho de la pantalla, casillas que llenan la columna.
+v1.10: tercer estado de la tienda en la matriz: con la etiqueta del transportista (numero de seguimiento) en todas
+sus OUT = terminada, fila en azul oscuro. Leyenda de colores encima de la matriz.
+v1.11: cada casilla de la matriz (y el numero de OUT de las listas) se puede pulsar: abre la OUT en otra pestana.
+v1.12: el clic abre la OUT dentro de Odoo (migas para volver al monitor): funciona tambien en la PDA; Ctrl+clic en otra pestana.
+v1.13: las migas de pan dicen 'Monitor picking' (antes salia sin nombre).
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.9.0',
+    'version': '13.0.1.13.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

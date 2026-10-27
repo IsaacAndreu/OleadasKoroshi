@@ -25,6 +25,11 @@ function sinRonda(z) { return z.replace(/^R\d+-/, ''); }
 var EST = {hecha: 'Hecha', curso: 'Cogiéndose', pend: 'Sin empezar', parcial: 'Parada (sin cerrar caja)', sinstock: 'Sin stock'};
 
 function e(s) { return _.escape(s === undefined || s === null ? '' : String(s)); }
+// v1.11: enlace a la OUT en Odoo (se abre en otra pestana para no perder el monitor)
+function aOut(o, html) {
+    if (!o.id) { return html; }
+    return '<a class="km-a" target="_blank" href="/web#id=' + o.id + '&model=stock.picking&view_type=form&cids=8">' + html + '</a>';
+}
 function n(x) { return Math.round(x).toLocaleString('es-ES'); }
 function zt(z) { return '<span class="km-z" style="background:' + (COL[z.replace(/^R\d+-/, '')] || 'var(--km-zx)') + '">' + e(z) + '</span>'; }
 function hm(h) { var m = Math.round((h || 0) * 60); return Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2); }
@@ -49,6 +54,7 @@ var Monitor = AbstractAction.extend({
         'change .km-prefijo': '_onPrefijo',
         'click .km-refrescar': '_cargar',
         'click details > summary': '_onToggle',
+        'click a.km-a': '_onOut',
     },
 
     init: function () {
@@ -76,6 +82,28 @@ var Monitor = AbstractAction.extend({
         this.prefijo = ev.target.value;
         this.abiertas = {};
         this._cargar();
+    },
+
+    // v1.12: clic en una OUT: se abre dentro de Odoo (con migas para volver al monitor); funciona tambien en la PDA y
+    // donde no se abren pestanas nuevas. Ctrl/Cmd/Mayus o boton central: pestana nueva (el enlace normal)
+    _onOut: function (ev) {
+        if (ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.button === 1) { return; }
+        var m = /[#&]id=(\d+)/.exec(ev.currentTarget.getAttribute('href') || '');
+        if (!m) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        this.do_action({
+            type: 'ir.actions.act_window',
+            res_model: 'stock.picking',
+            res_id: parseInt(m[1], 10),
+            views: [[false, 'form']],
+            target: 'current',
+        });
+    },
+
+    // v1.13: nombre en las migas de pan (para volver al monitor despues de abrir una OUT)
+    getTitle: function () {
+        return 'Monitor picking';
     },
 
     _onToggle: function (ev) {
@@ -169,20 +197,28 @@ var Monitor = AbstractAction.extend({
         // v1.9: por numero de tienda (con dos rondas las cajas empiezan otra vez en 01)
         orden.sort(function (a, b) { return knum(P[a].tienda) - knum(P[b].tienda) || (parseInt(P[a].caja, 10) || 0) - (parseInt(P[b].caja, 10) || 0); });
         // v1.9: tiendas listas para juntar = todas sus OUT hechas (validadas, o con todo lo que hay cogido)
-        var listas = [], casi = [];
+        // v1.10: y etiquetadas = ademas todas sus OUT tienen la etiqueta del transportista (numero de seguimiento)
+        var listas = [], casi = [], etiquetadas = [];
         orden.forEach(function (k) {
-            var p = P[k], n = 0, hh = 0, faltan = [];
+            var p = P[k], n = 0, hh = 0, ee = 0, faltan = [];
             Object.keys(p.z).forEach(function (c) {
                 n++;
                 if (p.z[c].est === 'hecha') { hh++; } else { faltan.push(c); }
+                if (p.z[c].etq) { ee++; }
             });
             p.lista = n && hh === n;
-            if (p.lista) { listas.push(p); } else if (n - hh <= 2) { casi.push([p, faltan]); }
+            p.etq = p.lista && ee === n;
+            if (p.etq) { etiquetadas.push(p); } else if (p.lista) { listas.push(p); } else if (n - hh <= 2) { casi.push([p, faltan]); }
         });
         h += '<h2>Tiendas listas para juntar (' + listas.length + ' de ' + orden.length + ')</h2><div class="km-card">';
         h += listas.length ? '<div class="km-chips">' + listas.map(function (p) {
             return '<span class="km-chip km-chip-ok" title="' + e(p.tienda) + '"><b>' + e(kno(p.tienda)) + '</b></span>';
-        }).join('') + '</div>' : '<p class="km-nota">Todavía no hay ninguna tienda con todas sus OUT hechas.</p>';
+        }).join('') + '</div>' : '<p class="km-nota">Ahora no hay ninguna tienda con todas sus OUT hechas pendiente de juntar.</p>';
+        if (etiquetadas.length) {
+            h += '<p class="km-nota" style="margin-top:10px">Ya con etiqueta del transportista (terminadas): ' + etiquetadas.map(function (p) {
+                return '<span class="km-chip km-chip-etq" title="' + e(p.tienda) + '"><b>' + e(kno(p.tienda)) + '</b></span>';
+            }).join(' ') + '</p>';
+        }
         if (casi.length) {
             h += '<p class="km-nota" style="margin-top:10px">Les falta 1 o 2 zonas: ' + casi.map(function (x) {
                 return '<b>' + e(kno(x[0].tienda)) + '</b> (' + x[1].map(e).join(', ') + ')';
@@ -192,16 +228,20 @@ var Monitor = AbstractAction.extend({
         // v1.9: casillas compactas (solo leido/total; la OUT y el estado al pasar el raton) para que con 8 zonas
         // o mas quepa sin arrastrar; la tienda solo con su K (nombre y pedido al pasar el raton)
         h += '<h2>Cada tienda en cada zona</h2><p class="km-nota">Cada casilla es una OUT: unidades leídas / total, con el color de su estado. ' +
-            'Al pasar el ratón: número de OUT, agrupación y estado. Vacío = la tienda no tiene nada en esa zona. Las rondas (R2...) van en la columna de su zona.</p>';
+            'Al pasar el ratón: número de OUT, agrupación y estado. Vacío = la tienda no tiene nada en esa zona. Las rondas (R2...) van en la columna de su zona.</p>' +
+            '<div class="km-ley"><span><i style="background:var(--km-ok)"></i>OUT hecha</span><span><i style="background:var(--km-cur)"></i>cogiéndose</span>' +
+            '<span><i style="background:var(--km-bar)"></i>sin empezar</span><span><i style="background:#b9b6ad"></i>tienda con todo hecho: a juntar</span>' +
+            '<span><i style="background:#3d5a80"></i>tienda con etiqueta del transportista: terminada</span></div>';
         h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th></tr></thead><tbody>';
         orden.forEach(function (k) {
             var p = P[k], u = 0, l = 0;
-            h += '<tr' + (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '') + '><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
+            h += '<tr' + (p.etq ? ' class="km-r-etq" title="Tienda con la etiqueta del transportista: terminada"' :
+                (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '')) + '><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
             cols.forEach(function (z) {
                 var o = p.z[z];
                 if (!o) { h += '<td></td>'; return; }
                 u += o.u; l += o.leido;
-                h += '<td><span class="km-cel km-' + o.est + '" title="' + e(o.out) + ' · ' + e(o.lote) + ' · ' + EST[o.est] + '">' + n(o.leido) + '/' + n(o.u) + '</span></td>';
+                h += '<td>' + aOut(o, '<span class="km-cel km-' + o.est + '" title="' + e(o.out) + ' · ' + e(o.lote) + ' · ' + EST[o.est] + ' (clic: abrir la OUT)">' + n(o.leido) + '/' + n(o.u) + '</span>') + '</td>';
             });
             h += '<td class="r">' + n(l) + '/' + n(u) + '</td></tr>';
         });
@@ -219,7 +259,7 @@ var Monitor = AbstractAction.extend({
             h += '<div class="km-scroll"><table><thead><tr><th>Estado</th><th>Caja</th><th>OUT</th><th>Tienda</th><th>Pedido</th><th>Lineales</th><th class="r">Huecos</th><th>Leído</th><th>Empieza</th><th>Última / validada</th></tr></thead><tbody>';
             L.forEach(function (o) {
                 var pct = o.u ? 100 * o.leido / o.u : 0, c = o.est === 'hecha' ? 'var(--km-ok)' : 'var(--km-cur)';
-                h += '<tr><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span></td><td><b>' + e(o.caja) + '</b></td><td class="m">' + e(o.out) + '</td><td>' + e(o.tienda) + '</td><td class="m">' + e(o.pedido) + '</td><td>' + e(o.lin) + '</td><td class="r">' + o.huecos + '</td>' +
+                h += '<tr><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span></td><td><b>' + e(o.caja) + '</b></td><td class="m">' + aOut(o, e(o.out)) + '</td><td>' + e(o.tienda) + '</td><td class="m">' + e(o.pedido) + '</td><td>' + e(o.lin) + '</td><td class="r">' + o.huecos + '</td>' +
                     '<td><span class="km-mini"><i style="width:' + pct + '%;background:' + c + '"></i></span>' + n(o.leido) + '/' + n(o.u) + '</td><td>' + (o.est === 'hecha' ? '' : e(o.ini)) + '</td><td>' + e(o.fin) + '</td></tr>';
             });
             h += '</tbody></table></div></details></div>';
@@ -278,7 +318,7 @@ Monitor.include({
             // v1.8: hecha sin validar = ya cogido todo lo que hay; lo que falta (sin stock) debajo
             var sv = o.sin_validar ? '<br><small>sin validar' + (o.falta ? ' · faltan ' + n(o.falta) : '') + '</small>' : '';
             h += '<tr class="' + cls + '"><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span>' + sv + '</td><td>' + e(o.tienda) + '</td>' +
-                (tv ? '' : '<td class="m">' + e(o.pedido) + '</td>') + '<td class="m">' + e(o.out) +
+                (tv ? '' : '<td class="m">' + e(o.pedido) + '</td>') + '<td class="m">' + aOut(o, e(o.out)) +
                 (o.lote && !tv ? '<br><small>' + e(o.lote) + '</small>' : '') + '</td>' +
                 '<td><span class="km-mini"><i style="width:' + p + '%;background:' + c + '"></i></span>' + n(o.leido) + '/' + n(base) + '</td>' +
                 (tv ? '<td class="r">' + hace + '</td>' :

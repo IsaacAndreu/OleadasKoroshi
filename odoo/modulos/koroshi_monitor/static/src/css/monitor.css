@@ -110,3 +110,11 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.9: tienda con todas sus OUT hechas: fila y casillas en gris (ya esta, no hay que mirarla) */
 .o_koroshi_monitor .km-matriz tr.km-r-lista td { background: #ecebe7; color: #8a8983; }
 .o_koroshi_monitor .km-matriz tr.km-r-lista .km-cel { background: #b9b6ad; color: #fff; }
+/* v1.10: tienda con la etiqueta del transportista en todas sus OUT: terminada (azul oscuro) */
+.o_koroshi_monitor .km-matriz tr.km-r-etq td { background: #dde5ef; color: #3d5a80; }
+.o_koroshi_monitor .km-matriz tr.km-r-etq .km-cel { background: #3d5a80; color: #fff; }
+.o_koroshi_monitor .km-chip-etq { background: #3d5a80; }
+.o_koroshi_monitor .km-chip-etq b { color: #fff; }
+/* v1.11: las OUT se pueden pulsar (abren la OUT en otra pestana) */
+.o_koroshi_monitor a.km-a { color: inherit; text-decoration: none; cursor: pointer; }
+.o_koroshi_monitor a.km-a:hover .km-cel, .o_koroshi_monitor a.km-a:hover { outline: 2px solid #1d1d1b; outline-offset: 1px; }

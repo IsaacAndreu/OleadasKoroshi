@@ -91,6 +91,9 @@ class KoroshiMonitor(http.Controller):
                 '_huecos': set(), '_l': [], '_mu': set(),
                 '_a': None, '_b': None, '_cajas': set(),
                 '_estado': p.state, '_done': p.date_done,
+                # v1.10: etiqueta del transportista (XPO/GLS) hecha = numero de seguimiento en la OUT
+                'etq': bool(p.carrier_tracking_ref),
+                'id': p.id,         # v1.11: para abrir la OUT desde el monitor
             }
 
         # v1.4: lo que se puede coger (disp) = lo reservado + lo ya cogido de cada movimiento; lo que pide el
@@ -216,7 +219,7 @@ class KoroshiMonitor(http.Controller):
         if f['_a'] and f['_b'] and f['_b'] > f['_a']:
             mins = int((f['_b'] - f['_a']).total_seconds() // 60)
         return {
-            'z': f['z'], 'lote': f['lote'], 'caja': f['caja'], 'out': f['out'], 'tienda': f['tienda'],
+            'z': f['z'], 'lote': f['lote'], 'caja': f['caja'], 'out': f['out'], 'tienda': f['tienda'], 'etq': f['etq'], 'id': f['id'],
             'pedido': f['pedido'], 'u': f['u'], 'huecos': len(f['_huecos']), 'lin': lin or '-',
             'leido': f['leido'], 'est': est, 'ini': self._hora(f['_a']), 'fin': self._hora(fin_dt),
             'min': mins, 'cajas': len(f['_cajas']), '_a': f['_a'], '_b': f['_b'],

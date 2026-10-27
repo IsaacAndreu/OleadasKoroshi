@@ -29,13 +29,15 @@
     v15 (27/10/2026): la linea CAJA n · tienda tambien en ... siempre en una sola linea (con 8 zonas ocupaba 2 y la
     matricula saltaba a la hoja siguiente); matricula con zonas a 70 mm para dejar margen.
     v16 (27/10/2026): codigo de barras de la matricula mas bajo: 55 mm con zonas y 70 mm sin zonas.
+    v17 (27/10/2026): la OUT mas grande (codigo 22 mm al 95 % de ancho, texto 20 pt); la matricula baja a 50 mm con
+    zonas y 62 mm sin zonas para que siga cabiendo en una hoja.
     wkhtmltopdf: sin flex, todo con tablas y medidas fijas.
     -->
     <t t-call="web.basic_layout">
         <t t-foreach="docs" t-as="o">
             <t t-set="cjs" t-value="o.env['zebra.label'].search([('note', '=', 'ETQ ZONA ' + o.name)], order='sequence_number')"/>
             <t t-set="es_zona" t-value="bool(o.batch_id and o.batch_id.name.startswith('Z-'))"/>
-            <t t-set="alto_cj" t-value="es_zona and 55 or 70"/>
+            <t t-set="alto_cj" t-value="es_zona and 50 or 62"/>
             <t t-set="zona" t-value="es_zona and o.batch_id.name.split('-')[-1] or ''"/>
             <t t-set="nota" t-value="o.note or ''"/>
             <t t-set="caja" t-value="('CAJA ' in nota) and nota.split('CAJA ')[1][:2] or ''"/>
@@ -87,8 +89,8 @@
                     </div>
                     <div style="border-top: 1.5px solid #000; margin-top: 1mm; padding-top: 0.5mm;">
                         <table style="width: 100%; font-size: 8.5pt; font-weight: 700;"><tr><td>1 · ESCANEAR PARA ABRIR EN LA PDA</td><td style="text-align: right;">OUT</td></tr></table>
-                        <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', o.name, 800, 100)" style="width: 70%; height: 10mm; display: block; margin: 0 auto;"/>
-                        <div style="font-family: 'Courier New', monospace; font-size: 9pt; font-weight: 700; text-align: center;" t-esc="o.name"/>
+                        <img t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s&amp;humanreadable=0' % ('Code128', o.name, 800, 200)" style="width: 95%; height: 22mm; display: block; margin: 0 auto;"/>
+                        <div style="font-family: 'Courier New', monospace; font-size: 20pt; font-weight: 900; text-align: center; line-height: 1.05;" t-esc="o.name"/>
                     </div>
                     <!-- v13: la tienda entre los dos codigos de barras (separa el de la OUT del de la matricula) -->
                     <div style="border-top: 1.5px solid #000; margin-top: 1mm;">

@@ -1,0 +1,4 @@
+<!-- KOROSHI - pestana "Juntar cajas" del pedido (vista 6036, hereda sale.order.form).
+     v2 (27/10/2026): sin la ventana de confirmacion del boton Juntar: un solo clic. Si algo no cuadra,
+     la accion 1844 avisa y no cambia nada. -->
+<data><xpath expr="//notebook" position="inside"><page string="Juntar cajas" name="koroshi_juntar_cajas" attrs="{'invisible': [('s4t_remote_id', '=', 0)]}"><field name="s4t_remote_id" invisible="1"/><group string="Meter una caja pequeña dentro de otra del mismo pedido"><field name="x_cj_pequena" placeholder="1. Escanear la CJ pequeña"/><field name="x_cj_destino" placeholder="2. Escanear la CJ grande donde se meten las uds"/></group><button name="1844" type="action" string="Juntar" class="btn-primary"/><span class="text-muted" style="margin-left: 12px;">Con las dos casillas vacías, el botón enseña las cajas pequeñas del pedido.</span></page></xpath></data>
