@@ -242,6 +242,9 @@ class KoroshiMonitor(http.Controller):
             etiquetas[d] = 'Tiendas %s%s' % (f.strftime('%d/%m'), f == hoy and ' (hoy)' or '')
         for z in zonas:
             etiquetas[z] = z.rstrip('-')
+            # v1.9: si ese dia hay 2a ronda, la 1a se llama R1 en el selector
+            if re.match(r'^Z-\d{4}-$', z) and [x for x in zonas if x.startswith(z + 'R')]:
+                etiquetas[z] = z.rstrip('-') + ' R1'
         ahora = fields.Datetime.now()
         res = {'prefijos': prefijos, 'etiquetas': etiquetas, 'prefijo': prefijo, 'D': [], 'pedidos': 0,
                'hora': self._hora(ahora), 'modo': prefijo.startswith('TIENDAS:') and 'tiendas' or 'zonas'}
@@ -249,6 +252,10 @@ class KoroshiMonitor(http.Controller):
         if res['modo'] == 'zonas':
             picks = env['stock.picking'].sudo().search([('batch_id.name', '=like', prefijo + '%'),
                                                         ('company_id', '=', COMPANY_ID)])
+            # v1.9: Z-ddmm- es la 1a ronda: sin las de las rondas siguientes (Z-ddmm-R2-...), que tienen su propia
+            # pantalla y empiezan otra vez en la caja 01
+            if re.match(r'^Z-\d{4}-$', prefijo):
+                picks = picks.filtered(lambda p: not re.match(r'^R\d+-', (p.batch_id.name or '')[len(prefijo):]))
             # Personas y horas: solo las cajas cerradas el dia de la agrupacion (Z-ddmm-), no las que se
             # tocaron despues (juntar cajas, validar dias mas tarde)
             z_ini = z_fin = None

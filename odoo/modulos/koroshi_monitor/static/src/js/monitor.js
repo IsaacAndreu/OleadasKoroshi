@@ -8,12 +8,25 @@ var core = require('web.core');
 
 var REFRESCO = 60000;
 var ZS = ['D1', 'D2', 'D3', 'D4', 'D5', 'ZX'];
-var COL = {D1: 'var(--km-z1)', D2: 'var(--km-z2)', D3: 'var(--km-z3)', D4: 'var(--km-z4)', D5: 'var(--km-z5)', ZX: 'var(--km-zx)'};
+var COL = {D1: 'var(--km-z1)', D2: 'var(--km-z2)', D3: 'var(--km-z3)', D4: 'var(--km-z4)', D5: 'var(--km-z5)',
+    D6: 'var(--km-z6)', D7: 'var(--km-z7)', D8: 'var(--km-z8)', ZX: 'var(--km-zx)'};
+// v1.9: orden de las zonas: D1, D2... por numero, despues ZX, ZX1, ZX2..., y las rondas (R2-D1...) detras
+function ordenZona(z) {
+    var r = 0, m = /^R(\d+)-(.*)$/.exec(z);
+    if (m) { r = parseInt(m[1], 10); z = m[2]; }
+    m = /^D(\d+)$/.exec(z);
+    if (m) { return r * 10000 + parseInt(m[1], 10); }
+    m = /^ZX(\d*)$/.exec(z);
+    if (m) { return r * 10000 + 1000 + (parseInt(m[1], 10) || 0); }
+    return r * 10000 + 2000;
+}
+// v1.9: en la matriz la ronda va en la misma columna que su zona (R2-D1 en D1): las tiendas de cada ronda son otras
+function sinRonda(z) { return z.replace(/^R\d+-/, ''); }
 var EST = {hecha: 'Hecha', curso: 'Cogiéndose', pend: 'Sin empezar', parcial: 'Parada (sin cerrar caja)', sinstock: 'Sin stock'};
 
 function e(s) { return _.escape(s === undefined || s === null ? '' : String(s)); }
 function n(x) { return Math.round(x).toLocaleString('es-ES'); }
-function zt(z) { return '<span class="km-z" style="background:' + (COL[z] || 'var(--km-zx)') + '">' + e(z) + '</span>'; }
+function zt(z) { return '<span class="km-z" style="background:' + (COL[z.replace(/^R\d+-/, '')] || 'var(--km-zx)') + '">' + e(z) + '</span>'; }
 function hm(h) { var m = Math.round((h || 0) * 60); return Math.floor(m / 60) + ' h ' + ('0' + (m % 60)).slice(-2); }
 // Personas y horas estimadas por las cajas cerradas (v1.3): sale para cualquier dia, no solo hoy
 function personas(p, quien) {
@@ -106,10 +119,11 @@ var Monitor = AbstractAction.extend({
             T.u += o.u; T.l += o.leido; T[k]++;
         });
         var zonas = ZS.filter(function (z) { return Z[z].n; });
+        zonas.sort(function (a, b) { return ordenZona(a) - ordenZona(b) || (a < b ? -1 : 1); });
         var pctT = T.u ? Math.round(100 * T.l / T.u) : 0;
 
-        var h = '<main>';
-        h += '<div class="km-cab"><h1>Cómo van las agrupaciones ' + e((r.prefijo || '').replace(/-$/, '')) + '</h1>';
+        var h = '<main class="km-zonas">';
+        h += '<div class="km-cab"><h1>Cómo van las agrupaciones '+ e((r.prefijo || '').replace(/-$/, '')) + '</h1>';
         h += this._selector(r) + '</div>';
         h += '<p class="km-sub">' + r.pedidos + ' pedidos de tienda partidos por zona (' + D.length + ' OUT). Datos de Odoo a las <b>' + e(r.hora) +
             '</b>, se refresca solo cada minuto. Unidades reales (movimientos), no las columnas «Demanded/Reserved» de la lista de Odoo, que están mal en las OUT partidas.</p>';
@@ -144,22 +158,50 @@ var Monitor = AbstractAction.extend({
         h += '</div>';
 
         // Matriz tienda x zona
-        var P = {}, orden = [];
+        var P = {}, orden = [], cols = [];
         D.forEach(function (o) {
+            var c = sinRonda(o.z);
             if (!P[o.pedido]) { P[o.pedido] = {caja: o.caja, tienda: o.tienda, z: {}}; orden.push(o.pedido); }
-            P[o.pedido].z[o.z] = o;
+            P[o.pedido].z[c] = o;
+            if (cols.indexOf(c) < 0) { cols.push(c); }
         });
-        orden.sort(function (a, b) { return (parseInt(P[a].caja, 10) || 0) - (parseInt(P[b].caja, 10) || 0); });
-        h += '<h2>Cada tienda en cada zona</h2><p class="km-nota">Cada casilla es una OUT: número de OUT y unidades leídas / total. Vacío = la tienda no tiene nada en esa zona.</p>';
-        h += '<div class="km-card km-scroll"><table><thead><tr><th>Caja</th><th>Tienda</th><th>Pedido</th>' + zonas.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th></tr></thead><tbody>';
+        cols.sort(function (a, b) { return ordenZona(a) - ordenZona(b) || (a < b ? -1 : 1); });
+        // v1.9: por numero de tienda (con dos rondas las cajas empiezan otra vez en 01)
+        orden.sort(function (a, b) { return knum(P[a].tienda) - knum(P[b].tienda) || (parseInt(P[a].caja, 10) || 0) - (parseInt(P[b].caja, 10) || 0); });
+        // v1.9: tiendas listas para juntar = todas sus OUT hechas (validadas, o con todo lo que hay cogido)
+        var listas = [], casi = [];
+        orden.forEach(function (k) {
+            var p = P[k], n = 0, hh = 0, faltan = [];
+            Object.keys(p.z).forEach(function (c) {
+                n++;
+                if (p.z[c].est === 'hecha') { hh++; } else { faltan.push(c); }
+            });
+            p.lista = n && hh === n;
+            if (p.lista) { listas.push(p); } else if (n - hh <= 2) { casi.push([p, faltan]); }
+        });
+        h += '<h2>Tiendas listas para juntar (' + listas.length + ' de ' + orden.length + ')</h2><div class="km-card">';
+        h += listas.length ? '<div class="km-chips">' + listas.map(function (p) {
+            return '<span class="km-chip km-chip-ok" title="' + e(p.tienda) + '"><b>' + e(kno(p.tienda)) + '</b></span>';
+        }).join('') + '</div>' : '<p class="km-nota">Todavía no hay ninguna tienda con todas sus OUT hechas.</p>';
+        if (casi.length) {
+            h += '<p class="km-nota" style="margin-top:10px">Les falta 1 o 2 zonas: ' + casi.map(function (x) {
+                return '<b>' + e(kno(x[0].tienda)) + '</b> (' + x[1].map(e).join(', ') + ')';
+            }).join(' · ') + '</p>';
+        }
+        h += '</div>';
+        // v1.9: casillas compactas (solo leido/total; la OUT y el estado al pasar el raton) para que con 8 zonas
+        // o mas quepa sin arrastrar; la tienda solo con su K (nombre y pedido al pasar el raton)
+        h += '<h2>Cada tienda en cada zona</h2><p class="km-nota">Cada casilla es una OUT: unidades leídas / total, con el color de su estado. ' +
+            'Al pasar el ratón: número de OUT, agrupación y estado. Vacío = la tienda no tiene nada en esa zona. Las rondas (R2...) van en la columna de su zona.</p>';
+        h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th></tr></thead><tbody>';
         orden.forEach(function (k) {
             var p = P[k], u = 0, l = 0;
-            h += '<tr><td><b>' + e(p.caja) + '</b></td><td>' + e(p.tienda) + '</td><td class="m">' + e(k) + '</td>';
-            zonas.forEach(function (z) {
+            h += '<tr' + (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '') + '><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
+            cols.forEach(function (z) {
                 var o = p.z[z];
                 if (!o) { h += '<td></td>'; return; }
                 u += o.u; l += o.leido;
-                h += '<td><span class="km-cel km-' + o.est + '" title="' + EST[o.est] + '">' + e(o.out) + '<br>' + n(o.leido) + '/' + n(o.u) + '</span></td>';
+                h += '<td><span class="km-cel km-' + o.est + '" title="' + e(o.out) + ' · ' + e(o.lote) + ' · ' + EST[o.est] + '">' + n(o.leido) + '/' + n(o.u) + '</span></td>';
             });
             h += '<td class="r">' + n(l) + '/' + n(u) + '</td></tr>';
         });
