@@ -118,3 +118,9 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.11: las OUT se pueden pulsar (abren la OUT en otra pestana) */
 .o_koroshi_monitor a.km-a { color: inherit; text-decoration: none; cursor: pointer; }
 .o_koroshi_monitor a.km-a:hover .km-cel, .o_koroshi_monitor a.km-a:hover { outline: 2px solid #1d1d1b; outline-offset: 1px; }
+/* v1.14: bultos (cajas cerradas) en la matriz y aviso si no cuadran con los bultos de Odoo */
+.o_koroshi_monitor .km-bx { display: block; font-size: 11px; font-weight: 700; opacity: .85; line-height: 1.1; }
+.o_koroshi_monitor .km-matriz .km-cel.km-bx-mal { box-shadow: inset 0 0 0 2px #c0392b; }
+.o_koroshi_monitor .km-matriz .km-cel small.km-bx { color: inherit; }
+.o_koroshi_monitor .km-bx-txt { color: #c0392b; }
+.o_koroshi_monitor .km-matriz .km-cel.km-bx-mal small.km-bx { color: inherit; opacity: 1; text-decoration: underline; }

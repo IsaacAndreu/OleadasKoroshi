@@ -1,0 +1,124 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_layout_tree" model="ir.ui.view">
+        <field name="name">koroshi.layout.tree</field>
+        <field name="model">koroshi.layout</field>
+        <field name="arch" type="xml">
+            <tree string="Planos KOROSHI">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="warehouse_id"/>
+                <field name="source_version"/>
+                <field name="company_id" groups="base.group_multi_company"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_layout_form" model="ir.ui.view">
+        <field name="name">koroshi.layout.form</field>
+        <field name="model">koroshi.layout</field>
+        <field name="arch" type="xml">
+            <form string="Plano KOROSHI">
+                <sheet>
+                    <div class="oe_title">
+                        <label for="name" class="oe_edit_only"/>
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="code"/>
+                            <field name="warehouse_id"/>
+                            <field name="source_version"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Elementos">
+                            <field name="element_ids" context="{'default_layout_id': active_id}">
+                                <tree editable="bottom">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="name"/>
+                                    <field name="element_type"/>
+                                    <field name="external_ref"/>
+                                    <field name="x"/>
+                                    <field name="y"/>
+                                    <field name="width"/>
+                                    <field name="height"/>
+                                    <field name="visible"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Datos técnicos">
+                            <field name="map_json" nolabel="1" placeholder="JSON del estado editable…"/>
+                            <field name="notes" placeholder="Notas del plano…"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_pick_session_tree" model="ir.ui.view">
+        <field name="name">koroshi.pick.session.tree</field>
+        <field name="model">koroshi.pick.session</field>
+        <field name="arch" type="xml">
+            <tree string="Sesiones operativas">
+                <field name="name"/>
+                <field name="pda_code"/>
+                <field name="operator_name"/>
+                <field name="picking_id"/>
+                <field name="state"/>
+                <field name="last_location"/>
+                <field name="last_scan_at"/>
+                <field name="progress" widget="progressbar"/>
+                <field name="source"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_pick_session_form" model="ir.ui.view">
+        <field name="name">koroshi.pick.session.form</field>
+        <field name="model">koroshi.pick.session</field>
+        <field name="arch" type="xml">
+            <form string="Sesión operativa">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <group>
+                        <group>
+                            <field name="pda_code"/>
+                            <field name="operator_name"/>
+                            <field name="user_id"/>
+                            <field name="picking_id"/>
+                            <field name="out_reference"/>
+                        </group>
+                        <group>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="state"/>
+                            <field name="source"/>
+                            <field name="active"/>
+                            <field name="progress"/>
+                            <field name="pick_count"/>
+                        </group>
+                    </group>
+                    <group string="Tiempos y ubicación">
+                        <field name="started_at"/>
+                        <field name="last_scan_at"/>
+                        <field name="finished_at"/>
+                        <field name="last_location"/>
+                        <field name="last_line"/>
+                        <field name="last_position"/>
+                        <field name="last_level"/>
+                    </group>
+                    <notebook>
+                        <page string="Eventos"><field name="event_ids"><tree><field name="occurred_at"/><field name="event_type"/><field name="location"/><field name="line"/><field name="position"/><field name="level"/></tree></field></page>
+                        <page string="Datos de origen"><field name="payload_json" nolabel="1"/><field name="note"/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,23 @@
+{
+  "schema": 1,
+  "name": "Catálogo mapa NAU-2",
+  "warehouse": "NAU-2",
+  "companyId": 8,
+  "updatedAt": "2026-10-29T08:40:00+01:00",
+  "groups": ["Lineales", "Estanterías", "Pasillos", "Celdas", "Zonas", "Objetos"],
+  "types": [
+    {"id":"lineal","group":"Lineales","name":"Lineal de picking","shape":"lineal","w":23.4,"h":0.5,"color":"#4f8cff","icon":"▤","editable":true},
+    {"id":"rack","group":"Estanterías","name":"Rack de palets","shape":"rack","w":2.79,"h":1.1,"color":"#f59e0b","icon":"▥","editable":true},
+    {"id":"palet","group":"Estanterías","name":"Palet","shape":"rect","w":1.2,"h":0.8,"color":"#60a5fa","icon":"▰","editable":true},
+    {"id":"pasillo_t","group":"Pasillos","name":"Pasillo transversal","shape":"aisle","w":59.8,"h":1.2,"color":"#fbbf24","icon":"↔","editable":true},
+    {"id":"pasillo_p","group":"Pasillos","name":"Pasillo de picking","shape":"aisle","w":3,"h":30,"color":"#a855f7","icon":"↕","editable":true},
+    {"id":"celda1","group":"Celdas","name":"Celda 1 · 4×9","shape":"cell","w":1.2,"h":0.8,"color":"#38bdf8","icon":"▦","editable":true,"cols":4,"floors":9,"holeLiters":42.7},
+    {"id":"celda2","group":"Celdas","name":"Celda 2 · 2×9","shape":"cell","w":1.2,"h":0.8,"color":"#22d3ee","icon":"▦","editable":true,"cols":2,"floors":9,"holeLiters":85.4},
+    {"id":"celda3","group":"Celdas","name":"Celda 3 · 1×9","shape":"cell","w":1.2,"h":0.8,"color":"#67e8f9","icon":"▦","editable":true,"cols":1,"floors":9,"holeLiters":170.9},
+    {"id":"celda4","group":"Celdas","name":"Celda 4 · antigua","shape":"cell","w":1.2,"h":0.8,"color":"#06b6d4","icon":"▦","editable":true,"cols":2,"floors":7,"holeLiters":123.4},
+    {"id":"zona","group":"Zonas","name":"Zona","shape":"zone","w":8,"h":5,"color":"#64748b","icon":"▧","editable":true},
+    {"id":"luminaria","group":"Objetos","name":"Luminaria","shape":"light","w":1.2,"h":1.2,"color":"#fde047","icon":"☼","editable":true},
+    {"id":"altillo","group":"Objetos","name":"Altillo","shape":"zone","w":2.6,"h":1.63,"color":"#fb923c","icon":"▰","editable":true},
+    {"id":"garita","group":"Objetos","name":"Garita","shape":"zone","w":3.5,"h":6,"color":"#94a3b8","icon":"▣","editable":true}
+  ]
+}

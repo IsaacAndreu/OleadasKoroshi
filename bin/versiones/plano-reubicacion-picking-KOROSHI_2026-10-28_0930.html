@@ -1,0 +1,143 @@
+<title>Plano de reubicación NAU-2</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Plano de nave: dos mapas apilados (hoy / después) con la expedición a la izquierda; cifras y fases debajo */
+:root{
+  --bg:#f5f6f4; --panel:#ffffff; --fg:#1d2321; --muted:#5d6763; --line:#d5dad7;
+  --accent:#1f6f5c; --exp:#1f6f5c;
+  --dead:#b9bfbc; --empty:#eceeed; --h1:#f7e3a1; --h2:#f3c167; --h3:#ec8f3e; --h4:#d9542b; --h5:#a8201a;
+  --display:'Archivo',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#141917; --panel:#1c2220; --fg:#e7ebe9; --muted:#9aa5a0; --line:#323b38; --accent:#5cc2a6; --exp:#5cc2a6;
+  --dead:#59615e; --empty:#262d2a; --h1:#6e6033; --h2:#a8782c; --h3:#d17b33; --h4:#e5583a; --h5:#ff7a66; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141917; --panel:#1c2220; --fg:#e7ebe9; --muted:#9aa5a0; --line:#323b38; --accent:#5cc2a6; --exp:#5cc2a6;
+  --dead:#59615e; --empty:#262d2a; --h1:#6e6033; --h2:#a8782c; --h3:#d17b33; --h4:#e5583a; --h5:#ff7a66; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:28px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,38px);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;text-wrap:balance}
+.lead{color:var(--muted);max-width:68ch;margin:6px 0 0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.map{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:10px;min-width:0}
+.maphead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;align-items:baseline}
+.stat{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.stat b{color:var(--fg);font-weight:600}
+.scroll{overflow-x:auto}
+canvas{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:6px;min-width:0}
+.big{font-family:var(--display);font-weight:800;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.card p{margin:0;color:var(--muted);font-size:14px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+td.n{font-family:var(--mono);text-align:right}
+.bar{height:8px;background:var(--h3);border-radius:2px}
+.reco{border-left:4px solid var(--accent);padding:4px 0 4px 16px;display:grid;gap:8px;max-width:75ch}
+.reco p{margin:0}
+.note{font-size:13px;color:var(--muted);max-width:80ch}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">KOROSHI · NAU-2 · datos de Odoo del 28/10/2026</div>
+    <h1>Cómo quedaría la nave si lo que más sale va junto a expedición</h1>
+    <p class="lead">Cada cuadro es una posición de un lineal (sumando sus alturas). El color dice cuántas unidades han salido de ahí en los últimos 30 días. La expedición está a la izquierda, por debajo de L01.</p>
+  </header>
+
+  <div class="legend" aria-label="Leyenda">
+    <span><i class="sw" style="background:var(--h5)"></i>más de 100 uds</span>
+    <span><i class="sw" style="background:var(--h4)"></i>51–100</span>
+    <span><i class="sw" style="background:var(--h3)"></i>21–50</span>
+    <span><i class="sw" style="background:var(--h2)"></i>6–20</span>
+    <span><i class="sw" style="background:var(--h1)"></i>1–5</span>
+    <span><i class="sw" style="background:var(--dead)"></i>con estoc y 0 salidas</span>
+    <span><i class="sw" style="background:var(--empty)"></i>vacío</span>
+  </div>
+
+  <section class="map">
+    <div class="maphead"><h2>Hoy</h2><div class="stat">una OUT llega de media hasta <b>L107</b> · el 1,6 % de lo que sale está en L01–L20</div></div>
+    <div class="scroll"><canvas id="hoy" role="img" aria-label="Mapa de la nave hoy: lo que más sale está entre L41 y L120, lejos de expedición; junto a expedición casi todo es estoc sin salidas."></canvas></div>
+  </section>
+
+  <section class="map">
+    <div class="maphead"><h2>Después de mover los 2.808 huecos calientes</h2><div class="stat">zona de picking <b>L01–L43</b> · una OUT llega de media hasta <b>L72</b></div></div>
+    <div class="scroll"><canvas id="despues" role="img" aria-label="Mapa de la nave después: lo que más sale ocupa L01 a L43 junto a expedición; el estoc sin salidas pasa al fondo."></canvas></div>
+  </section>
+
+  <div class="grid2">
+    <div class="card"><div class="eyebrow">Hoy junto a expedición</div><div class="big">2.834 huecos</div><p>de L01 a L40 tienen estoc que no ha salido en 30 días: 69.458 uds, sobre todo de temporadas viejas.</p></div>
+    <div class="card"><div class="eyebrow">Lo que habría que mover</div><div class="big">5.616 movimientos</div><p>2.808 huecos calientes entran y 2.808 fríos salen: 31.819 cajas, unas 655 h a 7 min por movimiento.</p></div>
+    <div class="card"><div class="eyebrow">Lo que se gana</div><div class="big">−33 % de recorrido</div><p>−3,3 s por unidad (−6,9 % del picking): unas 9 h-persona menos en un día de 10.000 uds.</p></div>
+  </div>
+
+  <section class="map">
+    <h2>Dónde está hoy lo que sale (uds de los últimos 30 días)</h2>
+    <div class="scroll"><table id="tramos"><thead><tr><th>Lineales</th><th style="text-align:right">Uds salidas</th><th style="text-align:right">%</th><th style="width:45%"></th></tr></thead><tbody></tbody></table></div>
+  </section>
+
+  <section class="map">
+    <h2>El ahorro llega al final</h2>
+    <p class="note">Mientras quede algo que se pickea lejos, la OUT tiene que ir hasta allí. Por eso mover solo lo más vendido apenas acorta el recorrido.</p>
+    <div class="scroll"><table><thead><tr><th>Movimientos hechos (por prioridad)</th><th style="text-align:right">Lineal más lejano por OUT</th><th style="text-align:right">Recorrido vs hoy</th></tr></thead>
+      <tbody>
+        <tr><td>Hoy</td><td class="n">L107</td><td class="n">—</td></tr>
+        <tr><td>250</td><td class="n">L105</td><td class="n">−2 %</td></tr>
+        <tr><td>600</td><td class="n">L100</td><td class="n">−7 %</td></tr>
+        <tr><td>1.200</td><td class="n">L91</td><td class="n">−15 %</td></tr>
+        <tr><td>2.000</td><td class="n">L78</td><td class="n">−27 %</td></tr>
+        <tr><td>2.808 (todos)</td><td class="n">L72</td><td class="n">−33 %</td></tr>
+        <tr><td>Todo + reponer siempre en la zona</td><td class="n">L32</td><td class="n">−70 %</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="reco">
+    <div class="eyebrow">Recomendación</div>
+    <p><b>No mover hueco a hueco.</b> 655 h para ganar un 7 % no compensa con lo que queda de campaña.</p>
+    <p><b>Sacar en bloque el estoc viejo de L01–L40</b> (temporadas anteriores, 0 salidas) a reserva o a otra nave, por palets, y no hueco a hueco.</p>
+    <p><b>Ubicar todo lo que entra y todo lo que se repone en L01–L43</b> según la rotación. La zona se llena sola y se acerca al −70 % de recorrido sin movimientos de más.</p>
+  </section>
+
+  <p class="note">Cálculo con el estoc de Odoo por hueco (9.849 huecos) y las 65.314 líneas de picking de los últimos 30 días (1.472 OUT). Se mide el lineal más lejano que visita cada OUT, porque el operario sale de expedición y vuelve. Los 7 min por movimiento son una suposición: hay que cronometrarlos.</p>
+</div>
+
+<script>
+const HOY=".1ddddddddddddd111ddddd11dd111d22211d......|.1ddddd1d1dddddd21d121d11ddd11122211d......|.ddddddd11d1ddddddd211d1d1dd1d21..111......|.dddddddddddddd11ddd11d31d1ddd22..d1d......|.ddddddddddddddd1d1d1ddd12d1dddd21d112.....|.ddddddddddddddd1ddd1d111321d11121dd11.....|.d1dddddd1d1dd.d1d1dd1111d1d111d.1d11d.....|.d1dddd1d1dddd.dd1111dd111d1d111..121d.....|.ddddddddddddddddd11dd1dd1dd3223..dddd1d...|.11dddddddd1ddddddddd1dd2211121d..1111dd...|.ddd..ddddd1ddd1ddddddddddd11dddddddd......|.ddd..dddddd1ddddddddd11d1dddddddd1dd......|.d1d..dddddddddd1dd11ddd1d111111..d1dd.d1..|.ddd..ddddddd1dddd11d11ddd1ddddd..1ddddd1..|.1dd..1ddd1dddd1ddd1dddddd1ddd11...1ddddddd|.ddd..dd1ddddd1dddddddddddd1d1dd...dddddddd|.ddd..dddddd1ddddd22222213233333223331.....|.ddd..d1ddd1ddddd112222333232122332222.....|.ddd..dddddddddddd1d1dddddd11dd..ddddd1....|.ddd..1dddddddd1ddddddddddddddd..dddddd....|.ddd..dddddd.ddddddddddddd1ddd1...dd1dddddd|.ddd..dd1ddd1dddddddddddd1d1dd1...ddddddddd|...dd.ddddddd1dddd222121...d......2122.....|...dd.ddddddddddd122122...........22221....|.1ddd.dddd1ddddddd.dddddd.dddddd..ddd1ddd1.|.d.dd.ddd1ddddddd1.dddddd.ddd1dd..dddddddd.|.dddd.ddddd1.dddddd1ddddddddddddd1d1d1d1...|.dddd.d1dddd.ddddddd11dddddd1ddddddddd.d...|.dd.d.dddddd.ddddddddd1dddddddd1..dddddddd.|.dd.dddddddd.dddddd1ddd1ddd1dddd..ddddddd1.|.d.dd.dd1ddddddddd1d12321312323232..d......|.d.d1.ddddddd1dddd213234232d.33232.........|.d.....ddddd.dd1dd1d1ddddddd1..d..dddddddd.|d.....ddddd.ddddd.1ddd1dddddd..1..dddddd1d.|ddd..dddddd.ddddd.1ddddddddddd1d..dd1ddd1d.|11d..ddd.ddd.dddddddddd111dd1ddd..dddddddd.|.d.d...ddddddddddd2222223222122312.........|..dd...ddddddddd111222122122222231.........|.ddd..dddddddd1dddd1ddddd1d1d1d1..d11dddd1.|.d.d..ddddddddddddd11ddd11d1d1dd..d1dddd11.|..d.ddd11111111111.11dd1d111dddd..1ddd1d11.|..dddddd1d111d1111.111d111dd1ddd..ddd1dddd.|.3d3d33332444545542221122112121121..1......|.d.4242323334455552222111231221222.........|.2231..333124355441d1111d..1dddd..dd1d1d1d.|.3.324232324344555ddd11d1.21111d..1dd1dddd.|.3.131421.3415543.dd111dd11d11dd..ddd11111.|.2443443..434555331d11dd1dd1111d..dddd1d1d.|.333333.213d3453451d11dd11111111..dd1111d1.|.21.2333134253.245ddddddddd1ddd1..ddddd1dd.|.442325232221224343332.333..33322..........|.443353425554355442223.333..33222..........|.2..1d344.24231343dddd1dddd1dddd..1111d111.|.34225424.3.d325421ddd1dddddd1d1..ddd11d1d.|.5423443242332145dd1dd....ddd........1ddd1.|.233225.d2..34dd32ddd11d.ddd11dd..1dd11ddd.|.d3dd33.d2213d4...2221222122222...d........|.2.dd34.222.434...2221122221.......d.......|.32...32.2242431..1111dd1dd1111d..ddd1dd11.|.212232212d22343..1dd111d11d1111..1211d1dd.|.3.2.....4......1.11dddddd1d1111..1ddd1dd1.|.d3333332d3331332.1dddddddddddd1..d1d1dddd.|.....233222.423.441ddddddddd1ddd1ddd1d1....|d2342324423343..25.1dddddd1d1ddddddd1dd....|3223d22d323d54d1.1.22122111222122112111....|..4.2.d...2d4d214421112111d1d2122111212....|1.3.13334344221443d.ddd11dd1ddd............|dd2..3223344442232d1d11dd1dd11d............|.2d1dd23334443232d1.3.424233dd.2444442.....|..32.3322442d3dddd24.34414243444445453.....|.dddddd.22322455..d2232d322d32334333455....|.d2ddddd3332433d43d4323dd214d313d144451....|.....3322...32.323313121.234dd11234454.....|.3d.d23232223334dd24.21d.2331d1.323433.....|122d222dd2d2d122d31.2231dd2232.2d2d231.....|dddd1dddd222dd211d22d1dd11d11d.d232..d.....|d..32dd3d222122d134333344dddd2454554324....|ddddd1dd1d32d22212432.34.43ddddd2212d.3....|3dd2323323d32.2321341341d25545512313.35....|1d2112ddd222111d112ddd3dd3535532d.42333....|d2223d1d22.13444.3334235445545441d41213....|dd2ddd22d1434223d334424424232...2323333....|244442.22d32223333334.35314422433.34313....|dd2323224332223321322.343343342..323525....|232.33.2...2..32dd123334244431334424.12....|d4222323323.44d2dd343445444532434524234....|1..2ddd13223341321.2245535553531..d...4....|d.2221.3333312dd1d.2.444553333322d2.335....|11221122d3322dddd132233..22.1144421332.....|2dd11dd1d22133224233223322221244122231d....|dddddddddd32dd12d3d15353113545545112125....|2123dddddddd23333411dd32442455551321225....|3231d11d134422332333d334343544455252255....|d4d3d3d3d2d42d4244.2..33333555545454222....|3d.33dd3d12ddd2142..43445..21d33....d2d....|d31d234d33d33d3342..34333333323443d32dd....|d2dddddddd332322dd..4343344345222234433....|2223dd322224323322..dd34334422224323445....|2dddd2dd1dddd1d1d3.41343321343234d34443....|d223321dd3331d2dddddd33443d33441442243d....|.333ddddd4ddd3dd3355444444445545455341d....|.ddddddd33d44ddddd454444434145434552543....|.dd3d22d1dd1d2ddddd3dd554445435d5532343....|.22ddddd22ddd321d15455ddd23d2ddd4d1dd5d....|.dd2ddd2d323.21122d24ddddddddddddd222d4....|.d1dd12d1d2214343dddd3dddddddddddd35425....|ddddddd1ddd23d243d45d43333423343323d22.....|343d42dd223d22133444333dd..2..33123...2....|dd232233213242.d1345544244444444d5dd34d....|33311332..2d.44223454334343335434d34d4d....|.......ddd11d122235dd43dd42dd344d45ddd4....|d121212222d2d2221d444d44d3dd44345152dd4....|3ddd.3d3d2d3d3d234ddd3d333d1dd52ddddd41....|d321322334343312334dd43d44d451ddd44dddd....|2d32221d23d32d3d32ddd2ddd2ddddd2ddd2d42....|213d3233d3d3322233dd2dddd11d12ddd1dddd3....|3dddd33d3224334232ddddddddddddddddd1ddd....|13d3132433544432d2ddddddddddddddddddd1d....|dd11ddd1d1133d1dd4.........dddddddddddd....|211dd1dddd133d3124.........dddddddddddd....|2dd211dd2343212333.........................|3dd122212d43124d...........................|322232232222332ddd.........................|...........................................|1d1212ddd44d123234.........................|d22ddddd2321d33321.........................|132222ddd123d3...2.........................|dddd22d133dd343453.........................|.......55543354211.........................|.55555544445554ddd.........................|d1dd443d12d2242334.........................|ddd244411131334514.........................|324323342344444445.........................|443424333343251433.........................|333........................................|343........................................";
+const DESPUES=".1dddddd5dd55551155555555555555222555......|.1ddddd1d1d55555515223555555555522555......|.ddddddd11d1ddd55552555554555544..445......|.ddddddd4dddddd44554445555455554..545......|.dddddddddddd5554455455522545555245442.....|.dddddddddddd5554554555443245554245554.....|.d1dddddd1d1d5.55555555555454245.55555.....|.41dddd1d1ddd5.55454555244545444..4245.....|.1dddddd555555555542554554553223..555545...|.41ddddd444344444455545524445225..544444...|.444..4444434441444444444444444444444......|.444..4444443444444444334144444444444......|.434..44444444443444444434334333..4444.44..|.444..44444443444443441444344444..4444444..|.344..34443444434443444444434433...44444444|.444..44344444344444443444434344...44444444|.444..44444434444422222213233333223331.....|.434..43444344444312222333232322332222.....|.444..4444344443443434444443344..444443....|.444..3444434443443333333333333..434443....|.333..333333.333333333333333333...333333333|.333..3333333333333333333333333...333333333|...33.333333333333223131...3......2322.....|...33.33333333333322322...........22221....|.3333.333333333333.333333.333333..33323331.|.3.32.333233323332.333333.333233..33333333.|.3333.333332.333333233333333333332323331...|.2333.323333.3333333223333331333333333.3...|.33.3.333333.3333333332333333332..33333333.|.33.33333333.3333332333233323333..33333333.|.3.33.3323333333332212321312323232..2......|.3.32.3333333233332132342322.33232.........|.3.....32333.3212223233333331..3..22333333.|2.....22222.22222.22222222222..2..22232323.|222..222222.22222.22222222222212..22222222.|222..222.222.2222222222222222222..22222222.|.2.2...222222222222222223222122312.........|..22...222222222222222222222222231.........|.222..22222222222222222222222222..22122222.|.2.2..22222222222222222222222222..22222222.|..2.22222212122122.1222222222222..22222222.|..2222111222221212.2222221222222..22222222.|.313133332444545542221122112121121..1......|.d.dddddddd3dddddddddddddd2ddddddd.........|.d231..ddd1d3ddd4dddddddd..ddddd..dddddddd.|.d.d2dd32dddddddddddddddd.dddddd..dddddddd.|.3.d31dd1.3d1d2dd.dddddddddddddd..dddddddd.|.ddddddd..dddddddddddddddddddddd..dddddddd.|.dddddd.dddddddddd1ddddddddddddd..dddddddd.|.dd.dddd1dddd3.ddddddddddddddddd..dddddddd.|.43222d23222122434dddd.ddd..ddddd..........|.4dd1dddddddddddd4dddd.ddd..ddddd..........|.2..1dddd.ddddd13ddddddddddddddd..dddddddd.|.2d2ddddd.d.dddddddddddddddddddd..dddddddd.|.3d2ddd2dddddddd5ddddd....ddd........ddddd.|.dddddd.d2..3ddd2ddddddd.ddddddd..dddddddd.|.dddddd.ddd1ddd...ddddddddddddd...d........|.d.dd32.dd2.dd3...dddddddddd.......d.......|.32...3d.223d4d1..dddddddddddddd..dddddddd.|.ddddddd12ddd333..dddddddddddddd..dddddddd.|.3.2.....3......1.ddddddddddd1dd..dddddddd.|.ddd3d23dddd3dd3d.dddddddddddddd..dddddddd.|.....23dddd.d2d.ddddddddddddddddddddddd....|dddd222dd2dddd..dd.dddddddddddddddddddd....|d223dd2ddddddddd.d.dddddddddddddddddddd....|..d.2.d...ddddddddddddddddddddddddddddd....|d.d.ddddddddd2ddddd.ddd1ddddddd............|dd2..32ddd3dddddddddddddddddd1d............|.ddddddddddd2ddddd1.3.dddddddd.ddd1d2d.....|..22.332dd32dddddd24.3dddd2ddddddddddd.....|.dddddd.2dd22d55..dddddddddddddd4d3dddd....|.ddddddd3dddddddddddd23ddd1dd2d2d1dddd1....|.....32dd...32.d2121dd2d.2dddd1ddddddd.....|.dd.ddddd2d2d22ddd2d.d1d.ddddd1.ddd33d.....|dd2d2dddddddd1dddd1.dddddddddd.dddd1d1.....|dddddddddd2ddddddddddddddddddd.dd3d..d.....|d..3dddddddd122dd3dd1ddddddddddddd4dddd....|ddddddddddddddddddddd.dd.dddddddddddd.d....|3dd2dd32ddd3d.2dd1231dddddddd4ddd31d.dd....|ddddddddddddddddddddddddddddddddd.3dddd....|d2dddddddd.1dddd.3d3dddddddd2533dd41ddd....|ddddddd2ddddddddddddd2dd2d2dd...ddddddd....|244d4d.1dd2dddd3dd324.d3d1122dddd.dd2dd....|dddddd2dddddddddddddd.dddddddd2..dd3d2d....|2dd.33.2...2..d2dd12ddddddd4dddddd1d.d2....|ddddddd2dd2.4ddddddddddddddddd1dddddddd....|1..2ddd12d23dddddd.2dddddd3ddd3d..d...d....|d.ddd1.dddddd2dddd.d.d2dddd3ddddddd.ddd....|ddddd1dddd22dddddd2d233..2d.1dd4421dd2.....|ddddddddddddd3dd3d2ddd3ddd2dd1ddddddddd....|ddddddddddddddddddddddddddddddddddddddd....|21d3ddddddddddddd4dddddddddddd5dddddddd....|2dddddddddddddddd33ddddddddd3d3dddddddd....|d3d3d2dddddddd4d34.d..d1d3ddddddddddddd....|3d.33dd3d1dddddddd..d2343..d1dd3....ddd....|d3dddd4dddddddddd2..dddd3ddddd34ddd3ddd....|dddddddddd3ddddddd..32d313d3d4ddddddddd....|ddd3ddddddddddddd2..dddddd1dd2ddddddddd....|dddddddddddddddddd.dddddd21dddddddddddd....|ddd3ddddddddddddddddddd33dddddddddddddd....|.dddddddddddddddddddddddddddd4ddddddddd....|.dddddddddddddddddddddddddddddddddddddd....|.ddddddddddddddddddddd5ddddd4dddd4ddddd....|.ddddddd2ddddddddddd45ddddddddddddddddd....|.ddddddddddd.dddddddddddddddddddddddddd....|.ddddd1dddddddd4dddddddddddddddddd2ddd4....|dddddddddddddd2dddddd3ddddddd3dddddddd.....|d4dd4ddddddddddd34d4ddddd..d..3dddd...d....|ddd3ddddddddd2.dd23d44dd3d4434ddd5ddd4d....|33dddddd..dd.d3ddd343dd33d33d44dddd4ddd....|.......ddddddddddd4dd4dddddddddddd5dddd....|ddddddddddddddddddddddd4dddddddd5d5dddd....|dddd.3dddddddddddddddddddddddd5dddddd4d....|dddddddd3d2dddddd2ddd4ddddd45dddd44dddd....|dd2ddd1dd3dddd2dddddddddddddddddddddddd....|2ddddd2ddddd21dd2dddddddddddddddddddddd....|3ddddd3dddd32dddddddddddddddddddddddddd....|1dd2dd2dddddd3ddddddddddddddddddddddddd....|dddddddddddddddddd.........dddddddddddd....|dddddddddddddddddd.........dddddddddddd....|dddddddddd3ddddddd.........................|dddd1d2ddd3ddddd...........................|ddddddd3dddd3ddddd.........................|...........................................|dddddddddddddddd3d.........................|ddddddddddddd2dddd.........................|d3ddddddddd3dd...d.........................|dddddddddddddddd5d.........................|.......5dddddddddd.........................|.5444dddd4dddddddd.........................|dddddddddddddddddd.........................|ddddd4dddddddddddd.........................|dddddddddddddddd4d.........................|ddd4d4dddddddddddd.........................|dd3........................................|d3d........................................";
+const TRAMOS=[["L01–L20",1307],["L21–L40",1204],["L41–L60",13619],["L61–L80",14652],["L81–L100",25301],["L101–L120",19017],["L121–L136",7854]];
+
+function tok(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function draw(id,data,zone){
+  const rows=data.split('|');const cv=document.getElementById(id);
+  const wrap=cv.parentElement;const W=Math.max(wrap.clientWidth,700);
+  const left=58,top=22,gapAisle=10,bottom=26;
+  const cw=Math.max(4,Math.floor((W-left-8)/rows.length));const ch=Math.max(4,Math.round(cw*0.9));
+  const H=top+43*ch+gapAisle+bottom;const w=left+rows.length*cw+8;
+  const dpr=window.devicePixelRatio||1;cv.width=w*dpr;cv.height=H*dpr;cv.style.width=w+'px';cv.style.height=H+'px';
+  const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,w,H);
+  const col={'0':tok('--empty'),'d':tok('--dead'),'1':tok('--h1'),'2':tok('--h2'),'3':tok('--h3'),'4':tok('--h4'),'5':tok('--h5')};
+  const y=p=>top+p*ch+(p>=18?gapAisle:0);
+  if(zone){g.fillStyle=tok('--accent');g.globalAlpha=.12;g.fillRect(left,top-6,zone*cw,43*ch+gapAisle+12);g.globalAlpha=1;
+    g.strokeStyle=tok('--accent');g.lineWidth=1.5;g.strokeRect(left+.5,top-5.5,zone*cw,43*ch+gapAisle+11);}
+  rows.forEach((r,i)=>{for(let p=0;p<43;p++){const c=r[p];if(c==='.')continue;g.fillStyle=col[c];g.fillRect(left+i*cw,y(p),cw-(cw>5?1:0),ch-1)}});
+  g.fillStyle=tok('--muted');g.font='11px "IBM Plex Mono",monospace';g.textAlign='center';
+  for(let l=1;l<=rows.length;l+=(l===1?9:10)){g.fillText('L'+l,left+(l-1)*cw+cw/2,H-8)}
+  g.textAlign='right';g.fillText('P00',left-6,y(0)+ch);g.fillText('P17',left-6,y(17)+ch);g.fillText('P18',left-6,y(18)+ch);g.fillText('P42',left-6,y(42)+ch);
+  g.textAlign='left';g.fillText('pasillo central',left+4,top+18*ch+gapAisle/2+4-1);
+  g.fillStyle=tok('--exp');g.font='600 12px "IBM Plex Sans",sans-serif';g.save();g.translate(14,top+21*ch);g.rotate(-Math.PI/2);g.textAlign='center';g.fillText('◀ EXPEDICIÓN',0,0);g.restore();
+  if(zone){g.fillStyle=tok('--accent');g.font='600 12px "IBM Plex Sans",sans-serif';g.textAlign='left';g.fillText('zona de picking L01–L'+zone,left+4,top-9)}
+}
+function render(){draw('hoy',HOY,0);draw('despues',DESPUES,43)}
+const tb=document.querySelector('#tramos tbody');const tot=TRAMOS.reduce((s,x)=>s+x[1],0);const mx=Math.max(...TRAMOS.map(x=>x[1]));
+TRAMOS.forEach(([l,u])=>{const tr=document.createElement('tr');tr.innerHTML='<td>'+l+'</td><td class="n">'+u.toLocaleString('es-ES')+'</td><td class="n">'+(u/tot*100).toLocaleString('es-ES',{maximumFractionDigits:1})+' %</td><td><div class="bar" style="width:'+(u/mx*100)+'%"></div></td>';tb.appendChild(tr)});
+render();addEventListener('resize',()=>{clearTimeout(window._t);window._t=setTimeout(render,150)});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+document.fonts&&document.fonts.ready.then(render);
+</script>

@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="PdaKoroshiAndroid.MainPage"
+             Title="KOROSHI PDA TEST">
+    <ScrollView>
+        <VerticalStackLayout Padding="20" Spacing="14">
+            <Label Text="KOROSHI · PDA TEST" FontSize="24" FontAttributes="Bold" />
+            <Label Text="MODO DEMO · no escribe en Odoo" TextColor="#B45309" FontAttributes="Bold" />
+
+            <Border Stroke="#D5DED9" StrokeThickness="1" Padding="14">
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="Lectura actual" FontAttributes="Bold" />
+                    <Label x:Name="OrderLabel" Text="Pedido: —" FontSize="20" />
+                    <Label x:Name="DestinationLabel" Text="Destino: —" FontSize="34" FontAttributes="Bold" TextColor="#176B55" />
+                    <Label x:Name="BoxLabel" Text="Caja: —" FontSize="20" />
+                    <Label x:Name="ProgressLabel" Text="0 / 0" />
+                </VerticalStackLayout>
+            </Border>
+
+            <Entry x:Name="ScanEntry"
+                   Placeholder="Escanea el EAN o escribe DEMO"
+                   Keyboard="Text"
+                   ClearButtonVisibility="WhileEditing"
+                   Completed="OnScanCompleted" />
+            <Button Text="PROBAR SIGUIENTE LECTURA" Clicked="OnDemoScanClicked" HeightRequest="58" />
+            <Button Text="CERRAR CAJA" Clicked="OnCloseBoxClicked" HeightRequest="58" BackgroundColor="#4868B2" />
+            <Button Text="CAMBIAR CAJA" Clicked="OnChangeBoxClicked" HeightRequest="52" BackgroundColor="#E08A27" />
+            <Button Text="REINICIAR PRUEBA" Clicked="OnResetClicked" HeightRequest="48" BackgroundColor="#68736D" />
+
+            <Label x:Name="StatusLabel" Text="Preparado para la prova." FontSize="16" />
+            <Label Text="Requisits provats: no duplicar lectura, no tancar caixa buida, destí U visible i recuperació de la sessió." FontSize="13" TextColor="#68736D" />
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

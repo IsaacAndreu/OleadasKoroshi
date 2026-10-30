@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>KOROSHI · Simulador PDA</title>
+<style>
+:root{--bg:#f4f6f4;--panel:#fff;--ink:#17201c;--muted:#68736d;--line:#d9e0db;--accent:#176b55;--accent2:#e08a27;--blue:#4868b2;--red:#b6433a;--shadow:0 8px 24px rgba(21,42,31,.08)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,-apple-system,"Segoe UI",sans-serif}main{max-width:1180px;margin:auto;padding:28px 18px 64px;display:grid;gap:22px}h1,h2,h3{margin:0;line-height:1.15}h1{font-size:clamp(28px,4vw,44px)}h2{font-size:22px}h3{font-size:17px}.eyebrow{font:12px/1.2 ui-monospace,Consolas,monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}.lead{font-size:18px;max-width:78ch}.panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:18px;box-shadow:var(--shadow);display:grid;gap:14px}.note{color:var(--muted);font-size:13px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}.field{display:grid;gap:5px}.field label{font-size:12px;color:var(--muted);font-weight:700}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:6px;padding:9px 10px;font:inherit;background:#fff;color:var(--ink)}.field textarea{min-height:120px;font-family:ui-monospace,Consolas,monospace;font-size:12px;resize:vertical}.actions{display:flex;flex-wrap:wrap;gap:9px}.btn{border:1px solid var(--accent);background:var(--accent);color:white;border-radius:6px;padding:9px 13px;font-weight:700;cursor:pointer}.btn.secondary{background:#fff;color:var(--accent)}.btn.warn{background:var(--accent2);border-color:var(--accent2)}.btn:focus-visible,.field input:focus-visible,.field select:focus-visible,.field textarea:focus-visible{outline:3px solid rgba(23,107,85,.2);outline-offset:1px}.status{min-height:22px;color:var(--muted)}.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.kpi{border:1px solid var(--line);border-top:4px solid var(--accent);padding:12px;border-radius:7px;background:#fff}.kpi .v{font-size:26px;font-weight:800;font-variant-numeric:tabular-nums}.kpi .l{display:block;color:var(--muted);font-size:12px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:7px}table{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}th,td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}th{background:#f1f4f1;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.06em}td:first-child,th:first-child{text-align:left}.best td{background:#e5f3eb}.method{display:inline-block;border-radius:99px;padding:2px 8px;color:#fff;font-size:11px;font-weight:800}.method.pda{background:var(--blue)}.method.zones{background:var(--accent2)}.method.trad{background:var(--accent)}.bars{display:grid;gap:10px}.bar{display:grid;grid-template-columns:175px 1fr 90px;gap:10px;align-items:center}.bar-name{font-weight:700;font-size:13px}.track{height:18px;background:#e9eeea;border-radius:4px;overflow:hidden}.fill{height:100%;border-radius:4px}.fill.pda{background:var(--blue)}.fill.zones{background:var(--accent2)}.fill.trad{background:var(--accent)}.bar-value{text-align:right;font-family:ui-monospace,Consolas,monospace;font-size:12px}.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:18px}.testbox{border:1px dashed var(--line);border-radius:8px;padding:14px;display:grid;gap:10px}.pda-screen{background:#152535;color:#d7edf9;border-radius:8px;padding:16px;font-family:ui-monospace,Consolas,monospace;min-height:125px;display:grid;gap:5px}.pda-screen strong{color:#7de2bc;font-size:20px}.pda-screen .warn{color:#ffca78}.ok{color:var(--accent)}.error{color:var(--red)}.small{font-size:12px}.footer{color:var(--muted);font-size:12px;border-top:1px solid var(--line);padding-top:14px}
+@media(max-width:640px){main{padding:18px 10px 40px}.panel{padding:14px}.bar{grid-template-columns:120px 1fr 75px}.lead{font-size:16px}}
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div class="eyebrow">KOROSHI · prova local · sense Odoo</div>
+    <h1>Simulador de PDA: PDA, zones i tradicional</h1>
+    <p class="lead">Mateixa càrrega, mateixos pickers i mateixos paràmetres. Serveix per decidir si la idea de la PDA —una passada i separació directa a U1…U5— és més ràpida que zones o 1 OUT per pedido.</p>
+  </header>
+
+  <section class="panel">
+    <h2>1. Escenari de prova</h2>
+    <div class="grid">
+      <div class="field"><label for="pickers">Persones / pickers</label><input id="pickers" type="number" min="1" max="30" value="5"></div>
+      <div class="field"><label for="units">Unitats</label><input id="units" type="number" min="1" value="4757"></div>
+      <div class="field"><label for="orders">Pedidos / OUT</label><input id="orders" type="number" min="1" value="51"></div>
+      <div class="field"><label for="stores">Botigues</label><input id="stores" type="number" min="1" value="41"></div>
+      <div class="field"><label for="uCount">U de lectura</label><input id="uCount" type="number" min="1" max="20" value="5"></div>
+      <div class="field"><label for="zones">Zones</label><input id="zones" type="number" min="1" max="20" value="5"></div>
+      <div class="field"><label for="uRate">Lectura U (uds/h)</label><input id="uRate" type="number" min="1" value="225"></div>
+      <div class="field"><label for="boxCapacity">Capacitat caixa intermèdia</label><input id="boxCapacity" type="number" min="1" value="400"></div>
+    </div>
+    <div class="grid">
+      <div class="field"><label for="secUnit">Segons per unitat</label><input id="secUnit" type="number" min="0" step="0.1" value="4"></div>
+      <div class="field"><label for="secLineal">Segons per lineal visitat</label><input id="secLineal" type="number" min="0" step="0.1" value="21"></div>
+      <div class="field"><label for="secOrder">Segons d’obrir/cerrar pedido</label><input id="secOrder" type="number" min="0" step="0.1" value="20"></div>
+      <div class="field"><label for="secPdaSplit">Segons extra PDA per lineal i U</label><input id="secPdaSplit" type="number" min="0" step="0.1" value="5"></div>
+      <div class="field"><label for="minZoneUnits">Mínim per troç de zona</label><input id="minZoneUnits" type="number" min="0" value="15"></div>
+      <div class="field"><label for="sampleMode">Dades</label><select id="sampleMode"><option value="sample">Exemple 27/10 (generat)</option><option value="csv">CSV introduït baix</option></select></div>
+    </div>
+    <div class="actions"><button class="btn" id="runBtn">Executar comparativa</button><button class="btn secondary" id="sampleBtn">Carregar exemple</button><button class="btn secondary" id="csvBtn">Usar CSV</button><button class="btn secondary" id="exportBtn">Exportar resultat CSV</button></div>
+    <div id="status" class="status" role="status"></div>
+    <div class="field"><label for="csvInput">CSV opcional: pedido;tienda;unidades;lineal (una línia per combinació)</label><textarea id="csvInput" placeholder="S-001;K01;12;L42\nS-002;K02;8;L78\nS-002;K02;5;L79"></textarea></div>
+    <p class="note">És una simulació offline. No obri Nath, no crea INT, no canvia qty_done i no envia res a cap API.</p>
+  </section>
+
+  <section class="panel">
+    <h2>2. Resultat comparable</h2>
+    <div class="kpis" id="summary"></div>
+    <div class="table-wrap"><table id="results"><thead><tr><th>Mètode</th><th>Temps total</th><th>Uds/h persona</th><th>Caixes de treball</th><th>Troços / repartiments</th><th>Metres estimats</th><th>Incidències previstes</th></tr></thead><tbody></tbody></table></div>
+    <div class="bars" id="bars"></div>
+    <p class="note">El temps és una estimació per comparar mètodes. Per decidir definitivament cal fer la mateixa prova amb temps reals d’inici/fi i un usuari diferent per PDA.</p>
+  </section>
+
+  <section class="panel">
+    <h2>3. Prova funcional de la PDA</h2>
+    <div class="two">
+      <div class="testbox">
+        <h3>Què ha de fer la PDA</h3>
+        <ul class="small"><li>En llegir una peça, indicar la U de destí.</li><li>Evitar crear una caixa duplicada en editar un pedido.</li><li>No comptar cap caixa buida.</li><li>Guardar l’últim pedido i caixa de manera recuperable.</li><li>Mostrar error si la lectura no té pedido, U o lineal.</li></ul>
+        <button class="btn warn" id="testBtn">Fer 20 lectures simulades</button>
+      </div>
+      <div class="testbox">
+        <h3>Pantalla que veuria l’operari</h3>
+        <div class="pda-screen" id="pdaScreen"><span>Esperant una prova…</span><span class="small">La simulació no escriu cap dada real.</span></div>
+        <div id="testResult" class="small"></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>4. Lectura inicial</h2>
+    <div class="two">
+      <div><h3>El que arregla aquesta v1</h3><ul><li>Compara els tres mètodes amb els mateixos inputs.</li><li>Separa temps de picking, lectura U i repartiments.</li><li>Fa visible el cost de crear troços petits i caixes extra.</li><li>Inclou una prova de duplicats i caixes buides.</li></ul></div>
+      <div><h3>El que encara no toca</h3><ul><li>No connecta a Odoo ni a l’API S4T.</li><li>No instal·la res en cap PDA real.</li><li>No crea oleades, INT, matrícules ni paquets.</li><li>No substitueix una prova real controlada.</li></ul></div>
+    </div>
+  </section>
+  <div class="footer">Versió local 2026-10-29 v1 · creada per fer proves abans de tocar producció.</div>
+</main>
+<script>
+(function(){
+  'use strict';
+  var lastResults=[];
+  function num(id, fallback){var v=parseFloat(document.getElementById(id).value);return isFinite(v)?v:fallback;}
+  function esc(s){return String(s).replace(/[&<>\"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c];});}
+  function fmt(v,d){return Number(v||0).toLocaleString('es-ES',{minimumFractionDigits:d||0,maximumFractionDigits:d||0});}
+  function hm(seconds){var m=Math.round(seconds/60);return Math.floor(m/60)+':'+String(m%60).padStart(2,'0');}
+  function seeded(n){var x=(n*9301+49297)%233280;return x/233280;}
+  function sampleRows(){
+    var stores=num('stores',41), orders=num('orders',51), units=num('units',4757), rows=[], total=0;
+    for(var i=0;i<orders;i++){
+      var tienda='K'+String((i%stores)+1).padStart(2,'0');
+      var base=20+Math.floor(seeded(i+3)*120);
+      if(i>orders-8)base=8+Math.floor(seeded(i+90)*25);
+      rows.push({pedido:'S-'+String(i+1).padStart(4,'0'),tienda:tienda,unidades:base,lineal:[]}); total+=base;
+    }
+    var factor=units/total;
+    for(var j=0;j<rows.length;j++) rows[j].unidades=Math.max(1,Math.round(rows[j].unidades*factor));
+    var adjust=units-rows.reduce(function(a,r){return a+r.unidades;},0); rows[0].unidades+=adjust;
+    rows.forEach(function(r,i){var n=3+Math.floor(seeded(i+17)*9);for(var k=0;k<n;k++){r.lineal.push({lineal:1+Math.floor(seeded(i*31+k+7)*136),unidades:1+Math.floor(seeded(i*13+k+2)*Math.max(1,r.unidades/n))});}var sum=r.lineal.reduce(function(a,x){return a+x.unidades;},0);r.lineal[0].unidades+=r.unidades-sum;});
+    return rows;
+  }
+  function parseCsv(){
+    var raw=document.getElementById('csvInput').value.trim();if(!raw)return [];
+    var rows={}, lines=raw.split(/\r?\n/);
+    lines.forEach(function(line,idx){var p=line.split(/[;,\t]/).map(function(x){return x.trim();});if(idx===0&&/pedido/i.test(p[0]))return;if(p.length<4)return;var q=parseFloat(p[2]),lin=parseInt(String(p[3]).replace(/\D/g,''),10);if(!isFinite(q)||!isFinite(lin))return;var key=p[0]||('P-'+idx);if(!rows[key])rows[key]={pedido:key,tienda:p[1]||'-',unidades:0,lineal:[]};rows[key].unidades+=q;rows[key].lineal.push({lineal:lin,unidades:q});});
+    return Object.keys(rows).map(function(k){return rows[k];});
+  }
+  function data(){var r=document.getElementById('sampleMode').value==='csv'?parseCsv():sampleRows();if(!r.length)r=sampleRows();return r;}
+  function totalUnits(rows){return rows.reduce(function(a,r){return a+r.unidades;},0);}
+  function uniqueLineals(rows){var s={};rows.forEach(function(r){r.lineal.forEach(function(x){s[x.lineal]=1;});});return Object.keys(s).length;}
+  function balance(list,n,weight){var bins=[];for(var i=0;i<n;i++)bins.push({items:[],weight:0});list.slice().sort(function(a,b){return weight(b)-weight(a);}).forEach(function(x){bins.sort(function(a,b){return a.weight-b.weight;});bins[0].items.push(x);bins[0].weight+=weight(x);});return bins;}
+  function params(){return {pickers:Math.max(1,num('pickers',5)),units:Math.max(1,num('units',4757)),u:num('uCount',5),zones:num('zones',5),uRate:num('uRate',225),cap:num('boxCapacity',400),secUnit:num('secUnit',4),secLineal:num('secLineal',21),secOrder:num('secOrder',20),secSplit:num('secPdaSplit',5),minZone:num('minZoneUnits',15)};}
+  function traditional(rows,p){
+    var bins=balance(rows,p.pickers,function(r){return r.unidades;}), total=0, boxes=rows.length, stops=0;
+    var per=rows.map(function(r){var ls={};r.lineal.forEach(function(x){ls[x.lineal]=1;});stops+=Object.keys(ls).length;return r.unidades*p.secUnit+Object.keys(ls).length*p.secLineal+p.secOrder;});total=per.reduce(function(a,x){return a+x;},0);
+    return result('trad','1 OUT per pedido',Math.max.apply(null,bins.map(function(b){return b.items.reduce(function(a,r){var ls={};r.lineal.forEach(function(x){ls[x.lineal]=1;});return a+r.unidades*p.secUnit+Object.keys(ls).length*p.secLineal+p.secOrder;},0);})),'no',boxes,stops,total,p,0,'Cap incidències baix; depén d’un pedido complet');
+  }
+  function zoneOf(lineal,p){return Math.min(p.zones,Math.max(1,Math.ceil(lineal/(136/p.zones))));}
+  function zones(rows,p){
+    var groups=[],stops=0,small=0;
+    rows.forEach(function(r){var by={};r.lineal.forEach(function(x){var z=zoneOf(x.lineal,p);if(!by[z])by[z]={units:0,lines:{}};by[z].units+=x.unidades;by[z].lines[x.lineal]=1;});Object.keys(by).forEach(function(z){if(by[z].units<p.minZone)small++;groups.push({pedido:r.pedido,zone:z,units:by[z].units,lines:Object.keys(by[z].lines).length});});});
+    var bins=balance(groups,p.pickers,function(g){return g.units*g.units+g.lines*10;}), finish=bins.map(function(b){return b.items.reduce(function(a,g){stops+=g.lines;return a+g.units*p.secUnit+g.lines*p.secLineal+p.secOrder;},0);});
+    var merge=Math.max(0,small-1)*p.secOrder*0.6, boxCount=Math.max(1,groups.length-Math.floor(small*.55));
+    return result('zones','Zones',Math.max.apply(null,finish)+merge,'no',boxCount,stops,finish.reduce(function(a,x){return a+x;},0)+merge,p,small,'Troços menuts: '+small+'; pot requerir juntar');
+  }
+  function pda(rows,p){
+    var all={};rows.forEach(function(r){r.lineal.forEach(function(x){if(!all[x.lineal])all[x.lineal]=0;all[x.lineal]+=x.unidades;});});
+    var lineals=Object.keys(all).map(Number).sort(function(a,b){return a-b;}), pickerCost=0, splitPairs=0;
+    var assignments=balance(rows,p.u,function(r){return r.unidades;}), load=[];for(var i=0;i<p.pickers;i++)load[i]=0;
+    assignments.forEach(function(b){var ls={};b.items.forEach(function(r){r.lineal.forEach(function(x){ls[x.lineal]=1;splitPairs+=1;});});var c=b.items.reduce(function(a,r){return a+r.unidades*p.secUnit;},0)+Object.keys(ls).length*p.secLineal;load[b.items.length?assignments.indexOf(b)%p.pickers:0]+=c;});
+    pickerCost=Math.max.apply(null,load)+splitPairs/p.u*p.secSplit;
+    var rounds=Math.ceil(totalUnits(rows)/p.cap), workBoxes=rounds*p.u, uRead=totalUnits(rows)/p.uRate*3600/p.u, total=pickerCost+uRead;
+    return result('pda','PDA · passada única + U',total,'no',workBoxes,splitPairs,pickerCost,p,0,'Provar duplicats i caixes buides; extra lineal/U: '+splitPairs);
+  }
+  function result(key,name,makespan,unused,boxes,touches,pickSeconds,p,issues,issueText){
+    var units=totalUnits(currentRows), peopleHours=(pickSeconds+(key==='pda'?units/p.uRate*3600:0))/3600;
+    return {key:key,name:name,makespan:makespan,unitsPerHour:units/Math.max(.01,peopleHours),boxes:boxes,touches:touches,meters:touches*4.5,issues:issues,issueText:issueText,pickSeconds:pickSeconds,peopleHours:peopleHours};
+  }
+  var currentRows=[];
+  function run(){
+    currentRows=data();var p=params(), total=totalUnits(currentRows);document.getElementById('units').value=Math.round(total);var rs=[pda(currentRows,p),zones(currentRows,p),traditional(currentRows,p)];lastResults=rs;
+    var fastest=rs.reduce(function(a,b){return a.makespan<b.makespan?a:b;});
+    document.getElementById('status').innerHTML='<span class="ok">OK:</span> '+currentRows.length+' pedidos, '+fmt(total)+' unitats, '+uniqueLineals(currentRows)+' lineals. Més ràpid en aquesta estimació: <b>'+esc(fastest.name)+'</b> ('+hm(fastest.makespan)+').';
+    document.querySelector('#results tbody').innerHTML=rs.map(function(r){return '<tr class="'+(r.key===fastest.key?'best':'')+'"><td><span class="method '+r.key+'">'+esc(r.name)+'</span></td><td>'+hm(r.makespan)+'</td><td>'+fmt(r.unitsPerHour)+'</td><td>'+fmt(r.boxes)+'</td><td>'+fmt(r.touches)+'</td><td>'+fmt(r.meters)+' m</td><td>'+esc(r.issueText)+'</td></tr>';}).join('');
+    var max=Math.max.apply(null,rs.map(function(r){return r.makespan;}));document.getElementById('bars').innerHTML='<h3>Temps de finalització estimat</h3>'+rs.map(function(r){return '<div class="bar"><div class="bar-name">'+esc(r.name)+'</div><div class="track"><div class="fill '+r.key+'" style="width:'+(r.makespan/max*100).toFixed(1)+'%"></div></div><div class="bar-value">'+hm(r.makespan)+'</div></div>';}).join('');
+    document.getElementById('summary').innerHTML='<div class="kpi"><div class="v">'+fmt(total)+'</div><span class="l">unitats simulades</span></div><div class="kpi"><div class="v">'+fmt(currentRows.length)+'</div><span class="l">pedidos/OUT</span></div><div class="kpi"><div class="v">'+fmt(uniqueLineals(currentRows))+'</div><span class="l">lineals diferents</span></div><div class="kpi"><div class="v">'+hm(fastest.makespan)+'</div><span class="l">millor temps estimat</span></div>';
+  }
+  function testPda(){
+    if(!currentRows.length)currentRows=data();var p=params(), rows=currentRows.slice(0,20), seen={}, duplicates=0, empty=0, events=[];
+    rows.forEach(function(r,i){var u=(i%p.u)+1;var box='PALLET-'+Math.floor(i/p.u+1)+'-U'+u;var key=r.pedido+'|'+box;if(seen[key])duplicates++;seen[key]=1;events.push({pedido:r.pedido,u:u,box:box,units:r.lineal.reduce(function(a,x){return a+x.unidades;},0)});});
+    if(events.length&&events[events.length-1].units===0)empty=1;var e=events[Math.min(events.length-1,4)];document.getElementById('pdaScreen').innerHTML='<span>ARTICLE llegit: <b>'+esc(e.pedido)+'</b></span><strong>DESTÍ: U'+e.u+'</strong><span>CAIXA: '+e.box+'</span><span class="small">Confirmar → següent lectura</span>';document.getElementById('testResult').innerHTML='<span class="ok">Prova acabada:</span> '+events.length+' lectures · duplicats: <b>'+duplicates+'</b> · caixes buides: <b>'+empty+'</b> · assignació determinista per pedido/U.';
+  }
+  function exportCsv(){if(!lastResults.length){run();}var lines=['metode;temps_segons;temps;uds_hora_persona;caixes;trocos;metres;incidencies'];lastResults.forEach(function(r){lines.push([r.name,r.makespan,hm(r.makespan),r.unitsPerHour,r.boxes,r.touches,r.meters,r.issueText].map(function(x){return String(x).replace(/;/g,',');}).join(';'));});var blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8'}),a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='pda_benchmark_resultat.csv';a.click();setTimeout(function(){URL.revokeObjectURL(a.href);},1000);}
+  document.getElementById('runBtn').addEventListener('click',run);document.getElementById('sampleBtn').addEventListener('click',function(){document.getElementById('sampleMode').value='sample';run();});document.getElementById('csvBtn').addEventListener('click',function(){document.getElementById('sampleMode').value='csv';run();});document.getElementById('testBtn').addEventListener('click',testPda);document.getElementById('exportBtn').addEventListener('click',exportCsv);run();
+})();
+</script>
+</body>
+</html>
