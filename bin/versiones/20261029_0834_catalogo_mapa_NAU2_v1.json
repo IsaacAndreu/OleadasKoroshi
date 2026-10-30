@@ -1,0 +1,237 @@
+{
+  "schema": 1,
+  "name": "Catàleg mapa NAU-2",
+  "warehouse": "NAU-2",
+  "companyId": 8,
+  "updatedAt": "2026-10-29T08:34:00+01:00",
+  "groups": [
+    "Lineals",
+    "Estanteries",
+    "Passadissos",
+    "Celdes",
+    "Zones",
+    "Objectes"
+  ],
+  "types": [
+    {
+      "id": "lineal",
+      "group": "Lineals",
+      "name": "Lineal de picking",
+      "shape": "lineal",
+      "w": 23.4,
+      "h": 0.5,
+      "color": "#4f8cff",
+      "icon": "▤",
+      "editable": true,
+      "fields": [
+        "label",
+        "location",
+        "family",
+        "season",
+        "occupancy",
+        "air"
+      ]
+    },
+    {
+      "id": "rack",
+      "group": "Estanteries",
+      "name": "Rack de palets",
+      "shape": "rack",
+      "w": 2.79,
+      "h": 1.1,
+      "color": "#f59e0b",
+      "icon": "▥",
+      "editable": true,
+      "fields": [
+        "label",
+        "levels",
+        "capacity"
+      ]
+    },
+    {
+      "id": "palet",
+      "group": "Estanteries",
+      "name": "Palet",
+      "shape": "rect",
+      "w": 1.2,
+      "h": 0.8,
+      "color": "#60a5fa",
+      "icon": "▰",
+      "editable": true,
+      "fields": [
+        "label",
+        "location",
+        "season"
+      ]
+    },
+    {
+      "id": "pasillo_t",
+      "group": "Passadissos",
+      "name": "Passadís transversal",
+      "shape": "aisle",
+      "w": 59.8,
+      "h": 1.2,
+      "color": "#fbbf24",
+      "icon": "↔",
+      "editable": true,
+      "fields": [
+        "label",
+        "width"
+      ]
+    },
+    {
+      "id": "pasillo_p",
+      "group": "Passadissos",
+      "name": "Passadís de picking",
+      "shape": "aisle",
+      "w": 3,
+      "h": 30,
+      "color": "#a855f7",
+      "icon": "↕",
+      "editable": true,
+      "fields": [
+        "label",
+        "width"
+      ]
+    },
+    {
+      "id": "celda1",
+      "group": "Celdes",
+      "name": "Cel·la 1 · 4×9",
+      "shape": "cell",
+      "w": 1.2,
+      "h": 0.8,
+      "color": "#38bdf8",
+      "icon": "▦",
+      "editable": true,
+      "cols": 4,
+      "floors": 9,
+      "holeLiters": 42.7,
+      "fields": [
+        "label",
+        "capacity",
+        "levels"
+      ]
+    },
+    {
+      "id": "celda2",
+      "group": "Celdes",
+      "name": "Cel·la 2 · 2×9",
+      "shape": "cell",
+      "w": 1.2,
+      "h": 0.8,
+      "color": "#22d3ee",
+      "icon": "▦",
+      "editable": true,
+      "cols": 2,
+      "floors": 9,
+      "holeLiters": 85.4,
+      "fields": [
+        "label",
+        "capacity",
+        "levels"
+      ]
+    },
+    {
+      "id": "celda3",
+      "group": "Celdes",
+      "name": "Cel·la 3 · 1×9",
+      "shape": "cell",
+      "w": 1.2,
+      "h": 0.8,
+      "color": "#67e8f9",
+      "icon": "▦",
+      "editable": true,
+      "cols": 1,
+      "floors": 9,
+      "holeLiters": 170.9,
+      "fields": [
+        "label",
+        "capacity",
+        "levels"
+      ]
+    },
+    {
+      "id": "celda4",
+      "group": "Celdes",
+      "name": "Cel·la 4 · antiga",
+      "shape": "cell",
+      "w": 1.2,
+      "h": 0.8,
+      "color": "#06b6d4",
+      "icon": "▦",
+      "editable": true,
+      "cols": 2,
+      "floors": 7,
+      "holeLiters": 123.4,
+      "fields": [
+        "label",
+        "capacity",
+        "levels"
+      ]
+    },
+    {
+      "id": "zona",
+      "group": "Zones",
+      "name": "Zona",
+      "shape": "zone",
+      "w": 8,
+      "h": 5,
+      "color": "#64748b",
+      "icon": "▧",
+      "editable": true,
+      "fields": [
+        "label",
+        "family",
+        "season",
+        "notes"
+      ]
+    },
+    {
+      "id": "luminaria",
+      "group": "Objectes",
+      "name": "Luminària",
+      "shape": "light",
+      "w": 1.2,
+      "h": 1.2,
+      "color": "#fde047",
+      "icon": "☼",
+      "editable": true,
+      "fields": [
+        "label",
+        "notes"
+      ]
+    },
+    {
+      "id": "altillo",
+      "group": "Objectes",
+      "name": "Altell",
+      "shape": "zone",
+      "w": 2.6,
+      "h": 1.63,
+      "color": "#fb923c",
+      "icon": "▰",
+      "editable": true,
+      "fields": [
+        "label",
+        "levels",
+        "notes"
+      ]
+    },
+    {
+      "id": "garita",
+      "group": "Objectes",
+      "name": "Garita",
+      "shape": "zone",
+      "w": 3.5,
+      "h": 6,
+      "color": "#94a3b8",
+      "icon": "▣",
+      "editable": true,
+      "fields": [
+        "label",
+        "notes"
+      ]
+    }
+  ]
+}

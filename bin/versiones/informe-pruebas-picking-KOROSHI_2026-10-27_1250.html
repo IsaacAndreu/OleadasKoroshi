@@ -1,0 +1,200 @@
+<title>Pruebas de picking KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Serif+4:opsz,wght@8..60,400;8..60,600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: informe de almacen en una columna; tablas de datos a ancho completo con scroll propio; conclusiones numeradas porque van por orden de peso */
+:root {
+  --bg: #f5f6f3; --surface: #ffffff; --ink: #1c2321; --muted: #5d6662; --line: #d9ddd8;
+  --accent: #1f6f5c; --accent-soft: #e2efe9; --warn: #a35a12; --warn-soft: #fbeedd; --bad: #b23a2f;
+  --trad: #1f6f5c; --zona: #c0702a; --ole: #5a5fa8; --mon: #8a8f8b;
+  --display: "Archivo", "Helvetica Neue", Arial, sans-serif;
+  --body: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #141917; --surface: #1c2220; --ink: #e7ece9; --muted: #9aa5a0; --line: #2f3835;
+  --accent: #5cc3a5; --accent-soft: #1f342d; --warn: #e3a45f; --warn-soft: #3a2c1a; --bad: #ef7d70;
+  --trad: #5cc3a5; --zona: #e8954d; --ole: #9a9ff0; --mon: #8f9893; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #141917; --surface: #1c2220; --ink: #e7ece9; --muted: #9aa5a0; --line: #2f3835;
+  --accent: #5cc3a5; --accent-soft: #1f342d; --warn: #e3a45f; --warn-soft: #3a2c1a; --bad: #ef7d70;
+  --trad: #5cc3a5; --zona: #e8954d; --ole: #9a9ff0; --mon: #8f9893; color-scheme: dark }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 17px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 40px 80px; display: grid; gap: 40px; }
+header { display: grid; gap: 12px; }
+.eyebrow { font-family: var(--mono); font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--display); font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1.05; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 700; font-size: 24px; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--display); font-weight: 700; font-size: 18px; margin: 0; }
+p { margin: 0; max-width: 68ch; }
+.lead { font-size: 19px; color: var(--ink); }
+.muted { color: var(--muted); }
+section { display: grid; gap: 16px; min-width: 0; }
+.verdict { background: var(--accent-soft); border-left: 4px solid var(--accent); padding: 20px 22px; display: grid; gap: 10px; }
+.verdict p { max-width: none; }
+.verdict b { font-family: var(--display); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); padding: 16px; display: grid; gap: 4px; min-width: 0; }
+.kpi .v { font-family: var(--display); font-weight: 800; font-size: 30px; font-variant-numeric: tabular-nums; }
+.kpi .l { font-family: var(--mono); font-size: 12.5px; color: var(--muted); line-height: 1.4; }
+.scroll { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); }
+table { border-collapse: collapse; width: 100%; font-family: var(--mono); font-size: 13.5px; font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: right; white-space: nowrap; }
+th { font-family: var(--display); font-weight: 700; font-size: 12.5px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; background: var(--bg); }
+td:first-child, th:first-child, td.t, th.t { text-align: left; }
+tr.best td { background: var(--accent-soft); }
+tr.worst td { background: var(--warn-soft); }
+.tag { display: inline-block; padding: 1px 8px; font-size: 12px; font-family: var(--display); font-weight: 700; color: var(--surface); }
+.tag.trad { background: var(--trad); } .tag.zona { background: var(--zona); } .tag.ole { background: var(--ole); }
+.note { font-size: 14px; color: var(--muted); max-width: 80ch; }
+.chart { background: var(--surface); border: 1px solid var(--line); padding: 12px; }
+.chart svg { width: 100%; height: auto; display: block; }
+.chart text { font-family: var(--mono); font-size: 11px; fill: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 18px; font-family: var(--mono); font-size: 12.5px; color: var(--muted); }
+.legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+ol.concl { margin: 0; padding-left: 0; list-style: none; counter-reset: c; display: grid; gap: 14px; }
+ol.concl li { counter-increment: c; display: grid; grid-template-columns: 38px 1fr; gap: 12px; align-items: start; }
+ol.concl li::before { content: counter(c); font-family: var(--display); font-weight: 800; font-size: 22px; color: var(--accent); line-height: 1.2; }
+ol.concl li div { display: grid; gap: 4px; min-width: 0; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.box { background: var(--surface); border: 1px solid var(--line); padding: 18px; display: grid; gap: 8px; min-width: 0; }
+ul.plain { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+@media (max-width: 520px) { body { font-size: 16px; } .kpi .v { font-size: 26px; } }
+</style>
+
+<div class="wrap">
+<header>
+  <div class="eyebrow">KOROSHI · Effective Logistics · pruebas del 21 al 27/10/2026</div>
+  <h1>Pruebas de picking: oleada, zonas y 1 OUT por pedido</h1>
+  <p class="lead">Todos los datos medidos en Odoo durante las pruebas (KPI por día, monitor, faltas y expedición) y lo que concluyo de ellos.</p>
+</header>
+
+<section class="verdict">
+  <b>Conclusión en una frase</b>
+  <p>El método que mejor ha funcionado es el de siempre, <b>1 OUT por pedido</b>: coge igual o más rápido que zonas y oleada, llena el doble las cajas y no genera trabajo de juntar ni errores de expedición. Lo que más acelera el picking no es el método sino <b>cuántas unidades se cogen por pedido y por caja</b>: el mejor día fue el de más volumen (26/10, 6.271 uds, 38 s por prenda).</p>
+</section>
+
+<section>
+  <div class="kpis">
+    <div class="kpi"><span class="v">38 s</span><span class="l">por prenda el 26/10 (1 OUT por pedido, 18,9 uds por caja): el mejor día</span></div>
+    <div class="kpi"><span class="v">62,6 s</span><span class="l">por prenda el 27/10 con zonas (4,9 uds por caja): el peor día de volumen normal</span></div>
+    <div class="kpi"><span class="v">5–11 s</span><span class="l">de cada prenda se van andando; el resto (27–55 s) es ubicar, leer y meter en caja</span></div>
+    <div class="kpi"><span class="v">×2</span><span class="l">cajas con zonas frente a 1 OUT por pedido (7,8 frente a 13,8 uds por caja)</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Los datos de cada día</h2>
+  <p class="muted">Del módulo KOROSHI KPI (ficha por día y método). Uds = unidades de las cajas cerradas ese día. Horas-persona estimadas por las cajas cerradas, salvo el 21/10 (oleada y zonas), que se apuntaron a mano.</p>
+  <div class="scroll"><table>
+    <thead><tr><th class="t">Día</th><th class="t">Método</th><th>Uds</th><th>Pedidos</th><th>OUT</th><th>Cajas</th><th>Uds/caja</th><th>Metros/ud</th><th>Horas-pers.</th><th>Uds/hora-pers.</th><th>s/prenda</th><th>andando</th><th>en el hueco</th></tr></thead>
+    <tbody>
+      <tr><td>21/10</td><td class="t"><span class="tag ole">Oleada + U</span></td><td>1.325</td><td>10</td><td>10</td><td>94</td><td>14,1</td><td>4,5</td><td>18,8*</td><td>71</td><td>30,6 + 20 (U)</td><td>4,4</td><td>26,1</td></tr>
+      <tr><td>21/10</td><td class="t"><span class="tag zona">Zonas</span></td><td>1.586</td><td>21</td><td>87</td><td>137</td><td>11,6</td><td>5,4</td><td>23,8*</td><td>67</td><td>54,0</td><td>5,4</td><td>48,7</td></tr>
+      <tr><td>21/10</td><td class="t"><span class="tag trad">1 OUT/pedido</span></td><td>1.341</td><td>22</td><td>28</td><td>111</td><td>12,1</td><td>11,5</td><td>20,5</td><td>65</td><td>55,0</td><td>11,4</td><td>43,6</td></tr>
+      <tr><td>22/10</td><td class="t"><span class="tag zona">Zonas</span></td><td>2.747</td><td>60</td><td>252</td><td>353</td><td>7,8</td><td>8,2</td><td>32,5</td><td>85</td><td>42,6</td><td>8,2</td><td>34,4</td></tr>
+      <tr><td>23/10</td><td class="t"><span class="tag trad">1 OUT/pedido</span></td><td>4.199</td><td>52</td><td>52</td><td>304</td><td>13,8</td><td>10,3</td><td>51,5</td><td>82</td><td>44,2</td><td>10,3</td><td>33,9</td></tr>
+      <tr class="best"><td>26/10</td><td class="t"><span class="tag trad">1 OUT/pedido</span></td><td>6.271</td><td>53</td><td>53</td><td>332</td><td>18,9</td><td>11,3</td><td>66,3</td><td>95</td><td>38,0</td><td>11,3</td><td>26,8</td></tr>
+      <tr class="worst"><td>27/10†</td><td class="t"><span class="tag zona">Zonas R1+R2</span></td><td>1.395</td><td>50</td><td>354</td><td>284</td><td>4,9</td><td>7,6</td><td>24,3</td><td>58</td><td>62,6</td><td>7,6</td><td>55,0</td></tr>
+      <tr><td>27/10†</td><td class="t"><span class="tag trad">1 OUT/pedido</span></td><td>538</td><td>13</td><td>13</td><td>33</td><td>16,3</td><td>10,9</td><td>7,5</td><td>72</td><td>50,2</td><td>10,8</td><td>39,3</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">* Apuntado a mano (personas × horas). Oleada: 30,6 s/prenda cogiendo los INT al SORTER más unos 20 s/prenda repartiendo en la U (7,5 horas-persona para 1.325 uds); la oleada tardó casi 24 h en acabarse del todo. † 27/10: datos hasta las 12:37, día en curso. Andando = metros ÷ 1 m/s según el plano de la nave; en el hueco = el resto (ubicar, PDA, leer, meter en caja). El 24/10 (53 uds) no se pone: es demasiado pequeño para comparar.</p>
+</section>
+
+<section>
+  <h2>Lo que más pesa: unidades por caja</h2>
+  <p>Cada punto es un día y método. Cuantas más unidades lleva cada caja (cada trozo de pedido), menos segundos cuesta cada prenda, sea cual sea el método. Los dos puntos grises son del monitor del 27/10 por ronda (uds por OUT), y muestran el extremo: con 2,6 uds por OUT se fue a 115 s por prenda.</p>
+  <div class="chart">
+    <svg viewBox="0 0 640 320" role="img" aria-label="Segundos por prenda según unidades por caja">
+      <g stroke="var(--line)" stroke-width="1">
+        <line x1="60" y1="270" x2="610" y2="270"/><line x1="60" y1="207.5" x2="610" y2="207.5"/><line x1="60" y1="145" x2="610" y2="145"/><line x1="60" y1="82.5" x2="610" y2="82.5"/><line x1="60" y1="20" x2="610" y2="20"/>
+      </g>
+      <g text-anchor="end"><text x="52" y="274">0</text><text x="52" y="211">30</text><text x="52" y="149">60</text><text x="52" y="86">90</text><text x="52" y="24">120</text></g>
+      <g text-anchor="middle"><text x="60" y="288">0</text><text x="197.5" y="288">5</text><text x="335" y="288">10</text><text x="472.5" y="288">15</text><text x="610" y="288">20</text>
+        <text x="335" y="310">uds por caja (o por OUT, en gris)</text></g>
+      <text x="14" y="150" transform="rotate(-90 14 150)" text-anchor="middle">segundos por prenda</text>
+      <path d="M131.5 30.4 L170 124.2 L194.75 139.6 L274.5 181.3 L439.5 177.9 L579.75 190.8" fill="none" stroke="var(--muted)" stroke-width="1" stroke-dasharray="4 4"/>
+      <circle cx="131.5" cy="30.4" r="6" fill="var(--mon)"/><text x="142" y="34">27/10 R2 · 115 s</text>
+      <circle cx="170" cy="124.2" r="6" fill="var(--mon)"/><text x="180" y="120">27/10 R1 · 70 s</text>
+      <circle cx="194.75" cy="139.6" r="7" fill="var(--zona)"/><text x="205" y="156">27/10 zonas · 62,6</text>
+      <circle cx="274.5" cy="181.3" r="7" fill="var(--zona)"/><text x="284" y="200">22/10 zonas · 42,6</text>
+      <circle cx="379" cy="157.5" r="7" fill="var(--zona)"/><text x="335" y="148">21/10 zonas · 54</text>
+      <circle cx="392.75" cy="155.4" r="7" fill="var(--trad)"/><text x="402" y="172">21/10 · 55</text>
+      <circle cx="439.5" cy="177.9" r="7" fill="var(--trad)"/><text x="450" y="194">23/10 · 44,2</text>
+      <circle cx="579.75" cy="190.8" r="8" fill="var(--trad)"/><text x="575" y="214" text-anchor="end">26/10 · 38</text>
+    </svg>
+    <div class="legend"><span><i style="background:var(--trad)"></i>1 OUT por pedido</span><span><i style="background:var(--zona)"></i>zonas (KPI del día)</span><span><i style="background:var(--mon)"></i>zonas 27/10 por ronda (monitor)</span></div>
+  </div>
+  <p class="note">El 21/10 (primer día de pruebas, todo nuevo) sale peor en los dos métodos. Sin él, la tendencia es limpia: 4,9 uds/caja → 62,6 s; 7,8 → 42,6 s; 13,8 → 44,2 s; 18,9 → 38 s.</p>
+</section>
+
+<section>
+  <h2>Faltas por día</h2>
+  <p class="muted">Del menú KOROSHI KPI › Faltas por día (uds que pide el pedido y no se sirven).</p>
+  <div class="scroll"><table>
+    <thead><tr><th class="t">Día</th><th>No servido</th><th>En pedido pendiente</th><th>Sin stock</th><th>No cogido</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr><td>21/10</td><td>126</td><td>–</td><td>–</td><td>–</td><td>126</td></tr>
+      <tr><td>22/10</td><td>106</td><td>–</td><td>–</td><td>–</td><td>106</td></tr>
+      <tr><td>23/10</td><td>79</td><td>–</td><td>–</td><td>–</td><td>79 (a media mañana eran 176)</td></tr>
+      <tr><td>26/10</td><td>89</td><td>–</td><td>62</td><td>465‡</td><td>616</td></tr>
+      <tr><td>27/10</td><td>58</td><td>133</td><td>7</td><td>3</td><td>201</td></tr>
+    </tbody>
+  </table></div>
+  <p class="note">‡ El 26/10 se recalculó con OUT parciales todavía sin validar: «no cogido» incluye lo que quedaba por coger en ellas. Las faltas reales de stock van del 2 al 4 % de las unidades.</p>
+</section>
+
+<section>
+  <h2>Expedición</h2>
+  <div class="two">
+    <div class="box">
+      <h3>22/10 (zonas)</h3>
+      <ul class="plain">
+        <li>29 pedidos con etiqueta XPO, 3.233 uds, 307 bultos.</li>
+        <li>4,2 OUT por pedido y 7,3 uds por caja.</li>
+        <li>Se estuvo expidiendo hasta las 13:15.</li>
+        <li>Bultos descuadrados: cajas compactadas a mano sin «Juntar» (K34: 20 en Odoo, 16 físicos).</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h3>23/10 (1 OUT por pedido)</h3>
+      <ul class="plain">
+        <li>28 etiquetas, 53 pedidos, 3.605 uds, 355 bultos, 32 palets.</li>
+        <li>16 cajas por palet cuadra exacto con los palets cargados (ya está en la Hoja de carga XPO).</li>
+        <li>Errores encontrados, casi todos de los pedidos de zonas del día anterior: matrícula de otra tienda al cerrar (K44), preimpresa escaneada (K59), cajas no encontradas (K62, K63), prendas leídas sin caja y bultos negativos (K86).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Implantación y reposición (60 días)</h2>
+  <div class="two">
+    <div class="box">
+      <h3>Días de implantación</h3>
+      <p>8 días, unas 105.000 uds, la mitad del volumen. Muchos artículos van a casi todas las tiendas (el 09/09, el 75 % de las uds). Todos los días grandes (unas 20.000 uds) son de este tipo.</p>
+    </div>
+    <div class="box">
+      <h3>Días de reposición</h3>
+      <p>20 días, unas 100.000 uds. Cada artículo va a 1–3 tiendas; entre el 0 y el 41 % de las uds se comparten. El 23/10 y el 26/10 fueron de este tipo.</p>
+    </div>
+  </div>
+</section>
+
+<section>
+  <h2>Mis conclusiones</h2>
+  <ol class="concl">
+    <li><div><h3>1 OUT por pedido es el método base</h3><p>Coge igual de rápido que zonas (44 s frente a 43 s por prenda en días comparables) y el día de más volumen fue el mejor de todos (38 s, 95 uds por hora-persona). Hace la mitad de cajas y la expedición sale limpia.</p></div></li>
+    <li><div><h3>Partir los pedidos frena el picking</h3><p>Cada trozo pequeño es una caja más que abrir, cerrar y etiquetar. Con 4,9 uds por caja (27/10) se fue a 62,6 s por prenda, y la segunda ronda, con 2,6 uds por OUT, a 115 s. Si se usan zonas, ningún trozo de tienda debería bajar de unas 15 uds (es lo que hace la v10 de «Partir OUT zonas»).</p></div></li>
+    <li><div><h3>El tiempo se va en el hueco, no andando</h3><p>Andar son 5–11 s de cada prenda; ubicar, manejar la PDA, leer y meter en caja son 27–55 s. Reducir pasos de PDA por prenda o mejorar cómo se encuentra el hueco ganaría más que acortar recorridos.</p></div></li>
+    <li><div><h3>La oleada solo tiene sentido en implantación</h3><p>Coger por artículo es rápido (30 s por prenda), pero el reparto en la U añade unos 20 s y la prueba tardó casi 24 h en cerrarse. En días de implantación, con una pared de reparto por tienda y una lista por artículo, sí puede compensar; en reposición, no.</p></div></li>
+    <li><div><h3>Los errores de expedición vienen de tener muchas cajas</h3><p>Matrículas cruzadas, cajas perdidas y picos compactados a mano salieron casi todos de los días de zonas. Menos cajas por tienda resuelve buena parte; para el resto ya están «Juntar matrículas», el aviso en rojo del monitor y la Hoja de carga XPO.</p></div></li>
+    <li><div><h3>Para 10.000 uds a las 13:00</h3><p>Con 1 OUT por pedido, entre 81 y 95 uds por hora-persona: de 105 a 123 horas-persona, es decir <b>16–19 personas de 6:00 a 13:00</b> (6,5 h útiles). Entrando a las 5:00 bajan unas 3 personas. El carro multicaja de 2–3 tiendas (sin probar) bajaría a unas 15–17.</p></div></li>
+    <li><div><h3>Medir bien antes de decidir más</h3><p>Todas las horas-persona salvo las del 21/10 son estimadas, porque todas las PDA usan el mismo usuario. Con un usuario por PDA tendríamos uds por persona reales y estas cifras dejarían de tener margen de error.</p></div></li>
+  </ol>
+</section>
+
+<p class="note">Fuentes: Odoo nath.tuctuc.com (empresa 8): fichas de KOROSHI KPI recalculadas el 27/10 a las 12:40, Faltas por día, monitor de picking, etiquetas XPO y pedidos S-6 de los últimos 60 días. Preparado por Claude para Isaac Andreu.</p>
+</div>

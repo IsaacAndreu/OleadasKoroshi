@@ -93,6 +93,7 @@ class KoroshiMonitor(http.Controller):
                 '_estado': p.state, '_done': p.date_done,
                 # v1.10: etiqueta del transportista (XPO/GLS) hecha = numero de seguimiento en la OUT
                 'etq': bool(p.carrier_tracking_ref),
+                '_bultos': p.number_of_packages or 0,     # v1.14: bultos que tiene Odoo en la OUT (los de XPO)
                 'id': p.id,         # v1.11: para abrir la OUT desde el monitor
             }
 
@@ -222,7 +223,7 @@ class KoroshiMonitor(http.Controller):
             'z': f['z'], 'lote': f['lote'], 'caja': f['caja'], 'out': f['out'], 'tienda': f['tienda'], 'etq': f['etq'], 'id': f['id'],
             'pedido': f['pedido'], 'u': f['u'], 'huecos': len(f['_huecos']), 'lin': lin or '-',
             'leido': f['leido'], 'est': est, 'ini': self._hora(f['_a']), 'fin': self._hora(fin_dt),
-            'min': mins, 'cajas': len(f['_cajas']), '_a': f['_a'], '_b': f['_b'],
+            'min': mins, 'cajas': len(f['_cajas']), 'bultos': f['_bultos'], '_a': f['_a'], '_b': f['_b'],
             'disp': f['disp'], 'falta': (est != 'hecha' or sin_validar) and falta or 0.0, 'faltas': f['faltas'],
             'sin_validar': sin_validar,
         }

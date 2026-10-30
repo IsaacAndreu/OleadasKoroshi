@@ -1,0 +1,141 @@
+<title>Ocupación NAU-2 por litros</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Plano de nave por ocupación: niveles bajos y altos apilados, expedición a la izquierda; cifras por nivel debajo */
+:root{
+  --bg:#f4f6f7; --panel:#ffffff; --fg:#1b2226; --muted:#5b666d; --line:#d3dade; --accent:#2a6f97;
+  --o0:#eef1f3; --oa:#dbeaf3; --ob:#9fc9e0; --oc:#4f9cc6; --od:#1f5f8b; --oe:#c0392b;
+  --display:'Archivo',system-ui,sans-serif; --body:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12171a; --panel:#1a2125; --fg:#e6ecef; --muted:#9aa7ae; --line:#2f393e; --accent:#7cc0e6;
+  --o0:#232b30; --oa:#26404f; --ob:#2f6b8d; --oc:#4f9cc6; --od:#9cd3f0; --oe:#ff6b5b; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12171a; --panel:#1a2125; --fg:#e6ecef; --muted:#9aa7ae; --line:#2f393e; --accent:#7cc0e6;
+  --o0:#232b30; --oa:#26404f; --ob:#2f6b8d; --oc:#4f9cc6; --od:#9cd3f0; --oe:#ff6b5b; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--body);font-size:15px;line-height:1.5}
+.wrap{max-width:1180px;margin:0 auto;padding-block:28px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:26px}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(26px,4vw,38px);line-height:1.1;margin:0;text-wrap:balance}
+h2{font-family:var(--display);font-weight:700;font-size:20px;margin:0;text-wrap:balance}
+.lead{color:var(--muted);max-width:70ch;margin:6px 0 0}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--accent)}
+.map{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:10px;min-width:0}
+.maphead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:8px 20px;align-items:baseline}
+.stat{font-family:var(--mono);font-size:13px;color:var(--muted)}
+.stat b{color:var(--fg);font-weight:600}
+.scroll{overflow-x:auto}
+canvas{display:block}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.sw{width:14px;height:14px;border-radius:2px;display:inline-block;border:1px solid var(--line)}
+.grid3{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:16px;display:grid;gap:6px;min-width:0}
+.big{font-family:var(--display);font-weight:800;font-size:30px;line-height:1.1;font-variant-numeric:tabular-nums}
+.card p{margin:0;color:var(--muted);font-size:14px}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:14px}
+th,td{text-align:left;padding:7px 10px;border-bottom:1px solid var(--line)}
+th{font-weight:600;color:var(--muted);font-size:12px;letter-spacing:.04em;text-transform:uppercase}
+td.n,th.n{text-align:right}
+td.n{font-family:var(--mono)}
+.meter{height:8px;background:var(--o0);border-radius:2px;overflow:hidden}
+.meter i{display:block;height:100%;background:var(--oc)}
+.reco{border-left:4px solid var(--accent);padding:4px 0 4px 16px;display:grid;gap:8px;max-width:76ch}
+.reco p{margin:0}
+.note{font-size:13px;color:var(--muted);max-width:82ch}
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">KOROSHI · NAU-2 · estoc de Odoo del 28/10/2026</div>
+    <h1>Ocupación de la nave por litros</h1>
+    <p class="lead">Cada ubicación es medio palet: 1,20 × 0,80 × 1,60 m ÷ 2 = <b>768 litros</b>. El color dice qué parte de ese volumen ocupa el estoc que tiene hoy. Cada cuadro es una posición del lineal, sumando sus dos niveles. La expedición está a la izquierda, por debajo de L01.</p>
+  </header>
+
+  <div class="grid3">
+    <div class="card"><div class="eyebrow">Toda la nave</div><div class="big">9 %</div><p>1.812 m³ de estoc en 27.252 ubicaciones que caben 20.930 m³.</p></div>
+    <div class="card"><div class="eyebrow">Niveles bajos C1–C2</div><div class="big">16 %</div><p>1.711 m³ en 13.827 ubicaciones. Solo 703 están por encima del 75 %.</p></div>
+    <div class="card"><div class="eyebrow">Niveles altos C3–C4</div><div class="big">1 %</div><p>100 m³ en 13.425 ubicaciones: unos 10.200 m³ libres arriba.</p></div>
+  </div>
+
+  <div class="legend" aria-label="Leyenda">
+    <span><i class="sw" style="background:var(--o0)"></i>vacía</span>
+    <span><i class="sw" style="background:var(--oa)"></i>menos del 25 %</span>
+    <span><i class="sw" style="background:var(--ob)"></i>25–50 %</span>
+    <span><i class="sw" style="background:var(--oc)"></i>50–75 %</span>
+    <span><i class="sw" style="background:var(--od)"></i>75–100 %</span>
+    <span><i class="sw" style="background:var(--oe)"></i>más del 100 % (revisar)</span>
+  </div>
+
+  <section class="map">
+    <div class="maphead"><h2>Niveles bajos (C1 y C2)</h2><div class="stat">ocupación media <b>16 %</b> · más llenos: L01–L08 (28–31 %)</div></div>
+    <div class="scroll"><canvas id="lo" role="img" aria-label="Ocupación de los niveles C1 y C2: casi toda la nave por debajo del 25 %, con L01 a L10 más llenos en el lado izquierdo."></canvas></div>
+  </section>
+
+  <section class="map">
+    <div class="maphead"><h2>Niveles altos (C3 y C4)</h2><div class="stat">ocupación media <b>1 %</b> · 11.055 de 13.425 ubicaciones vacías</div></div>
+    <div class="scroll"><canvas id="hi" role="img" aria-label="Ocupación de los niveles C3 y C4: prácticamente vacíos en toda la nave."></canvas></div>
+  </section>
+
+  <section class="map">
+    <h2>Por nivel</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Nivel</th><th class="n">Ubicaciones</th><th class="n">Con estoc</th><th class="n">m³ de estoc</th><th class="n">Ocupación</th><th class="n">Por encima del 75 %</th><th style="width:28%"></th></tr></thead>
+      <tbody>
+        <tr><td>C1</td><td class="n">6.915</td><td class="n">3.978</td><td class="n">899</td><td class="n">17 %</td><td class="n">367</td><td><div class="meter"><i style="width:17%"></i></div></td></tr>
+        <tr><td>C2</td><td class="n">6.912</td><td class="n">3.722</td><td class="n">812</td><td class="n">15 %</td><td class="n">336</td><td><div class="meter"><i style="width:15%"></i></div></td></tr>
+        <tr><td>C3</td><td class="n">6.711</td><td class="n">862</td><td class="n">58</td><td class="n">1 %</td><td class="n">10</td><td><div class="meter"><i style="width:1%"></i></div></td></tr>
+        <tr><td>C4</td><td class="n">6.714</td><td class="n">797</td><td class="n">42</td><td class="n">1 %</td><td class="n">1</td><td><div class="meter"><i style="width:1%"></i></div></td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="map">
+    <h2>Ubicaciones según lo llenas que están</h2>
+    <div class="scroll"><table>
+      <thead><tr><th>Ocupación</th><th class="n">Ubicaciones</th><th class="n">%</th></tr></thead>
+      <tbody>
+        <tr><td>Vacía</td><td class="n">17.893</td><td class="n">66 %</td></tr>
+        <tr><td>Menos del 25 %</td><td class="n">6.204</td><td class="n">23 %</td></tr>
+        <tr><td>25–50 %</td><td class="n">1.490</td><td class="n">5 %</td></tr>
+        <tr><td>50–75 %</td><td class="n">951</td><td class="n">3 %</td></tr>
+        <tr><td>75–100 %</td><td class="n">522</td><td class="n">2 %</td></tr>
+        <tr><td>Más del 100 %</td><td class="n">192</td><td class="n">1 %</td></tr>
+      </tbody></table></div>
+  </section>
+
+  <section class="reco">
+    <div class="eyebrow">Qué quiere decir</div>
+    <p><b>La nave no está llena: está repartida.</b> Hay 6.204 ubicaciones con menos de un cuarto ocupado y los niveles altos están casi vacíos.</p>
+    <p><b>El estoc sin salidas de L01–L43 puede subir a C3–C4 del mismo lineal.</b> Es un movimiento vertical de pocos metros, mucho más barato que cruzar la nave, y deja C1–C2 libres junto a expedición para lo que más sale.</p>
+    <p><b>Las 192 ubicaciones por encima del 100 %</b> son de revisar: o el litro por unidad estimado es alto, o la ubicación no es de medio palet.</p>
+  </section>
+
+  <p class="note">Litros = uds × litros por unidad del packing list (volumen en caja de proveedor, por familia). Para las 48.510 uds de códigos antiguos sin packing list se toman 3 L/ud. Las ubicaciones son las creadas en Odoo con formato «Lxx Pxx Cx»; si alguna no existe en la nave, la capacidad real es menor.</p>
+</div>
+
+<script>
+const D={"LO": "0dddcceecdeaaaaabbaaaaaaaaaaaaaaaaaaa00....|0dddceeeceeaaaaaaaaaaaaaaaaaaaaaaaaaa00....|0dcdccddbccddddaaaaaaaaaaaaaaaaa00aaa00....|0dddccddbccdddcaaaaaaaaaaaaaaaaa00aaa00....|0dddccdcddcddaaaaaaaaaaaaaaaaaaaaaaaaa0....|0dddccddccdddaaaaaaaaaaaaaaaaaaabaaaaa0....|0cddcccdddddda0aaaaaaaaaaaaaaaaa0aaaaa0....|0bddcccdddddca0aaaaaaaaaaaaaaaaa00aaaa0....|0dcedcedaaaaaaaaaaaaaaaaaaaaaaaa00aaaaaa...|0bbedcedaaaaaaaaaaaaaaaaaaaaaaaa00aaaaaa...|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00....|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa00....|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaaa00aaaa0aa..|0aaa00aaaaaaaaaaaaaaaa0aaaaaaaaa00aaaaaaa..|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaaa000aaaaaaaa|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaaa000aaaaaaaa|0aaa00aaaaaaaaaaaaaaaaaa0aaaaaaaaabbaa0....|0aaa00aaaaaaaaaaaaaadaaaaaaaaaaaaaaaaa0....|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaa00aaaaaa....|0aaa00baaaaaaaabaaaaaaaaaaaaaaa00aaaaaa....|0aaa00aaaaaa0aaaaaaaaaaaaaaaaaa000aaaaaaaaa|0aaa00aaaaaaaaaaaaaaaaaaaaaaaaa000aaaaaaaaa|000aa0aaaaaaaaaaaaaaabaa000a000000bbba0....|000aa0aaaaaaaaaaaaabacb00000000000bccda....|0aaaa0aaaaaaaaaaaa0aaaaaa0aaaaaa00aaaaaaaa.|0a0aa0aaaaaaaaaaaa0aaaaaa0aaaaaa00aaaaaaaa.|0aaaa0aaaaaa0aaaaaaaaaaaaabaaaaaaaaaaaaa...|0aaaa0aaaaaa0aaaaaaaaaaaaaaaaaaaaaaaaa0a...|0aa0a0aaaaaa0aaaaaaaaaaaaaaaaaaa00aaaaaaaa.|0aa0aaaaaaaa0aaaaaaaaaaaaaaaaaaa00aaaaaaaa.|0a0aa0aaaaaaaaaaaaaaaaaabaaaaabaaa00a00....|0a0aa0aaaaaaaaaaaaaaaaaabaaa0aaaaa00000....|0a00000aaaaa0aaaaaaaaaaaaaaaa00a00aaaaaaaa.|a00000aaaaa0aaaaa0aaaaaaaaaaa00a00aaaaaaaa.|aaa00aaaaaa0aaaaa0aaaaaaaaaaaaaa00aaaaaaaa.|aaa00aaa0aaa0aaaaaaaaaaaaaaaaaaa00aaaaaaaa.|0a0a000aaaaaaaaaaaaaabaaaaaaabaaba00000....|00aa000aaaaaaaaaaabaaaaababbaaaaaa00000....|0aaa00aaaaaaaaaaaabaaaaaaaaaaaaa00aaaaaaaa.|0a0a0.aaaaaaaaaaaaaaaaaaaaaaaaaa00aaaaaaaa.|00a0aaaaaaaaaaaaaa0aaaaaaaaaaaaa00aaaaaaaa.|00aaaaaaaaaaaaaaaa0aaaaaaaaaaaaa00aaaaaaaa.|0aaaaaaaaaa0aabbaaaaaaacaaaaaaaaaa00a00....|0a0aaaaabbb0bbaaabaabaaaaaaaaaaaaa00000....|0a00000aaa0aaaaa0aaaaaaaa00aaaaa00aaaaaaaa.|0a0a0aa00aaaaacdaaaaaaaaa0aaaaaa00aaaaaaaa.|000a00bb000aacaba0aaaaaaaaaaaaaa00aaaaaaaa.|0aaabbbb00abbababaaaaaaaaaaaaaaa00aaaaaaaa.|0aaaaaa0babbbcbacaaaaaaaaaaaaaaa00aaaaaaaa.|0aa0aaaa0aaaa00aabaaaaaaaaaaaaaa00aaaaaaaa.|0aaaa0aaa000000000ceab0bbb00aaaaa000000....|00aaaaabbaaabbabcaaaba0bca00aaaaa000000....|00000bbba0babacaaaaaaaaaaaaaaaaa00aaaaaaaa.|0aa0aaaaa0a0badccbaaaaaaaaaaaaaa00aaaaaaaa.|0aaabaaaaababaaaaaaaa00000aaa00000000aaaaa.|0bbbbaa0a0000aaabaaaaaaa00aaaaaa00aaaaaaaa.|0babbab0bab0aab000aaaaaaababaaa000a0000....|0a0bbaa0aa00aaa000abbbaabbba0000000a000....|000000aa000aa0a000aaaaaaaaaaaaaa00aaaaaaaa.|0bcbbbbb0abbbaa000aaaaaaaaaaaaaa00aaaaaaaa.|000000000a00000000aaaaaaaaaaa0aa00aaaaaaaa.|0bbbaaaababbaaa0a0aaaaaaaaaaaaaa00aaaaaaaa.|0000000aaaa0aaa0abaaaaaaaaaaaaaaaaaaaaa....|bbaa0a0aaaaaba00aa0aaaaaaaaaaaaaaaaaaaa....|a00aabababbbbcea0a0aaaaaaaaaaaaaaaaaaaa....|00a000a000abcdebabaaaaaaaaaaaaaaaabaaaa....|c0b0abbcedcdc0cddca0aaaaaaaaaa000000000....|aa00000acbccbeccbcaaaaaaaaaaaaa00000000....|0cccccccdecdabcbcb0000aaaacdaa0bbaaaaa0....|00a00000baabcbdccb0000baaa0aaaaaaabcba0....|0bbbbbb0bcc00a0000acccccbcbcbcacabbcbab....|0bbbbbbbbcbbabddccabb00bcc0acabab0ddeb0....|000000abb000a00a0aa0aa0a0aaaaa0aab0abc0....|0bb0bbcbb0a0baaabbaa0a0a0baaab00ab0b0b0....|ba0b0aababccb0bbbb00aaaaaaaaaa0aabaaa00....|bbbbbbbbccbabcccccacbbbaaabbab0bbaa00b0....|b000bbaabbaa00aba0ccabedaeedddcabaabbab....|bbbbbbbbccbcccbbababa0ab0ccddddbbbbbb0b....|aba0aaaabbbac00bcaaaaabcbcabcaaba00a0ab....|bbabbbbbccccccccccbbbbccbcccaadba0aaaaa....|aaabaaabca00dbde00a0aaaaaabba0aaaa00aaa....|ababbba0bbeeeeeebbbaa0aa0a0aa000aaaabbc....|000a0a0abbaaaaabba0a00aaa0aabaaab0bbacd....|bbbabb0bbccdcccdddbbb0aaaabcac000aa0aaa....|0aa00000000000baaa0aaaaaaaa0aaaaaaaa0b0....|babbaaaabab00accbbbaaaabababaabcbacbabb....|a000aaa0aaaaa0cbaa00baaaaaabaaaa00a000a....|b0aaa00abbbccbdeec0b0aaabbaaaaaaaaa0aaa....|aababaabaaa0cdccccaa000000a00baa000ba00....|cccccccbaccbbaaaaaaabaaaaa0ccbacdddabcc....|bbbbbbbbbdbbccccdcccababcbbcdccdceeeedd....|aaa0bbbbccdcabaccbbbbbabbcbdcbbbdcddccd....|abbbbbbbbcabccccdb0aaabaaaaaabaabccdecc....|bababababcdbcdbcab0a00baaaaabbbcbbcceed....|0b000bb0babcccbcbb00aaaaa00a0ab00000dcc....|b0cbbb0cacbbbcabbb00bcb00a0aacb0abd0ccc....|babbbbbbbbbabbbbcb00aba0aaaababaabbacee....|aaaabbaaaababbbbcb00bbbcbbaaaababbbcdcb....|abbabaaaabcbbcccdc0abbbbba0babcbccbbbbc....|baaaaaaabbbbcdcdddbabaaaababccbcbbcccab....|0aaabbbbdbcddcddccdabbbbbbbbbbbabbdacab....|0bbbbbbbcccbbdddcdebbbbbbbbbcbbbabcabba....|0bbabbbbbddcdcdddbdbccabbccaacbdcaaddbc....|0bbbbbbbbcdddcccdbcba0ddbcdccdddecaddbd....|0baabababaca0ccccccaabbbbbbcccccbbaddbb....|0bbbabababcccac0bbcbbbbabbbbbcccbbabcaa....|bbbbbbbabbccccbbabcbbaabbcdecabacabdcd0....|a0ab0bbbbacccbbeb0bbbbabb00d00aadbb000a....|aaa0aaabbacbc00babacababacaaaabaebecb0c....|00abdccb00aa0aabbbaaabbaababbabbced0cac....|0000000cbcbbcddbbcabb0bccabcdcccbccccba....|cbabbaacbbbbccdcddcbaca0cbccdbddbecccca....|abba00bbbcabbbbbabbbbabcccadcc0ccccbb0b....|aaaaaaabaabbbaaaaaabbbbdbcbb0ccccbbbbbb....|abaaababc0bcacaabbbbbcbcccbbcccccccabac....|0aaabaaababbabbbabbbabccccaccccccccbcca....|0abbba0bcbcbbbcbabbbbbbccccccccdcccbbbb....|0baaaa0abdbcbbbacabbbbcdccbccbccccccaab....|bbbbbbbbbccbbdcccb000000000accccccccbbb....|bbbbbbbbbccbbdcccb000000000bccccccccbbb....|bbbbaaabababccbbca000000000000000000000....|abbbaaabacabcbaa00000000000000000000000....|abbbabb0bbbbaabbdd000000000000000000000....|000000000000000000000000000000000000000....|bbcbbbbbbbdddcbdbb000000000000000000000....|ccbbbbbbbeddcacccc000000000000000000000....|babababbcdbbd0000a000000000000000000000....|bbbbbabbbccccbcdba000000000000000000000....|0000000abacdccddba000000000000000000000....|00aaaaaba0cbbcddbb000000000000000000000....|bbbbbabbbdccbeeebe000000000000000000000....|bbbbbaaabdccbedddc000000000000000000000....|bbaaccbbbcccddcbba000000000000000000000....|aabababbbcddebedcd000000000000000000000....|baa000000000000000000000000000000000000....|aaa000000000000000000000000000000000000....", "HI": ".00000000000000000aaaaaaaaaaabaaaaaaa0.....|.00000000000000000aaaaaaaaaaaaaaaaaaa0.....|.00000000000000000aaaaabaaaaaaaa00aaa0.....|.00000000000000000aaaaabaaaaaaaa00aaa0.....|.0000000000000000aaaaaaaaaaaaaaaaaaaaa.....|.00000000000000000aaaaaaaaaaaaaaaaaaaa.....|.000000000000000a0aaaaaaaaaaaaaa0aaaaa.....|.00000000000000000aaaaaaaaaaaaaa00aaaa.....|.a0000000000000000aaaaaaaaaaaaaa00aaaa.a...|.a0000000000000000aaaaaaaaaaaaaa00aaaa.a...|.00000000000000000aaaaaaaaaaaaaaaaaaa0.....|.00000000000000000aaaaaaaaaaaaaaaaaaa0.....|.00000000000000000aaaaaaaaaaaaaa00aaaa.aa..|.00000000000000000aaaaaaaaaaaaaa00aaaa.aa..|.00000000000000000000000aaaaaaaa000aaa.aaaa|.00000000000000000000000aaaaaaaa000aaa.aaaa|.000000000000000000000000000000000aa00.....|.00000000000000000000a00000000000000a0.....|.00000000000000000000000000000000aaaaa.....|.00000000000000000000000000000000a.aaa.....|.000000000000000000000000000000000000a.aaaa|.000000000000000000000000000000000000a.aaaa|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000aaaaaa.a...|.0000000000000000000000000000000aaaaaa.a...|.000000000000000000000000000000000000a.aaa.|.000000000000000000000000000000000000a.aaa.|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.000000000000000000000000000000000000a.aaa.|.000000000000000000000000000000000000a.aaa.|.000000000000000000000000000000000000a.aaa.|.000000000000000000000000000000000000a.aaa.|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.00000000000000000000000000000000000aa.aaa.|.000000000000000000000000000000000000a.aaa.|.000000aaaaaaaaaaa0aaaaaaaaaaaaa00aaaa.aaa.|.000000aaaaaaaaaaa0aaaaaaaaaaaaa00aaaa.aaa.|.0000000000aaabaa000000000000a00000000.....|.0000000000a00aaaa00000000000a00000000.....|.00000000000aa0a00aaaaaaa00aaaaa00aaaa.aaa.|.00000000000aa0ab0aaaaaaa0aaaaaa00aaaa.aaa.|.000000000000aaaa0aaaaaaaaaaaaaa00aaaa.aaa.|.00000000000aabaa0aaaaaaaaaaaaaa00aaaa.aaa.|.00000000000bbab000aaaaaaaaaaaaa00aaaa.aaa.|.00000000000a000a0aaaaaaaaaaaaaa00aaaa.aaa.|.000000000000000000000000000a000000000.....|.0000000000000000000000000000000000000.....|.000000000b0000000aaaaaa0aaaaaaa00aaaa.aaa.|.000000000b0000000aaaaaaaaaaaaaa00aaaa.aaa.|.0000000000000a0a0aa0a0000aa000000000a.aaa.|.00000000000000000aaaaa00aaaaaaa00aaaa.aaa.|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.00000000000000000aaaaaaaaaaaaaa00aaaa.aaa.|.00000000000000000aaaaaaaaaaaaaa00aaaa.aaa.|.00000000000000000aaaaa0aaaaaaaa00aaaa.aaa.|.00000000000000000aaaaaaaaaaaaaa00aaaa.aaa.|.00000000000000000aaaaaaaaaaaaaaaaaaaa.....|.000000000000000000aaaaaaaaaaaaaaaaaaa.....|.000000000000000000aaaaaaaaaaaaaaaaaaa.....|.00000000000000000aaaaaaaaaaaaaaaaaaaa.....|.00000000000000000b0aaa0aaaaaaa0000000.....|.00000000000000000aaaaaaaaaaa0a0000000.....|.00000000000000000000000000000000aaa00.....|.000000000000000000000000000000000bac0.....|.000000000000000000000000000000000abaa.....|.000000000000000000000000000000000dbbb.....|.0000000000000000a000000000000000aaabb.....|.00000000000000a0b000000000000000ab00c.....|.0000000ab00000000000000000000000aaaab.....|.000000000000000000000000000000000000a.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|.0000000000000000000000000000000000000.....|00000000000000000b00000000000000000000.....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|00000000000000000a000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000b00000000000000000000....|000000000000000000a00000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|00000000000000000a000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000....|000000000000000000000000000000000000000...."};
+function tok(n){return getComputedStyle(document.documentElement).getPropertyValue(n).trim()}
+function draw(id,data){
+  const rows=data.split('|');const cv=document.getElementById(id);
+  const W=Math.max(cv.parentElement.clientWidth,700);
+  const left=58,top=14,gapAisle=10,bottom=26;
+  const cw=Math.max(4,Math.floor((W-left-8)/rows.length));const ch=Math.max(4,Math.round(cw*0.9));
+  const H=top+43*ch+gapAisle+bottom;const w=left+rows.length*cw+8;
+  const dpr=window.devicePixelRatio||1;cv.width=w*dpr;cv.height=H*dpr;cv.style.width=w+'px';cv.style.height=H+'px';
+  const g=cv.getContext('2d');g.scale(dpr,dpr);g.clearRect(0,0,w,H);
+  const col={'0':tok('--o0'),'a':tok('--oa'),'b':tok('--ob'),'c':tok('--oc'),'d':tok('--od'),'e':tok('--oe')};
+  const y=p=>top+p*ch+(p>=18?gapAisle:0);
+  rows.forEach((r,i)=>{for(let p=0;p<43;p++){const c=r[p];if(c==='.')continue;g.fillStyle=col[c];g.fillRect(left+i*cw,y(p),cw-(cw>5?1:0),ch-1)}});
+  g.fillStyle=tok('--muted');g.font='11px "IBM Plex Mono",monospace';g.textAlign='center';
+  for(let l=1;l<=rows.length;l+=(l===1?9:10)){g.fillText('L'+l,left+(l-1)*cw+cw/2,H-8)}
+  g.textAlign='right';g.fillText('P00',left-6,y(0)+ch);g.fillText('P17',left-6,y(17)+ch);g.fillText('P18',left-6,y(18)+ch);g.fillText('P42',left-6,y(42)+ch);
+  g.textAlign='left';g.fillText('pasillo central',left+4,top+18*ch+gapAisle/2+3);
+  g.fillStyle=tok('--accent');g.font='600 12px "IBM Plex Sans",sans-serif';g.save();g.translate(14,top+21*ch);g.rotate(-Math.PI/2);g.textAlign='center';g.fillText('◀ EXPEDICIÓN',0,0);g.restore();
+}
+function render(){draw('lo',D.LO);draw('hi',D.HI)}
+render();addEventListener('resize',()=>{clearTimeout(window._t);window._t=setTimeout(render,150)});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+new MutationObserver(render).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+document.fonts&&document.fonts.ready.then(render);
+</script>

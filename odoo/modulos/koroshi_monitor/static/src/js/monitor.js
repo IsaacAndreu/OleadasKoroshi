@@ -138,11 +138,11 @@ var Monitor = AbstractAction.extend({
         var D = r.D || [];
         var T = {u: 0, l: 0, h: 0, c: 0, p: 0};
         var Z = {};
-        ZS.forEach(function (z) { Z[z] = {u: 0, l: 0, h: 0, c: 0, p: 0, uh: 0, n: 0}; });
+        ZS.forEach(function (z) { Z[z] = {u: 0, l: 0, h: 0, c: 0, p: 0, uh: 0, n: 0, b: 0}; });
         D.forEach(function (o) {
-            if (!Z[o.z]) { Z[o.z] = {u: 0, l: 0, h: 0, c: 0, p: 0, uh: 0, n: 0}; ZS.push(o.z); }
+            if (!Z[o.z]) { Z[o.z] = {u: 0, l: 0, h: 0, c: 0, p: 0, uh: 0, n: 0, b: 0}; ZS.push(o.z); }
             var z = Z[o.z], k = o.est === 'hecha' ? 'h' : (o.est === 'curso' || o.est === 'parcial') ? 'c' : 'p';
-            z.n++; z.u += o.u; z.l += o.leido; z[k]++;
+            z.n++; z.u += o.u; z.l += o.leido; z[k]++; z.b += o.cajas || 0;
             if (o.est === 'hecha') { z.uh += o.u; }
             T.u += o.u; T.l += o.leido; T[k]++;
         });
@@ -227,23 +227,27 @@ var Monitor = AbstractAction.extend({
         h += '</div>';
         // v1.9: casillas compactas (solo leido/total; la OUT y el estado al pasar el raton) para que con 8 zonas
         // o mas quepa sin arrastrar; la tienda solo con su K (nombre y pedido al pasar el raton)
-        h += '<h2>Cada tienda en cada zona</h2><p class="km-nota">Cada casilla es una OUT: unidades leídas / total, con el color de su estado. ' +
+        h += '<h2>Cada tienda en cada zona</h2><p class="km-nota">Cada casilla es una OUT: unidades leídas / total y, debajo, sus <b>bultos</b> (cajas cerradas), con el color de su estado. En rojo: OUT hecha cuyos bultos en Odoo (los que van a XPO) no coinciden con las cajas cerradas. ' +
             'Al pasar el ratón: número de OUT, agrupación y estado. Vacío = la tienda no tiene nada en esa zona. Las rondas (R2...) van en la columna de su zona.</p>' +
             '<div class="km-ley"><span><i style="background:var(--km-ok)"></i>OUT hecha</span><span><i style="background:var(--km-cur)"></i>cogiéndose</span>' +
             '<span><i style="background:var(--km-bar)"></i>sin empezar</span><span><i style="background:#b9b6ad"></i>tienda con todo hecho: a juntar</span>' +
             '<span><i style="background:#3d5a80"></i>tienda con etiqueta del transportista: terminada</span></div>';
-        h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th></tr></thead><tbody>';
+        h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th><th class="r">Bultos</th></tr></thead><tbody>';
         orden.forEach(function (k) {
-            var p = P[k], u = 0, l = 0;
+            var p = P[k], u = 0, l = 0, b = 0;
             h += '<tr' + (p.etq ? ' class="km-r-etq" title="Tienda con la etiqueta del transportista: terminada"' :
                 (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '')) + '><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
             cols.forEach(function (z) {
                 var o = p.z[z];
                 if (!o) { h += '<td></td>'; return; }
-                u += o.u; l += o.leido;
-                h += '<td>' + aOut(o, '<span class="km-cel km-' + o.est + '" title="' + e(o.out) + ' · ' + e(o.lote) + ' · ' + EST[o.est] + ' (clic: abrir la OUT)">' + n(o.leido) + '/' + n(o.u) + '</span>') + '</td>';
+                u += o.u; l += o.leido; b += o.cajas || 0;
+                // v1.14: bultos de la OUT = cajas cerradas; en rojo si esta hecha y Odoo tiene otros bultos (los de XPO)
+                var mal = o.est === 'hecha' && o.bultos !== (o.cajas || 0);
+                h += '<td>' + aOut(o, '<span class="km-cel km-' + o.est + (mal ? ' km-bx-mal' : '') + '" title="' + e(o.out) + ' · ' + e(o.lote) + ' · ' + EST[o.est] +
+                    ' · ' + (o.cajas || 0) + ' cajas cerradas · ' + o.bultos + ' bultos en Odoo (clic: abrir la OUT)">' + n(o.leido) + '/' + n(o.u) +
+                    '<small class="km-bx">' + (o.cajas || 0) + ' b' + (mal ? ' ≠ ' + o.bultos : '') + '</small></span>') + '</td>';
             });
-            h += '<td class="r">' + n(l) + '/' + n(u) + '</td></tr>';
+            h += '<td class="r">' + n(l) + '/' + n(u) + '</td><td class="r"><b>' + b + '</b></td></tr>';
         });
         h += '</tbody></table></div>';
 
@@ -255,12 +259,13 @@ var Monitor = AbstractAction.extend({
             L.sort(function (a, b) { return rank[a.est] - rank[b.est] || (parseInt(a.caja, 10) || 0) - (parseInt(b.caja, 10) || 0); });
             var z = Z[zn];
             var abierta = zn in self.abiertas ? self.abiertas[zn] : (z.c || z.p);
-            h += '<div class="km-card"><details data-z="' + e(zn) + '"' + (abierta ? ' open' : '') + '><summary>' + zt(zn) + ' ' + e(r.prefijo + zn) + ' · ' + n(z.l) + '/' + n(z.u) + ' u · ' + z.h + ' hechas, ' + z.c + ' cogiéndose, ' + z.p + ' sin empezar</summary>';
-            h += '<div class="km-scroll"><table><thead><tr><th>Estado</th><th>Caja</th><th>OUT</th><th>Tienda</th><th>Pedido</th><th>Lineales</th><th class="r">Huecos</th><th>Leído</th><th>Empieza</th><th>Última / validada</th></tr></thead><tbody>';
+            h += '<div class="km-card"><details data-z="' + e(zn) + '"' + (abierta ? ' open' : '') + '><summary>' + zt(zn) + ' ' + e(r.prefijo + zn) + ' · ' + n(z.l) + '/' + n(z.u) + ' u · ' + z.b + ' bultos · ' + z.h + ' hechas, ' + z.c + ' cogiéndose, ' + z.p + ' sin empezar</summary>';
+            h += '<div class="km-scroll"><table><thead><tr><th>Estado</th><th>Caja</th><th>OUT</th><th>Tienda</th><th>Pedido</th><th>Lineales</th><th class="r">Huecos</th><th>Leído</th><th class="r">Bultos</th><th>Empieza</th><th>Última / validada</th></tr></thead><tbody>';
             L.forEach(function (o) {
                 var pct = o.u ? 100 * o.leido / o.u : 0, c = o.est === 'hecha' ? 'var(--km-ok)' : 'var(--km-cur)';
                 h += '<tr><td><span class="km-cel km-' + o.est + '">' + EST[o.est] + '</span></td><td><b>' + e(o.caja) + '</b></td><td class="m">' + aOut(o, e(o.out)) + '</td><td>' + e(o.tienda) + '</td><td class="m">' + e(o.pedido) + '</td><td>' + e(o.lin) + '</td><td class="r">' + o.huecos + '</td>' +
-                    '<td><span class="km-mini"><i style="width:' + pct + '%;background:' + c + '"></i></span>' + n(o.leido) + '/' + n(o.u) + '</td><td>' + (o.est === 'hecha' ? '' : e(o.ini)) + '</td><td>' + e(o.fin) + '</td></tr>';
+                    '<td><span class="km-mini"><i style="width:' + pct + '%;background:' + c + '"></i></span>' + n(o.leido) + '/' + n(o.u) + '</td><td class="r">' + (o.cajas || 0) + (o.est === 'hecha' && o.bultos !== (o.cajas || 0) ? ' <span class="km-bx-txt">(Odoo ' + o.bultos + ')</span>' : '') +
+                    '</td><td>' + (o.est === 'hecha' ? '' : e(o.ini)) + '</td><td>' + e(o.fin) + '</td></tr>';
             });
             h += '</tbody></table></div></details></div>';
         });

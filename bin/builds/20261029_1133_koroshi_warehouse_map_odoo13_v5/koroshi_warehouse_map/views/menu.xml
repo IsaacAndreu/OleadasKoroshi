@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_koroshi_warehouse_map" model="ir.actions.client">
+        <field name="name">Mapa NAU-2</field>
+        <field name="tag">koroshi_warehouse_map</field>
+    </record>
+
+    <record id="action_koroshi_layouts" model="ir.actions.act_window">
+        <field name="name">Planos NAU-2</field>
+        <field name="res_model">koroshi.layout</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_koroshi_pick_sessions" model="ir.actions.act_window">
+        <field name="name">Sesiones operativas</field>
+        <field name="res_model">koroshi.pick.session</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_koroshi_warehouse_root"
+              name="KOROSHI · Almacén"
+              parent="stock.menu_stock_root"
+              sequence="92"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_warehouse_map"
+              name="Mapa NAU-2"
+              parent="menu_koroshi_warehouse_root"
+              action="action_koroshi_warehouse_map"
+              sequence="1"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_pick_sessions"
+              name="Sesiones operativas"
+              parent="menu_koroshi_warehouse_root"
+              action="action_koroshi_pick_sessions"
+              sequence="10"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_layouts"
+              name="Configuración de planos"
+              parent="menu_koroshi_warehouse_root"
+              action="action_koroshi_layouts"
+              sequence="20"
+              groups="stock.group_stock_manager"/>
+</odoo>

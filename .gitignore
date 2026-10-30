@@ -10,3 +10,8 @@ __pycache__/
 *.pyc
 ~$*
 odoo/modulos/_prueba_*
+
+# Eines de compilacio locals (SDK Android, .NET): no es pugen
+.android-sdk/
+.android-sdk-commandline.zip
+.dotnet-cli/

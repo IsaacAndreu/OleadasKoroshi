@@ -1,0 +1,9 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_layout_user,koroshi.layout user,model_koroshi_layout,stock.group_stock_user,1,1,1,0
+access_koroshi_layout_manager,koroshi.layout manager,model_koroshi_layout,stock.group_stock_manager,1,1,1,1
+access_koroshi_layout_element_user,koroshi.layout.element user,model_koroshi_layout_element,stock.group_stock_user,1,1,1,0
+access_koroshi_layout_element_manager,koroshi.layout.element manager,model_koroshi_layout_element,stock.group_stock_manager,1,1,1,1
+access_koroshi_pick_session_user,koroshi.pick.session user,model_koroshi_pick_session,stock.group_stock_user,1,1,1,0
+access_koroshi_pick_session_manager,koroshi.pick.session manager,model_koroshi_pick_session,stock.group_stock_manager,1,1,1,1
+access_koroshi_pick_event_user,koroshi.pick.event user,model_koroshi_pick_event,stock.group_stock_user,1,1,1,0
+access_koroshi_pick_event_manager,koroshi.pick.event manager,model_koroshi_pick_event,stock.group_stock_manager,1,1,1,1

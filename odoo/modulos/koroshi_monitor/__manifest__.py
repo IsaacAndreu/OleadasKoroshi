@@ -41,10 +41,13 @@ sus OUT = terminada, fila en azul oscuro. Leyenda de colores encima de la matriz
 v1.11: cada casilla de la matriz (y el numero de OUT de las listas) se puede pulsar: abre la OUT en otra pestana.
 v1.12: el clic abre la OUT dentro de Odoo (migas para volver al monitor): funciona tambien en la PDA; Ctrl+clic en otra pestana.
 v1.13: las migas de pan dicen 'Monitor picking' (antes salia sin nombre).
+v1.14: zonas: en cada casilla de la matriz, debajo de las uds, los bultos (cajas cerradas) de esa OUT; columna
+Bultos por tienda y bultos en el resumen y la lista de cada zona. En rojo si la OUT esta hecha y los bultos de
+Odoo (los que van a XPO) no coinciden con las cajas cerradas.
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.13.0',
+    'version': '13.0.1.14.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
