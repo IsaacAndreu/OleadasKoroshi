@@ -1,0 +1,163 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_operario_tarea_tree" model="ir.ui.view">
+        <field name="name">koroshi.operario.tarea.tree</field>
+        <field name="model">koroshi.operario.tarea</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="estado == 'curso'" decoration-warning="estado == 'dejada'"
+                  decoration-danger="estado == 'sin_cerrar'" create="false">
+                <field name="dia"/>
+                <field name="employee_id"/>
+                <field name="tipo"/>
+                <field name="picking_id"/>
+                <field name="batch_id"/>
+                <field name="zona"/>
+                <field name="inicio"/>
+                <field name="fin"/>
+                <field name="estado"/>
+                <field name="motivo_fin"/>
+                <field name="uds" sum="Uds"/>
+                <field name="minutos" sum="Minutos"/>
+                <field name="uds_hora"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_operario_tarea_form" model="ir.ui.view">
+        <field name="name">koroshi.operario.tarea.form</field>
+        <field name="model">koroshi.operario.tarea</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_cerrar_a_mano" type="object" string="Cerrar como dejada"
+                            attrs="{'invisible': [('estado', '!=', 'curso')]}"
+                            groups="koroshi_operarios.grupo_productividad"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="tipo"/>
+                            <field name="picking_id"/>
+                            <field name="batch_id"/>
+                            <field name="zona"/>
+                            <field name="referencia"/>
+                        </group>
+                        <group>
+                            <field name="inicio"/>
+                            <field name="fin"/>
+                            <field name="motivo_fin"/>
+                            <field name="dia"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group>
+                        <group string="Unidades">
+                            <field name="uds_total"/>
+                            <field name="uds_inicio"/>
+                            <field name="uds_fin"/>
+                            <field name="uds"/>
+                        </group>
+                        <group string="Ritmo">
+                            <field name="minutos"/>
+                            <field name="uds_hora"/>
+                            <field name="nota"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_operario_tarea_pivot" model="ir.ui.view">
+        <field name="name">koroshi.operario.tarea.pivot</field>
+        <field name="model">koroshi.operario.tarea</field>
+        <field name="arch" type="xml">
+            <pivot string="Productividad">
+                <field name="employee_id" type="row"/>
+                <field name="dia" type="col" interval="day"/>
+                <field name="uds" type="measure"/>
+                <field name="minutos" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_operario_tarea_graph" model="ir.ui.view">
+        <field name="name">koroshi.operario.tarea.graph</field>
+        <field name="model">koroshi.operario.tarea</field>
+        <field name="arch" type="xml">
+            <graph string="Uds por operario" type="bar">
+                <field name="employee_id" type="row"/>
+                <field name="uds" type="measure"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_koroshi_operario_tarea_search" model="ir.ui.view">
+        <field name="name">koroshi.operario.tarea.search</field>
+        <field name="model">koroshi.operario.tarea</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="picking_id"/>
+                <field name="batch_id"/>
+                <field name="zona"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="semana" string="Ultimos 7 dias"
+                        domain="[('dia', '>=', (context_today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="curso" string="En curso" domain="[('estado', '=', 'curso')]"/>
+                <filter name="acabada" string="Acabadas" domain="[('estado', '=', 'acabada')]"/>
+                <filter name="dejada" string="Dejadas" domain="[('estado', '=', 'dejada')]"/>
+                <filter name="sin_cerrar" string="Sin cerrar" domain="[('estado', '=', 'sin_cerrar')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_dia" string="Dia" context="{'group_by': 'dia:day'}"/>
+                    <filter name="g_zona" string="Zona" context="{'group_by': 'zona'}"/>
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_operario_tarea" model="ir.actions.act_window">
+        <field name="name">Tareas de operarios</field>
+        <field name="res_model">koroshi.operario.tarea</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="context">{'search_default_hoy': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavia no hay tareas</p>
+            <p>Se crean desde la pantalla de lecturas de la PDA: tarjeta del operario y pedido.</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_operario_productividad" model="ir.actions.act_window">
+        <field name="name">Productividad por operario</field>
+        <field name="res_model">koroshi.operario.tarea</field>
+        <field name="view_mode">pivot,graph,tree,form</field>
+        <field name="context">{'search_default_semana': 1}</field>
+    </record>
+
+    <record id="action_koroshi_validadas_sin_operario" model="ir.actions.server">
+        <field name="name">OUT validadas hoy sin operario</field>
+        <field name="model_id" ref="model_koroshi_operario_tarea"/>
+        <field name="groups_id" eval="[(4, ref('koroshi_operarios.grupo_productividad'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_validadas_sin_operario()</field>
+    </record>
+
+    <record id="action_koroshi_operarios_empleados" model="ir.actions.act_window">
+        <field name="name">Operarios</field>
+        <field name="res_model">hr.employee</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain" eval="[('category_ids', 'in', [ref('koroshi_operarios.categoria_operario_koroshi')])]"/>
+        <field name="context" eval="{'default_category_ids': [(6, 0, [ref('koroshi_operarios.categoria_operario_koroshi')])]}"/>
+    </record>
+
+    <!-- v1.1: pantalla de lecturas dentro de Odoo. Ponerla como "Accion inicial" del usuario de la PDA. -->
+    <record id="action_koroshi_operarios_pantalla" model="ir.actions.client">
+        <field name="name">Operarios</field>
+        <field name="tag">koroshi_operarios_pantalla</field>
+    </record>
+</odoo>

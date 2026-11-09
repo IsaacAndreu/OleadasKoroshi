@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_faltante_user,koroshi.faltante usuario,model_koroshi_faltante,stock.group_stock_user,1,1,1,0
+access_koroshi_faltante_manager,koroshi.faltante responsable,model_koroshi_faltante,stock.group_stock_manager,1,1,1,0
+access_koroshi_faltante_encontrado_manager,koroshi.faltante.encontrado responsable,model_koroshi_faltante_encontrado,stock.group_stock_manager,1,1,1,1

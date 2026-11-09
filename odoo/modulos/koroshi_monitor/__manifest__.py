@@ -45,13 +45,23 @@ v1.14: zonas: en cada casilla de la matriz, debajo de las uds, los bultos (cajas
 Bultos por tienda y bultos en el resumen y la lista de cada zona. En rojo si la OUT esta hecha y los bultos de
 Odoo (los que van a XPO) no coinciden con las cajas cerradas.
 
+v1.17: en el modo Tiendas se puede filtrar por estado y transporte, buscar por tienda/OUT/pedido/etiqueta,
+ordenar con doble clic en los encabezados y ver transportista y etiqueta. La gráfica de unidades por hora
+desglosa el total por OUT con un color estable para cada una.
+
+v1.17.1: las OUT hechas con transportista o etiqueta aparecen con fondo azul y el monitor ocupa todo el ancho.
+
+v1.18: operarios por codigo (OP1, OP2...), nunca por nombre, si esta instalado koroshi_operarios: columna Operario
+en Tiendas y zonas y tabla Operarios (que coge ahora, uds, minutos, u/h del dia). Sin ese modulo, igual que antes.
+v1.18.1: OUT o agrupacion ya validada = operario acabado al momento, sin esperar al cron de cierre (5 min).
+
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.14.0',
+    'version': '13.0.1.18.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'stock_picking_batch'],
+    'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_warehouse_map'],
     'data': [
         'views/assets.xml',
         'views/menu.xml',

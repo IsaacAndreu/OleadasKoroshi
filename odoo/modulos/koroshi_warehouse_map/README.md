@@ -26,11 +26,33 @@ La integración real de PDA debe crear o actualizar únicamente:
 
 El módulo no modifica albaranes, movimientos, productos ni reservas.
 
-La interfaz incluida en esta actualización es la v35 e incorpora el centro de
+La interfaz incluida en esta actualización es la v41 e incorpora el centro de
 control de NAU-2: reconciliación, incidencias, historial, alertas, mapa de
-calor, escenarios, capacidad, permisos y modo PDA. Cuando se abre dentro de
+calor, escenarios, capacidad, permisos y modo PDA. El mapa queda separado en
+esqueleto fijo, diseño editable y capa operativa. Cuando se abre dentro de
 Odoo consulta `/koroshi_warehouse_map/data` con refresco incremental; si no hay
-sesiones PDA, muestra las OUT disponibles y marca los datos estimados.
+sesiones PDA, muestra las OUT disponibles y diferencia datos reales de Odoo,
+estimaciones y simulaciones.
+
+La v41 añade tres modos separados (Editar mapa, Operación y Análisis), un
+panel contextual a la derecha, pestañas limpias para resumen/recorrido/
+incidencias/calor y un editor tipo CAD con paleta y propiedades. Mantiene
+intacta la geometría del plano y reorganiza únicamente la interfaz.
+
+La v40 añade al editor ajuste magnético activable, selección múltiple,
+duplicado, alineación, deshacer/rehacer, ayuda contextual y publicación de
+versiones en Odoo. El perímetro, pilares y elementos estructurales quedan
+bloqueados. En el mapa operativo incorpora filtros rápidos por estado,
+incidencias y transportista, auditoría de recorridos (saltos diagonales,
+ubicaciones sin coordenadas y tramos locales), eventos de apertura/cierre de
+caja y una leyenda clara de real/estimado/simulado.
+
+La v37 mejora el mapa editable: los lineales se pueden seleccionar, mover con
+arrastre o flechas, intercambiar con otro lineal y restablecer a su posición
+original. El movimiento de lineales usa pasos de 0,5 m para conservar las filas
+que empiezan en coordenadas medias. Las zonas y recuadros interiores conservan
+sus asas de tamaño y el perímetro de la nave y sus pilares permanecen fuera de
+la edición.
 
 La v34 corrigió la compatibilidad con Odoo 13: usa `move_lines` cuando no
 existe `move_ids`, calcula las unidades desde `stock.move.line` y evita que el
@@ -44,7 +66,25 @@ sesión de PDA sin líneas de stock, utiliza sus eventos de escaneo como detalle
 ## Plano editable
 
 El plano de referencia se entrega como asset estático en
-`static/src/html/warehouse_planner_20261029_v1.html`. La edición visual sigue
-siendo local en esta primera versión; los modelos `koroshi.layout` y
-`koroshi.layout.element` dejan preparada la persistencia controlada para la
-siguiente iteración.
+`static/src/html/warehouse_planner_20261029_v1.html`. Las versiones se pueden
+guardar localmente y publicar en Odoo mediante `/koroshi_warehouse_map/layout/save`;
+el esqueleto base nunca se sobrescribe durante una edición.
+Las tarjetas de **Celdas (colmenas)** del editor también son funcionales: se
+pueden arrastrar al plano, mover, redimensionar con las asas y eliminar. Cada
+variante conserva su rejilla de huecos (4×9, 2×9, 1×9 o 2×7) y sus ubicaciones
+se reflejan en el resumen del plano.
+
+## Zonas del día y Monitor Picking
+
+Las zonas dinámicas no aparecen por defecto al abrir el mapa. El endpoint
+`/koroshi_warehouse_map/data` devuelve además `zones`, leyendo los pickings
+internos de la compañía 8 cuyo origen sigue el formato real `KOR-ddmm-*` y
+que se han creado durante el día actual. Si no hay ninguno, el mapa conserva
+solo las zonas estructurales del plano; si existen, pinta sus tramos de
+lineales y los deja como capa informativa no editable.
+
+Esto permite que Monitor Picking abra este mismo mapa después de crear zonas,
+sin duplicar el plano ni inventar recorridos. La integración recomendada es
+un botón/enlace del monitor hacia la acción del módulo (opcionalmente con
+`date` o `batch_id` como filtro); ese botón pertenece al módulo de Monitor
+Picking y se puede añadir en una iteración separada.

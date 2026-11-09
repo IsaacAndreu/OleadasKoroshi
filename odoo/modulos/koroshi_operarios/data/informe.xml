@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.2: informe diario por email. Los parametros no se pisan al actualizar el modulo (noupdate). -->
+    <data noupdate="1">
+        <record id="param_informe_destinatarios" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.informe_destinatarios</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
+        <record id="param_informe_hora" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.informe_hora</field>
+            <field name="value">17:00</field>
+        </record>
+        <record id="param_informe_servidor" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.informe_servidor</field>
+            <field name="value">NATH</field>
+        </record>
+    </data>
+
+    <!-- Cada 15 min: a partir de las 17:00 (parametro) manda el informe del dia una vez. -->
+    <record id="cron_koroshi_operarios_informe" model="ir.cron">
+        <field name="name">KOROSHI Operarios: informe diario por email</field>
+        <field name="model_id" ref="model_koroshi_operario_informe"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_informe()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <record id="action_koroshi_operarios_enviar_informe" model="ir.actions.server">
+        <field name="name">Enviar informe de hoy ahora</field>
+        <field name="model_id" ref="model_koroshi_operario_informe"/>
+        <field name="groups_id" eval="[(4, ref('koroshi_operarios.grupo_productividad'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_enviar_hoy()</field>
+    </record>
+</odoo>

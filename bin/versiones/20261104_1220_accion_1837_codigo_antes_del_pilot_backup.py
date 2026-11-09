@@ -1,0 +1,1 @@
+raise Warning('Accion de pruebas vacia')

@@ -1,0 +1,746 @@
+# PILOT ZONA Z · L03 tram P18-P24 · un model-color per columna (04/11/2026) · v2
+# v2: el que surt del tram i te columna al pla de P25-P36 hi va directe; el que no te desti va repartit a P25-P36.
+#     Nomes productes actius (els duplicats eren copies arxivades sense estoc).
+# Accio de servidor sobre stock.picking (provar a la 1837). No depen dels registres seleccionats.
+# Crea 3 tipus d'INT (tipus 48 EFFEC "Transferencias internas"):
+#   A  BUIDAR   : el que hi ha al tram i NO es queda -> a la columna on aquell model te mes estoc fora del tram
+#   B  RECOLLIR : tot l'estoc lliure dels models escollits -> CARRO PILOT L03 (fora d'EFFEC/Stock: cap OUT el reserva)
+#                 un INT per bloc de lineals d'origen (per repartir-ho entre pickers)
+#   C  UBICAR   : CARRO PILOT L03 -> columna final de cada talla (queda "en espera"; "Comprobar disponibilidad" quan B estigui validat)
+# Unitats reservades per a OUT/INT oberts: NO es mouen (es llisten al diagnostic).
+# MODO = 'DIAGNOSTICO' no escriu res i acaba amb raise Warning. MODO = 'REAL' nomes amb l'OK de l'Isaac.
+MODO = 'DIAGNOSTICO'
+CO = 8
+TRAMO = 'L03 P18-P24'
+ORIGEN = 'PILOT ' + TRAMO
+STOCK_ID = 85
+NAVE2_ID = 31480
+PTYPE_ID = 48
+CARRO_BC = 'CARRO-PILOT-L03'
+BLOQUES = [(1, 12, 'B1 L01-L12'), (13, 24, 'B2 L13-L24'), (25, 36, 'B3 L25-L36'), (37, 999, 'B4 L37+'), (0, 0, 'B5 sin lineal')]
+DATA = """
+25100-000039-XS|L03 P18 C2
+25100-000039-S|L03 P18 C2
+25100-000039-M|L03 P18 C2
+25100-000039-XL|L03 P18 C2
+YS8044-000039-35|L03 P18 C3
+YS8044-000039-36|L03 P18 C3
+YS8044-000039-39|L03 P18 C3
+YS8044-000039-40|L03 P18 C3
+1822PT27-000003-34|L03 P18 C3
+1822PT27-000003-36|L03 P18 C3
+1822PT27-000003-38|L03 P18 C3
+1822PT27-000003-42|L03 P18 C3
+1822PT27-000003-44|L03 P18 C3
+23207-000010-XL|L03 P18 C4
+23207-000010-XXL|L03 P18 C4
+23207-000010-3XL|L03 P18 C4
+23394-000005-S|L03 P18 C4
+23394-000005-XXL|L03 P18 C4
+2222XC26-000003-36|L03 P19 C1
+2222XC26-000003-37|L03 P19 C1
+2222XC26-000003-38|L03 P19 C1
+2222XC26-000003-39|L03 P19 C1
+2222XC26-000003-40|L03 P19 C1
+2222XC26-000003-41|L03 P19 C1
+29H04-000029-UNI|L03 P19 C1
+25P2-000039-XS|L03 P19 C2
+25P2-000039-S|L03 P19 C2
+25P2-000039-M|L03 P19 C2
+25P2-000039-L|L03 P19 C2
+25P2-000039-XL|L03 P19 C2
+25P2-000039-XXL|L03 P19 C2
+2021TR37-000005-S|L03 P19 C2
+2021TR37-000005-M|L03 P19 C2
+2021TR37-000005-XL|L03 P19 C2
+2121SU27-000039-S|L03 P19 C3
+2121SU27-000039-M|L03 P19 C3
+2121SU27-000039-L|L03 P19 C3
+2121SU27-000039-XL|L03 P19 C3
+2121SU27-000039-XXL|L03 P19 C3
+2212JA92-000301-S|L03 P19 C3
+2212JA92-000301-M|L03 P19 C3
+2212JA92-000301-XL|L03 P19 C3
+2212JA92-000301-XXL|L03 P19 C3
+25982-000043-XS|L03 P19 C4
+25982-000043-S|L03 P19 C4
+2321JA78-000001-S|L03 P19 C4
+2321JA78-000001-L|L03 P19 C4
+2321JA78-000001-XXL|L03 P19 C4
+2321JA78-000001-3XL|L03 P19 C4
+2322JA67-000003-XS|L03 P20 C1
+2322JA67-000003-S|L03 P20 C1
+2322JA67-000003-M|L03 P20 C1
+2322JA67-000003-L|L03 P20 C1
+2322JA67-000003-XL|L03 P20 C1
+2425SU01-000039-4|L03 P20 C1
+2425SU01-000039-6|L03 P20 C1
+2425SU01-000039-8|L03 P20 C1
+2425SU01-000039-10|L03 P20 C1
+25975-000019-XS|L03 P20 C2
+25975-000019-S|L03 P20 C2
+25388-000005-S|L03 P20 C2
+25388-000005-L|L03 P20 C2
+25388-000005-XL|L03 P20 C2
+2222XC10-000003-36|L03 P20 C3
+2222XC10-000003-37|L03 P20 C3
+2222XC10-000003-38|L03 P20 C3
+2222XC10-000003-39|L03 P20 C3
+2222XC10-000003-40|L03 P20 C3
+2222XC10-000003-41|L03 P20 C3
+2222TR14-000323-XS|L03 P20 C3
+2222TR14-000323-S|L03 P20 C3
+2222TR14-000323-M|L03 P20 C3
+2222TR14-000323-XL|L03 P20 C3
+2022JA79-000017-XS|L03 P20 C4
+29159-000003-XS|L03 P20 C4
+29159-000003-S|L03 P20 C4
+29159-000003-M|L03 P20 C4
+29159-000003-XXL|L03 P20 C4
+2122JA91-000017-XS|L03 P21 C1
+2122JA91-000017-S|L03 P21 C1
+2122JA91-000017-M|L03 P21 C1
+2122JA91-000017-L|L03 P21 C1
+2122JA91-000017-XL|L03 P21 C1
+2521SU13-000015-S|L03 P21 C1
+2521SU13-000015-M|L03 P21 C1
+2521SU13-000015-XL|L03 P21 C1
+2521SU13-000015-XXL|L03 P21 C1
+2422JA78-000039-M|L03 P21 C2
+2422JA78-000039-L|L03 P21 C2
+2422JA78-000039-XXL|L03 P21 C2
+1921XC03-000005-40|L03 P21 C2
+1921XC03-000005-41|L03 P21 C2
+1921XC03-000005-43|L03 P21 C2
+1921XC03-000005-44|L03 P21 C2
+1921XC03-000005-45|L03 P21 C2
+25101-000003-XS|L03 P21 C3
+25101-000003-S|L03 P21 C3
+25101-000003-M|L03 P21 C3
+25101-000003-L|L03 P21 C3
+25101-000003-XL|L03 P21 C3
+25101-000003-XXL|L03 P21 C3
+25378-000005-XL|L03 P21 C3
+25378-000005-XXL|L03 P21 C3
+25378-000005-3XL|L03 P21 C3
+2012VS67-000003-XS|L03 P21 C4
+2012VS67-000003-S|L03 P21 C4
+2421TR72-000002-S|L03 P21 C4
+2421TR72-000002-M|L03 P21 C4
+2421TR72-000002-L|L03 P21 C4
+2421TR72-000002-XL|L03 P21 C4
+2421TR72-000002-XXL|L03 P21 C4
+2022JA72-000017-XS|L03 P22 C1
+2022JA72-000017-M|L03 P22 C1
+2022TR25-000158-XS|L03 P22 C1
+2022TR25-000158-S|L03 P22 C1
+2022TR25-000158-M|L03 P22 C1
+2022TR25-000158-L|L03 P22 C1
+2022TR25-000158-XL|L03 P22 C1
+29S9-000069-43|L03 P22 C2
+29S9-000069-44|L03 P22 C2
+29S9-000069-45|L03 P22 C2
+2412SU05-000030-XS|L03 P22 C2
+2412SU05-000030-S|L03 P22 C2
+2412SU05-000030-M|L03 P22 C2
+2412SU05-000030-L|L03 P22 C2
+2412SU05-000030-XL|L03 P22 C2
+2412SU05-000030-XXL|L03 P22 C2
+26S42-000019-36|L03 P22 C3
+26S42-000019-37|L03 P22 C3
+26963-000015-XS|L03 P22 C3
+26963-000015-S|L03 P22 C3
+26963-000015-M|L03 P22 C3
+1922TR45-000125-XS|L03 P22 C3
+1922TR45-000125-S|L03 P22 C3
+1922TR45-000125-M|L03 P22 C3
+29SW02-000019-36|L03 P22 C4
+29SW02-000019-38|L03 P22 C4
+29SW02-000019-39|L03 P22 C4
+29SW02-000019-40|L03 P22 C4
+29SW02-000019-41|L03 P22 C4
+2222JA67-000020-XS|L03 P22 C4
+2222JA67-000020-S|L03 P22 C4
+2222JA67-000020-M|L03 P22 C4
+2222JA67-000020-L|L03 P22 C4
+2222JA67-000020-XXL|L03 P22 C4
+2121TR09-000027-S|L03 P22 C4
+2121TR09-000027-M|L03 P22 C4
+2212JA08-000003-XS|L03 P23 C1
+2212JA08-000003-M|L03 P23 C1
+2212JA08-000003-L|L03 P23 C1
+2212JA08-000003-XL|L03 P23 C1
+2212JA08-000003-XXL|L03 P23 C1
+26384-000021-M|L03 P23 C1
+26384-000021-XXL|L03 P23 C1
+26384-000021-3XL|L03 P23 C1
+2121TR32-000030-S|L03 P23 C1
+2121TR32-000030-XXL|L03 P23 C1
+1812JA97-000003-XS|L03 P23 C2
+1812JA97-000003-S|L03 P23 C2
+1812JA97-000003-XL|L03 P23 C2
+2422TR69-000030-XS|L03 P23 C2
+2422TR69-000030-S|L03 P23 C2
+2422TR69-000030-M|L03 P23 C2
+2422TR69-000030-L|L03 P23 C2
+1911CC53-000006-S|L03 P23 C2
+2322JA76-000015-XS|L03 P23 C3
+2322JA76-000015-M|L03 P23 C3
+2221JA05-000003-S|L03 P23 C3
+2221JA05-000003-M|L03 P23 C3
+1822PT11-000302-34|L03 P23 C3
+1822PT11-000302-36|L03 P23 C3
+1822PT11-000302-38|L03 P23 C3
+1822PT11-000302-42|L03 P23 C3
+1921XC02-000039-40|L03 P23 C4
+1921XC02-000039-41|L03 P23 C4
+1921XC02-000039-43|L03 P23 C4
+1921XC02-000039-45|L03 P23 C4
+24387-000128-XL|L03 P23 C4
+24387-000128-XXL|L03 P23 C4
+24387-000128-3XL|L03 P23 C4
+2121CL55-000139-S|L03 P23 C4
+2121CL55-000139-M|L03 P23 C4
+2121CL55-000139-XL|L03 P23 C4
+2121CL55-000139-XXL|L03 P23 C4
+2121CL55-000139-3XL|L03 P23 C4
+2221XC04-000019-40|L03 P24 C1
+2221XC04-000019-41|L03 P24 C1
+2221XC04-000019-42|L03 P24 C1
+2221XC04-000019-43|L03 P24 C1
+2221XC04-000019-45|L03 P24 C1
+24373-000006-S|L03 P24 C1
+24373-000006-M|L03 P24 C1
+24373-000006-3XL|L03 P24 C1
+2021CL56-000015-S|L03 P24 C1
+2021CL56-000015-M|L03 P24 C1
+2021CL56-000015-XXL|L03 P24 C1
+2311JA03-000068-S|L03 P24 C2
+26100-000139-XS|L03 P24 C2
+26100-000139-S|L03 P24 C2
+26100-000139-XXL|L03 P24 C2
+26100-000139-3XL|L03 P24 C2
+26975-000003-XS|L03 P24 C2
+26975-000003-M|L03 P24 C2
+2121TR03-000015-XL|L03 P24 C2
+2121TR03-000015-XXL|L03 P24 C2
+2421JA16-000014-S|L03 P24 C3
+2421JA16-000014-M|L03 P24 C3
+2421JA16-000014-L|L03 P24 C3
+2421JA16-000014-XXL|L03 P24 C3
+2412JA14-000003-M|L03 P24 C3
+2412JA14-000003-L|L03 P24 C3
+2412JA14-000003-XL|L03 P24 C3
+2012TR09-000015-XS|L03 P24 C3
+2012TR09-000015-S|L03 P24 C3
+2012TR09-000015-L|L03 P24 C3
+2012TR09-000015-XL|L03 P24 C3
+2012TR09-000015-XXL|L03 P24 C3
+26976-000014-XS|L03 P24 C3
+26976-000014-XL|L03 P24 C3
+2221JA51-000019-S|L03 P24 C4
+2221JA51-000019-L|L03 P24 C4
+2221JA51-000019-3XL|L03 P24 C4
+1822VS21-000014-XS|L03 P24 C4
+1822VS21-000014-S|L03 P24 C4
+1822VS21-000014-M|L03 P24 C4
+1822VS21-000014-L|L03 P24 C4
+1822VS21-000014-XL|L03 P24 C4
+1822VS21-000014-XXL|L03 P24 C4
+25500-000015-XS|L03 P24 C4
+25500-000015-S|L03 P24 C4
+25500-000015-L|L03 P24 C4
+1922JA91-000014-XS|L03 P24 C4
+2222XC15-000003-36|L03 P18 C1
+2222XC15-000003-37|L03 P18 C1
+2222XC15-000003-38|L03 P18 C1
+2222XC15-000003-39|L03 P18 C2
+2222XC15-000003-40|L03 P18 C2
+2222XC15-000003-41|L03 P18 C2
+"""
+# model-color -> columna prevista a P25-P36 (segona fase del pilot)
+DATA2 = """
+1821JA56-000139|L03 P25 C1
+2421CL56-000006|L03 P25 C1
+25SC6-000005|L03 P25 C1
+2222JA67-000014|L03 P25 C1
+2411JA16-000039|L03 P25 C2
+2212JA01-000084|L03 P25 C2
+28126-000003|L03 P25 C2
+2322TR77-000030|L03 P25 C2
+28383-000006|L03 P25 C3
+28991-000059|L03 P25 C3
+1821CL40-000039|L03 P25 C3
+2321PT88-000062|L03 P25 C3
+1812JA13-000003|L03 P25 C4
+2521JA69-000039|L03 P25 C4
+2111SU02-000014|L03 P25 C4
+29325-000305|L03 P25 C4
+2522JA50-000039|L03 P26 C1
+27300-000003|L03 P26 C1
+2221SU21-000005|L03 P26 C1
+27SW04-000087|L03 P26 C1
+2422JA50-000014|L03 P26 C1
+25394-000005|L03 P26 C2
+29138-000149|L03 P26 C2
+1821JA74-000014|L03 P26 C2
+1921CL53-000006|L03 P26 C2
+29972-000087|L03 P26 C2
+2421JA59-000148|L03 P26 C3
+1821TR23-000039|L03 P26 C3
+2412JA13-000087|L03 P26 C3
+1812PT04-000301|L03 P26 C3
+2322JA46-000130|L03 P26 C3
+2521JA56-000006|L03 P26 C4
+2322JA14-000015|L03 P26 C4
+23103-000006|L03 P26 C4
+1922SU60-000003|L03 P26 C4
+2021TR41-000030|L03 P26 C4
+29168-000006|L03 P27 C1
+24972-000015|L03 P27 C1
+1811SU10-000039|L03 P27 C1
+1812TR53-000323|L03 P27 C1
+2412JA12-000039|L03 P27 C1
+1912JA10-000015|L03 P27 C2
+1911JA55-000039|L03 P27 C2
+2112JA07-000139|L03 P27 C2
+1821CL02-000039|L03 P27 C2
+2212JA01-000072|L03 P27 C2
+2022BL05-000003|L03 P27 C2
+2511JA21-000014|L03 P27 C3
+26100-000039|L03 P27 C3
+2322JA41-000003|L03 P27 C3
+2424SU02-000005|L03 P27 C3
+2212VS49-000015|L03 P27 C3
+2022TR37-000005|L03 P27 C3
+1911SU04-000003|L03 P27 C4
+1812TR19-000002|L03 P27 C4
+29130-000123|L03 P27 C4
+2422VS21-000003|L03 P27 C4
+1811TR03-000039|L03 P27 C4
+2112TR19-000103|L03 P27 C4
+2021TR05-000003|L03 P28 C1
+25918-000125|L03 P28 C1
+1921TR07-000030|L03 P28 C1
+2212TR31-000323|L03 P28 C1
+2411TR02-000005|L03 P28 C1
+2422JA89-000003|L03 P28 C1
+2321PL09-000015|L03 P28 C1
+2011TR04-000147|L03 P28 C2
+29925-000029|L03 P28 C2
+2421TR30-000003|L03 P28 C2
+2021PT91-000004|L03 P28 C2
+2122TR50-000015|L03 P28 C2
+2412BL78-000103|L03 P28 C2
+1921JA04-000014|L03 P28 C2
+2321SU19-000070|L03 P28 C2
+2121JA65-000003|L03 P28 C3
+28H14-000029|L03 P28 C3
+26S5-000024|L03 P28 C3
+2321JA13-000003|L03 P28 C3
+2112JA07-000015|L03 P28 C3
+2425TR03-000030|L03 P28 C3
+2121PT88-000003|L03 P28 C3
+2222PT30-000302|L03 P28 C3
+2322SU12-000015|L03 P28 C3
+2221JA52-000003|L03 P28 C4
+2312PT29-000302|L03 P28 C4
+2312JA66-000039|L03 P28 C4
+1911JA08-000003|L03 P28 C4
+29200-000001|L03 P28 C4
+2021JA72-000123|L03 P28 C4
+1821SU19-000017|L03 P28 C4
+P6776-000003|L03 P28 C4
+2311JA15-000002|L03 P28 C4
+2421JA49-000003|L03 P29 C1
+2321SU20-000149|L03 P29 C1
+2412SU03-000137|L03 P29 C1
+2422BL03-000017|L03 P29 C1
+2521JA51-000030|L03 P29 C1
+1821PT98-000306|L03 P29 C1
+2322TR23-000323|L03 P29 C1
+2421SU17-000015|L03 P29 C1
+2221TR07-000030|L03 P29 C1
+2421JA45-000003|L03 P29 C2
+1921TR06-000015|L03 P29 C2
+28107-000030|L03 P29 C2
+2422TR26-000003|L03 P29 C2
+2211SU01-000147|L03 P29 C2
+23020-000003|L03 P29 C2
+1811PS18-000039|L03 P29 C2
+2425PT02-000016|L03 P29 C2
+2222PT35-000302|L03 P29 C2
+27110-000123|L03 P29 C3
+2222BL08-000003|L03 P29 C3
+2221SU04-000015|L03 P29 C3
+2022PT32-000008|L03 P29 C3
+2111TR06-000005|L03 P29 C3
+24810-000029|L03 P29 C3
+2121TR15-000030|L03 P29 C3
+2012TR25-000006|L03 P29 C3
+2421TR24-000030|L03 P29 C3
+25105-000147|L03 P29 C4
+2121TR32-000039|L03 P29 C4
+1911PT90-000070|L03 P29 C4
+1822VS04-000306|L03 P29 C4
+2221TR02-000027|L03 P29 C4
+1811SU03-000008|L03 P29 C4
+23311-000006|L03 P29 C4
+2312TR11-000039|L03 P29 C4
+2421TR18-000030|L03 P29 C4
+2221TR02-000039|L03 P30 C1
+2011SU06-000139|L03 P30 C1
+2421PT01-000003|L03 P30 C1
+1921TR22-000015|L03 P30 C1
+2322PT82-000003|L03 P30 C1
+1821PT43-000302|L03 P30 C1
+2222TR03-000323|L03 P30 C1
+1922VS06-000003|L03 P30 C1
+1921TR36-000017|L03 P30 C1
+2311SU09-000003|L03 P30 C2
+21504-000019|L03 P30 C2
+1921TR04-000039|L03 P30 C2
+27340-000302|L03 P30 C2
+2321TR07-000002|L03 P30 C2
+2022VS13-000003|L03 P30 C2
+2425VS02-000016|L03 P30 C2
+2512PT36-000301|L03 P30 C2
+2411PT33-000300|L03 P30 C2
+2421TR58-000003|L03 P30 C3
+29013-000006|L03 P30 C3
+25SC19-000019|L03 P30 C3
+1922ML62-000015|L03 P30 C3
+26301-000062|L03 P30 C3
+26391-000148|L03 P30 C3
+2424PT01-000039|L03 P30 C3
+25SC18-000005|L03 P30 C3
+2422FA05-000003|L03 P30 C3
+1922ML92-000003|L03 P30 C4
+25SC23-000016|L03 P30 C4
+2121TR30-000030|L03 P30 C4
+2412PS55-000003|L03 P30 C4
+2212TP43-000039|L03 P30 C4
+26B2-000001|L03 P30 C4
+2411CC55-000006|L03 P30 C4
+1821JA05-000017|L03 P30 C4
+1811PS98-000306|L03 P30 C4
+1811MC10-000016|L03 P30 C4
+1911JA20-000139|L03 P30 C4
+26979-000067|L03 P30 C4
+1822TR29-000073|L03 P30 C4
+22061-000015|L03 P30 C4
+1912ZB01-000029|L03 P30 C4
+2411PS40-000300|L03 P30 C4
+2322PT40-000003|L03 P31 C1
+2011JA61-000070|L03 P31 C1
+27015-000001|L03 P31 C1
+2412TP68-000015|L03 P31 C1
+2412BL55-000323|L03 P31 C1
+28859-000072|L03 P31 C1
+1922PT29-000003|L03 P31 C1
+2121PT01-000062|L03 P31 C1
+2412TP00-000323|L03 P31 C1
+1821TR23-000014|L03 P31 C1
+1922TR52-000015|L03 P31 C1
+2212VS58-000006|L03 P31 C1
+ML1039-000013|L03 P31 C1
+2222ML64-000003|L03 P31 C1
+26135-000030|L03 P31 C1
+WP-335|L03 P31 C1
+2422ML28-000001|L03 P31 C1
+2112VS27-000003|L03 P31 C2
+25404-000015|L03 P31 C2
+1811CC03-000039|L03 P31 C2
+26082-000001|L03 P31 C2
+2011PC22-000039|L03 P31 C2
+2012TP41-000003|L03 P31 C2
+1811PC19-000008|L03 P31 C2
+1821PT71-000301|L03 P31 C2
+2012PT86-000061|L03 P31 C2
+2112TP50-000072|L03 P31 C2
+2422TR71-000030|L03 P31 C2
+28323-000014|L03 P31 C2
+25SC15-000039|L03 P31 C2
+2312PT17-000302|L03 P31 C2
+2322TP02-000001|L03 P31 C2
+1821ZA05-000014|L03 P31 C2
+2122TR43-000030|L03 P31 C2
+2321ML11-000039|L03 P31 C2
+2021JA97-000039|L03 P31 C3
+1821TR21-000003|L03 P31 C3
+1912PT31-000023|L03 P31 C3
+1921TR33-000073|L03 P31 C3
+27323-000302|L03 P31 C3
+2121TR19-000003|L03 P31 C3
+2022ML02-000015|L03 P31 C3
+23851-000003|L03 P31 C3
+2111MC27-000039|L03 P31 C3
+2321PT22-000302|L03 P31 C3
+2422TR41-000323|L03 P31 C3
+2321TR17-000039|L03 P31 C3
+2221PT01-000128|L03 P31 C3
+2312TR04-000323|L03 P31 C3
+2111PT02-000139|L03 P31 C3
+2222VS09-000003|L03 P31 C3
+2421PT10-000300|L03 P31 C3
+2422TR74-000006|L03 P31 C3
+2222PT39-000003|L03 P31 C4
+2412PS82-000300|L03 P31 C4
+2211PC26-000001|L03 P31 C4
+2521TR46-000003|L03 P31 C4
+2222ML38-000015|L03 P31 C4
+25SC10-000005|L03 P31 C4
+2321PT88-000003|L03 P31 C4
+2022ML32-000014|L03 P31 C4
+2022PT41-000003|L03 P31 C4
+25415-000001|L03 P31 C4
+1821ML13-000017|L03 P31 C4
+29014-000003|L03 P31 C4
+28833-000029|L03 P31 C4
+FOULARDS-289|L03 P31 C4
+2011PS04-000062|L03 P31 C4
+26047-000010|L03 P31 C4
+28066-000001|L03 P31 C4
+2022ML40-000019|L03 P31 C4
+1811PS03-000003|L03 P34 C1
+2122ML37-000015|L03 P34 C1
+2221ML13-000001|L03 P34 C1
+2111PC07-000030|L03 P34 C1
+2422ML13-000015|L03 P34 C1
+2321UN05-000323|L03 P34 C1
+25SC15-000001|L03 P34 C1
+1921ML11-000003|L03 P34 C1
+2022ML25-000323|L03 P34 C1
+2421ML00-000039|L03 P34 C1
+2425PT06-000323|L03 P34 C1
+2421ML15-000012|L03 P34 C1
+1822ML30-000029|L03 P34 C1
+2212PS51-000003|L03 P34 C1
+2425ML02-000001|L03 P34 C1
+1921ML04-000017|L03 P34 C1
+2211PS89-000004|L03 P34 C1
+2424PT02-000014|L03 P34 C1
+2022ML70-000003|L03 P34 C2
+2212TP87-000001|L03 P34 C2
+1922ML04-000149|L03 P34 C2
+2421ML07-000015|L03 P34 C2
+2422ML33-000003|L03 P34 C2
+2021ZB01-000029|L03 P34 C2
+1921ML05-000039|L03 P34 C2
+2222ML33-000015|L03 P34 C3
+2422ML27-000003|L03 P34 C4
+1922ML38-000125|L03 P35 C1
+25415-000103|L03 P35 C2
+2122ML83-000003|L03 P35 C3
+2422ML01-000323|L03 P35 C4
+"""
+
+Loc = env['stock.location']
+Quant = env['stock.quant']
+Prod = env['product.product']
+Pick = env['stock.picking']
+STOCK = Loc.browse(STOCK_ID)
+NAVE2 = Loc.browse(NAVE2_ID)
+msg = []
+
+# ---- 0. que no s'hagi creat abans ----
+prev = Pick.search([('company_id', '=', CO), ('origin', '=like', ORIGEN + '%'), ('state', '!=', 'cancel')])
+if prev:
+    log('PILOT %s: ja hi ha INT creats: %s' % (TRAMO, ', '.join(prev.mapped('name'))))
+    raise Warning('Ja hi ha INT del pilot %s: %s' % (TRAMO, ', '.join(prev.mapped('name'))))
+
+# ---- 1. dades: talla -> columna ----
+dest_bc = {}
+for ln in DATA.strip().split('\n'):
+    p = ln.split('|')
+    if len(p) == 2:
+        dest_bc[p[0].strip()] = p[1].strip()
+
+tbc = []
+for pp in range(18, 25):
+    for cc in range(1, 5):
+        tbc.append('L03 P%02d C%d' % (pp, cc))
+tcols = Loc.search([('barcode', 'in', tbc), ('company_id', '=', CO)])
+col_by_bc = {}
+for l in tcols:
+    col_by_bc[l.barcode] = l
+falten_cols = sorted(set(tbc) - set(col_by_bc.keys()))
+
+prods = Prod.search([('name', 'in', list(dest_bc.keys())), '|', ('company_id', '=', CO), ('company_id', '=', False)])
+by_name = {}
+for p in prods:
+    by_name.setdefault(p.name, []).append(p)
+no_trobats = sorted(set(dest_bc.keys()) - set(by_name.keys()))
+duplicats = sorted(filter(lambda n: len(by_name[n]) > 1, by_name.keys()))
+dest_prod = {}
+for n in by_name:
+    if len(by_name[n]) == 1 and dest_bc[n] in col_by_bc:
+        dest_prod[by_name[n][0].id] = col_by_bc[dest_bc[n]]
+sel_ids = list(dest_prod.keys())
+
+def columna(loc):
+    # puja de la caixa KO_ a la columna "NNNNN - Lxx Pyy Cz"
+    while loc and loc.location_id and loc.name and loc.name.startswith('KO_'):
+        loc = loc.location_id
+    return loc
+
+def lineal(loc):
+    n = loc.complete_name or ''
+    i = n.find(' - L')
+    if i < 0:
+        return 0
+    s = n[i + 4:i + 6]
+    return int(s) if s.isdigit() else 0
+
+# ---- 1b. columnes P25-P36 ----
+d2_bc = {}
+for ln in DATA2.strip().split('\n'):
+    p = ln.split('|')
+    if len(p) == 2:
+        d2_bc[p[0].strip()] = p[1].strip()
+bc2 = []
+for pp in [25, 26, 27, 28, 29, 30, 31, 34, 35, 36]:
+    for cc in range(1, 5):
+        bc2.append('L03 P%02d C%d' % (pp, cc))
+cols2 = Loc.search([('barcode', 'in', bc2), ('company_id', '=', CO)], order='barcode')
+col2_by_bc = {}
+for l in cols2:
+    col2_by_bc[l.barcode] = l
+rr = [0]
+
+# ---- 2. carro ----
+carro = Loc.search([('barcode', '=', CARRO_BC), ('company_id', '=', CO)], limit=1)
+wh = env['stock.warehouse'].search([('company_id', '=', CO), ('lot_stock_id', '=', STOCK_ID)], limit=1)
+
+# ---- 3. B: estoc lliure dels models escollits ----
+qb = Quant.search([('product_id', 'in', sel_ids), ('location_id', 'child_of', STOCK_ID), ('quantity', '>', 0)])
+B = {}
+for b in BLOQUES:
+    B[b[2]] = []
+ja_ok = 0
+reserv_b = 0
+reserv_b_txt = []
+for q in qb:
+    d = dest_prod[q.product_id.id]
+    if q.location_id == d or (q.location_id.parent_path or '').startswith(d.parent_path or '-'):
+        ja_ok += q.quantity
+        continue
+    lliure = q.quantity - q.reserved_quantity
+    if q.reserved_quantity > 0:
+        reserv_b += q.reserved_quantity
+        reserv_b_txt.append('%s %s (%d)' % (q.product_id.name, columna(q.location_id).barcode or q.location_id.name, q.reserved_quantity))
+    if lliure <= 0:
+        continue
+    li = lineal(q.location_id)
+    for b in BLOQUES:
+        if (li == 0 and b[0] == 0) or (li > 0 and b[0] <= li <= b[1]):
+            B[b[2]].append((q.location_id, q.product_id, lliure))
+            break
+
+# ---- 4. A: el que hi ha al tram i no es queda ----
+qa = Quant.search([('location_id', 'child_of', tcols.ids), ('quantity', '>', 0), ('product_id', 'not in', sel_ids)])
+A = []
+reserv_a = 0
+sense_desti = 0
+a_pla = 0
+millor = {}
+for q in qa:
+    lliure = q.quantity - q.reserved_quantity
+    reserv_a += q.reserved_quantity
+    if lliure <= 0:
+        continue
+    pid = q.product_id.id
+    mc = q.product_id.name.rsplit('-', 1)[0]
+    if pid not in millor and d2_bc.get(mc) in col2_by_bc:
+        millor[pid] = col2_by_bc[d2_bc[mc]].id
+        a_pla += lliure
+    if pid not in millor:
+        alt = Quant.search([('product_id', '=', pid), ('location_id', 'child_of', STOCK_ID), '!', ('location_id', 'child_of', tcols.ids), ('quantity', '>', 0)])
+        tot = {}
+        for x in alt:
+            c = columna(x.location_id)
+            if c and lineal(c) > 0:
+                tot[c.id] = tot.get(c.id, 0) + x.quantity
+        millor[pid] = sorted(tot.keys(), key=lambda k: -tot[k])[0] if tot else False
+    if not millor[pid]:
+        millor[pid] = cols2[rr[0] % len(cols2)].id
+        rr[0] += 1
+        sense_desti += lliure
+    A.append((q.location_id, q.product_id, lliure, millor[pid]))
+
+# ---- 5. C: del carro a la columna (per producte) ----
+C = {}
+for k in B:
+    for t in B[k]:
+        C[t[1].id] = C.get(t[1].id, 0) + t[2]
+
+# ---- 6. resum ----
+def uds(lst):
+    s = 0
+    for t in lst:
+        s += t[2]
+    return s
+msg.append('PILOT %s · MODO %s' % (TRAMO, MODO))
+msg.append('Talles a les dades: %d · productes trobats: %d · no trobats: %d · duplicats: %d · columnes que falten: %s' % (
+    len(dest_bc), len(sel_ids), len(no_trobats), len(duplicats), ', '.join(falten_cols) or 'cap'))
+msg.append('Carro %s: %s' % (CARRO_BC, carro.complete_name if carro else 'NO EXISTEIX (es crearia sota %s)' % (wh.view_location_id.complete_name if wh else '¿magatzem?')))
+msg.append('A BUIDAR: %d linies, %d uds · a la seva columna de P25-P36: %d · sense desti, repartides a P25-P36: %d · a on tenen mes estoc: %d · reservades al tram (no es mouen): %d' % (len(A), uds(A), a_pla, sense_desti, uds(A) - a_pla - sense_desti, reserv_a))
+msg.append('Columnes P25-P36 trobades: %d de %d' % (len(cols2), len(bc2)))
+for b in BLOQUES:
+    msg.append('%s: %d linies, %d uds' % (b[2], len(B[b[2]]), uds(B[b[2]])))
+msg.append('Ja a la seva columna (no es mouen): %d uds · reservades per a altres albarans (no es mouen): %d' % (ja_ok, reserv_b))
+msg.append('C UBICAR: %d productes, %d uds' % (len(C), sum(C.values())))
+if no_trobats:
+    msg.append('No trobats: ' + ', '.join(no_trobats[:15]))
+if duplicats:
+    msg.append('Duplicats: ' + ', '.join(duplicats[:15]))
+if reserv_b_txt:
+    msg.append('Reservades (mostra): ' + ', '.join(reserv_b_txt[:10]))
+
+if MODO != 'REAL':
+    log('\n'.join(msg))
+    raise Warning('\n'.join(msg))
+
+# ---- 7. REAL ----
+if not carro:
+    carro = Loc.create({'name': 'CARRO PILOT L03', 'barcode': CARRO_BC, 'usage': 'internal', 'company_id': CO, 'location_id': wh.view_location_id.id})
+
+def moure(lst, nom, src, dst, assignar):
+    # lst: (origen, producte, uds, desti)
+    vals = []
+    for t in lst:
+        vals.append((0, 0, {'name': t[1].display_name, 'product_id': t[1].id, 'product_uom': t[1].uom_id.id, 'product_uom_qty': t[2],
+                            'location_id': t[0].id, 'location_dest_id': t[3].id, 'company_id': CO}))
+    if not vals:
+        return False
+    pk = Pick.create({'picking_type_id': PTYPE_ID, 'location_id': src.id, 'location_dest_id': dst.id, 'company_id': CO,
+                      'origin': ORIGEN + ' ' + nom, 'move_ids_without_package': vals})
+    pk.action_confirm()
+    if assignar:
+        pk.action_assign()
+    return pk
+
+creats = []
+la = []
+for t in A:
+    la.append((t[0], t[1], t[2], Loc.browse(t[3]) if t[3] else carro))
+pk = moure(la, 'A BUIDAR', STOCK, NAVE2, True)
+if pk:
+    creats.append(pk)
+for b in BLOQUES:
+    lb = []
+    for t in B[b[2]]:
+        lb.append((t[0], t[1], t[2], carro))
+    pk = moure(lb, b[2], STOCK, carro, True)
+    if pk:
+        creats.append(pk)
+lc = []
+for pid in C:
+    lc.append((carro, Prod.browse(pid), C[pid], dest_prod[pid]))
+pk = moure(sorted(lc, key=lambda t: t[3].barcode or ''), 'C UBICAR', carro, NAVE2, False)
+if pk:
+    creats.append(pk)
+res = []
+for pk in creats:
+    res.append('%s %s %s (%d uds, reservat %d)' % (pk.name, pk.origin, pk.state, sum(pk.move_lines.mapped('product_uom_qty')), sum(pk.move_line_ids.mapped('product_uom_qty'))))
+log('PILOT %s REAL creats: %s' % (TRAMO, ' | '.join(res)))

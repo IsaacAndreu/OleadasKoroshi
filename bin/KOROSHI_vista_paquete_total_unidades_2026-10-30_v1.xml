@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<!--
+KOROSHI - Paquete (CJ...): total de unidades en el "Contenido"
+Vista heredada de stock.quant.package.form (id 656). Crear en Ajustes > Tecnico > Vistas:
+  Nombre: koroshi_paquete_total_unidades | Modelo: stock.quant.package | Tipo: Formulario
+  Vista heredada: stock.quant.package.form (656) | Arquitectura: este xpath
+Pone una lista propia en el Contenido (producto, cantidad, unidad) con la suma de la cantidad abajo.
+Para quitarlo: archivar la vista.
+-->
+<xpath expr="//field[@name='quant_ids']" position="replace">
+    <field name="quant_ids" readonly="1">
+        <tree>
+            <field name="product_id"/>
+            <field name="lot_id" groups="stock.group_production_lot"/>
+            <field name="quantity" sum="Total unidades"/>
+            <field name="product_uom_id" groups="uom.group_uom"/>
+        </tree>
+    </field>
+</xpath>

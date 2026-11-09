@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_consumable_item_user,koroshi.consumable.item user,model_koroshi_consumable_item,stock.group_stock_user,1,1,1,1
+access_koroshi_consumable_move_user,koroshi.consumable.move user,model_koroshi_consumable_move,stock.group_stock_user,1,1,1,0

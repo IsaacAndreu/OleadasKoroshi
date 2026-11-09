@@ -1,0 +1,80 @@
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>NAVE2 · KPI y opciones</title><style>
+:root{--bg:#F6F5F1;--card:#FFFFFF;--ink:#1D1C1A;--muted:#6E6B64;--line:#E3E0D8;--soft:#EFEDE7;--bar:#CFCBC2;--red:#C0443A;--ok:#2F7A4E;--acc:#2F5D9E;--warn:#B7791F;--nav:rgba(246,245,241,.92)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}}
+:root[data-theme="dark"]{--bg:#171615;--card:#211F1D;--ink:#ECEAE4;--muted:#A19D94;--line:#34312D;--soft:#2A2825;--bar:#4D4A45;--red:#E3695E;--ok:#6CC08F;--acc:#7EA6E0;--warn:#E0A55A;--nav:rgba(23,22,21,.92)}
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*,*:before,*:after{box-sizing:inherit}
+html{scroll-padding-top:calc(env(safe-area-inset-top,0px) + 64px);scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",system-ui,-apple-system,Roboto,sans-serif;font-size:14.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--nav);backdrop-filter:blur(8px)}
+nav{position:sticky;top:env(safe-area-inset-top,0px);z-index:9;background:var(--nav);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+nav .in{max-width:1180px;margin:0 auto;display:flex;gap:4px;overflow-x:auto;padding:8px 14px;scrollbar-width:none}
+nav a{flex:0 0 auto;text-decoration:none;color:var(--muted);font-size:12.5px;padding:5px 10px;border-radius:8px;white-space:nowrap}
+nav a b{display:block;color:var(--ink);font-size:13px;font-weight:600}
+nav a:hover,nav a.on{background:var(--soft)}
+.wrap{max-width:1180px;margin:0 auto;padding:26px 18px 70px}
+h1{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:30px;margin:0 0 6px;line-height:1.2}
+.lead{font-size:17px;color:var(--muted);max-width:62rem;margin:0 0 18px}
+.lead b{color:var(--ink)} .lead b.red{color:var(--red)}
+section{margin:44px 0 0}
+.sh{display:flex;align-items:baseline;gap:12px;margin:0 0 4px}
+.sh .num{font-family:Georgia,serif;font-size:22px;color:var(--muted)}
+h2{font-family:Georgia,"Times New Roman",serif;font-weight:400;font-size:24px;margin:0}
+.sub{color:var(--muted);margin:0 0 14px;max-width:62rem}
+h3{font-size:15px;margin:0 0 2px}
+.n{color:var(--muted);font-size:12.5px;margin:0 0 10px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:0 0 14px;min-width:0}
+.two{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,430px),1fr));gap:14px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(165px,1fr));gap:12px;margin:0 0 14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+.kpi .t{font-size:12.5px;color:var(--muted)}
+.kpi .v{font-family:Georgia,"Times New Roman",serif;font-size:30px;line-height:1.1;margin:4px 0}
+.kpi .s{font-size:12.5px;color:var(--muted)}
+.kpi.bad{border-color:var(--red)} .kpi.bad .v{color:var(--red)}
+.red{color:var(--red)} .ok{color:var(--ok)} .mut{color:var(--muted)}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+th,td{padding:7px 9px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--soft)}
+th{font-weight:600;color:var(--muted);font-size:12px}
+td:first-child,th:first-child{text-align:left;white-space:normal}
+tr.tot td{font-weight:700;border-top:1px solid var(--line)}
+tr.hl td{background:var(--soft);font-weight:700}
+tr.warnrow td{color:var(--red)} tr.warnrow td.hc{color:inherit} tr.sub td:first-child{padding-left:22px;color:var(--muted)}
+.dec{display:grid;gap:8px}
+.dec div{display:grid;grid-template-columns:auto 1fr auto;gap:12px;align-items:center;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+.tag{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:99px;white-space:nowrap}
+.tag.done{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.tag.pend{background:color-mix(in srgb,var(--warn) 22%,transparent);color:var(--warn)}
+.tag.rev{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:13px}
+.chip b{display:block;font-size:15px}
+.hb{display:grid;grid-template-columns:minmax(120px,190px) 1fr 130px;gap:10px;align-items:center;padding:6px 0;border-bottom:1px solid var(--soft)}
+.hb .nm{font-size:13.5px;font-weight:600}
+.hb .nm small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.tr{position:relative;height:20px}
+.tr i{position:absolute;left:0;top:0;height:100%;border-radius:5px}
+.hb .v{text-align:right;font-size:13px}
+.hb .v span{display:block;font-size:12px}
+@media (max-width:560px){.hb{grid-template-columns:1fr 100px}.hb .tr{grid-column:1/-1;grid-row:2}}
+.note{border-left:3px solid var(--warn);background:color-mix(in srgb,var(--warn) 8%,transparent);padding:10px 14px;border-radius:0 10px 10px 0;font-size:13.5px;margin:10px 0}
+.note.red{border-color:var(--red);background:color-mix(in srgb,var(--red) 7%,transparent);color:var(--ink)}
+svg text{font-family:"Segoe UI",system-ui,sans-serif;fill:var(--muted);font-size:11px}
+svg text.lab{fill:var(--ink);font-weight:600}
+.leg{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);margin:0 0 6px}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+td.hc{text-align:center;min-width:58px}
+td.hc b{display:block;font-size:13px}
+td.hc small{font-size:11px;opacity:.8}
+.hg{background:color-mix(in srgb,var(--ok) 26%,transparent)}
+.hy{background:color-mix(in srgb,#D9A62B 28%,transparent)}
+.hr{background:color-mix(in srgb,var(--red) 26%,transparent)}
+.hn{color:var(--muted)}
+.big{font-family:Georgia,serif;font-size:34px;line-height:1.1}
+.foot{color:var(--muted);font-size:12.5px;margin-top:40px}
+section{margin:26px 0 0}h2{font-size:21px;margin:0 0 10px}.kp{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:8px;margin:0 0 12px}
+.kp div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px}.kp span{display:block;font-size:12px;color:var(--muted)}.kp b{font-size:19px}
+.tw{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:12px}table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}th:nth-child(2),td:nth-child(2){text-align:left;white-space:normal}th:first-child,td:first-child{text-align:center}
+th{font-size:12px;color:var(--muted);font-weight:600}tr.opt td{font-weight:700;background:color-mix(in srgb,var(--ok) 15%,transparent)}tr.hoy td{color:var(--muted);font-style:italic}
+.por{margin:8px 2px 0}</style></head><body><div class="wrap"><h1>NAVE2 · KPI y opciones de ubicación</h1><p class="lead">Stock de Odoo del 02/11/2026. Ubicación = 120 × 160 × 40 cm = 768 L = 0,768 m³ = 1,2 m² de nave. Lineal = 36 ubicaciones. En negrita y ★, la opción que considero óptima.</p><section><h2>Toda la nave</h2><div class="kp"><div><span>Modelos-color</span><b>12.652</b></div><div><span>SKU</span><b>30.609</b></div><div><span>Uds</span><b>443.453</b></div><div><span>Mercancía</span><b>1.728 m³</b></div><div><span>L/SKU</span><b>56,4</b></div><div><span>L/modelo</span><b>137</b></div><div><span>Uds/SKU</span><b>14,5</b></div><div><span>Ubic. hoy</span><b>8.872</b></div></div><div class="tw"><table><thead><tr><th>Opción</th><th>Sistema</th><th>Ubicaciones</th><th>Lineales</th><th>m²</th><th>m³</th><th>% aire</th><th>m² vs hoy</th></tr></thead><tbody><tr class="hoy"><td>Hoy</td><td>Situación actual (ubicaciones ocupadas, si son de 768 L)</td><td>8.872</td><td>246</td><td>10.646</td><td>6.814</td><td>75 %</td><td></td></tr><tr><td>1</td><td>Modelo por columna, hueco fijo (hoy en Z)</td><td>5.277</td><td>147</td><td>6.332</td><td>4.052</td><td>57 %</td><td>−41 %</td></tr><tr><td>2</td><td>Columna partida en 2 (huecos de 15 cm)</td><td>3.798</td><td>105</td><td>4.557</td><td>2.917</td><td>41 %</td><td>−57 %</td></tr><tr><td>3</td><td>Bandeja con separadores móviles, tallas en horizontal</td><td>2.750</td><td>76</td><td>3.300</td><td>2.112</td><td>18 %</td><td>−69 %</td></tr><tr><td>4</td><td>Ubicación entera 120×160×40, cabeza + correlativas</td><td>14.653</td><td>407</td><td>17.584</td><td>11.254</td><td>85 %</td><td>+65 %</td></tr><tr class="opt"><td>5</td><td>Mixto: modelo > 300 L a ubicación (4), resto a 36h (3) ★</td><td>3.292</td><td>91</td><td>3.950</td><td>2.528</td><td>32 %</td><td>−63 %</td></tr></tbody></table></div><p class="por"><b>Óptima: opción 5.</b> Junta lo mejor de cada zona: 36h en la Z y ubicación entera en la 0.</p></section><section><h2>Zona Z · outlet (hasta I26/V26)</h2><div class="kp"><div><span>Modelos-color</span><b>11.972</b></div><div><span>SKU</span><b>27.620</b></div><div><span>Uds</span><b>143.218</b></div><div><span>Mercancía</span><b>427 m³</b></div><div><span>L/SKU</span><b>15,4</b></div><div><span>L/modelo</span><b>36</b></div><div><span>Uds/SKU</span><b>5,2</b></div><div><span>Ubic. hoy</span><b>4.953</b></div></div><div class="tw"><table><thead><tr><th>Opción</th><th>Sistema</th><th>Ubicaciones</th><th>Lineales</th><th>m²</th><th>m³</th><th>% aire</th><th>m² vs hoy</th></tr></thead><tbody><tr class="hoy"><td>Hoy</td><td>Situación actual (ubicaciones ocupadas, si son de 768 L)</td><td>4.953</td><td>138</td><td>5.944</td><td>3.804</td><td>89 %</td><td></td></tr><tr><td>1</td><td>Modelo por columna, hueco fijo (hoy en Z)</td><td>3.265</td><td>91</td><td>3.918</td><td>2.508</td><td>83 %</td><td>−34 %</td></tr><tr><td>2</td><td>Columna partida en 2 (huecos de 15 cm)</td><td>1.852</td><td>51</td><td>2.222</td><td>1.422</td><td>70 %</td><td>−63 %</td></tr><tr class="opt"><td>3</td><td>Bandeja con separadores móviles, tallas en horizontal ★</td><td>856</td><td>24</td><td>1.028</td><td>658</td><td>35 %</td><td>−83 %</td></tr><tr><td>4</td><td>Ubicación entera 120×160×40, cabeza + correlativas</td><td>12.119</td><td>337</td><td>14.543</td><td>9.307</td><td>95 %</td><td>+145 %</td></tr><tr><td>5</td><td>Mixto: modelo > 300 L a ubicación (4), resto a 36h (3)</td><td>936</td><td>26</td><td>1.123</td><td>718</td><td>41 %</td><td>−81 %</td></tr></tbody></table></div><p class="por"><b>Óptima: opción 3.</b> La que menos ocupa con diferencia. Depende de tener los separadores.</p></section><section><h2>Zona 0 · I27</h2><div class="kp"><div><span>Modelos-color</span><b>583</b></div><div><span>SKU</span><b>2.764</b></div><div><span>Uds</span><b>231.854</b></div><div><span>Mercancía</span><b>1.144 m³</b></div><div><span>L/SKU</span><b>413,8</b></div><div><span>L/modelo</span><b>1.962</b></div><div><span>Uds/SKU</span><b>83,9</b></div><div><span>Ubic. hoy</span><b>3.841</b></div></div><div class="tw"><table><thead><tr><th>Opción</th><th>Sistema</th><th>Ubicaciones</th><th>Lineales</th><th>m²</th><th>m³</th><th>% aire</th><th>m² vs hoy</th></tr></thead><tbody><tr class="hoy"><td>Hoy</td><td>Situación actual (ubicaciones ocupadas, si son de 768 L)</td><td>3.841</td><td>107</td><td>4.609</td><td>2.950</td><td>61 %</td><td></td></tr><tr><td>1</td><td>Modelo por columna, hueco fijo (hoy en Z)</td><td>1.762</td><td>49</td><td>2.114</td><td>1.353</td><td>15 %</td><td>−54 %</td></tr><tr><td>2</td><td>Columna partida en 2 (huecos de 15 cm)</td><td>1.707</td><td>47</td><td>2.049</td><td>1.311</td><td>13 %</td><td>−56 %</td></tr><tr><td>3</td><td>Bandeja con separadores móviles, tallas en horizontal</td><td>1.663</td><td>46</td><td>1.996</td><td>1.278</td><td>10 %</td><td>−57 %</td></tr><tr class="opt"><td>4</td><td>Ubicación entera 120×160×40, cabeza + correlativas ★</td><td>2.194</td><td>61</td><td>2.633</td><td>1.685</td><td>32 %</td><td>−43 %</td></tr><tr><td>5</td><td>Mixto: modelo > 300 L a ubicación (4), resto a 36h (3)</td><td>2.082</td><td>58</td><td>2.498</td><td>1.599</td><td>28 %</td><td>−46 %</td></tr></tbody></table></div><p class="por"><b>Óptima: opción 4.</b> La 36h ocupa un 24 % menos, pero aquí son cajas enteras de 84 uds por talla: manda la manipulación.</p></section><section><h2>¿Tenemos el sistema de separadores?</h2><p>Todavía no. La opción 3 necesita separadores que se puedan poner y quitar en las bandejas (guías pegadas con una cartulina o placa encajada). Propuesta: <b>probar en 1 lineal de la Z</b> con guías adhesivas y cartón, y cronometrar ubicar y picar. Si no convence, la opción 2 (separador fijo a mitad de columna) ya ocupa un 63 % menos que hoy en la Z (51 lineales).</p></section><p class="n">Supuestos: hueco y bandeja llenos al 90 %, ubicación al 80 %; ancho mínimo por talla con separador 10 cm (con 15 cm, +2 %). Litros por prenda de Koroshi (outlet y packing V27/I27) y 3 L por defecto. «Hoy» supone ubicaciones de 768 L.</p></div></body></html>

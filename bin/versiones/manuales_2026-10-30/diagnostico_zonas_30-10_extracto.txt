@@ -1,0 +1,20 @@
+KOROSHI PARTIR OUT ZONAS v9 - DIAGNOSTICO
+Objetivo: 8 personas de 8:00 a 13:00 (300 min cada una) | ritmo x1.00 (52 s/lectura, 21 s/lineal por OUT)
+OUT validas: 23 (595 uds) | ENTRAN: 23 (595 uds) | no entran (pendientes para despues): 0 (0 uds) | saltadas 26
+Acaba previsto: 9:30 (la zona mas larga) | agrupaciones Z-3010-<zona>
+
+Zona D1 | L2-L49 | 65 uds | 18 OUT (cajas) | ~66 min | acaba ~9:06
+Zona D2 | L50-L67 | 94 uds | 18 OUT (cajas) | ~75 min | acaba ~9:15
+...
+Zona D8 | L112-L136 | 63 uds | 19 OUT (cajas) | ~65 min | acaba ~9:05
+Zona ZX | fuera de lineal | 35 uds | 19 OUT | ~27 min (la hace D6 al acabar la suya)
+
+Caja | tienda | OUT | pedido | uds por zona (* = se queda la OUT original) | sin reserva
+   01 K7 - ISLAZUL (48h) | EFFEC/OUT/22350 | S-6665003678 | D1:2  D2:3  D3*:8  D4:5  D5:6  D6:3  D7:2  D8:3  | 2
+   02 K9 - BALLONTI | EFFEC/OUT/22352 | S-6665003680 | D2:9  D3:8  D4:8  D5:9  D6:8  D7:6  D8*:11  ZX:1  | 1
+   ...
+OUT nuevas que se crearan: 150
+
+Saltadas (26):
+   EFFEC/OUT/22339 (K33 - PUERTO VENECIA): esta en la agrupacion 30_10_26
+   ...

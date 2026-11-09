@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ca">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Proves de zones KOROSHI</title>
+<style>
+:root{
+  --bg:#f6f7f9;--card:#fff;--ink:#1d2330;--muted:#5d6678;--line:#e2e5eb;
+  --good:#1f8a4c;--goodbg:#e4f4ea;--bad:#c0392b;--badbg:#fbe7e4;--mid:#b7791f;--midbg:#fbf1dc;
+  --accent:#2b5fd9;--bar:#2b5fd9;--bar2:#9aa6bd;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12151b;--card:#1b1f27;--ink:#e6e9ef;--muted:#9aa3b5;--line:#2c323d;
+  --good:#4cc283;--goodbg:#173327;--bad:#ef6f61;--badbg:#3a1f1c;--mid:#e0a64a;--midbg:#3a2e17;
+  --accent:#6f9bff;--bar:#6f9bff;--bar2:#4b5468;}}
+:root[data-theme="dark"]{
+  --bg:#12151b;--card:#1b1f27;--ink:#e6e9ef;--muted:#9aa3b5;--line:#2c323d;
+  --good:#4cc283;--goodbg:#173327;--bad:#ef6f61;--badbg:#3a1f1c;--mid:#e0a64a;--midbg:#3a2e17;
+  --accent:#6f9bff;--bar:#6f9bff;--bar2:#4b5468;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+main{max-width:1060px;margin:0 auto;padding:28px 16px 48px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:19px;margin:34px 0 10px}
+.sub{color:var(--muted);margin:0 0 20px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px 18px;margin:12px 0}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+.kpi b{display:block;font-size:26px;line-height:1.2}
+.kpi span{color:var(--muted);font-size:13px}
+.wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:collapse;width:100%;min-width:720px;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden}
+th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.03em;background:var(--bg)}
+td:first-child,th:first-child{text-align:left}
+tr:last-child td{border-bottom:none}
+.g{color:var(--good);font-weight:700}.r{color:var(--bad);font-weight:700}.m{color:var(--mid);font-weight:700}
+.tag{display:inline-block;font-size:12px;padding:1px 7px;border-radius:999px;margin-left:6px;vertical-align:1px}
+.tg{background:var(--goodbg);color:var(--good)}.tr{background:var(--badbg);color:var(--bad)}.tm{background:var(--midbg);color:var(--mid)}
+.bars{display:grid;gap:8px}
+.bar{display:grid;grid-template-columns:150px 1fr 70px;gap:10px;align-items:center;font-size:14px}
+.bar .t{height:18px;background:var(--line);border-radius:4px;overflow:hidden}
+.bar .t i{display:block;height:100%;background:var(--bar)}
+.bar .t i.ref{background:var(--bar2)}
+.bar .v{text-align:right;font-variant-numeric:tabular-nums}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.test h3{margin:0 0 6px;font-size:16px}
+.test ul{margin:6px 0 0;padding-left:18px}
+.test li{margin:3px 0}
+.note{color:var(--muted);font-size:13px}
+ol li{margin:6px 0}
+@media (max-width:560px){.bar{grid-template-columns:96px 1fr 52px;font-size:13px}h1{font-size:22px}}
+</style>
+</head>
+<body>
+<main>
+<h1>Proves de picking per zones</h1>
+<p class="sub">KOROSHI · NAU-2 · del 21/10 al 06/11/2026 · dades d'Odoo i del monitor de zones (06/11 a les 16:30)</p>
+
+<div class="kpis">
+  <div class="kpi"><b>5</b><span>proves de zones</span></div>
+  <div class="kpi"><b>6.905</b><span>unitats pickades per zones</span></div>
+  <div class="kpi"><b class="g">121</b><span>uds per hora-persona, la millor (21/10)</span></div>
+  <div class="kpi"><b class="r">33</b><span>uds per hora-persona, la pitjor (27/10 R2)</span></div>
+  <div class="kpi"><b class="g">0</b><span>OUT de menys de 15 uds el 06/11</span></div>
+</div>
+
+<div class="card">
+  <b>En una frase:</b> el que fa anar ràpid o lent no és el nombre de zones sinó la mida de cada OUT de zona. Amb OUT grans
+  (21/10 i 06/11) es va a 95–121 uds per hora-persona; amb moltes OUT petites (27/10) es baixa a 33–42 i surten pics a totes les caixes.
+</div>
+
+<h2>Ritme: unitats per hora-persona</h2>
+<div class="card">
+  <div class="bars">
+    <div class="bar"><span>21/10 zones</span><span class="t"><i style="width:100%"></i></span><span class="v"><b>121</b></span></div>
+    <div class="bar"><span>06/11 zones</span><span class="t"><i style="width:78.5%"></i></span><span class="v"><b>95</b></span></div>
+    <div class="bar"><span>05/11 sense zones (oleada R1)</span><span class="t"><i class="ref" style="width:66.9%"></i></span><span class="v">81</span></div>
+    <div class="bar"><span>22/10 zones</span><span class="t"><i style="width:62.8%"></i></span><span class="v">76</span></div>
+    <div class="bar"><span>04/11 sense zones</span><span class="t"><i class="ref" style="width:56.2%"></i></span><span class="v">68</span></div>
+    <div class="bar"><span>03/11 sense zones</span><span class="t"><i class="ref" style="width:47.1%"></i></span><span class="v">57</span></div>
+    <div class="bar"><span>27/10 zones R1</span><span class="t"><i style="width:34.7%"></i></span><span class="v">42</span></div>
+    <div class="bar"><span>27/10 zones R2</span><span class="t"><i style="width:27.3%"></i></span><span class="v">33</span></div>
+  </div>
+  <p class="note">Blau: proves de zones. Gris: dies sense zones, per comparar. Les hores-persona s'estimen per les caixes tancades
+  (totes les PDA fan servir el mateix usuari).</p>
+</div>
+
+<h2>Totes les proves</h2>
+<div class="wrap">
+<table>
+<thead><tr><th>Prova</th><th>Pedidos</th><th>Zones</th><th>OUT</th><th>Uds</th><th>OUT &lt;15 uds</th><th>Uds/h-persona</th><th>s/prenda</th><th>Pers. màx.</th><th>Hores rellotge</th></tr></thead>
+<tbody>
+<tr><td>21/10 · Z-2110</td><td>21</td><td>6</td><td>102</td><td>1.629</td><td class="m">59 (58 %)</td><td class="g">121</td><td>30</td><td>5</td><td>5 h 00</td></tr>
+<tr><td>22/10 · Z-2210</td><td>50</td><td>8</td><td>241</td><td>2.789</td><td class="r">181 (75 %)</td><td>76</td><td>48</td><td>6</td><td>9 h 00</td></tr>
+<tr><td>27/10 · Z-2710 R1</td><td>34</td><td>10</td><td>255</td><td>1.180</td><td class="r">239 (94 %)</td><td class="r">42</td><td>86</td><td>10</td><td>8 h 20</td></tr>
+<tr><td>27/10 · Z-2710 R2</td><td>18</td><td>9</td><td>136</td><td>517</td><td class="r">131 (96 %)</td><td class="r">33</td><td>108</td><td>9</td><td>4 h 55</td></tr>
+<tr><td>06/11 · Z-0611 <span class="tag tm">oberta</span></td><td>7</td><td>4</td><td>28</td><td>790</td><td class="g">0</td><td class="g">95</td><td>38</td><td>4</td><td>2 h 50</td></tr>
+</tbody>
+</table>
+</div>
+
+<h2>Caixes i pics</h2>
+<div class="wrap">
+<table>
+<thead><tr><th>Prova</th><th>Caixes</th><th>Uds/caixa (mitjana)</th><th>Caixes de ≤5 uds</th><th>Uds sense caixa</th></tr></thead>
+<tbody>
+<tr><td>21/10</td><td>138</td><td>11</td><td>12 (9 %)</td><td>110</td></tr>
+<tr><td>22/10</td><td>351</td><td>7,5</td><td class="r">98 (28 %)</td><td>155</td></tr>
+<tr><td>27/10 R1</td><td>71</td><td>8,1</td><td class="r">33 (46 %)</td><td class="r">608</td></tr>
+<tr><td>27/10 R2</td><td>29</td><td>6,7</td><td class="r">20 (69 %)</td><td class="r">323</td></tr>
+<tr><td>06/11</td><td>84</td><td>8,5</td><td class="g">7 (8 %)</td><td class="g">0</td></tr>
+</tbody>
+</table>
+</div>
+<p class="note">El 27/10 les OUT petites anaven sense matrícula i es posaven després a la caixa de la botiga: per això hi ha tantes
+unitats sense caixa i aquelles caixes no es poden comparar amb els altres dies.</p>
+
+<h2>Cada prova</h2>
+<div class="grid2">
+  <div class="card test"><h3>21/10 · la més ràpida <span class="tag tg">121 u/h</span></h3>
+    <ul><li>Poques zones i zones grans (la D3 sola tenia 546 uds).</li>
+    <li>Però més de la meitat de les OUT eren de menys de 15 uds.</li></ul></div>
+  <div class="card test"><h3>22/10 · el doble de pedidos <span class="tag tm">76 u/h</span></h3>
+    <ul><li>50 pedidos en 8 zones: el ritme baixa.</li>
+    <li>3 de cada 10 caixes amb 5 uds o menys.</li>
+    <li>Part de les OUT no van sortir aquell dia (lots «SALIÓ 22» i «SALE 26»).</li></ul></div>
+  <div class="card test"><h3>27/10 · la pitjor <span class="tag tr">42 i 33 u/h</span></h3>
+    <ul><li>10 zones: gairebé totes les OUT de menys de 15 uds.</li>
+    <li>Fins a 10 persones a la vegada, cadascuna amb moltes OUT molt petites.</li>
+    <li>A la segona ronda, 108 s per prenda: gairebé 4 vegades més lent que el 21/10.</li></ul></div>
+  <div class="card test"><h3>06/11 · regles noves <span class="tag tg">95 u/h</span></h3>
+    <ul><li>4 zones (moll a part, A, B, C) i mínim de 15 uds per OUT: la més petita, 18.</li>
+    <li>Només 7 caixes de ≤5 uds i totes les unitats dins d'una caixa.</li>
+    <li>38 caixes a les 11 primeres OUT acabades, les mateixes que surten per volum.</li>
+    <li>Bultos quadrats a les 7 botigues i cap matrícula juntada.</li></ul></div>
+</div>
+
+<h2>Què en traiem</h2>
+<div class="card">
+<ol>
+  <li><b>La mida de cada OUT de zona mana.</b> Més OUT petites = més lent i més pics.</li>
+  <li><b>Les regles del 06/11 funcionen:</b> zones grans, el moll a part i un mínim per OUT. Primera prova sense pics i sense juntar caixes, i més ràpida que tots els dies sense zones.</li>
+  <li><b>Què falta millorar:</b>
+    <ul>
+      <li>el mínim per volum en lloc d'unitats (per evitar caixes com la de 4 prendes de la K8 a la zona B);</li>
+      <li>que el monitor ensenyi les OUT de pendents (faltes) que surten en validar;</li>
+      <li>que les faltes no s'ajustin al moment: buscar a prop i, si no hi és, deixar-la «per revisar».</li>
+    </ul></li>
+</ol>
+</div>
+<p class="note">Les xifres del 06/11 encara poden canviar una mica: quedaven 3 OUT per fer (75 uds) quan es va treure aquest resum.</p>
+</main>
+</body>
+</html>

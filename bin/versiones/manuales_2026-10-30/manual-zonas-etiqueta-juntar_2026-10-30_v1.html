@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual picking por zonas</title>
+<link rel="stylesheet" href="estilo.css">
+</head>
+<body>
+
+<div class="portada">
+  <h1>KOROSHI · Picking por zonas, etiqueta de zona y Juntar cajas</h1>
+  <p class="sub">Cómo se parten los pedidos de tienda por zonas del almacén, cómo se etiqueta cada caja y cómo se juntan las cajas pequeñas de una misma tienda.</p>
+  <p class="meta">Odoo nath.tuctuc.com (NATH_PRODUCTION, empresa EFFECTIVE LOGISTICS) · acción 1866 (v9) · etiqueta v17 (vista 6035) · Juntar (vista 6036) · 30/10/2026</p>
+</div>
+
+<h2>1 · Qué es el picking por zonas</h2>
+<ul>
+  <li>Cada pedido de tienda (<b>PED. TIENDAS</b>, origen <span class="m">S-66…</span>) llega a Odoo como <b>una OUT</b>.</li>
+  <li>La acción <b>«KOROSHI Partir OUT zonas»</b> parte cada OUT en <b>una OUT por zona</b> del almacén. Cada persona coge una zona (un tramo de lineales) para todas las tiendas a la vez.</li>
+  <li>Crea una agrupación por zona: <span class="m">Z-ddmm-D1</span> … <span class="m">Z-ddmm-D8</span> y <span class="m">ZX</span> (lo que está fuera de lineal). Si ese día ya hay zonas, la segunda ronda se llama <span class="m">Z-ddmm-R2-D1</span>…</li>
+  <li>Corta las zonas para que <b>todas acaben a la vez</b> antes de la hora fin (por defecto de 8:00 a 13:00 con 8 personas). Lo que no cabe se queda pendiente.</li>
+  <li>Las tiendas van en orden de número (K1, K2, K3…). Cada tienda tiene un <b>número de caja</b> (01, 02…) que es su sitio en la mesa de juntar.</li>
+  <li>La nota de cada OUT partida dice: <span class="m">Z-ddmm-D3 | CAJA 05 | K34 … | PEDIDO S-…</span></li>
+  <li>No se coge ningún pedido de <b>menos de 15 uds</b> reservadas (<span class="m">MIN_UDS_PEDIDO = 15</span>): se queda pendiente.</li>
+</ul>
+
+<h2>2 · La acción en Odoo</h2>
+<p>Ajustes › Técnico › Acciones › Acciones de servidor › <b>KOROSHI Partir OUT zonas v9 (8 zonas, ZX repartida)</b> (id 1866). Modelo Albarán, «Ejecutar el código Python». No hace falta seleccionar nada: busca sola las OUT de hoy.</p>
+<figure><img src="capturas/zon01_accion_1866.jpg"><figcaption>La acción 1866 en Odoo. El código explica arriba qué hace cada versión.</figcaption></figure>
+<h3>Parámetros (al principio del código)</h3>
+<figure><img src="capturas/zon02_parametros.jpg"><figcaption>Bloque PARAMETROS: modo, personas, hora de inicio y de fin, ritmo…</figcaption></figure>
+<table>
+  <tr><th>Parámetro</th><th>Valor</th><th>Para qué</th></tr>
+  <tr><td><span class="m">MODO</span></td><td>'DIAGNOSTICO'</td><td><b>DIAGNOSTICO</b> = no escribe nada, solo enseña el reparto. <b>SIMULAR</b> = lo hace todo y lo deshace al final. <b>REAL</b> = lo hace de verdad.</td></tr>
+  <tr><td><span class="m">PERSONAS</span></td><td>8</td><td>Una persona por zona = número de zonas.</td></tr>
+  <tr><td><span class="m">MIN_UDS_PEDIDO</span></td><td>15</td><td>Pedidos con menos uds reservadas no se cogen.</td></tr>
+  <tr><td><span class="m">HORA_INICIO / HORA_FIN</span></td><td>08:00 / 13:00</td><td>Cuándo empieza el picking y cuándo tiene que estar acabado. <span class="m">'AHORA'</span> = la hora actual.</td></tr>
+  <tr><td><span class="m">RENDIMIENTO</span></td><td>1.0</td><td>1.2 = un 20 % más rápido.</td></tr>
+  <tr><td><span class="m">SEG_LECTURA / SEG_LINEAL</span></td><td>52 / 21</td><td>Segundos por prenda y por cada lineal que visita una OUT (calibrado el 22/10).</td></tr>
+  <tr><td><span class="m">TIENDAS_48H</span></td><td>lista</td><td>Tiendas con tránsito de 48 h (salen marcadas).</td></tr>
+</table>
+
+<h2>3 · Cómo se usa cada día</h2>
+<ol>
+  <li><b>Primero en DIAGNÓSTICO.</b> Con <span class="m">MODO = 'DIAGNOSTICO'</span> la acción no toca nada y devuelve un aviso con el reparto: qué pedidos entran, uds y OUT por zona y a qué hora acaba cada una.</li>
+  <li>Revisar el aviso: que entren los pedidos esperados y que la hora de fin sea buena.</li>
+  <li><b>Pasar a REAL</b> (solo IT): cambiar <b>solo</b> la línea <span class="m">MODO = 'DIAGNOSTICO'</span> por <span class="m">MODO = 'REAL'</span>, guardar y volver a lanzarla. Después dejarla otra vez en DIAGNOSTICO.</li>
+  <li>Si alguna comprobación falla en REAL, la acción <b>deshace todo</b> y no deja nada a medias.</li>
+</ol>
+<p>Ejemplo del aviso de DIAGNÓSTICO (30/10, con las OUT que quedaban sin empezar):</p>
+<pre>KOROSHI PARTIR OUT ZONAS v9 - DIAGNOSTICO
+Objetivo: 8 personas de 8:00 a 13:00 (300 min cada una) | ritmo x1.00 (52 s/lectura, 21 s/lineal por OUT)
+OUT validas: 23 (595 uds) | ENTRAN: 23 (595 uds) | no entran: 0 (0 uds) | saltadas 26
+Acaba previsto: 9:30 (la zona mas larga) | agrupaciones Z-3010-&lt;zona&gt;
+
+Zona D1 | L2-L49   | 65 uds | 18 OUT (cajas) | ~66 min | acaba ~9:06
+Zona D2 | L50-L67  | 94 uds | 18 OUT (cajas) | ~75 min | acaba ~9:15
+...
+Zona ZX | fuera de lineal | 35 uds | 19 OUT | ~27 min (la hace D6 al acabar la suya)
+
+Caja | tienda | OUT | pedido | uds por zona (* = se queda la OUT original) | sin reserva
+   01 K7 - ISLAZUL (48h) | EFFEC/OUT/22350 | S-6665003678 | D1:2  D2:3  D3*:8  D4:5 ...
+   ...
+OUT nuevas que se crearan: 150
+Saltadas (26): EFFEC/OUT/22339 (K33 - PUERTO VENECIA): esta en la agrupacion 30_10_26 ...</pre>
+<div class="alerta"><b>Cuidado al cambiar el MODO:</b> cambiar solo la línea que empieza por <span class="m">MODO =</span>, no los comentarios que también nombran DIAGNOSTICO / REAL. Comprobar la línea antes de lanzar. El 27/10 una prueba corrió en REAL por esto.</div>
+
+<h3>Resultado: una agrupación por zona</h3>
+<figure><img src="capturas/zon03_agrupacion_Z-2710-D3.jpg"><figcaption>Agrupación Z-2710-D3: todas las OUT de esa zona, una por tienda.</figcaption></figure>
+<div class="alerta">En la agrupación sale el botón <b>FORCE AVAILABILITY</b>: <b>no pulsarlo nunca</b>.</div>
+<p>Cómo va cada zona se mira en el <b>Monitor picking</b> (ver su manual): matriz tienda × zona, tiendas listas para juntar y bultos.</p>
+
+<h2>4 · Etiqueta de zona</h2>
+<p>Cada OUT de zona lleva su etiqueta de 4×6" (101,6 × 152,4 mm) en la Zebra. Sustituye al «Picking Sticker».</p>
+<h3>Imprimir</h3>
+<ol>
+  <li>Inventario › Transferencias › buscar la agrupación (<span class="m">Z-ddmm-D3</span>…) › seleccionar todas sus OUT.</li>
+  <li>Menú <b>Acción</b> › <b>KOROSHI Etiquetas zona</b>.</li>
+  <li>Reserva una matrícula <b>CJ</b> por cada caja que falte y abre el PDF con las etiquetas en orden de número de caja de tienda.</li>
+  <li>Si se vuelve a lanzar sobre las mismas OUT, <b>reutiliza</b> sus matrículas: no gasta nuevas.</li>
+</ol>
+<figure><img src="capturas/zon04_menu_accion_etiquetas.jpg"><figcaption>Acción › KOROSHI Etiquetas zona (abajo del desplegable), con las OUT de la agrupación seleccionadas.</figcaption></figure>
+<div class="nota">No imprimirla desde el menú <b>Imprimir</b>: desde ahí sale sin matrícula CJ. Siempre desde <b>Acción › KOROSHI Etiquetas zona</b>.</div>
+
+<h3>Qué pone la etiqueta</h3>
+<figure class="estrecha"><img src="capturas/zon05_etiqueta_zona.jpg"><figcaption>Etiqueta de zona v17 (K1 Maquinista, zona D1, 27/10).</figcaption></figure>
+<table>
+  <tr><th>Parte</th><th>Qué es</th></tr>
+  <tr><td>Arriba izquierda: <b>D1  K1</b></td><td>Zona y tienda.</td></tr>
+  <tr><td>Arriba derecha: <b>CAJA TIENDA 01</b></td><td>Sitio de la tienda en la mesa de juntar.</td></tr>
+  <tr><td>Delegación</td><td>Delegación del transportista y tránsito (24 h / 48 h).</td></tr>
+  <tr><td>Pedido</td><td>Número de pedido con su código de barras.</td></tr>
+  <tr><td>CAJA 1 · tienda también en…</td><td>Número de caja y otras zonas donde tiene OUT esa tienda.</td></tr>
+  <tr><td>1 · Escanear para abrir en la PDA</td><td>Código de la OUT: se lee para empezar a coger.</td></tr>
+  <tr><td>K1 Maquinista · ciudad · uds</td><td>Tienda, ciudad y unidades de esa OUT.</td></tr>
+  <tr><td>2 · Escanear al cerrar la caja</td><td>Matrícula CJ: se lee al cerrar la caja.</td></tr>
+</table>
+
+<h2 class="salto">5 · Juntar cajas</h2>
+<p>Cuando una tienda tiene varias cajas pequeñas (una por zona), se meten dentro de una más grande. Se hace desde el <b>pedido de venta</b> de la tienda, pestaña <b>Juntar cajas</b>.</p>
+<figure><img src="capturas/zon06_pestana_juntar.jpg"><figcaption>Pedido S-6665003535 (K1) › pestaña «Juntar cajas».</figcaption></figure>
+<ol>
+  <li>Abrir el pedido de la tienda (Ventas, o desde la OUT › Pedido de venta).</li>
+  <li>Pestaña <b>Juntar cajas</b>.</li>
+  <li>Leer la <b>CJ pequeña</b> (la caja que se mete dentro) y la <b>CJ destino</b> (la caja grande).</li>
+  <li>Pulsar <b>JUNTAR</b>. Es un solo clic: no pide confirmación.</li>
+  <li>Con las dos casillas vacías, el botón enseña las cajas pequeñas del pedido.</li>
+</ol>
+<p>Cada vez que se junta, queda una nota en el pedido con lo que se ha metido en cada caja y cómo cambian los bultos:</p>
+<figure><img src="capturas/zon07_nota_juntar.jpg"><figcaption>Nota «Juntar cajas: CJ… (2 uds) metida en CJ…; … Bultos del pedido: 8 → 1».</figcaption></figure>
+<div class="nota">Después de juntar, el número de bultos que va a XPO es el de las cajas grandes. En el Monitor picking (v1.14) sale en <b>rojo</b> cualquier OUT hecha cuyos bultos no cuadren con las cajas cerradas.</div>
+
+<h2>6 · Resumen rápido</h2>
+<table>
+  <tr><th>Paso</th><th>Quién</th><th>Dónde</th></tr>
+  <tr><td>1. Partir las OUT por zonas (DIAGNÓSTICO y luego REAL)</td><td>IT</td><td>Acción 1866</td></tr>
+  <tr><td>2. Imprimir etiquetas de cada zona</td><td>Encargado</td><td>Transferencias › Acción › KOROSHI Etiquetas zona</td></tr>
+  <tr><td>3. Coger cada zona con la PDA (leer OUT, prendas y CJ al cerrar)</td><td>Pickers</td><td>PDA</td></tr>
+  <tr><td>4. Seguir el avance y ver qué tiendas se pueden juntar</td><td>Encargado</td><td>Inventario › Monitor picking</td></tr>
+  <tr><td>5. Juntar cajas pequeñas</td><td>Mesa de juntar</td><td>Pedido › Juntar cajas</td></tr>
+  <tr><td>6. Etiqueta XPO por tienda</td><td>Expedición</td><td>Como siempre</td></tr>
+</table>
+
+</body>
+</html>

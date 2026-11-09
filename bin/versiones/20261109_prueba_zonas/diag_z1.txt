@@ -1,0 +1,80 @@
+KOROSHI PARTIR OUT ZONAS v12 CAJA CERRADA - DIAGNOSTICO
+Objetivo: 12 personas en 1 zonas (1 de lineal + 0 de muelle, ~12.0 personas por zona) de 8:00 a 13:00 (300 min) | ritmo x1.00 (52 s/lectura, 21 s/lineal por OUT)
+OUT validas: 62 (6337 uds) | ENTRAN: 62 (6337 uds) | no entran (pendientes para otra tanda): 0 (0 uds) | saltadas 0
+Acaba previsto: 16:41 (la zona mas larga; con la v9c seria 16:41) | agrupaciones Z-0911-<zona>
+
+CAJA CERRADA (cajas de 80 L; una OUT esta en caja cerrada si su ultima caja llega al 80%):
+   v9c (zonas sin mirar cajas): 122 OUT | en caja cerrada 11 (9%) | OUT pequenas (menos de una caja): 57
+   v12 (caja cerrada):          122 OUT | en caja cerrada 11 (9%) | OUT pequenas: 57 | cajas 581, cerradas 81%
+   Tiendas cuyo pedido entero ya deja la ultima caja sin llenar: 53 de 62 (esa caja va en una de sus OUT)
+   0 uds se cogen fuera de su zona (lineas de la frontera movidas para cerrar cajas)
+
+Zona D1 | L18-L135 | 5758 uds | 485 cajas | 62 OUT | 0 uds de fuera | ~481 min | acaba ~16:41
+Zona ZX | fuera de lineal | 579 uds | 96 cajas | 60 OUT | ~40 min (la hace D1 al acabar la suya)
+
+Caja | tienda | OUT | pedido | zona:cajas/uds (* = se queda la OUT original, ! = ultima caja sin llenar) | sin reserva
+   01 K1 - MAQUINISTA | EFFEC/OUT/23935 | S-6665003996 | D1*!:17c/175u  ZX:4c/35u  | -210
+   02 K1 - MAQUINISTA | EFFEC/OUT/23935-O | S-6665003996 | D1*!:1c/4u  ZX!:1c/4u  | -8
+   03 K7 - ISLAZUL (48h) | EFFEC/OUT/23928 | S-6665003989 | D1*!:14c/166u  ZX!:3c/22u  | -188
+   04 K8 - ITAROA | EFFEC/OUT/23918 | S-6665003979 | D1*!:11c/163u  ZX!:1c/5u  | -168
+   05 K8 - ITAROA | EFFEC/OUT/23918-O | S-6665003979 | D1!:1c/3u  ZX*!:1c/5u  | -8
+   06 K9 - BALLONTI | EFFEC/OUT/23930 | S-6665003991 | D1*!:8c/109u  ZX!:2c/15u  | -124
+   07 K10 - MAXCENTER | EFFEC/OUT/23923 | S-6665003984 | D1*!:12c/171u  ZX:1c/11u  | -182
+   08 K10 - MAXCENTER | EFFEC/OUT/23923-O | S-6665003984 | D1*!:1c/5u  ZX!:1c/2u  | -7
+   09 K22 - VITORIA | EFFEC/OUT/23919 | S-6665003980 | D1*!:12c/153u  ZX!:1c/1u  | -154
+   10 K24 - VALLADOLID (48h) | EFFEC/OUT/23920 | S-6665003981 | D1*!:13c/167u  ZX!:1c/3u  | -170
+   11 K26 - MAGIC | EFFEC/OUT/23947 | S-6665004008 | D1*!:6c/93u  ZX!:1c/6u  | -99
+   12 K29 - MARINEDA (48h) | EFFEC/OUT/23961 | S-6665004022 | D1*!:6c/87u  ZX!:1c/6u  | -93
+   13 K31 - CONDOMINA | EFFEC/OUT/23931 | S-6665003992 | D1*!:6c/89u  ZX!:1c/3u  | -92
+   14 K31 - CONDOMINA | EFFEC/OUT/23931-O | S-6665003992 | D1*!:1c/5u  ZX!:1c/2u  | -7
+   15 K33 - PUERTO VENECIA | EFFEC/OUT/23917 | S-6665003978 | D1*!:17c/216u  ZX!:1c/3u  | -219
+   16 K34 - GRAN VIA 2 | EFFEC/OUT/23939 | S-6665004000 | D1*!:8c/102u  ZX!:1c/4u  | -106
+   17 K37 - SALAMANCA (48h) | EFFEC/OUT/23952 | S-6665004013 | D1*!:11c/90u  ZX!:4c/30u  | -120
+   18 K38 - ARTEA | EFFEC/OUT/23951 | S-6665004012 | D1*!:6c/88u  ZX!:1c/6u  | -94
+   19 K40 - PALENCIA (48h) | EFFEC/OUT/23949 | S-6665004010 | D1*!:6c/76u  ZX!:1c/3u  | -79
+   20 K41 - SANTANDER (48h) | EFFEC/OUT/23922 | S-6665003983 | D1*!:8c/116u  ZX!:1c/3u  | -119
+   21 K42 - SPLAU | EFFEC/OUT/23934 | S-6665003995 | D1*!:9c/132u  ZX!:1c/5u  | -137
+   22 K43 - LEÓN (48h) | EFFEC/OUT/23940 | S-6665004001 | D1*!:15c/134u  ZX!:4c/31u  | -165
+   23 K43 - LEÓN (48h) | EFFEC/OUT/23940-O | S-6665004001 | D1!:1c/4u  ZX*!:1c/11u  | -15
+   24 K44 - GIRONA | EFFEC/OUT/23956 | S-6665004017 | D1*!:11c/103u  ZX!:3c/23u  | -126
+   25 K45 - LOGROÑO BERCEO | EFFEC/OUT/23921 | S-6665003982 | D1*:11c/131u  ZX!:1c/3u  | -134
+   26 K45 - LOGROÑO BERCEO | EFFEC/OUT/23921-O | S-6665003982 | D1*!:1c/7u  ZX!:1c/2u  | -9
+   27 K46 - IRÚN | EFFEC/OUT/23933 | S-6665003994 | D1*:8c/115u  ZX!:1c/6u  | -121
+   28 K48 - BONAIRE | EFFEC/OUT/23924 | S-6665003985 | D1*!:15c/219u  ZX!:1c/6u  | -225
+   29 K49 - URBIL (48h) | EFFEC/OUT/23960 | S-6665004021 | D1*!:13c/114u  ZX!:4c/32u  | -146
+   30 K49 - URBIL (48h) | EFFEC/OUT/23960-O | S-6665004021 | D1*!:1c/4u  ZX!:1c/2u  | -6
+   31 K55 - C.C. GRANCASA | EFFEC/OUT/23941 | S-6665004002 | D1*!:8c/93u  ZX!:1c/2u  | -95
+   32 K56 - ROSALEDA (48h) | EFFEC/OUT/23958 | S-6665004019 | D1*!:3c/43u  | -43
+   33 K57 - LAS ROSAS (48h) | EFFEC/OUT/23944 | S-6665004005 | D1*!:7c/79u  ZX!:1c/6u  | -85
+   34 K58 - EL MIRADOR | EFFEC/OUT/23954 | S-6665004015 | D1*!:7c/87u  ZX!:1c/1u  | -88
+   35 K59 - NEVADA SHOPPING (48h) | EFFEC/OUT/23936 | S-6665003997 | D1*:6c/96u  ZX!:1c/4u  | -100
+   36 K60 - LOS PRADOS (48h) | EFFEC/OUT/23964 | S-6665004025 | D1*!:10c/87u  ZX!:4c/30u  | -117
+   37 K61 - LA VITAL | EFFEC/OUT/23963 | S-6665004024 | D1*!:5c/67u  | -67
+   38 K61 - LA VITAL | EFFEC/OUT/23963-O | S-6665004024 | D1*!:1c/3u  ZX!:1c/2u  | -5
+   39 K62 - XANADU (48h) | EFFEC/OUT/23938 | S-6665003999 | D1*!:9c/114u  ZX!:1c/7u  | -121
+   40 K63 - ALCALÁ MAGNA (48h) | EFFEC/OUT/23943 | S-6665004004 | D1*:9c/111u  ZX!:1c/5u  | -116
+   41 K65 - BARICENTRO | EFFEC/OUT/23925 | S-6665003986 | D1*:13c/188u  ZX!:1c/3u  | -191
+   42 K65 - BARICENTRO | EFFEC/OUT/23925-O | S-6665003986 | D1!:1c/2u  ZX*!:1c/10u  | -12
+   43 K68 - SEVILLA LAGOH (48h) | EFFEC/OUT/23953 | S-6665004014 | D1*!:6c/94u  ZX!:1c/4u  | -98
+   44 K68 - SEVILLA LAGOH (48h) | EFFEC/OUT/23953-O | S-6665004014 | D1*!:1c/4u  ZX!:1c/1u  | -5
+   45 K69 - TARRAGONA | EFFEC/OUT/23942 | S-6665004003 | D1*!:14c/124u  ZX:4c/34u  | -158
+   46 K70 - REUS | EFFEC/OUT/23959 | S-6665004020 | D1*!:11c/115u  ZX!:3c/23u  | -138
+   47 K72 - DIAGONAL MAR | EFFEC/OUT/23932 | S-6665003993 | D1*!:8c/99u  ZX!:2c/9u  | -108
+   48 K73 - C/CARME 11-13 (LLEIDA) | EFFEC/OUT/23937 | S-6665003998 | D1*!:9c/104u  ZX!:1c/1u  | -105
+   49 K74 - CC SALERA | EFFEC/OUT/23957 | S-6665004018 | D1*!:6c/91u  ZX!:1c/5u  | -96
+   50 K75 - C/ PELAYO, 12 (BARCELONA) | EFFEC/OUT/23955 | S-6665004016 | D1*!:5c/62u  ZX!:1c/1u  | -63
+   51 K75 - C/ PELAYO, 12 (BARCELONA) | EFFEC/OUT/23955-O | S-6665004016 | D1*!:1c/4u  ZX!:1c/1u  | -5
+   52 K77 - CC SANT CUGAT | EFFEC/OUT/23927 | S-6665003988 | D1*!:9c/129u  ZX!:1c/2u  | -131
+   53 K77 - CC SANT CUGAT | EFFEC/OUT/23927-O | S-6665003988 | D1!:1c/2u  ZX*!:1c/4u  | -6
+   54 K78 - PLAZA NORTE 2 (48h) | EFFEC/OUT/23929 | S-6665003990 | D1*!:9c/110u  ZX!:2c/12u  | -122
+   55 K79 - PARQUE CORREDOR (48h) | EFFEC/OUT/23948 | S-6665004009 | D1*!:17c/148u  ZX!:4c/31u  | -179
+   56 K80 - GRAN JONQUERA | EFFEC/OUT/23965 | S-6665004026 | D1*!:4c/42u  ZX!:1c/2u  | -44
+   57 K81 - LA VAGUADA (48h) | EFFEC/OUT/23945 | S-6665004006 | D1*!:16c/142u  ZX:4c/35u  | -177
+   58 K82 - PARQUE PRINCIPADO | EFFEC/OUT/23950 | S-6665004011 | D1*!:14c/134u  ZX:4c/35u  | -169
+   59 K83 - GARBERA NEW | EFFEC/OUT/23926 | S-6665003987 | D1*!:14c/174u  ZX!:1c/4u  | -178
+   60 K85 - PLATJA D'ARO | EFFEC/OUT/23946 | S-6665004007 | D1*:4c/71u  ZX!:1c/3u  | -74
+   61 K85 - PLATJA D'ARO | EFFEC/OUT/23946-O | S-6665004007 | D1!:1c/1u  ZX*!:1c/4u  | -5
+   62 K86 - L'ALJUB (ELX) | EFFEC/OUT/23962 | S-6665004023 | D1*!:6c/97u  ZX!:1c/8u  | -105
+OUT nuevas que se crearian: 60
+
+DIAGNOSTICO v12: no se ha escrito nada. Siguiente paso: MODO = SIMULAR.

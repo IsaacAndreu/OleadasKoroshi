@@ -18,7 +18,7 @@
     </record>
 
     <menuitem id="menu_koroshi_warehouse_root"
-              name="KOROSHI · Almacén"
+              name="KOROSHI · Operaciones"
               parent="stock.menu_stock_root"
               sequence="92"
               groups="stock.group_stock_user"/>

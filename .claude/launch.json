@@ -1,0 +1,23 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "versiones",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "C:/dev/OleadasKoroshi/bin/versiones"],
+      "port": 8765
+    },
+    {
+      "name": "operarios-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8768", "--bind", "127.0.0.1", "--directory", "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/e5ed614d-fdc9-481d-9f52-fb91c7dac5ca/scratchpad/opmock"],
+      "port": 8768
+    },
+    {
+      "name": "faltantes-modulo",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8769", "--bind", "127.0.0.1", "--directory", "C:/dev/OleadasKoroshi/odoo/modulos"],
+      "port": 8769
+    }
+  ]
+}

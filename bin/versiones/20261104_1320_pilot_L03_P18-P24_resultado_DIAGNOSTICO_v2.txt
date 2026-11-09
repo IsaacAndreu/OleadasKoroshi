@@ -1,0 +1,15 @@
+Accion 1837 "KOROSHI PILOT L03 P18-P24 v2 (Diagnostico)" ejecutada el 04/11/2026 (~3 min). No escribe stock (solo se ha cambiado el codigo de la 1837).
+Codigo: 20261104_1300_accion_pilot_L03_P18-P24_3INT_v2_DIAGNOSTICO.py
+
+PILOT L03 P18-P24 · MODO DIAGNOSTICO
+Talles a les dades: 238 · productes trobats: 238 · no trobats: 0 · duplicats: 0 · columnes que falten: cap
+Carro CARRO-PILOT-L03: NO EXISTEIX (es crearia sota EFFEC)
+A BUIDAR: 373 linies, 374 uds · a la seva columna de P25-P36: 134 · sense desti, repartides a P25-P36: 15 · a on tenen mes estoc: 225 · reservades al tram (no es mouen): 0
+Columnes P25-P36 trobades: 40 de 40
+B1 L01-L12: 378 linies, 386 uds
+B2 L13-L24: 142 linies, 143 uds
+B3 L25-L36: 97 linies, 102 uds
+B4 L37+: 126 linies, 128 uds
+B5 sin lineal: 26 linies, 26 uds
+Ja a la seva columna (no es mouen): 1 uds · reservades per a altres albarans (no es mouen): 0
+C UBICAR: 219 productes, 785 uds

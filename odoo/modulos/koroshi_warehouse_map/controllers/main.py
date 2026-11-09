@@ -29,7 +29,18 @@ class KoroshiWarehouseMapController(http.Controller):
         if not value:
             return ''
         local = fields.Datetime.context_timestamp(request.env.user, value)
-        return local.strftime('%H:%M')
+        # Los segundos son necesarios para medir el tiempo activo entre el
+        # primer artículo validado y el último escaneo sin confundirlo con la
+        # hora en la que Odoo creó automáticamente la OUT.
+        return local.strftime('%H:%M:%S')
+
+    def _carrier_values(self, picking):
+        """Devuelve transportista y tracking sin romper instalaciones heredadas."""
+        carrier = self._field(picking, 'carrier_id')
+        return {
+            'carrier': self._field(carrier, 'name', '') or '',
+            'tracking': self._field(picking, 'carrier_tracking_ref', '') or '',
+        }
 
     def _location_parts(self, value):
         value = value or ''
@@ -78,6 +89,11 @@ class KoroshiWarehouseMapController(http.Controller):
             'cancelled': 'Cancelado',
         }.get(state, 'Sin empezar')
         timeline = []
+        scan_events = session.event_ids.filtered(
+            lambda event: event.event_type in ('pick', 'scan') and event.occurred_at
+        ).sorted(key=lambda item: item.occurred_at)
+        first_scan = scan_events[:1].occurred_at if scan_events else session.started_at
+        last_scan = scan_events[-1:].occurred_at if scan_events else session.last_scan_at
         for event in session.event_ids.sorted(
                 key=lambda item: item.occurred_at or datetime.datetime.min)[-8:]:
             timeline.append([
@@ -94,10 +110,10 @@ class KoroshiWarehouseMapController(http.Controller):
             'status': status,
             'location': location or 'Sin ubicación',
             'start': self._time(session.started_at),
-            'firstPickAt': self._time(session.started_at),
+            'firstPickAt': self._time(first_scan),
             'lastPick': location or '—',
-            'lastAt': self._time(session.last_scan_at),
-            'lastScanAt': self._time(session.last_scan_at),
+            'lastAt': self._time(last_scan),
+            'lastScanAt': self._time(last_scan),
             'finish': self._time(session.finished_at) or '—',
             'units': metrics['units'],
             'demand': metrics['demand'],
@@ -111,6 +127,10 @@ class KoroshiWarehouseMapController(http.Controller):
             'color': self._color(state),
             'timeline': timeline,
             'source': session.source or 'pda',
+            'carrier': self._carrier_values(picking)['carrier'],
+            'tracking': self._carrier_values(picking)['tracking'],
+            'missing': metrics['missing'],
+            'incidents': [],
         }
 
     def env_event_types(self):
@@ -134,7 +154,13 @@ class KoroshiWarehouseMapController(http.Controller):
     def _picking_metrics(self, picking):
         """Resumen seguro para el mapa: demanda, hecho, líneas y cajas."""
         if not picking:
-            return {'demand': 0.0, 'units': 0.0, 'line_count': 0, 'boxes': 0}
+            return {
+                'demand': 0.0,
+                'units': 0.0,
+                'line_count': 0,
+                'boxes': 0,
+                'missing': 0.0,
+            }
         # Odoo 13 usa `move_lines` en stock.picking. Algunas instalaciones
         # tienen además `move_ids` por módulos heredados, por eso se acepta
         # cualquiera de los dos nombres y se evita que el endpoint falle con
@@ -165,6 +191,7 @@ class KoroshiWarehouseMapController(http.Controller):
             'units': units,
             'line_count': len(move_lines) or len(moves),
             'boxes': len(packages),
+            'missing': max(0.0, demand - units),
         }
 
     @staticmethod
@@ -199,7 +226,10 @@ class KoroshiWarehouseMapController(http.Controller):
         # Una OUT excepcionalmente grande no debe bloquear la vista operativa.
         # El contador total sigue saliendo de _picking_metrics; aquí solo se
         # limita el detalle que se pinta en el mapa.
-        for line in move_lines[:2000]:
+        ordered_lines = move_lines.sorted(
+            key=lambda item: (self._field(item, 'write_date', '') or '', item.id)
+        )
+        for line in ordered_lines[:2000]:
             location_obj = self._field(line, 'location_id')
             location = (
                 self._field(location_obj, 'complete_name', '') or
@@ -223,12 +253,14 @@ class KoroshiWarehouseMapController(http.Controller):
                 demand = self._field(move, 'product_uom_qty', 0.0)
             result.append({
                 'source_id': line.id,
+                'scan_time': self._time(self._field(line, 'write_date')) if done else '',
                 'location': location,
                 'reference': reference,
                 'ean': barcode,
                 'qty': float(demand or 0.0),
                 'done': done,
                 'quantity': done,
+                'missing': max(0.0, float(demand or 0.0) - done),
             })
         return result
 
@@ -257,13 +289,16 @@ class KoroshiWarehouseMapController(http.Controller):
     def _picking_row(self, picking, index):
         move_line_domain = [('picking_id', '=', picking.id), ('qty_done', '>', 0)]
         move_count = request.env['stock.move.line'].sudo().search_count(move_line_domain)
-        move_lines = request.env['stock.move.line'].sudo().search(
-            move_line_domain,
-            order='write_date desc, id desc', limit=1,
+        all_done_lines = request.env['stock.move.line'].sudo().search(
+            move_line_domain, order='write_date asc, id asc',
         )
-        last_line = move_lines[:1]
+        first_line = all_done_lines[:1]
+        last_line = all_done_lines[-1:] if all_done_lines else all_done_lines
         location = ''
+        first_at = None
         last_at = None
+        if first_line:
+            first_at = first_line.write_date
         if last_line:
             location = last_line.location_id.complete_name or last_line.location_id.name or ''
             last_at = last_line.write_date
@@ -278,6 +313,7 @@ class KoroshiWarehouseMapController(http.Controller):
         marker = self._marker(picking.id, location, index)
         responsible = getattr(picking, 'user_id', False)
         name = responsible.name if responsible else 'OUT sin persona asignada'
+        carrier = self._carrier_values(picking)
         return {
             'id': 'picking-%s' % picking.id,
             'initials': name[:2].upper(),
@@ -287,7 +323,7 @@ class KoroshiWarehouseMapController(http.Controller):
             'status': {'picking': 'En picking', 'done': 'Finalizado'}.get(state, 'Sin empezar'),
             'location': location or 'Sin escaneo',
             'start': self._time(picking.date),
-            'firstPickAt': '',
+            'firstPickAt': self._time(first_at),
             'lastPick': location or '—',
             'lastAt': self._time(last_at),
             'lastScanAt': self._time(last_at),
@@ -304,7 +340,107 @@ class KoroshiWarehouseMapController(http.Controller):
             'color': self._color(state),
             'timeline': [],
             'source': 'odoo',
+            'carrier': carrier['carrier'],
+            'tracking': carrier['tracking'],
+            'missing': metrics['missing'],
+            'incidents': [],
         }
+
+    def _zone_rows(self, company):
+        """Devuelve únicamente las zonas internas creadas hoy.
+
+        El proceso de zonas de KOROSHI crea albaranes internos con un origen
+        ``KOR-ddmm-*``. Usamos ese contrato real de Odoo, en vez de inventar
+        rectángulos en el navegador. Así el mapa aparece vacío al entrar y
+        solo dibuja una zona cuando existe el picking interno correspondiente.
+        """
+        Picking = request.env['stock.picking'].sudo()
+        now_local = fields.Datetime.context_timestamp(
+            request.env.user, fields.Datetime.now())
+        day_token = now_local.strftime('%d%m')
+        pickings = Picking.search([
+            ('company_id', '=', company.id),
+            ('picking_type_code', '=', 'internal'),
+            ('state', '!=', 'cancel'),
+            ('origin', '=like', 'KOR-%s-%%' % day_token),
+        ], order='create_date asc, id asc', limit=200)
+        result = []
+        state_labels = {
+            'draft': 'Pendiente',
+            'waiting': 'Esperando reserva',
+            'confirmed': 'Confirmada',
+            'assigned': 'Reservada',
+            'partially_available': 'Parcial',
+            'done': 'Finalizada',
+            'cancel': 'Cancelada',
+        }
+        for picking in pickings:
+            created = self._field(picking, 'create_date')
+            if created:
+                created_local = fields.Datetime.context_timestamp(
+                    request.env.user, created)
+                if created_local.date() != now_local.date():
+                    continue
+            moves = self._field(picking, 'move_ids') or self._field(
+                picking, 'move_lines')
+            if moves is None:
+                moves = request.env['stock.move'].sudo().browse()
+            move_lines = self._field(picking, 'move_line_ids')
+            if move_lines is None:
+                move_lines = request.env['stock.move.line'].sudo().search([
+                    ('move_id', 'in', moves.ids),
+                ]) if moves else request.env['stock.move.line'].sudo().browse()
+            locations = set()
+            line_numbers = []
+            demand = 0.0
+            done = 0.0
+            for line in move_lines:
+                location_obj = self._field(line, 'location_id')
+                location = (
+                    self._field(location_obj, 'complete_name', '') or
+                    self._field(location_obj, 'name', '') or ''
+                )
+                if location:
+                    locations.add(location)
+                    match = LINE_RE.search(location)
+                    if match:
+                        line_numbers.append(int(match.group(1)))
+                qty = self._field(line, 'product_uom_qty', None)
+                if qty is None:
+                    qty = self._field(line, 'product_qty', 0.0)
+                demand += float(qty or 0.0)
+                done += float(self._field(line, 'qty_done', 0.0) or 0.0)
+            if not move_lines:
+                for move in moves:
+                    location_obj = self._field(move, 'location_id')
+                    location = (
+                        self._field(location_obj, 'complete_name', '') or
+                        self._field(location_obj, 'name', '') or ''
+                    )
+                    if location:
+                        locations.add(location)
+                        match = LINE_RE.search(location)
+                        if match:
+                            line_numbers.append(int(match.group(1)))
+                    demand += float(self._field(move, 'product_uom_qty', 0.0) or 0.0)
+            origin = self._field(picking, 'origin', '') or picking.name
+            state = self._field(picking, 'state', 'draft')
+            result.append({
+                'id': 'zone-%s' % picking.id,
+                'picking_id': picking.id,
+                'name': origin,
+                'code': origin,
+                'state': state,
+                'status': state_labels.get(state, state),
+                'units': done,
+                'demand': demand,
+                'line_count': len(move_lines) or len(moves),
+                'location_count': len(locations),
+                'line_start': min(line_numbers) if line_numbers else 0,
+                'line_end': max(line_numbers) if line_numbers else 0,
+                'created_at': self._time(created) if created else '',
+            })
+        return result
 
     @http.route('/koroshi_warehouse_map/layout/save', type='http', auth='user',
                 methods=['POST'], csrf=False)
@@ -354,6 +490,8 @@ class KoroshiWarehouseMapController(http.Controller):
                 methods=['GET'], csrf=False)
     def data(self, **kwargs):
         company = self._company()
+        now_local = fields.Datetime.context_timestamp(
+            request.env.user, fields.Datetime.now())
         Session = request.env['koroshi.pick.session'].sudo()
         sessions = Session.search([
             ('company_id', '=', company.id),
@@ -365,11 +503,19 @@ class KoroshiWarehouseMapController(http.Controller):
             source = 'ODOO · sesiones PDA'
         else:
             Picking = request.env['stock.picking'].sudo()
+            day_start = datetime.datetime.combine(
+                now_local.date(), datetime.time.min)
+            # Most OUTs se crean de noche y pasan a reserva después. Se
+            # incluyen las activas y las modificadas desde el inicio del día,
+            # sin llenar el mapa con históricos cancelados.
             pickings = Picking.search([
                 ('company_id', '=', company.id),
                 ('picking_type_code', '=', 'outgoing'),
                 ('state', 'not in', ('cancel',)),
-            ], order='write_date desc, id desc', limit=40)
+                '|',
+                ('state', 'in', ('assigned', 'confirmed', 'partially_available', 'done')),
+                ('write_date', '>=', fields.Datetime.to_string(day_start)),
+            ], order='write_date desc, id desc', limit=200)
             people = [self._picking_row(picking, index)
                       for index, picking in enumerate(pickings)]
             source = 'ODOO · OUTs'
@@ -379,6 +525,9 @@ class KoroshiWarehouseMapController(http.Controller):
             'updated_at': fields.Datetime.now(),
             'company_id': company.id,
             'people': people,
+            'zones': self._zone_rows(company),
+            'as_of_date': now_local.strftime('%Y-%m-%d'),
+            'refresh_after_seconds': 60,
         }
         body = json.dumps(payload, default=str, ensure_ascii=False)
         return request.make_response(body, headers=[

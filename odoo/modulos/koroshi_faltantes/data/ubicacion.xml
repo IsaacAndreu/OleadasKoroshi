@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- EFFEC/FALTANT: interna, dentro de la vista EFFEC pero FUERA de EFFEC/Stock, para que ninguna OUT
+         reserve aqui. Lo que llega se revisa cada dia (Encontrado / No encontrado). -->
+    <record id="ubicacion_faltant" model="stock.location">
+        <field name="name">FALTANT</field>
+        <field name="usage">internal</field>
+        <field name="barcode">FALTANT</field>
+        <field name="location_id" model="stock.warehouse"
+               eval="obj().search([('code', '=', 'EFFEC'), ('company_id', '=', 8)], limit=1).view_location_id.id"/>
+        <field name="company_id" eval="8"/>
+    </record>
+</odoo>
