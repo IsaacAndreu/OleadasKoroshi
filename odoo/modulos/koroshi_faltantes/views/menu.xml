@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_koroshi_faltantes_root" name="KOROSHI Faltantes" parent="stock.menu_stock_root"
+              sequence="92" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_faltantes_pantalla" name="Faltante (PDA)" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_faltantes_pantalla" sequence="10"/>
+    <menuitem id="menu_koroshi_faltantes_revision" name="Revision de faltantes" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_faltante_revision" sequence="20"/>
+    <menuitem id="menu_koroshi_faltantes_crear_ronda" name="Crear ronda de revision" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_crear_ronda" sequence="22" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_faltantes_rondas" name="Rondas de faltantes (INT)" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_rondas" sequence="24"/>
+    <menuitem id="menu_koroshi_faltantes_cero" name="Puestos a 0 hoy" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_puestos_a_cero" sequence="30" groups="stock.group_stock_manager"/>
+</odoo>

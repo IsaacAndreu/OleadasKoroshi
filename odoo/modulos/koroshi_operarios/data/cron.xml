@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada 5 min: cierra las tareas cuyo pedido o agrupacion ya esta validado y las de dias anteriores.
+         Solo escribe en koroshi.operario.tarea. -->
+    <record id="cron_koroshi_operarios_cerrar" model="ir.cron">
+        <field name="name">KOROSHI Operarios: cerrar tareas</field>
+        <field name="model_id" ref="model_koroshi_operario_tarea"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_cerrar()</field>
+        <field name="interval_number">5</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

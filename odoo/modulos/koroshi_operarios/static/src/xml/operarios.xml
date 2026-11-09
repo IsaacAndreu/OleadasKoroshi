@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_operarios.Pantalla">
+        <div class="o_koroshi_operarios">
+            <div class="o_ko_app">
+                <div class="o_ko_cabecera">
+                    <span>Operarios KOROSHI</span>
+                    <span class="o_ko_reloj"/>
+                </div>
+                <div class="o_ko_quien o_ko_caja o_ko_vacio">Lee tu tarjeta (o directamente la OUT)</div>
+                <div class="o_ko_aviso o_ko_caja"/>
+                <div class="o_ko_actual o_ko_caja" style="display: none;">
+                    <span class="o_ko_sub">Estás haciendo</span>
+                    <div class="o_ko_actual_ref"/>
+                    <button class="o_ko_continuar" type="button">Continuar</button>
+                    <!-- o_ko_dejar: el boton "Faltante" de koroshi_faltantes se pone detras de este -->
+                    <button class="o_ko_saltar o_ko_dejar" type="button">Saltar</button>
+                </div>
+                <div class="o_ko_salto o_ko_caja" style="display: none;">
+                    <div class="o_ko_salto_titulo"/>
+                    <div class="o_ko_salto_motivos"/>
+                    <button class="o_ko_cancelar_salto btn btn-link" type="button">No saltar</button>
+                </div>
+                <input class="o_ko_codigo" type="text" autocomplete="off" placeholder="Escribir tarjeta o pedido y Enter"/>
+                <div class="o_ko_titulo o_ko_cola_titulo" style="display: none;">Después te tocan</div>
+                <div class="o_ko_cola"/>
+                <div class="o_ko_titulo">Cogiendo ahora</div>
+                <div class="o_ko_abiertas"/>
+                <div class="o_ko_pie">
+                    <button class="o_ko_salir btn btn-link" type="button" style="display: none;">Salir (otro operario)</button>
+                    <button class="o_ko_menu btn btn-link" type="button">Menú código de barras</button>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

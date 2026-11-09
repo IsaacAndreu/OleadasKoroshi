@@ -35,6 +35,17 @@ RE_LINEAL = re.compile(r' L(\d+) ')
 RE_MU = re.compile(r'^(MU-\d+)')
 RE_TIENDA = re.compile(r'\bK\d+ - .*$')
 
+RE_OP = re.compile(r'^([A-Za-z]+)0*(\d+)$')
+
+
+def codigo_op(emp):
+    """v1.18: codigo corto del operario (tarjeta OP0003 -> OP3). En el monitor nunca sale el nombre."""
+    b = (emp.barcode or '').strip()
+    m = RE_OP.match(b)
+    if m:
+        return '%s%s' % (m.group(1).upper(), m.group(2))
+    return b or 'OP?'
+
 
 class KoroshiMonitor(http.Controller):
 
@@ -76,6 +87,9 @@ class KoroshiMonitor(http.Controller):
             if 'CAJA ' in nota:
                 caja = nota.split('CAJA ')[1][:2].strip()
             nombre = p.partner_id.name or ''
+            carrier = getattr(p, 'carrier_id', False)
+            transportista = carrier and carrier.name or ''
+            etiqueta = getattr(p, 'carrier_tracking_ref', '') or ''
             z = ''
             if prefijo and p.batch_id and (p.batch_id.name or '').startswith(prefijo):
                 z = p.batch_id.name[len(prefijo):]
@@ -91,8 +105,11 @@ class KoroshiMonitor(http.Controller):
                 '_huecos': set(), '_l': [], '_mu': set(),
                 '_a': None, '_b': None, '_cajas': set(),
                 '_estado': p.state, '_done': p.date_done,
-                # v1.10: etiqueta del transportista (XPO/GLS) hecha = numero de seguimiento en la OUT
-                'etq': bool(p.carrier_tracking_ref),
+                # v1.10: etiqueta del transportista (XPO/GLS) hecha = numero de seguimiento en la OUT.
+                # v1.17: se exponen también transportista y número de etiqueta para ordenar/filtrar.
+                'etq': bool(etiqueta),
+                'transportista': transportista,
+                'etiqueta': etiqueta,
                 '_bultos': p.number_of_packages or 0,     # v1.14: bultos que tiene Odoo en la OUT (los de XPO)
                 'id': p.id,         # v1.11: para abrir la OUT desde el monitor
             }
@@ -124,6 +141,10 @@ class KoroshiMonitor(http.Controller):
         for pq in env['stock.quant.package'].sudo().search_read([('id', 'in', ids_caja)], ['create_date']):
             hora_caja[pq['id']] = pq['create_date']
         por_hora = {}
+        # Desglose por hora y OUT para que la franja inferior pueda mostrar
+        # qué OUT compone cada total. Se mantiene el total agregado anterior
+        # para no romper los KPIs existentes.
+        por_hora_out = {}
         dia = {'primera': None, 'ultima': None, 'marcas': []}
         for ml in lineas:
             f = filas[ml['picking_id'][0]]
@@ -154,11 +175,16 @@ class KoroshiMonitor(http.Controller):
                     dia['ultima'] = w
                 h = self._minutos(w) // 60
                 por_hora[h] = por_hora.get(h, 0.0) + ml['qty_done']
+                por_hora_out.setdefault(h, {})
+                out_row = por_hora_out[h].setdefault(f['id'], {
+                    'id': f['id'], 'out': f['out'], 'tienda': f['tienda'], 'u': 0.0,
+                })
+                out_row['u'] += ml['qty_done']
                 # quien cierra la caja: en zonas, la zona (una persona por zona); en oleada, la U; si no, la OUT
                 lote = f['lote']
                 quien = lote.startswith('Z-') and lote or (lote.startswith('B-KOR') and 'U' or ml['picking_id'][0])
                 dia['marcas'].append((fields.Datetime.context_timestamp(request.env.user, w), quien))
-        return filas, por_hora, dia
+        return filas, por_hora, dia, por_hora_out
 
     def _personas(self, dia, leidas):
         """Horas-persona y personas estimadas por las cajas cerradas: cuarto de hora a cuarto de hora,
@@ -220,13 +246,84 @@ class KoroshiMonitor(http.Controller):
         if f['_a'] and f['_b'] and f['_b'] > f['_a']:
             mins = int((f['_b'] - f['_a']).total_seconds() // 60)
         return {
-            'z': f['z'], 'lote': f['lote'], 'caja': f['caja'], 'out': f['out'], 'tienda': f['tienda'], 'etq': f['etq'], 'id': f['id'],
+            'z': f['z'], 'lote': f['lote'], 'caja': f['caja'], 'out': f['out'], 'tienda': f['tienda'], 'etq': f['etq'],
+            'transportista': f['transportista'], 'etiqueta': f['etiqueta'], 'id': f['id'],
             'pedido': f['pedido'], 'u': f['u'], 'huecos': len(f['_huecos']), 'lin': lin or '-',
             'leido': f['leido'], 'est': est, 'ini': self._hora(f['_a']), 'fin': self._hora(fin_dt),
             'min': mins, 'cajas': len(f['_cajas']), 'bultos': f['_bultos'], '_a': f['_a'], '_b': f['_b'],
             'disp': f['disp'], 'falta': (est != 'hecha' or sin_validar) and falta or 0.0, 'faltas': f['faltas'],
             'sin_validar': sin_validar,
         }
+
+    def _operarios(self, env, dominio, filas_por_id):
+        """v1.18: quien coge cada OUT, con el modulo koroshi_operarios (si esta instalado; si no, nada).
+        Solo codigos (OP1, OP2...), nunca nombres. Devuelve (por_picking, por_lote, resumen)."""
+        if 'koroshi.operario.tarea' not in env.registry:
+            return {}, {}, []
+        ahora = fields.Datetime.now()
+        tareas = env['koroshi.operario.tarea'].sudo().search(dominio, order='inicio asc')
+        por_picking, por_lote, ops = {}, {}, {}
+        for t in tareas:
+            cod = codigo_op(t.employee_id)
+            abierta = t.estado == 'curso'
+            fin_real = None
+            if abierta:
+                # v1.18: el cron cierra cada 5 min; si la OUT o la agrupacion ya esta validada, aqui ya cuenta
+                # como acabada (hora de validacion), sin esperar al cron
+                pickings = t._pickings()
+                if pickings and t._validado(pickings):
+                    abierta = False
+                    fin_real = max(t._hora_validacion(pickings), t.inicio)
+            # agrupacion: todas las OUT del lote; OUT suelta: esa OUT
+            if t.tipo == 'agrupacion' and t.batch_id:
+                destino = por_lote.setdefault(t.batch_id.name, {'ops': [], 'ahora': []})
+            elif t.picking_id:
+                destino = por_picking.setdefault(t.picking_id.id, {'ops': [], 'ahora': []})
+            else:
+                destino = None
+            if destino is not None:
+                if cod not in destino['ops']:
+                    destino['ops'].append(cod)
+                if abierta and cod not in destino['ahora']:
+                    destino['ahora'].append(cod)
+            o = ops.setdefault(cod, {'op': cod, 'tareas': 0, 'acabadas': 0, 'dejadas': 0, 'uds': 0.0,
+                                     'min': 0.0, 'ahora': '', 'desde': '', 'ini': None, 'ult': None})
+            o['tareas'] += 1
+            if t.estado == 'acabada' or fin_real:
+                o['acabadas'] += 1
+            elif t.estado in ('dejada', 'sin_cerrar'):
+                o['dejadas'] += 1
+            if t.estado == 'curso':
+                # uds leidas hasta ahora (OUT suelta o agrupacion entera)
+                o['uds'] += max(t._uds_leidas(t._pickings()) - (t.uds_inicio or 0.0), 0.0)
+                hasta = fin_real or ahora
+                o['min'] += max((hasta - t.inicio).total_seconds() / 60.0, 0.0) if t.inicio else 0.0
+                if abierta:
+                    ref = t.batch_id.name if t.tipo == 'agrupacion' else (t.picking_id.name or '')
+                    o['ahora'] = (ref or t.referencia or '').replace('EFFEC/OUT/', '')
+                    o['desde'] = self._hora(t.inicio)
+            else:
+                o['uds'] += t.uds or 0.0
+                o['min'] += t.minutos or 0.0
+            if t.inicio and (not o['ini'] or t.inicio < o['ini']):
+                o['ini'] = t.inicio
+        resumen = []
+        for cod in sorted(ops, key=lambda c: (int(re.sub(r'\D', '', c) or 0), c)):
+            o = ops[cod]
+            o['uh'] = o['min'] > 1 and int(round(o['uds'] * 60.0 / o['min'])) or 0
+            o['uds'] = int(round(o['uds']))
+            o['min'] = int(round(o['min']))
+            o['ini'] = self._hora(o['ini'])
+            o.pop('ult')
+            resumen.append(o)
+        return por_picking, por_lote, resumen
+
+    def _poner_ops(self, D, por_picking, por_lote):
+        for d in D:
+            a = por_picking.get(d['id']) or {'ops': [], 'ahora': []}
+            b = por_lote.get(d['lote']) or {'ops': [], 'ahora': []}
+            d['ops'] = a['ops'] + [x for x in b['ops'] if x not in a['ops']]
+            d['ops_ahora'] = a['ahora'] + [x for x in b['ahora'] if x not in a['ahora']]
 
     @http.route('/koroshi_monitor/datos', type='json', auth='user')
     def datos(self, prefijo=None, **kw):
@@ -274,7 +371,7 @@ class KoroshiMonitor(http.Controller):
                     z_fin = z_ini + datetime.timedelta(days=1)
                 except ValueError:
                     z_ini = z_fin = None
-            filas, por_hora, dia_z = self._filas(env, picks, prefijo, z_ini, z_fin)
+            filas, por_hora, dia_z, por_hora_out = self._filas(env, picks, prefijo, z_ini, z_fin)
             D = []
             for f in filas.values():
                 d = self._fila(f)
@@ -284,6 +381,9 @@ class KoroshiMonitor(http.Controller):
                     continue
                 D.append(d)
             D.sort(key=lambda d: d['out'])
+            # v1.18: operarios (codigos) de las agrupaciones de este prefijo
+            pp, pl, res['operarios'] = self._operarios(env, [('batch_id.name', '=like', prefijo + '%')], filas)
+            self._poner_ops(D, pp, pl)
             res['D'] = D
             res['pedidos'] = len(set([d['pedido'] for d in D]))
             res['personas'] = self._personas(dia_z, sum([x[1] for x in por_hora.items()]))
@@ -304,7 +404,7 @@ class KoroshiMonitor(http.Controller):
             '|', '&', ('create_date', '>=', ini), ('create_date', '<', fin),
             '&', ('date_done', '>=', ini), ('date_done', '<', fin),
         ])
-        filas, por_hora, dia_t = self._filas(env, picks, None, ini, fin)
+        filas, por_hora, dia_t, por_hora_out = self._filas(env, picks, None, ini, fin)
         D = []
         primera = dia_t['primera']
         ultima = dia_t['ultima']
@@ -362,9 +462,13 @@ class KoroshiMonitor(http.Controller):
                 equipo['uh'] = int(round(leidas_dia / horas))   # solo lo cerrado ese dia
                 if pendientes > 0 and equipo['uh'] > 0 and dia == self._hoy_local():
                     equipo['fin_previsto'] = self._hora(ahora + datetime.timedelta(hours=pendientes / equipo['uh']))
+        # v1.18: operarios (codigos) del dia
+        pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas)
+        self._poner_ops(D, pp, pl)
         res['D'] = D
         res['pedidos'] = len(set([d['pedido'] for d in D]))
         res['equipo'] = equipo
         res['personas'] = self._personas(dia_t, leidas_dia)
         res['por_hora'] = [[h, int(por_hora[h])] for h in sorted(por_hora)]
+        res['por_hora_out'] = [[h, list(por_hora_out[h].values())] for h in sorted(por_hora_out)]
         return res

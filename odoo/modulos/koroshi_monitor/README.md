@@ -4,6 +4,12 @@ Pantalla en directo de cómo van las agrupaciones de picking por zonas (Z-ddmm-D
 Es la misma página que `bin/versiones/estado-OUT-agrupaciones-Z-*.html`, pero dentro de Odoo
 y con datos al momento. **Solo lee: no cambia nada.**
 
+En la cabecera hay un botón **Abrir mapa operativo**. Abre la acción del módulo
+`koroshi_warehouse_map`; el mapa consulta las zonas internas `KOR-ddmm-*`
+creadas durante el día y las pinta solo cuando existen. El monitor y el mapa
+siguen siendo vistas separadas para que una pantalla sin zonas no cargue una
+capa inventada ni ralentice el seguimiento.
+
 - Menú: **Inventario › Monitor picking** (desde v1.3, al lado de KOROSHI KPI; antes en Operaciones).
 - Se refresca sola cada minuto; botón **Refrescar** para hacerlo al momento.
 - Desplegable con las últimas agrupaciones (Z-2210, Z-2110…). Por defecto, la última.
@@ -63,3 +69,15 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
 - **v1.8:** las OUT que ya tienen cogido todo lo que hay (solo faltan prendas sin stock o no encontradas), o que llevan más
   de 20 min sin cerrar caja, salen como **Hecha** con la nota «sin validar · faltan N», no como «parcial». El aviso de
   arriba lista las que faltan por validar en Odoo.
+- **v1.17:** en «Tiendas» se puede filtrar por estado y transporte, buscar por tienda/OUT/pedido/etiqueta y ordenar
+  con doble clic en los encabezados. Se muestran transportista y número de etiqueta. La gráfica de unidades por hora
+  se desglosa por OUT con un color estable para identificar qué OUT compone cada total.
+- **v1.17.1:** las OUT hechas con transportista o etiqueta aparecen con fondo azul y el monitor utiliza todo el ancho
+  disponible de la pantalla.
+- **v1.18:** operarios por **código** (OP1, OP2...), del módulo `koroshi_operarios` (tarjeta + OUT en la PDA). Nunca sale
+  el nombre: quién es cada código lo sabe almacén. Columna «Operario» en Tiendas (también en modo pantalla), en las
+  listas de cada zona y en los totales por zona; tabla «Operarios» con lo que coge ahora, pedidos, uds, minutos y u/h
+  del día. En negrita quien la tiene abierta ahora; en gris quien la empezó o la dejó. El buscador también encuentra
+  por código. Si `koroshi_operarios` no está instalado, el monitor sale igual que antes (no depende de él).
+- **v1.18.1:** si la OUT o la agrupación ya está validada, el operario sale como acabado al momento (hora de
+  validación), sin esperar al cron de `koroshi_operarios`, que cierra cada 5 min.

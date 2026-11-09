@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.2: quien ve los nombres con la productividad (Tareas, Productividad, Operarios, informe).
+         Los usuarios de la PDA ("Almacen Nath", "Almacen 2") son responsables de inventario: por eso no
+         basta con stock.group_stock_manager. Al instalar solo lo tiene el administrador (Departament IT);
+         se da a quien haga falta en Ajustes > Usuarios > pestana Permisos > "KOROSHI Operarios". -->
+    <record id="grupo_productividad" model="res.groups">
+        <field name="name">KOROSHI Operarios: ver productividad</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+</odoo>

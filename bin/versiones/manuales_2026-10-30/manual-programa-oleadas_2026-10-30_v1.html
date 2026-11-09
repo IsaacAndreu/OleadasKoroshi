@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Manual programa oleadas</title>
+<link rel="stylesheet" href="estilo.css">
+<style>
+/* Dibujos de las pantallas del programa (hechos a partir del codigo, no son capturas) */
+.ventana { border: 1.5px solid #555; border-radius: 1.5mm; overflow: hidden; margin: 3mm 0 1mm; font-family: "Segoe UI", Arial, sans-serif; break-inside: avoid; }
+.ventana .tit { background: #dfe6ee; font-size: 8.5pt; padding: 1mm 2.5mm; border-bottom: 1px solid #aaa; }
+.ventana .menu { font-size: 8.5pt; padding: .8mm 2.5mm; border-bottom: 1px solid #ccc; background: #f7f7f7; }
+.ventana .menu span { margin-right: 5mm; }
+.ventana .cuerpo { display: grid; grid-template-columns: 1fr 42mm; gap: 2mm; padding: 2mm; background: #fff; }
+.ventana .estado { min-height: 26mm; display: flex; align-items: center; justify-content: center; text-align: center; font-weight: 700; font-size: 15pt; border: 1px solid #999; padding: 2mm; white-space: pre-line; }
+.ventana .estado.grande { font-size: 44pt; }
+.ventana .lateral { font-size: 8pt; }
+.ventana .lateral div { border: 1px solid #aaa; padding: .8mm 1.5mm; margin-bottom: 1mm; background: #fafafa; }
+.ventana .input { grid-column: 1 / 3; border: 1px solid #888; font-size: 8.5pt; padding: .8mm 2mm; color: #777; }
+.ventana table { grid-column: 1 / 3; font-size: 7.6pt; margin: 0; }
+.ventana td, .ventana th { padding: .5mm 1.2mm; border-color: #ccc; }
+.e-azul { background: #add8e6; } .e-verde { background: #90ee90; } .e-rojo { background: #ff4d4d; color: #fff; }
+.e-amarillo { background: #ffff66; } .e-rosa { background: #ff1493; color: #fff; } .e-blanco { background: #f0f0f0; }
+.pie-dibujo { font-size: 8.5pt; color: #666; text-align: center; margin-bottom: 3mm; }
+.mini { display: inline-block; min-width: 24mm; padding: .8mm 2mm; border: 1px solid #555; font-weight: 700; text-align: center; font-size: 9pt; }
+.paso { display: grid; grid-template-columns: 9mm 1fr; gap: 3mm; align-items: start; margin: 2.2mm 0; break-inside: avoid; }
+.paso .n { width: 8mm; height: 8mm; border-radius: 50%; background: #2a6f97; color: #fff; font-weight: 700; display: flex; align-items: center; justify-content: center; }
+.notas td { height: 8mm; }
+.bloque { break-inside: avoid; }
+</style>
+</head>
+<body>
+
+<div class="portada">
+  <h1>KOROSHI · Programa de oleadas (la «U»)</h1>
+  <p class="sub">Programa <b>Pedidos Múltiples</b>, versión KOROSHI (empresa EFFECTIVE): reparto de las prendas de una oleada por tiendas (put-to-store) en las bahías de la U, con matrícula CJ en cada caja.</p>
+  <p class="meta">Programa de escritorio Windows (.NET 4.8) · Odoo nath.tuctuc.com (NATH_PRODUCTION, empresa 8) · 30/10/2026</p>
+</div>
+
+<div class="nota"><b>Los dibujos de este manual no son capturas</b>: están hechos a partir del código del programa (mismos textos y colores de pantalla). La disposición real de la ventana puede variar un poco.</div>
+
+<h2>1 · Cómo funciona</h2>
+<ul>
+  <li>Una <b>oleada</b> es una agrupación de Odoo <span class="m">B-KOR-ddmm-NN</span> con las OUT de unas 10 tiendas. Cada tienda tiene su <b>SEQ</b> (001, 002…) = su <b>bahía</b> en la U.</li>
+  <li>El operario lee una prenda, el programa dice en grande y en voz alta a qué bahía va; deja la prenda en la caja de esa bahía y escanea el cartel de la bahía para confirmar.</li>
+  <li>Cuando una caja está llena: <b>CAMBIAR-CAJA</b> + cartel de la bahía. Odoo cierra la caja, le da su <b>matrícula CJ</b> y sale la etiqueta.</li>
+  <li>Cada lectura se guarda en Odoo al momento (cantidad hecha de la OUT).</li>
+</ul>
+<div class="alerta">El programa escribe en la base de datos <b>de producción</b>. Una oleada se carga <b>en un solo PC</b>: dos PC con la misma oleada se pisan las lecturas.</div>
+
+<h2>2 · Antes de empezar: el PC de la U</h2>
+<ol>
+  <li>Copiar la carpeta <span class="m">bin\Release</span> completa (la versión KOROSHI) a una carpeta propia del PC, por ejemplo <span class="m">C:\PedidosMultiples_KOROSHI</span>. <b>No sobrescribir</b> el programa antiguo.</li>
+  <li>Abrir <span class="m">PedidosMultiples.exe</span>. Si sale una ventana para <b>actualizar</b>, decir que <b>NO</b>: pondría el programa oficial, sin lo de KOROSHI.</li>
+  <li>Menú <b>Empresa › EFFECTIVE</b>.</li>
+  <li>Mirar el título de la ventana: si pone <b>MODO PRUEBA</b>, no escribe nada en Odoo (ver apartado 4).</li>
+  <li>Impresora de etiquetas encendida, con etiquetas de 101,6 × 152,4 mm.</li>
+</ol>
+
+<div class="bloque"><div class="ventana">
+  <div class="tit">Pedidos Multiples — EFFECTIVE</div>
+  <div class="menu"><span>Empresa</span><span>Ultimo pedido</span><span>Opciones</span></div>
+  <div class="cuerpo">
+    <div class="estado e-blanco">ESCANEAR PEDIDOS -
+EFFE</div>
+    <div class="lateral"><div>Imp. Etiq. [ ______ ]</div><div>Num. Etiqueta</div><div>SEQ para PKL temporal:</div><div>SEQ para FORZAR PE:</div></div>
+    <div class="input">Escanear aquí ▏</div>
+  </div>
+</div>
+<p class="pie-dibujo">Dibujo: pantalla al abrir el programa con la empresa EFFECTIVE. Arriba los menús, en el centro el panel grande de estado, a la derecha las casillas auxiliares, abajo la casilla donde entra lo que se escanea.</p></div>
+
+<h3>El fichero de configuración</h3>
+<p><span class="m">PedidosMultiples.exe.config</span>, en la misma carpeta. Los cambios se aplican al volver a abrir el programa.</p>
+<table>
+  <tr><th>Clave</th><th>Valor para trabajar</th><th>Qué hace</th></tr>
+  <tr><td><span class="m">koroshi_modo_prueba</span></td><td>false</td><td>true = no escribe en Odoo; la matrícula sale como CJPRUEBA…</td></tr>
+  <tr><td><span class="m">koroshi_modo_matricula</span></td><td>true</td><td>Al cerrar cada caja la cierra en Odoo con su matrícula.</td></tr>
+  <tr><td><span class="m">koroshi_matricula_auto</span></td><td>true</td><td>Odoo da la siguiente matrícula CJ (no hay que leer matrículas antes).</td></tr>
+  <tr><td><span class="m">koroshi_validar_out</span></td><td>false</td><td>La OUT no se valida sola: se valida en Odoo al acabar la tienda.</td></tr>
+  <tr><td><span class="m">imp_tick</span></td><td>nombre de la impresora</td><td>Dónde salen las etiquetas de caja, de bahía y CAMBIAR-CAJA.</td></tr>
+  <tr><td><span class="m">odoo_accion_empaquetar_id</span></td><td>1838</td><td>Acción de Odoo «KOROSHI Empaquetar caja» que cierra la caja.</td></tr>
+</table>
+<div class="alerta">No tocar la URL de actualización ni la versión del programa (0.8.0.9): se actualizarían todos los puestos de todas las marcas. El fichero tiene credenciales: no copiarlo fuera de los PC de la U.</div>
+
+<h2 class="salto">3 · Imprimir los carteles (una sola vez)</h2>
+<div class="paso"><div class="n">1</div><div><b>Opciones › Imprimir etiquetas de bahía (SEQ)</b>. Sale una ventana con el número de bahía. Pulsar <b>Imprimir</b>: sale la bahía 1 y el número pasa a 2. Repetir hasta la última. Si una se estropea, poner su número y volver a imprimir.</div></div>
+<div class="paso"><div class="n">2</div><div>Pegar cada cartel en su bahía, a la altura del escáner (bahía 1 = SEQ 001…).</div></div>
+<div class="paso"><div class="n">3</div><div><b>Opciones › Imprimir etiqueta CAMBIAR-CAJA</b>. Tenerla a mano (en la mesa o colgada).</div></div>
+<div class="paso"><div class="n">4</div><div>Probar la impresora: <b>Opciones › Imprimir etiqueta de caja de prueba</b> (datos de ejemplo, no toca Odoo).</div></div>
+
+<h2>4 · Prueba de 5 minutos (recomendada)</h2>
+<ol>
+  <li>Poner <span class="m">koroshi_modo_prueba = true</span> y abrir el programa (título: MODO PRUEBA).</li>
+  <li>Cargar la oleada, leer 2–3 prendas, escanear sus bahías, hacer un CAMBIAR-CAJA y comprobar que sale la etiqueta.</li>
+  <li>Cerrar, poner <span class="m">koroshi_modo_prueba = false</span> y volver a abrir para trabajar de verdad.</li>
+</ol>
+<div class="nota">En modo prueba no se guarda nada en Odoo: lo leído en la prueba hay que volver a leerlo de verdad.</div>
+
+<h2>5 · Cargar la oleada</h2>
+<div class="paso"><div class="n">1</div><div>En Odoo, la agrupación <span class="m">B-KOR-ddmm-NN</span> tiene que estar <b>En curso</b> y sus OUT <b>Preparadas</b> (INT validados + «Comprobar disponibilidad»).</div></div>
+<div class="paso"><div class="n">2</div><div>En el programa, escanear o escribir el nombre de la oleada y Enter. Sale la tabla con las prendas y la columna SEQ de cada tienda.</div></div>
+<div class="paso"><div class="n">3</div><div>Comprobar <b>SEQ = bahía</b>: la tienda del SEQ 001 tiene sus cajas en la bahía 1, etc. (orden de las OUT, de menor a mayor).</div></div>
+<div class="paso"><div class="n">4</div><div>La pantalla pone <b>ESCANEAR ARTÍCULO</b>. Ya se puede empezar.</div></div>
+
+<div class="bloque"><div class="ventana">
+  <div class="tit">Pedidos Multiples — EFFECTIVE</div>
+  <div class="menu"><span>Empresa</span><span>Ultimo pedido</span><span>Opciones</span></div>
+  <div class="cuerpo">
+    <div class="estado e-blanco">ESCANEAR ARTÍCULO</div>
+    <div class="lateral"><div>Imp. Etiq. [ ______ ]</div><div>Num. Etiqueta</div></div>
+    <div class="input">Escanear aquí ▏</div>
+    <table>
+      <tr><th>SEQ</th><th>Pedido / OUT</th><th>Tienda</th><th>Código</th><th>EAN</th><th>QTY</th><th>Leído</th><th>Caja</th></tr>
+      <tr><td>001</td><td>EFFEC/OUT/…</td><td>K7 - ISLAZUL</td><td>2621JA11-…</td><td>84…</td><td>2</td><td>0</td><td>1</td></tr>
+      <tr><td>002</td><td>EFFEC/OUT/…</td><td>K9 - BALLONTI</td><td>2622PT65-…</td><td>84…</td><td>1</td><td>0</td><td>1</td></tr>
+      <tr><td>003</td><td>EFFEC/OUT/…</td><td>K26 - MAGIC</td><td>…</td><td>…</td><td>…</td><td>…</td><td>…</td></tr>
+    </table>
+  </div>
+</div>
+<p class="pie-dibujo">Dibujo: oleada cargada. Una fila por línea de OUT con su SEQ, lo pedido (QTY), lo leído y la caja abierta de esa tienda.</p></div>
+
+<h2 class="salto">6 · Por cada prenda</h2>
+<div class="paso"><div class="n">1</div><div><b>Leer la prenda.</b> La pantalla se pone azul con el SEQ en grande (p. ej. <b>003</b>) y dice en voz alta «PEDIDO 3. CONFIRMAR».</div></div>
+<div class="paso"><div class="n">2</div><div>Dejar la prenda en la caja abierta de la <b>bahía 3</b>.</div></div>
+<div class="paso"><div class="n">3</div><div><b>Escanear el cartel de la bahía 3.</b> Pantalla verde <b>CONFIRMADO</b>. Siguiente prenda.</div></div>
+
+<div class="bloque"><div style="display:grid;grid-template-columns:1fr 1fr;gap:3mm;break-inside:avoid">
+  <div class="ventana" style="margin:0"><div class="tit">1 · prenda leída</div><div class="cuerpo" style="grid-template-columns:1fr"><div class="estado grande e-azul">003</div></div></div>
+  <div class="ventana" style="margin:0"><div class="tit">2 · bahía escaneada</div><div class="cuerpo" style="grid-template-columns:1fr"><div class="estado e-verde">CONFIRMADO.
+ESCANEAR OTRO ARTÍCULO</div></div></div>
+</div>
+<p class="pie-dibujo">Dibujo: el ciclo de cada prenda.</p></div>
+
+<h3>Qué significa cada pantalla</h3>
+<table>
+  <tr><th style="width:52mm">Pantalla</th><th>Qué pasa</th><th>Qué hacer</th></tr>
+  <tr><td><span class="mini e-azul">003</span> (número grande)</td><td>Prenda leída, va al SEQ 003.</td><td>Dejarla en la bahía 3 y escanear su cartel.</td></tr>
+  <tr><td><span class="mini e-verde">CONFIRMADO</span></td><td>Correcto.</td><td>Siguiente prenda.</td></tr>
+  <tr><td><span class="mini e-rojo">ERROR: SEQ incorrecta…</span></td><td>Se ha escaneado el cartel de otra bahía.</td><td>Sacar la prenda, volver a leerla y dejarla en la bahía que diga.</td></tr>
+  <tr><td><span class="mini e-rojo">ERROR: CAJA 3 NO CONFIRMADA</span></td><td>Se ha leído otra cosa sin confirmar la prenda anterior.</td><td>Escanear el cartel de la bahía de la prenda anterior (o volver a leerla).</td></tr>
+  <tr><td><span class="mini e-amarillo">(amarillo)</span></td><td>Se ha vuelto a leer la misma prenda.</td><td>Escanear el cartel de su bahía.</td></tr>
+  <tr><td><span class="mini e-rosa">NO ENCONTRADO</span></td><td>La prenda no es de esta oleada o ya están todas leídas.</td><td>Apartarla en una caja de incidencias y apuntarla.</td></tr>
+  <tr><td><span class="mini e-rojo">ERROR: Escaneo incorrecto</span></td><td>Se ha escaneado un cartel de bahía sin leer antes una prenda.</td><td>Leer primero la prenda.</td></tr>
+</table>
+
+<h2>7 · Caja llena: CAMBIAR CAJA</h2>
+<div class="paso"><div class="n">1</div><div>Escanear la etiqueta <b>CAMBIAR-CAJA</b>. Pantalla <b>CAMBIAR CAJA</b>.</div></div>
+<div class="paso"><div class="n">2</div><div>Escanear el cartel de la bahía de la caja llena.</div></div>
+<div class="paso"><div class="n">3</div><div>Pantalla <b>ESPERE, CERRANDO CAJA 2…</b>: el programa cierra la caja en Odoo, Odoo le da su matrícula CJ (una distinta para cada caja) y sale la etiqueta (tienda, OUT, nº de caja, matrícula).</div></div>
+<div class="paso"><div class="n">4</div><div>Pantalla verde <b>CAJA CAMBIADA · ESCANEAR ARTÍCULO</b>. Pegar la etiqueta, cerrar con precinto, apilar la caja en el palet de la bahía y poner una caja vacía en su sitio.</div></div>
+
+<div class="bloque"><div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:3mm;break-inside:avoid">
+  <div class="ventana" style="margin:0"><div class="tit">CAMBIAR-CAJA leída</div><div class="cuerpo" style="grid-template-columns:1fr"><div class="estado e-blanco" style="font-size:11pt">CAMBIAR CAJA</div></div></div>
+  <div class="ventana" style="margin:0"><div class="tit">cerrando en Odoo</div><div class="cuerpo" style="grid-template-columns:1fr"><div class="estado e-blanco" style="font-size:11pt">ESPERE,
+CERRANDO CAJA 2...</div></div></div>
+  <div class="ventana" style="margin:0"><div class="tit">caja cerrada</div><div class="cuerpo" style="grid-template-columns:1fr"><div class="estado e-verde" style="font-size:11pt">CAJA CAMBIADA
+ESCANEAR ARTÍCULO</div></div></div>
+</div>
+<p class="pie-dibujo">Dibujo: las tres pantallas de CAMBIAR CAJA.</p></div>
+
+<table>
+  <tr><th style="width:52mm">Pantalla</th><th>Qué pasa</th><th>Qué hacer</th></tr>
+  <tr><td><span class="mini e-rojo">ERROR: Caja vacía</span></td><td>La caja de esa bahía no tiene ninguna prenda.</td><td>No hace falta cambiarla.</td></tr>
+  <tr><td><span class="mini e-rojo">ERROR: SEQ no válida</span></td><td>El cartel no es de ninguna tienda de la oleada (o la tienda ya está terminada).</td><td>Escanear el cartel correcto.</td></tr>
+  <tr><td><span class="mini e-rojo">ERROR: CAJA 2 NO CERRADA</span> + mensaje</td><td>Odoo no ha podido cerrar la caja. La caja sigue abierta.</td><td>Volver a hacer CAMBIAR-CAJA + bahía. Si vuelve a fallar: foto del mensaje y avisar a IT.</td></tr>
+</table>
+<div class="nota"><b>Por qué no se etiqueta antes:</b> mientras se llena, la caja se identifica por su bahía (solo hay una caja abierta por bahía). La matrícula y la etiqueta salen al cerrarla.</div>
+
+<h2 class="salto">8 · Tienda terminada y oleada terminada</h2>
+<ol>
+  <li>Al leer la última prenda de una tienda, el programa cierra solo la última caja e imprime su etiqueta.</li>
+  <li><b>Validar la OUT</b> de esa tienda en Odoo (el programa no la valida solo).</li>
+  <li>Retractilar los palets de la bahía y llevarlos a expedición. La bahía queda libre.</li>
+  <li>Cuando están todas las tiendas: pantalla <b>OLEADA TERMINADA</b>.</li>
+</ol>
+
+<h2>9 · Si algo va mal</h2>
+<table>
+  <tr><th style="width:52mm">Situación</th><th>Qué hacer</th></tr>
+  <tr><td>La oleada no carga</td><td>En Odoo: la agrupación tiene que estar «En curso» y las OUT Preparadas. El nombre empieza por <span class="m">B-</span>. Comprobar empresa EFFECTIVE.</td></tr>
+  <tr><td>Reimprimir una etiqueta de caja</td><td>En la casilla <b>Imp. Etiq.</b> (arriba a la derecha) escribir <span class="m">003</span> (última caja cerrada de la bahía 3) o <span class="m">003-2</span> (caja 2 de la bahía 3) y Enter. Sale con su matrícula.</td></tr>
+  <tr><td>El programa se ha cerrado o colgado</td><td>Volver a abrirlo › Empresa EFFECTIVE › menú <b>Ultimo pedido</b> › «¿Cargar último pedido?» <b>Sí</b>. Recupera lo leído y las cajas.</td></tr>
+  <tr><td>Se ha estropeado un cartel de bahía</td><td>Opciones › Imprimir etiquetas de bahía (SEQ), poner el número e Imprimir.</td></tr>
+  <tr><td>No sale ninguna etiqueta</td><td>Impresora encendida y con etiquetas; nombre correcto en <span class="m">imp_tick</span>; probar con «Imprimir etiqueta de caja de prueba».</td></tr>
+  <tr><td>Una tienda necesita más cajas de las que caben en la bahía</td><td>Apilar las cerradas encima del palet (hasta 4 pisos). Si no cabe, palet nuevo en la bahía.</td></tr>
+  <tr><td>Prenda sin etiqueta o que no se lee</td><td>Buscar el código en la tabla del programa y escribirlo; si no está, a la caja de incidencias.</td></tr>
+</table>
+
+<h2>10 · Hoja de anotaciones</h2>
+<table class="notas">
+  <tr><th style="width:18mm">Hora</th><th style="width:18mm">Bahía</th><th>Qué ha pasado (error, caja no cerrada, prenda no encontrada, pausa…)</th></tr>
+  <tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr>
+  <tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr><tr><td></td><td></td><td></td></tr>
+</table>
+<table class="notas">
+  <tr><th>Oleada</th><th>Hora empieza a leer</th><th>Personas leyendo</th><th>Hora OLEADA TERMINADA</th><th>Cajas totales</th></tr>
+  <tr><td></td><td></td><td></td><td></td><td></td></tr>
+</table>
+
+</body>
+</html>

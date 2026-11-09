@@ -1,0 +1,175 @@
+<title>Devoluciones OMS4TEX Amposta</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Source+Sans+3:wght@400;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: informe de almacén en una columna, con tabla de peticiones tipo albarán y gráfico diario de entrada */
+:root{
+  --bg:#f5f6f4; --paper:#ffffff; --ink:#1d2421; --muted:#5d6863; --line:#d9dedb;
+  --accent:#1f6f5c; --accent-soft:#e2efe9; --ifr:#c2702a; --bad:#b3362c; --bad-soft:#f8e5e2; --warn:#9a6b00; --warn-soft:#fbf0d4;
+  --f-display:"Archivo",system-ui,sans-serif; --f-body:"Source Sans 3",system-ui,sans-serif; --f-mono:"IBM Plex Mono",ui-monospace,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121715; --paper:#1a211e; --ink:#e6ebe8; --muted:#9aa6a0; --line:#2d3733;
+  --accent:#5cc3a3; --accent-soft:#1f3a31; --ifr:#e8995a; --bad:#ef7d72; --bad-soft:#3a201d; --warn:#e3b44d; --warn-soft:#352b14; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121715; --paper:#1a211e; --ink:#e6ebe8; --muted:#9aa6a0; --line:#2d3733;
+  --accent:#5cc3a3; --accent-soft:#1f3a31; --ifr:#e8995a; --bad:#ef7d72; --bad-soft:#3a201d; --warn:#e3b44d; --warn-soft:#352b14; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font:17px/1.55 var(--f-body);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:32px 64px}
+main{max-width:920px;margin:0 auto;display:grid;gap:40px}
+h1,h2,h3{font-family:var(--f-display);text-wrap:balance;line-height:1.15;margin:0}
+h1{font-size:clamp(28px,5vw,40px);font-weight:800}
+h2{font-size:24px;font-weight:700}
+h3{font-size:18px;font-weight:700}
+p{margin:0;max-width:68ch}
+.eyebrow{font:500 12px/1 var(--f-mono);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+header{display:grid;gap:12px}
+.meta{display:flex;flex-wrap:wrap;gap:8px 20px;font:13px var(--f-mono);color:var(--muted)}
+section{display:grid;gap:16px}
+.box{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:20px}
+.verdict{border-left:4px solid var(--bad);background:var(--bad-soft);border-radius:4px;padding:16px 18px;display:grid;gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:14px 16px;display:grid;gap:4px}
+.kpi b{font:700 28px/1.1 var(--f-display);font-variant-numeric:tabular-nums}
+.kpi span{font-size:14px;color:var(--muted)}
+.kpi.na b{color:var(--bad)}
+.chart{overflow-x:auto}
+.chart svg{display:block;width:100%;min-width:640px;height:auto}
+.legend{display:flex;flex-wrap:wrap;gap:16px;font-size:14px;color:var(--muted)}
+.sw{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+table{border-collapse:collapse;width:100%;font-size:15px}
+.tw{overflow-x:auto}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font:500 12px var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+td.num{font-variant-numeric:tabular-nums;text-align:right;white-space:nowrap}
+.pill{display:inline-block;font:500 12px/1 var(--f-mono);padding:4px 8px;border-radius:99px;white-space:nowrap}
+.p1{background:var(--bad-soft);color:var(--bad)} .p2{background:var(--warn-soft);color:var(--warn)} .p3{background:var(--accent-soft);color:var(--accent)}
+ol.flow{list-style:none;padding:0;margin:0;display:grid;gap:0;counter-reset:s}
+ol.flow li{counter-increment:s;display:grid;grid-template-columns:36px 1fr;gap:12px;padding:12px 0;border-bottom:1px dashed var(--line)}
+ol.flow li::before{content:counter(s);font:700 15px/32px var(--f-display);width:32px;height:32px;text-align:center;border-radius:50%;background:var(--accent-soft);color:var(--accent)}
+ol.flow li.slow::before{background:var(--bad-soft);color:var(--bad)}
+.note{font-size:14px;color:var(--muted)}
+code,.mono{font-family:var(--f-mono);font-size:.9em}
+.ev{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px}
+.ev .box{display:grid;gap:6px}
+.ev q{font-family:var(--f-mono);font-size:13px;quotes:none;background:var(--bg);padding:8px;border-radius:4px;display:block}
+.mail{white-space:pre-wrap;font:15px/1.6 var(--f-body);background:var(--paper);border:1px solid var(--line);border-radius:6px;padding:20px;margin:0}
+.copy{justify-self:start;font:600 14px var(--f-body);padding:8px 14px;border-radius:4px;border:1px solid var(--accent);background:var(--accent);color:var(--paper);cursor:pointer}
+.copy:focus-visible{outline:3px solid var(--ifr);outline-offset:2px}
+</style>
+
+<main>
+<header>
+  <div class="eyebrow">Moldstock Amposta · almacén 00006665 · operario MOLDTRANS</div>
+  <h1>Devoluciones en OMS4TEX: qué se puede medir y qué hay que pedir a Koroshi</h1>
+  <div class="meta"><span>Revisión: 02/11/2026</span><span>Pantalla: Devoluciones Web</span><span>Datos: 01/09/2026 – 02/11/2026</span><span>Modo lectura, sin procesar nada</span></div>
+</header>
+
+<section>
+  <h2>Resumen para dirección</h2>
+  <div class="verdict">
+    <strong>Hoy no se puede sacar de OMS4TEX cuántas devoluciones entran al día ni cuántas están hechas.</strong>
+    <p>La pantalla de Devoluciones Web lista todos los pedidos facturados que se podrían devolver, con la fecha de la factura, no la de la devolución. No tiene columna de estado. El sistema sí guarda cuándo se procesó cada devolución, pero solo se ve abriendo la ficha de cada pedido, una por una.</p>
+  </div>
+  <div class="kpis">
+    <div class="kpi"><b>6.936</b><span>pedidos en la lista (01/09 – 02/11)</span></div>
+    <div class="kpi"><b>779</b><span>con solicitud en iF Returns (≈100 por semana)</span></div>
+    <div class="kpi na"><b>—</b><span>devoluciones recibidas por día: no hay dato</span></div>
+    <div class="kpi na"><b>—</b><span>devoluciones procesadas por día: solo dentro de cada ficha</span></div>
+  </div>
+  <p class="note">Las 779 de iF Returns son lo más parecido a «devoluciones solicitadas». El resto de pedidos (Shopify) solo se convierte en devolución cuando el almacén la crea a mano desde la ficha.</p>
+</section>
+
+<section>
+  <h2>Pedidos en la lista por fecha de factura</h2>
+  <p>Cada barra es un día. La parte naranja son los pedidos con solicitud en iF Returns. Los lunes acumulan el fin de semana. La última semana está incompleta porque las devoluciones de esos pedidos aún no han llegado: aparecerán con la fecha antigua del pedido, no con la fecha en que llegan al almacén.</p>
+  <div class="box chart"><svg id="chart" viewBox="0 0 900 300" role="img" aria-label="Pedidos por día en Devoluciones Web, del 1 de septiembre al 2 de noviembre de 2026"></svg></div>
+  <div class="legend"><span><i class="sw" style="background:var(--accent)"></i>Shopify (pedido sin solicitud iF)</span><span><i class="sw" style="background:var(--ifr)"></i>iF Returns (solicitud de devolución)</span></div>
+  <div class="tw box"><table id="wk"><thead><tr><th>Semana (lunes)</th><th class="num">Pedidos</th><th class="num">iF Returns</th><th>Comentario</th></tr></thead><tbody></tbody></table></div>
+  <div class="tw box"><table><thead><tr><th>Día</th><th class="num">Media de pedidos</th></tr></thead><tbody>
+    <tr><td>Lunes</td><td class="num">225</td></tr><tr><td>Martes</td><td class="num">153</td></tr><tr><td>Miércoles</td><td class="num">122</td></tr><tr><td>Jueves</td><td class="num">115</td></tr><tr><td>Viernes</td><td class="num">93</td></tr><tr><td>Sábado</td><td class="num">55</td></tr><tr><td>Domingo</td><td class="num">7</td></tr>
+  </tbody></table></div>
+</section>
+
+<section>
+  <h2>Lo que he comprobado en las fichas</h2>
+  <div class="ev">
+    <div class="box"><h3>iF Returns pendiente</h3><span class="mono">0000056997 · 30/10/2026</span><p>Muestra Return ID de iF, estado <b>PENDING</b>, las líneas con motivo («Demasiado pequeño») y el botón Confirmar Devolución. Con nada marcado, el total a devolver sale <b>($3.99)</b> por los portes.</p></div>
+    <div class="box"><h3>iF Returns ya procesada</h3><span class="mono">0000051857-04-02 · 02/09/2026</span><q>Esta devolución fue procesada el 16/09/2026 17:50 y no se puede modificar.</q><p>Pero el estado iF sigue en <b>PENDING</b>, y la cabecera dice importe $9.99 cuando la lista decía $71.95. No muestra qué operario la hizo.</p></div>
+    <div class="box"><h3>Pedido Shopify</h3><span class="mono">0000056922 · 01/11/2026</span><p>Muestra por línea <b>Cantidad / Devueltas / Disponibles</b>. Al pulsar «Crear Devolución y Reembolsar en Shopify» se reembolsa al cliente al momento y no se puede deshacer.</p></div>
+  </div>
+  <p>Conclusión: la fecha de procesado existe y las cantidades devueltas también. El informe que pide dirección es cuestión de sacar en una pantalla o un Excel lo que el sistema ya guarda, más el operario.</p>
+</section>
+
+<section>
+  <h2>Cómo se trabaja hoy y dónde se pierde el tiempo</h2>
+  <ol class="flow">
+    <li><div><b>Elegir operario.</b> La pantalla dice que se mantiene toda la sesión, pero se borra al cambiar de pantalla. Si se recarga la página (F5), se vuelve al login.</div></li>
+    <li class="slow"><div><b>Escanear el pedido OMS y buscar.</b> Con el rango de fechas abierto, la búsqueda por número de pedido dio error del servidor: <span class="mono">Execution Timeout Expired</span>.</div></li>
+    <li class="slow"><div><b>Encontrar la fila.</b> La lista carga todos los pedidos de golpe (6.936 filas, unos 97.000 elementos en la página) y sin paginación. Ordena la fecha como texto, así que los pedidos de noviembre salen detrás de los de octubre. Hay facturas repetidas (44) y pedidos con sufijos -02, -03, -02-02 sin explicación.</div></li>
+    <li class="slow"><div><b>Pulsar Seleccionar.</b> El botón queda fuera de la pantalla a la derecha y hay que desplazar la tabla en horizontal para verlo.</div></li>
+    <li><div><b>Marcar líneas y confirmar.</b> Sin vuelta atrás. En Shopify reembolsa directamente. Importes en $ aunque son euros.</div></li>
+  </ol>
+</section>
+
+<section>
+  <h2>Peticiones a los informáticos de Koroshi</h2>
+  <div class="tw box"><table>
+    <thead><tr><th>Prioridad</th><th>Qué pedimos</th><th>Para qué</th></tr></thead>
+    <tbody>
+      <tr><td><span class="pill p1">Urgente</span></td><td><b>Informe diario de devoluciones</b>: recibidas, procesadas y pendientes por día y por operario, con unidades e importe, exportable a Excel. Guardar fecha de entrada, fecha de procesado y operario en cada devolución.</td><td>Es el dato que pide dirección y hoy no existe.</td></tr>
+      <tr><td><span class="pill p1">Urgente</span></td><td><b>Escanear y abrir la ficha directamente</b>: un campo que acepte el código del pedido OMS o de la etiqueta de devolución y abra la ficha sin pasar por la lista ni por fechas.</td><td>Quita los pasos 2 a 4 del flujo actual.</td></tr>
+      <tr><td><span class="pill p1">Urgente</span></td><td><b>Arreglar el timeout de la búsqueda</b> por número de pedido (índice en base de datos o búsqueda exacta).</td><td>Hoy la búsqueda puede fallar con error de servidor.</td></tr>
+      <tr><td><span class="pill p2">Alta</span></td><td><b>Columna y filtro de estado</b> (Pendiente, Procesada, Incidencia) y una vista de «pendientes de procesar» por defecto, solo con los pedidos que tienen solicitud de devolución.</td><td>Saber de un vistazo qué falta por hacer.</td></tr>
+      <tr><td><span class="pill p2">Alta</span></td><td><b>Paginación o carga por partes</b> de la lista.</td><td>6.936 filas de golpe hacen la pantalla lenta y pesada.</td></tr>
+      <tr><td><span class="pill p2">Alta</span></td><td><b>Sincronizar el estado con iF Returns</b>: una devolución procesada el 16/09 sigue en PENDING en iF.</td><td>Evitar que el cliente o atención al cliente vean la devolución como no recibida.</td></tr>
+      <tr><td><span class="pill p2">Alta</span></td><td><b>Mantener operario y sesión</b> al cambiar de pantalla o recargar.</td><td>Evitar volver a entrar a mitad de turno.</td></tr>
+      <tr><td><span class="pill p3">Mejora</span></td><td>Ordenar bien por fecha, botón Seleccionar visible sin desplazar, importes en €, explicar los sufijos -02/-03 y quitar facturas repetidas, que el total no salga negativo sin líneas marcadas, mostrar el operario en las devoluciones procesadas, permisos de la página Inicio.</td><td>Menos errores y menos dudas en el puesto.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section>
+  <h2>Texto para enviar a Koroshi</h2>
+  <pre class="mail" id="mail">Hola,
+
+Hemos revisado la pantalla de Devoluciones Web de OMS4TEX (almacén 00006665, Moldstock Amposta) y el proceso actual nos está costando mucho tiempo. Ahora mismo el operario tiene que escanear el pedido OMS, buscarlo en una lista que carga todos los pedidos facturados (6.936 entre el 01/09 y el 02/11), localizar la fila, desplazar la tabla para ver el botón Seleccionar y procesar. Además, la búsqueda por número de pedido nos ha devuelto el error "Execution Timeout Expired", el operario seleccionado se pierde al cambiar de pantalla y al recargar volvemos al login.
+
+Por otro lado, dirección nos pide un reporting diario de devoluciones recibidas y procesadas, y con la herramienta actual no lo podemos sacar: la lista no tiene estado y la fecha es la de la factura, no la de la devolución. La fecha de procesado sí existe dentro de cada ficha.
+
+Os pedimos, por este orden:
+1. Un informe diario (exportable a Excel) de devoluciones recibidas, procesadas y pendientes, por día y por operario.
+2. Poder escanear el pedido o la etiqueta de devolución y abrir la ficha directamente.
+3. Solucionar el timeout de la búsqueda por número de pedido.
+4. Columna y filtro de estado, con una vista de pendientes por defecto.
+5. Paginación de la lista.
+6. Que el estado en iF Returns se actualice al procesar (tenemos devoluciones procesadas en septiembre que siguen en PENDING).
+7. Mantener operario y sesión al cambiar de pantalla o recargar.
+8. Mejoras menores: orden de fechas, botón Seleccionar visible, importes en euros, facturas repetidas y sufijos -02/-03.
+
+Si os va bien, podemos hacer una llamada esta semana para verlo en pantalla.
+
+Gracias,</pre>
+  <button class="copy" id="copy" type="button">Copiar texto</button>
+</section>
+
+<p class="note">Fuente: búsquedas en Devoluciones Web con operario MOLDTRANS (006665), rango 01/09/2026 – 02/11/2026, y apertura de tres fichas sin confirmar ninguna devolución. Las cifras por día cuentan pedidos por fecha de factura.</p>
+</main>
+
+<script>
+const D=`09-01 242 34|09-02 160 18|09-03 121 18|09-04 113 18|09-05 76 12|09-06 10 1|09-07 292 39|09-08 137 13|09-09 94 5|09-10 122 5|09-11 58 8|09-12 84 10|09-13 6 0|09-14 318 27|09-15 97 7|09-16 98 11|09-17 114 15|09-18 83 11|09-19 60 7|09-20 5 0|09-21 235 29|09-22 98 8|09-23 129 16|09-24 157 28|09-25 133 25|09-26 49 5|09-27 5 0|09-28 331 40|09-29 177 26|09-30 146 19|10-01 127 22|10-02 79 15|10-03 44 4|10-04 8 1|10-05 350 38|10-06 174 18|10-07 110 10|10-08 117 10|10-09 83 16|10-10 26 3|10-11 11 0|10-12 30 2|10-13 270 35|10-14 163 21|10-15 97 18|10-16 103 16|10-17 57 6|10-18 3 0|10-19 208 28|10-20 96 8|10-21 102 8|10-22 105 11|10-23 91 3|10-24 79 9|10-25 9 0|10-26 248 10|10-27 85 3|10-28 93 4|10-29 76 3|10-30 96 2|10-31 22 0|11-01 10 0|11-02 14 0`.split('|').map(s=>{const[d,t,f]=s.split(' ');const[m,dd]=d.split('-').map(Number);return{date:new Date(2026,m-1,dd),t:+t,f:+f}});
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('chart');
+const W=900,H=300,L=40,R=10,T=14,B=40,max=400,bw=(W-L-R)/D.length;
+const y=v=>T+(H-T-B)*(1-v/max);
+function el(n,a,txt){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;svg.appendChild(e);return e}
+[0,100,200,300,400].forEach(v=>{el('line',{x1:L,x2:W-R,y1:y(v),y2:y(v),stroke:'var(--line)','stroke-width':1});el('text',{x:L-6,y:y(v)+4,'text-anchor':'end','font-size':11,fill:'var(--muted)','font-family':'IBM Plex Mono, monospace'},v)});
+D.forEach((d,i)=>{const x=L+i*bw+1,w=Math.max(bw-2,1);
+  el('rect',{x,y:y(d.t),width:w,height:y(0)-y(d.t),fill:'var(--accent)',opacity:d.date>=new Date(2026,9,26)?0.45:1}).appendChild(Object.assign(document.createElementNS(NS,'title'),{textContent:d.date.toLocaleDateString('es-ES')+': '+d.t+' pedidos, '+d.f+' iF Returns'}));
+  el('rect',{x,y:y(d.f),width:w,height:y(0)-y(d.f),fill:'var(--ifr)'});
+  if(d.date.getDay()===1)el('text',{x:x+w/2,y:H-B+16,'text-anchor':'middle','font-size':10,fill:'var(--muted)','font-family':'IBM Plex Mono, monospace'},String(d.date.getDate()).padStart(2,'0')+'/'+String(d.date.getMonth()+1).padStart(2,'0'))});
+el('text',{x:L,y:H-6,'font-size':11,fill:'var(--muted)','font-family':'Source Sans 3, sans-serif'},'Lunes de cada semana · barras claras: semana aún incompleta');
+const wk={};D.forEach(d=>{const m=new Date(d.date);m.setDate(m.getDate()-((m.getDay()+6)%7));const k=m.getTime();(wk[k]=wk[k]||{m,t:0,f:0});wk[k].t+=d.t;wk[k].f+=d.f});
+const notes={'12/10':'Incluye el festivo del 12/10','26/10':'Incompleta: faltan devoluciones por llegar','02/11':'Solo 02/11'};
+const tb=document.querySelector('#wk tbody');Object.values(wk).forEach(w=>{const k=w.m.toLocaleDateString('es-ES',{day:'2-digit',month:'2-digit'});const tr=document.createElement('tr');tr.innerHTML=`<td>${k}${w.m<new Date(2026,8,1)?' (desde 01/09)':''}</td><td class="num">${w.t.toLocaleString('es-ES')}</td><td class="num">${w.f}</td><td>${notes[k]||''}</td>`;tb.appendChild(tr)});
+document.getElementById('copy').addEventListener('click',async e=>{const b=e.currentTarget;try{await navigator.clipboard.writeText(document.getElementById('mail').innerText);b.textContent='Copiado'}catch(_){const r=document.createRange();r.selectNodeContents(document.getElementById('mail'));const s=getSelection();s.removeAllRanges();s.addRange(r);b.textContent='Texto seleccionado: pulsa Ctrl+C'}});
+</script>

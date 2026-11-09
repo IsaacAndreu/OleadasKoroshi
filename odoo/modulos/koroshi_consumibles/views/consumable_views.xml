@@ -1,0 +1,168 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_consumable_item_tree" model="ir.ui.view">
+        <field name="name">koroshi.consumable.item.tree</field>
+        <field name="model">koroshi.consumable.item</field>
+        <field name="arch" type="xml">
+            <tree string="Artículos consumibles" decoration-danger="stock_status == 'empty'" decoration-warning="stock_status == 'low'">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category"/>
+                <field name="uom"/>
+                <field name="initial_qty"/>
+                <field name="current_qty"/>
+                <field name="total_consumed"/>
+                <field name="minimum_qty"/>
+                <field name="stock_status"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_consumable_item_totals_tree" model="ir.ui.view">
+        <field name="name">koroshi.consumable.item.totals.tree</field>
+        <field name="model">koroshi.consumable.item</field>
+        <field name="arch" type="xml">
+            <tree string="Totales iniciales" editable="bottom" decoration-danger="stock_status == 'empty'" decoration-warning="stock_status == 'low'">
+                <field name="name"/>
+                <field name="code"/>
+                <field name="category"/>
+                <field name="uom"/>
+                <field name="initial_qty" string="Total conocido por Betty"/>
+                <field name="current_qty" readonly="1"/>
+                <field name="minimum_qty"/>
+                <field name="stock_status" readonly="1"/>
+                <field name="active"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_consumable_item_form" model="ir.ui.view">
+        <field name="name">koroshi.consumable.item.form</field>
+        <field name="model">koroshi.consumable.item</field>
+        <field name="arch" type="xml">
+            <form string="Artículo consumible">
+                <header>
+                    <button name="action_register_consumption" type="object" string="Registrar consumo" class="oe_highlight"/>
+                </header>
+                <sheet>
+                    <div class="oe_button_box" name="button_box">
+                        <button name="action_register_consumption" type="object" class="oe_stat_button" icon="fa-minus-circle">
+                            <div class="o_stat_info"><span class="o_stat_text">Registrar consumo</span></div>
+                        </button>
+                    </div>
+                    <widget name="web_ribbon" text="Agotado" bg_color="bg-danger" attrs="{'invisible': [('stock_status', '!=', 'empty')]}"/>
+                    <div class="oe_title"><label for="name" class="oe_edit_only"/><h1><field name="name" placeholder="Ej. Caja grande"/></h1></div>
+                    <group>
+                        <group string="Identificación">
+                            <field name="code"/>
+                            <field name="category"/>
+                            <field name="uom"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="active"/>
+                        </group>
+                        <group string="Stock">
+                            <field name="initial_qty" string="Total inicial conocido"/>
+                            <field name="current_qty" readonly="1"/>
+                            <field name="minimum_qty"/>
+                            <field name="stock_status" readonly="1"/>
+                            <field name="total_consumed" readonly="1"/>
+                            <field name="total_entries" readonly="1"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Movimientos">
+                            <field name="movement_ids" context="{'default_item_id': active_id}" nolabel="1">
+                                <tree string="Movimientos" editable="bottom">
+                                    <field name="date"/>
+                                    <field name="movement_type"/>
+                                    <field name="quantity"/>
+                                    <field name="signed_quantity" readonly="1"/>
+                                    <field name="note"/>
+                                    <field name="responsible_id" readonly="1"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notas"><field name="note" nolabel="1" placeholder="Observaciones del artículo..."/></page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_consumable_move_tree" model="ir.ui.view">
+        <field name="name">koroshi.consumable.move.tree</field>
+        <field name="model">koroshi.consumable.move</field>
+        <field name="arch" type="xml">
+            <tree string="Movimientos de consumibles" decoration-danger="movement_type == 'consumption'">
+                <field name="date"/>
+                <field name="item_id"/>
+                <field name="movement_type"/>
+                <field name="quantity"/>
+                <field name="signed_quantity"/>
+                <field name="note"/>
+                <field name="responsible_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_consumable_move_form" model="ir.ui.view">
+        <field name="name">koroshi.consumable.move.form</field>
+        <field name="model">koroshi.consumable.move</field>
+        <field name="arch" type="xml">
+            <form string="Movimiento de consumible">
+                <sheet>
+                    <group>
+                        <field name="item_id" options="{'no_create_edit': False}"/>
+                        <field name="movement_type"/>
+                        <field name="quantity"/>
+                        <field name="signed_quantity" readonly="1"/>
+                        <field name="date"/>
+                        <field name="responsible_id" readonly="1"/>
+                        <field name="note" placeholder="Ej. Consumo picking del turno de mañana"/>
+                    </group>
+                    <div class="alert alert-info" role="alert">
+                        En un consumo se resta la cantidad. En una entrada se suma. Una corrección puede ser positiva o negativa.
+                    </div>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_consumable_items" model="ir.actions.act_window">
+        <field name="name">Artículos consumibles</field>
+        <field name="res_model">koroshi.consumable.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_koroshi_consumable_item_tree"/>
+    </record>
+
+    <record id="action_koroshi_consumable_totals" model="ir.actions.act_window">
+        <field name="name">Totales iniciales</field>
+        <field name="res_model">koroshi.consumable.item</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_koroshi_consumable_item_totals_tree"/>
+        <field name="context">{'search_default_active': 1}</field>
+    </record>
+
+    <record id="action_koroshi_consumable_moves" model="ir.actions.act_window">
+        <field name="name">Movimientos</field>
+        <field name="res_model">koroshi.consumable.move</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_koroshi_consumable_move_tree"/>
+    </record>
+
+    <record id="action_koroshi_consumable_quick_consumption" model="ir.actions.act_window">
+        <field name="name">Registrar consumo</field>
+        <field name="res_model">koroshi.consumable.move</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_koroshi_consumable_move_form"/>
+        <field name="target">current</field>
+        <field name="context">{'default_movement_type': 'consumption'}</field>
+    </record>
+
+    <menuitem id="menu_koroshi_consumables_root" name="Consumibles" parent="koroshi_warehouse_map.menu_koroshi_warehouse_root" sequence="30" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consumables_items" name="Artículos" parent="menu_koroshi_consumables_root" action="action_koroshi_consumable_items" sequence="10" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consumables_totals" name="Totales iniciales" parent="menu_koroshi_consumables_root" action="action_koroshi_consumable_totals" sequence="20" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consumables_quick_consumption" name="Registrar consumo" parent="menu_koroshi_consumables_root" action="action_koroshi_consumable_quick_consumption" sequence="30" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consumables_moves" name="Historial de movimientos" parent="menu_koroshi_consumables_root" action="action_koroshi_consumable_moves" sequence="40" groups="stock.group_stock_user"/>
+</odoo>

@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1 Cada 15 min: pasa a los faltantes lo hecho en las INT de ronda (Encontrado / No encontrado /
+         sigue en la INT pendiente). Solo escribe en koroshi.faltante y, para los no encontrados, hace el
+         movimiento de FALTANT a perdidas de inventario. -->
+    <record id="cron_koroshi_faltantes_rondas" model="ir.cron">
+        <field name="name">KOROSHI Faltantes: actualizar rondas</field>
+        <field name="model_id" ref="model_koroshi_faltante"/>
+        <field name="state">code</field>
+        <field name="code">model.sincronizar_rondas()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

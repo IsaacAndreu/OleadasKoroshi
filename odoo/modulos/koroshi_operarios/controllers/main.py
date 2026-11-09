@@ -1,0 +1,164 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# KOROSHI Operarios - datos de la pantalla de la PDA (accion de cliente koroshi_operarios_pantalla,
+# static/src/js/operarios_pantalla.js). Usuario con sesion (p. ej. "Almacen Nath").
+#
+# JSON /koroshi/operarios/leer       {codigo, employee_id}        -> tarjeta, o pedido leido a mano
+# JSON /koroshi/operarios/operario   {employee_id}                -> el operario guardado en la PDA sigue valiendo
+# JSON /koroshi/operarios/siguiente  {employee_id}                -> v2: lo que le toca (lo abre la pantalla)
+# JSON /koroshi/operarios/saltar     {employee_id, motivo_id, nota} -> v2: saltar la que esta haciendo
+# JSON /koroshi/operarios/motivos    {}                           -> v2: motivos para saltar
+# JSON /koroshi/operarios/dejar      {employee_id}                -> "Dejar aqui" (v1, se mantiene)
+# JSON /koroshi/operarios/estado     {}                           -> tareas abiertas
+#
+# La tarjeta se busca en todas las empresas. Solo escribe en las tablas del modulo (con sudo, porque el usuario
+# de la PDA no tiene permisos sobre ellas).
+# =============================================================================
+import pytz
+
+from odoo import fields, http
+from odoo.exceptions import UserError
+from odoo.http import request
+
+from ..models.tarea import ZONA_HORARIA
+
+
+def _hora(dt):
+    if not dt:
+        return ''
+    return pytz.utc.localize(dt).astimezone(pytz.timezone(ZONA_HORARIA)).strftime('%H:%M')
+
+
+def _error(e):
+    return {'ok': False, 'msg': e.name if hasattr(e, 'name') else str(e)}
+
+
+def _tarea_json(t):
+    if not t:
+        return False
+    ref = t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name
+    tienda = '' if t.tipo == 'agrupacion' else (t.picking_id.partner_id.name or '')
+    return {
+        'id': t.id,
+        'operario': t.employee_id.name,
+        'ref': ref or t.referencia or '',
+        'tipo': t.tipo,
+        'picking_name': t.picking_id.name or '',
+        'batch_id': t.batch_id.id or False,
+        'tienda': tienda,
+        'inicio': _hora(t.inicio),
+        'estado': t.estado,
+        'uds_total': t.uds_total,
+    }
+
+
+class KoroshiOperarios(http.Controller):
+
+    def _empleado(self, employee_id):
+        emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+        if not emp or not emp.active:
+            raise UserError('Lee primero tu tarjeta')
+        return emp
+
+    def _cola_json(self, emp):
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        return [a.json() for a in Asig.cola_de(emp)[:10]]
+
+    def _siguiente(self, emp):
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        asig, nueva = Asig.siguiente(emp)
+        res = {'ok': True, 'que': 'siguiente', 'nueva': nueva, 'asignacion': asig.json() if asig else False,
+               'tarea': _tarea_json(asig.tarea_id) if asig else False, 'cola': self._cola_json(emp),
+               'operario': emp.name, 'employee_id': emp.id}
+        if not asig:
+            res['msg'] = 'No tienes más pedidos. Pide a tu responsable.'
+        return res
+
+    @http.route('/koroshi/operarios/leer', type='json', auth='user')
+    def leer(self, codigo='', employee_id=False, **kw):
+        codigo = (codigo or '').strip()
+        if not codigo:
+            return {'ok': False, 'msg': 'Codigo vacio'}
+        Emp = request.env['hr.employee'].sudo().with_context(active_test=True)
+        emp = Emp.search([('barcode', '=', codigo)], limit=1)
+        Tarea = request.env['koroshi.operario.tarea'].sudo()
+        if emp:
+            return {'ok': True, 'que': 'tarjeta', 'employee_id': emp.id, 'operario': emp.name,
+                    'abierta': _tarea_json(Tarea.abierta_de(emp))}
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        try:
+            emp = self._empleado(employee_id)
+            tipo, picking, lote = Tarea.buscar_objetivo(codigo)
+            if not tipo:
+                raise UserError('No encuentro ningun pedido ni agrupacion con el codigo %s' % codigo)
+            asig = Asig.leida_a_mano(emp, tipo, picking, lote)
+            if asig._terminada():
+                asig._cerrar_hecha()
+                raise UserError('%s ya esta validado' % asig.name)
+            tarea = asig._empezar(emp)
+        except UserError as e:
+            return _error(e)
+        return {'ok': True, 'que': 'empezada', 'msg': '', 'tarea': _tarea_json(tarea),
+                'asignacion': asig.json(), 'cola': self._cola_json(emp)}
+
+    @http.route('/koroshi/operarios/operario', type='json', auth='user')
+    def operario(self, employee_id=False, **kw):
+        try:
+            emp = self._empleado(employee_id)
+        except UserError as e:
+            return _error(e)
+        return {'ok': True, 'employee_id': emp.id, 'operario': emp.name}
+
+    @http.route('/koroshi/operarios/siguiente', type='json', auth='user')
+    def siguiente(self, employee_id=False, **kw):
+        try:
+            emp = self._empleado(employee_id)
+            return self._siguiente(emp)
+        except UserError as e:
+            return _error(e)
+
+    @http.route('/koroshi/operarios/motivos', type='json', auth='user')
+    def motivos(self, **kw):
+        Motivo = request.env['koroshi.operario.motivo'].sudo()
+        return {'ok': True, 'motivos': [{'id': m.id, 'nombre': m.name, 'destino': m.destino,
+                                         'pide_nota': m.pide_nota} for m in Motivo.search([])]}
+
+    @http.route('/koroshi/operarios/saltar', type='json', auth='user')
+    def saltar(self, employee_id=False, motivo_id=False, nota='', **kw):
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        Motivo = request.env['koroshi.operario.motivo'].sudo()
+        try:
+            emp = self._empleado(employee_id)
+            motivo = Motivo.browse(int(motivo_id or 0)).exists()
+            if not motivo:
+                raise UserError('Elige un motivo')
+            asig, destino = Asig.saltar(emp, motivo, nota)
+        except UserError as e:
+            return _error(e)
+        texto = {'oficina': '%s queda en oficina' % asig.name,
+                 'final': '%s va al final de tu cola' % asig.name,
+                 'suya': '%s sigue siendo tuya: la primera al volver' % asig.name}[destino]
+        if destino == 'suya':
+            # fin de turno: no se abre nada mas
+            return {'ok': True, 'que': 'saltada', 'destino': destino, 'msg': texto, 'cola': self._cola_json(emp)}
+        res = self._siguiente(emp)
+        res.update({'que': 'saltada', 'destino': destino, 'msg_salto': texto})
+        return res
+
+    @http.route('/koroshi/operarios/dejar', type='json', auth='user')
+    def dejar(self, employee_id=False, **kw):
+        Tarea = request.env['koroshi.operario.tarea'].sudo()
+        try:
+            emp = self._empleado(employee_id)
+            tarea = Tarea.dejar(emp)
+        except UserError as e:
+            return _error(e)
+        return {'ok': True, 'que': 'dejada', 'tarea': _tarea_json(tarea), 'uds': tarea.uds,
+                'minutos': round(tarea.minutos)}
+
+    @http.route('/koroshi/operarios/estado', type='json', auth='user')
+    def estado(self, **kw):
+        Tarea = request.env['koroshi.operario.tarea'].sudo()
+        abiertas = Tarea.search([('estado', '=', 'curso')], order='inicio asc', limit=200)
+        return {'ok': True, 'ahora': _hora(fields.Datetime.now()),
+                'abiertas': [_tarea_json(t) for t in abiertas]}

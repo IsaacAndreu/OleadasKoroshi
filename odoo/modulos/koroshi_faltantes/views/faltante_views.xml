@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_faltante_tree" model="ir.ui.view">
+        <field name="name">koroshi.faltante.tree</field>
+        <field name="model">koroshi.faltante</field>
+        <field name="arch" type="xml">
+            <tree decoration-warning="estado == 'pendiente'" decoration-success="estado == 'encontrado'"
+                  decoration-danger="estado == 'no_encontrado'" create="false">
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="picking_id"/>
+                <field name="product_id"/>
+                <field name="cantidad" sum="Uds"/>
+                <field name="cantidad_faltant" sum="Uds a FALTANT"/>
+                <field name="ubicacion_vieja_id"/>
+                <field name="ubicacion_nueva_id"/>
+                <field name="tipo"/>
+                <field name="estado"/>
+                <field name="ronda_picking_id" optional="show"/>
+                <field name="rondas" optional="hide"/>
+                <field name="en_ronda" invisible="1"/>
+                <field name="nota" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <button name="action_encontrado" type="object" string="Encontrado" icon="fa-check"
+                        attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                        groups="stock.group_stock_manager"/>
+                <button name="action_no_encontrado" type="object" string="No encontrado" icon="fa-times"
+                        attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                        confirm="Las uds de FALTANT pasan a perdidas de inventario. ¿Seguro?"
+                        groups="stock.group_stock_manager"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_faltante_form" model="ir.ui.view">
+        <field name="name">koroshi.faltante.form</field>
+        <field name="model">koroshi.faltante</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="action_encontrado" type="object" string="Encontrado" class="btn-primary"
+                            attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                            groups="stock.group_stock_manager"/>
+                    <button name="action_no_encontrado" type="object" string="No encontrado"
+                            attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                            confirm="Las uds de FALTANT pasan a perdidas de inventario. ¿Seguro?"
+                            groups="stock.group_stock_manager"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group string="Faltante">
+                            <field name="picking_id"/>
+                            <field name="batch_id"/>
+                            <field name="product_id"/>
+                            <field name="cantidad"/>
+                            <field name="tipo"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                            <field name="fecha"/>
+                            <field name="dia"/>
+                        </group>
+                        <group string="Ubicaciones">
+                            <field name="ubicacion_vieja_id"/>
+                            <field name="ubicacion_nueva_id"/>
+                            <field name="cantidad_faltant"/>
+                            <field name="move_faltant_id"/>
+                            <field name="linea_id"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <group string="Revision">
+                        <group>
+                            <field name="ubicacion_revision_id"/>
+                            <field name="move_revision_id"/>
+                            <field name="ronda_picking_id"/>
+                            <field name="ronda_move_id"/>
+                            <field name="rondas"/>
+                            <field name="en_ronda"/>
+                        </group>
+                        <group>
+                            <field name="fecha_revision"/>
+                            <field name="revisado_por"/>
+                        </group>
+                    </group>
+                    <field name="nota" placeholder="Nota"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_faltante_pivot" model="ir.ui.view">
+        <field name="name">koroshi.faltante.pivot</field>
+        <field name="model">koroshi.faltante</field>
+        <field name="arch" type="xml">
+            <pivot string="Faltantes">
+                <field name="dia" type="row" interval="day"/>
+                <field name="estado" type="col"/>
+                <field name="cantidad" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_faltante_search" model="ir.ui.view">
+        <field name="name">koroshi.faltante.search</field>
+        <field name="model">koroshi.faltante</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="product_id"/>
+                <field name="employee_id"/>
+                <field name="ubicacion_vieja_id"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="ayer" string="Ayer"
+                        domain="[('dia', '=', (context_today() - datetime.timedelta(days=1)).strftime('%Y-%m-%d'))]"/>
+                <filter name="semana" string="Ultimos 7 dias"
+                        domain="[('dia', '>=', (context_today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="pendiente" string="Pendientes" domain="[('estado', '=', 'pendiente')]"/>
+                <filter name="encontrado" string="Encontrados" domain="[('estado', '=', 'encontrado')]"/>
+                <filter name="no_encontrado" string="No encontrados" domain="[('estado', '=', 'no_encontrado')]"/>
+                <separator/>
+                <filter name="reubicado" string="Reubicados" domain="[('tipo', '=', 'reubicado')]"/>
+                <filter name="sin_alternativa" string="Sin alternativa" domain="[('tipo', '=', 'sin_alternativa')]"/>
+                <separator/>
+                <filter name="en_ronda" string="En una ronda abierta" domain="[('en_ronda', '=', True)]"/>
+                <filter name="fuera_ronda" string="Fuera de ronda" domain="[('en_ronda', '=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_ronda" string="Ronda" context="{'group_by': 'ronda_picking_id'}"/>
+                    <filter name="g_dia" string="Dia" context="{'group_by': 'dia:day'}"/>
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+                    <filter name="g_producto" string="Articulo" context="{'group_by': 'product_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_faltante_revision" model="ir.actions.act_window">
+        <field name="name">Revision de faltantes</field>
+        <field name="res_model">koroshi.faltante</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_koroshi_faltante_search"/>
+        <field name="context">{'search_default_pendiente': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay faltantes pendientes</p>
+            <p>Se crean desde la pantalla "Faltante" de la PDA. Cada dia: Encontrado (vuelve de FALTANT a su
+               ubicacion) o No encontrado (de FALTANT a perdidas de inventario).</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_puestos_a_cero" model="ir.actions.server">
+        <field name="name">Puestos a 0 hoy</field>
+        <field name="model_id" ref="model_koroshi_faltante"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_puestos_a_cero()</field>
+    </record>
+
+    <!-- v1.1 Ronda de revision: una INT con los faltantes pendientes (de FALTANT a su ubicacion vieja). -->
+    <record id="action_koroshi_crear_ronda" model="ir.actions.server">
+        <field name="name">Crear ronda de revision</field>
+        <field name="model_id" ref="model_koroshi_faltante"/>
+        <field name="state">code</field>
+        <field name="code">action = model.crear_ronda()</field>
+    </record>
+
+    <!-- En la lista: Accion > Crear ronda con los seleccionados -->
+    <record id="action_koroshi_crear_ronda_seleccion" model="ir.actions.server">
+        <field name="name">Crear ronda con los seleccionados</field>
+        <field name="model_id" ref="model_koroshi_faltante"/>
+        <field name="binding_model_id" ref="model_koroshi_faltante"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('stock.group_stock_manager'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = records.crear_ronda()</field>
+    </record>
+
+    <record id="action_koroshi_rondas" model="ir.actions.act_window">
+        <field name="name">Rondas de faltantes</field>
+        <field name="res_model">stock.picking</field>
+        <field name="view_mode">tree,form</field>
+        <field name="domain">[('origin', '=like', 'RONDA FALTANTES%')]</field>
+        <field name="context">{'create': False}</field>
+    </record>
+
+    <!-- Pantalla de la PDA. Tambien se abre con el boton "Faltante" de la pantalla de Operarios. -->
+    <record id="action_koroshi_faltantes_pantalla" model="ir.actions.client">
+        <field name="name">Faltante</field>
+        <field name="tag">koroshi_faltantes_pantalla</field>
+    </record>
+</odoo>

@@ -1,0 +1,26 @@
+@page { size: A4 portrait; margin: 14mm 15mm 16mm; }
+* { box-sizing: border-box; }
+body { font-family: Arial, Helvetica, sans-serif; font-size: 10.6pt; line-height: 1.4; color: #111; margin: 0; background: #fff; }
+.portada { border-top: 6px solid #2a6f97; padding-top: 4mm; margin-bottom: 5mm; }
+h1 { font-size: 24pt; margin: 0 0 1mm; }
+.sub { color: #444; margin: 0; }
+.meta { color: #666; font-size: 9pt; margin-top: 2mm; }
+h2 { font-size: 14pt; margin: 7mm 0 2.5mm; padding: 1.6mm 3mm; background: #2a6f97; color: #fff; break-after: avoid; }
+h3 { font-size: 11.5pt; margin: 4mm 0 1.5mm; break-after: avoid; }
+p { margin: 1.6mm 0; }
+ul, ol { margin: 1mm 0 2mm; padding-left: 6mm; }
+li { margin: .9mm 0; }
+.m { font-family: "Courier New", monospace; font-size: 9.6pt; background: #f1f1f1; padding: 0 1mm; }
+pre { font-family: "Courier New", monospace; font-size: 8.4pt; background: #f4f4f4; border: 1px solid #ccc; padding: 2.5mm 3mm; white-space: pre-wrap; break-inside: avoid; margin: 2mm 0; }
+table { width: 100%; border-collapse: collapse; margin: 2mm 0 3mm; font-size: 9.6pt; break-inside: avoid; }
+th, td { border: 1px solid #aaa; padding: 1.4mm 2mm; text-align: left; vertical-align: top; }
+th { background: #eef3f6; }
+figure { margin: 3mm 0 4mm; break-inside: avoid; text-align: center; }
+figure img { max-width: 100%; border: 1px solid #999; }
+figure.estrecha img { max-width: 44%; }
+figcaption { font-size: 9pt; color: #444; margin-top: 1.2mm; }
+.alerta { border-left: 5px solid #c8372d; background: #fbeeed; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.ok { border-left: 5px solid #2e9a52; background: #edf7f0; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.nota { border-left: 5px solid #e0a100; background: #fdf6e3; padding: 2mm 3.5mm; margin: 3mm 0; break-inside: avoid; }
+.c { display: inline-block; width: 3.4mm; height: 3.4mm; border: 1px solid #666; vertical-align: -0.5mm; margin-right: 1mm; }
+.salto { break-before: page; }

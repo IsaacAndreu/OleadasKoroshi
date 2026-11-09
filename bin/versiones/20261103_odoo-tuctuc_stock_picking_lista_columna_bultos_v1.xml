@@ -1,0 +1,14 @@
+<!--
+Columna "Bultos" (number_of_packages, con total abajo) en la lista de transferencias (stock.picking)
+de odoo.tuctuc.com (BD TUCTUC_PRODUCTION). Es la misma que la vista 6052 de nath.tuctuc.com (23/10/2026).
+Creada el 03/11/2026 por JSON-RPC, sin tocar ningun modulo:
+  - ir.ui.view "stock.picking.tree.koroshi.bultos" (hereda de la 930 stock.vpicktree, prioridad 100)
+El campo number_of_packages viene del modulo delivery_package_number (instalado).
+Es "optional show": cada usuario la puede ocultar con el menu de columnas de la lista.
+Para quitarla: archivar o borrar la vista (Ajustes > Tecnico > Vistas).
+-->
+<data>
+    <field name="count_done" position="after">
+        <field name="number_of_packages" string="Bultos" sum="Bultos" optional="show"/>
+    </field>
+</data>

@@ -1,0 +1,649 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# KOROSHI Operarios v2 - cola de pedidos por operario.
+#
+#   koroshi.operario.motivo      motivos de "Saltar" y adonde va la OUT (oficina / final de su cola / sigue suya)
+#   koroshi.operario.dia         modo de reparto del dia (automatico / por pasillos / solo manual)
+#   koroshi.operario.tramo       operarios de hoy (v2.1) y su tramo de lineales para el modo por pasillos
+#   koroshi.operario.asignacion  la cola: operario + OUT o agrupacion, orden y estado
+#
+# v2.1: "Repartir ahora" llena la cola de cada operario por bloques y se imprimen sus etiquetas de zona en orden.
+# Una OUT (o agrupacion) solo puede tener UNA asignacion viva (cola / curso / oficina): indice unico parcial en
+# la base de datos, asi dos PDA nunca reciben la misma aunque pidan a la vez.
+# Solo escribe en sus tablas y en koroshi.operario.tarea. No anade campos a albaranes ni agrupaciones.
+# =============================================================================
+import base64
+import datetime
+import io
+import logging
+import re
+
+import psycopg2
+import pytz
+from PyPDF2 import PdfFileReader, PdfFileWriter
+
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError
+
+from .tarea import PREFIJOS_ZONA, ZONA_HORARIA
+
+_logger = logging.getLogger(__name__)
+
+VIVAS = ('cola', 'curso', 'oficina')
+RE_LINEAL = re.compile(r'\bL(\d+)\b')
+CANDIDATOS = 400        # OUT libres mas antiguas que se miran cada vez (modo automatico / pasillos)
+# v2.1: las etiquetas son las de siempre (vista y accion creadas a mano en Odoo el 21/10, no son de un modulo)
+INFORME_ZONA = 'koroshi.report_etiqueta_zona'
+ACCION_ZONA = 'KOROSHI Etiquetas zona'
+
+
+def _hoy():
+    return datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).date()
+
+
+def _unir_pdf(pdfs):
+    """Une varios PDF en uno, en orden."""
+    salida = PdfFileWriter()
+    for contenido in pdfs:
+        lector = PdfFileReader(io.BytesIO(contenido), strict=False)
+        for i in range(lector.getNumPages()):
+            salida.addPage(lector.getPage(i))
+    buf = io.BytesIO()
+    salida.write(buf)
+    return buf.getvalue()
+
+
+class KoroshiOperarioMotivo(models.Model):
+    _name = 'koroshi.operario.motivo'
+    _description = 'KOROSHI Motivo para saltar un pedido'
+    _order = 'sequence, id'
+
+    name = fields.Char('Motivo', required=True, translate=False)
+    sequence = fields.Integer('Orden', default=10)
+    destino = fields.Selection([
+        ('oficina', 'Oficina (no se da a nadie hasta revisarla)'),
+        ('final', 'Final de su cola'),
+        ('suya', 'Sigue suya y la primera (fin de turno)'),
+    ], 'Adonde va', required=True, default='oficina')
+    pide_nota = fields.Boolean('Pide texto', help='Al elegirlo en la PDA se pide escribir el motivo')
+    active = fields.Boolean('Activo', default=True)
+
+
+class KoroshiOperarioDia(models.Model):
+    _name = 'koroshi.operario.dia'
+    _description = 'KOROSHI Reparto del dia'
+    _order = 'fecha desc'
+    _rec_name = 'fecha'
+
+    fecha = fields.Date('Dia', required=True, default=lambda self: _hoy(), index=True)
+    company_id = fields.Many2one('res.company', 'Empresa', required=True, default=lambda self: self.env.company)
+    modo = fields.Selection([
+        ('auto', 'A · Automatico (la OUT libre mas antigua)'),
+        ('pasillos', 'B · Por pasillos (tramo de lineales de cada operario)'),
+        ('manual', 'C · Solo manual (solo lo que reparte el responsable)'),
+    ], 'Modo de hoy', required=True, default='auto',
+        help='Siempre se da primero lo asignado a mano. Cuando se acaba, se usa este modo.')
+    pasillos_a_auto = fields.Boolean('Si no hay en su tramo, dar la mas antigua', default=True)
+    # v2.1: reparto por bloques al empezar el dia (asi se pueden imprimir las etiquetas de cada uno)
+    bloque = fields.Integer('Pedidos por bloque', default=10,
+                            help='"Repartir ahora" llena la cola de cada operario hasta este numero de pedidos.')
+    aviso_quedan = fields.Integer('Avisar cuando le queden', default=3,
+                                  help='En "Operarios de hoy" la linea sale en naranja cuando al operario le quedan '
+                                       'estos pedidos o menos.')
+    dar_sin_etiqueta = fields.Boolean(
+        'Si se le acaba la cola, darle otra solo (sin etiqueta)', default=False,
+        help='Apagado: con la cola vacia la PDA dice "No tienes mas pedidos. Pide a tu responsable" y el responsable '
+             'reparte otro bloque e imprime sus etiquetas. Encendido: la PDA le da sola la siguiente segun el modo '
+             '(sin etiqueta impresa: usara una matricula CJ preimpresa).')
+    agrupaciones = fields.Boolean('Repartir agrupaciones enteras (Z-)', default=False,
+                                  help='Encendido: una agrupacion de zonas cuenta como un solo pedido de la cola y se '
+                                       'abre en "procesar agrupacion".')
+    solo_preparadas = fields.Boolean('Solo OUT preparadas', default=True,
+                                     help='En automatico y por pasillos, solo se dan OUT en estado Preparado.')
+    tramo_ids = fields.One2many('koroshi.operario.tramo', 'dia_id', 'Operarios de hoy', copy=True)
+    asignacion_ids = fields.One2many('koroshi.operario.asignacion', compute='_compute_asignaciones',
+                                     string='Colas')
+    oficina_ids = fields.One2many('koroshi.operario.asignacion', compute='_compute_asignaciones',
+                                  string='En oficina')
+
+    _sql_constraints = [('fecha_empresa_unica', 'unique(fecha, company_id)', 'Ya hay un reparto para ese dia.')]
+
+    def _compute_asignaciones(self):
+        Asig = self.env['koroshi.operario.asignacion']
+        for d in self:
+            d.asignacion_ids = Asig.search([('estado', 'in', ('cola', 'curso')), ('company_id', '=', d.company_id.id)])
+            d.oficina_ids = Asig.search([('estado', '=', 'oficina'), ('company_id', '=', d.company_id.id)])
+
+    @api.model
+    def de_hoy(self, company=None):
+        """Reparto de hoy. Si no existe, se crea copiando el ultimo (modo, interruptores y tramos)."""
+        company = company or self.env.company
+        hoy = _hoy()
+        dia = self.sudo().search([('fecha', '=', hoy), ('company_id', '=', company.id)], limit=1)
+        if dia:
+            return dia
+        ultimo = self.sudo().search([('company_id', '=', company.id)], order='fecha desc', limit=1)
+        try:
+            with self.env.cr.savepoint():
+                if ultimo:
+                    return ultimo.copy({'fecha': hoy})
+                return self.sudo().create({'fecha': hoy, 'company_id': company.id})
+        except psycopg2.IntegrityError:
+            # otra PDA lo acaba de crear a la vez
+            return self.sudo().search([('fecha', '=', hoy), ('company_id', '=', company.id)], limit=1)
+
+    def action_repartir_ahora(self):
+        """Llena hasta el bloque la cola de todos los operarios de hoy."""
+        self.ensure_one()
+        return self.tramo_ids.action_dar_bloque()
+
+    def action_imprimir_pendientes(self):
+        """Etiquetas de todo lo que esta en cola y aun no se ha impreso, por operario."""
+        self.ensure_one()
+        Asig = self.env['koroshi.operario.asignacion']
+        asigs = Asig.search([('employee_id', 'in', self.tramo_ids.mapped('employee_id').ids),
+                             ('estado', 'in', ('cola', 'curso')), ('etiqueta_impresa', '=', False)])
+        if not asigs:
+            raise UserError(_('No hay pedidos en cola sin etiqueta. Primero "Repartir ahora".'))
+        return asigs._imprimir_etiquetas(self)
+
+    @api.model
+    def action_abrir_hoy(self):
+        dia = self.de_hoy()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': _('Reparto de hoy'),
+            'res_model': self._name,
+            'res_id': dia.id,
+            'view_mode': 'form',
+            'target': 'current',
+        }
+
+
+class KoroshiOperarioTramo(models.Model):
+    """Operario que trabaja hoy (v2.1) y, para el modo por pasillos, su tramo de lineales (0-0 = sin tramo)."""
+    _name = 'koroshi.operario.tramo'
+    _description = 'KOROSHI Operario de hoy y su tramo de lineales'
+    _order = 'sequence, id'
+
+    dia_id = fields.Many2one('koroshi.operario.dia', 'Dia', required=True, ondelete='cascade', index=True)
+    sequence = fields.Integer('Orden', default=10)
+    employee_id = fields.Many2one('hr.employee', 'Operario', required=True)
+    lineal_desde = fields.Integer('Desde lineal', default=0, help='Numero de lineal: L40 -> 40. 0 = sin tramo')
+    lineal_hasta = fields.Integer('Hasta lineal', default=0)
+    pendientes = fields.Integer('Le quedan', compute='_compute_cola',
+                                help='Pedidos en su cola, contando el que esta haciendo')
+    sin_etiqueta = fields.Integer('Sin etiqueta', compute='_compute_cola',
+                                  help='Pedidos de su cola cuya etiqueta aun no se ha impreso')
+    cola_baja = fields.Boolean('Cola baja', compute='_compute_cola')
+
+    _sql_constraints = [('operario_dia_unico', 'unique(dia_id, employee_id)',
+                         'Ese operario ya esta en el reparto de hoy.')]
+
+    @api.depends('employee_id', 'dia_id.aviso_quedan')
+    def _compute_cola(self):
+        Asig = self.env['koroshi.operario.asignacion'].sudo()
+        for t in self:
+            cola = Asig.cola_de(t.employee_id) if t.employee_id else Asig
+            t.pendientes = len(cola)
+            t.sin_etiqueta = len(cola.filtered(lambda a: not a.etiqueta_impresa))
+            t.cola_baja = bool(t.employee_id) and t.pendientes <= t.dia_id.aviso_quedan
+
+    def _tiene_tramo(self):
+        self.ensure_one()
+        return self.lineal_hasta > 0
+
+    @api.constrains('lineal_desde', 'lineal_hasta')
+    def _check_tramo(self):
+        for t in self:
+            if t.lineal_hasta < t.lineal_desde:
+                raise UserError(_('El tramo de %s esta al reves (desde %s hasta %s).')
+                                % (t.employee_id.name, t.lineal_desde, t.lineal_hasta))
+
+    def action_dar_bloque(self):
+        """Llena la cola de estos operarios hasta el bloque del dia, repartiendo por turnos (uno a cada uno)."""
+        if not self:
+            raise UserError(_('Pon primero los operarios de hoy.'))
+        dia = self[0].dia_id
+        if dia.modo == 'manual':
+            raise UserError(_('En modo "C · Solo manual" no se reparte solo: asigna a mano (Accion > Asignar a '
+                              'operario en la lista de albaranes) o cambia el modo.'))
+        if dia.bloque <= 0:
+            raise UserError(_('"Pedidos por bloque" tiene que ser mayor que 0.'))
+        Asig = self.env['koroshi.operario.asignacion'].sudo()
+        falta = {t.id: max(0, dia.bloque - len(Asig.cola_de(t.employee_id))) for t in self}
+        listas = {}
+        usados = set()
+        dados = {t.id: 0 for t in self}
+        seguir = True
+        while seguir:
+            seguir = False
+            for t in self:
+                if falta[t.id] <= 0:
+                    continue
+                asig = Asig._dar_de_listas(dia, t.employee_id, listas, usados)
+                if asig:
+                    falta[t.id] -= 1
+                    dados[t.id] += 1
+                    seguir = True
+                else:
+                    falta[t.id] = 0
+        resumen = ', '.join('%s %d' % (t.employee_id.name, dados[t.id]) for t in self)
+        total = sum(dados.values())
+        _logger.info('KOROSHI OPERARIOS repartir bloque (%s): %s', dia.modo, resumen)
+        if not total:
+            raise UserError(_('No se ha repartido nada: o ya tienen el bloque lleno o no quedan pedidos libres.'))
+        # True: el formulario se recarga y se ve "Le quedan" / "Sin etiqueta" de cada uno
+        return True
+
+    def action_imprimir(self):
+        """Etiquetas de la cola de este operario que aun no se han impreso."""
+        self.ensure_one()
+        Asig = self.env['koroshi.operario.asignacion']
+        asigs = Asig.cola_de(self.employee_id).filtered(lambda a: not a.etiqueta_impresa)
+        if not asigs:
+            raise UserError(_('%s no tiene pedidos en cola sin etiqueta. Para reimprimir: menu Colas, '
+                              'seleccionar y Accion > Imprimir etiquetas.') % self.employee_id.name)
+        return asigs._imprimir_etiquetas(self.dia_id)
+
+
+class KoroshiOperarioAsignacion(models.Model):
+    _name = 'koroshi.operario.asignacion'
+    _description = 'KOROSHI Pedido asignado a un operario'
+    _order = 'employee_id, estado, secuencia, id'
+
+    name = fields.Char('Pedido', compute='_compute_name', store=True)
+    employee_id = fields.Many2one('hr.employee', 'Operario', index=True, ondelete='restrict',
+                                  help='Vacio = en oficina sin operario')
+    tipo = fields.Selection([('out', 'Pedido (OUT)'), ('agrupacion', 'Agrupacion')], 'Tipo', required=True,
+                            default='out')
+    picking_id = fields.Many2one('stock.picking', 'Pedido (OUT)', index=True, ondelete='cascade')
+    batch_id = fields.Many2one('stock.picking.batch', 'Agrupacion', index=True, ondelete='cascade')
+    secuencia = fields.Integer('Orden', default=100)
+    estado = fields.Selection([
+        ('cola', 'En cola'),
+        ('curso', 'Haciendose'),
+        ('oficina', 'En oficina'),
+        ('hecha', 'Hecha'),
+        ('quitada', 'Quitada'),
+    ], 'Estado', required=True, default='cola', index=True)
+    origen = fields.Selection([
+        ('manual', 'Responsable'),
+        ('auto', 'Automatico'),
+        ('pasillos', 'Por pasillos'),
+        ('leida', 'Leida en la PDA'),
+    ], 'Como se asigno', required=True, default='manual')
+    motivo_id = fields.Many2one('koroshi.operario.motivo', 'Motivo del salto')
+    nota = fields.Char('Nota')
+    saltos = fields.Integer('Veces saltada')
+    fecha_salto = fields.Datetime('Ultimo salto')
+    tarea_id = fields.Many2one('koroshi.operario.tarea', 'Tarea actual', ondelete='set null')
+    etiqueta_impresa = fields.Datetime('Etiqueta impresa', copy=False,
+                                       help='Cuando se imprimio su etiqueta desde Reparto de hoy o Colas')
+    tienda = fields.Char('Tienda', related='picking_id.partner_id.name')
+    estado_out = fields.Selection(related='picking_id.state', string='Estado OUT')
+    company_id = fields.Many2one('res.company', 'Empresa', required=True, default=lambda self: self.env.company,
+                                 index=True)
+
+    @api.depends('tipo', 'picking_id', 'batch_id')
+    def _compute_name(self):
+        for a in self:
+            a.name = a.batch_id.name if a.tipo == 'agrupacion' else a.picking_id.name
+
+    def init(self):
+        # una sola asignacion viva por OUT y por agrupacion (dos PDA a la vez: la segunda falla y coge otra)
+        self.env.cr.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS koroshi_operario_asignacion_picking_viva
+                ON koroshi_operario_asignacion (picking_id)
+                WHERE picking_id IS NOT NULL AND tipo = 'out' AND estado IN ('cola', 'curso', 'oficina')""")
+        self.env.cr.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS koroshi_operario_asignacion_batch_viva
+                ON koroshi_operario_asignacion (batch_id)
+                WHERE batch_id IS NOT NULL AND tipo = 'agrupacion' AND estado IN ('cola', 'curso', 'oficina')""")
+
+    # ------------------------------------------------------------------ helpers
+    def _pickings(self):
+        self.ensure_one()
+        if self.tipo == 'agrupacion':
+            return self.batch_id.sudo().picking_ids
+        return self.picking_id.sudo()
+
+    def _terminada(self):
+        """True si ya no hay nada que hacer: validada, cancelada o borrada."""
+        self.ensure_one()
+        pickings = self._pickings()
+        vivas = pickings.filtered(lambda p: p.state not in ('done', 'cancel'))
+        return not vivas
+
+    @api.model
+    def _viva_de(self, picking=None, lote=None):
+        dom = [('estado', 'in', VIVAS)]
+        if lote:
+            dom += [('tipo', '=', 'agrupacion'), ('batch_id', '=', lote.id)]
+        else:
+            dom += [('tipo', '=', 'out'), ('picking_id', '=', picking.id)]
+        return self.sudo().search(dom, limit=1)
+
+    @api.model
+    def _crear_segura(self, vals):
+        """Crea la asignacion. Si otra PDA acaba de coger esa OUT (indice unico), devuelve False."""
+        try:
+            with self.env.cr.savepoint():
+                return self.sudo().create(vals)
+        except psycopg2.IntegrityError:
+            return False
+
+    @api.model
+    def _ultima_secuencia(self, employee):
+        ultima = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'cola')],
+                                    order='secuencia desc', limit=1)
+        return (ultima.secuencia if ultima else 0) + 10
+
+    @api.model
+    def _primera_secuencia(self, employee):
+        primera = self.sudo().search([('employee_id', '=', employee.id), ('estado', 'in', ('cola', 'curso'))],
+                                     order='secuencia asc', limit=1)
+        return (primera.secuencia if primera else 100) - 10
+
+    def json(self):
+        self.ensure_one()
+        return {
+            'id': self.id,
+            'ref': self.name or '',
+            'tipo': self.tipo,
+            'picking_name': self.picking_id.name or '',
+            'batch_id': self.batch_id.id if self.tipo == 'agrupacion' else False,
+            'tienda': '' if self.tipo == 'agrupacion' else (self.picking_id.partner_id.name or ''),
+            'estado': self.estado,
+        }
+
+    # ------------------------------------------------------------------ candidatos (modo automatico / pasillos)
+    @api.model
+    def _lineal(self, picking):
+        """Lineal mas bajo de las ubicaciones reservadas de la OUT (L77 P38 C2 -> 77), o None."""
+        numeros = []
+        for ml in picking.move_line_ids:
+            m = RE_LINEAL.search(ml.location_id.complete_name or '')
+            if m:
+                numeros.append(int(m.group(1)))
+        return min(numeros) if numeros else None
+
+    @api.model
+    def _candidatos(self, dia, employee, tramo=None):
+        """OUT (y agrupaciones Z- si esta encendido) libres, de la mas antigua a la mas nueva."""
+        Picking = self.env['stock.picking'].sudo()
+        cogidas = self.sudo().search([('estado', 'in', VIVAS), ('tipo', '=', 'out')]).mapped('picking_id')
+        dom = [('picking_type_code', '=', 'outgoing'), ('company_id', '=', dia.company_id.id),
+               ('id', 'not in', cogidas.ids)]
+        dom += [('state', '=', 'assigned')] if dia.solo_preparadas else [('state', 'in', ('assigned', 'confirmed'))]
+        # OUT sueltas: sin agrupacion de zonas (las de una Z- solo se dan con la agrupacion entera)
+        sueltas = Picking.search(dom, order='scheduled_date asc, id asc', limit=CANDIDATOS).filtered(
+            lambda p: not (p.batch_id and (p.batch_id.name or '').startswith(PREFIJOS_ZONA)))
+        if tramo:
+            sueltas = sueltas.filtered(
+                lambda p: self._lineal(p) is not None and tramo.lineal_desde <= self._lineal(p) <= tramo.lineal_hasta)
+        lista = [(p.scheduled_date or p.create_date, 'out', p) for p in sueltas]
+        if dia.agrupaciones and not tramo:
+            Batch = self.env['stock.picking.batch'].sudo()
+            cogidos = self.sudo().search([('estado', 'in', VIVAS), ('tipo', '=', 'agrupacion')]).mapped('batch_id')
+            lotes = Batch.search([('name', '=like', 'Z-%'), ('state', 'in', ('draft', 'in_progress')),
+                                  ('company_id', '=', dia.company_id.id), ('id', 'not in', cogidos.ids)],
+                                 order='create_date asc, id asc', limit=50)
+            for b in lotes:
+                vivas = b.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+                if vivas and (not dia.solo_preparadas or any(p.state == 'assigned' for p in vivas)):
+                    lista.append((b.create_date, 'agrupacion', b))
+        lista.sort(key=lambda x: (x[0] or datetime.datetime.max, x[2].id))
+        return lista
+
+    @api.model
+    def _intentos(self, dia, employee):
+        """Por donde buscar segun el modo: [('pasillos', tramo), ('auto', None)]."""
+        if dia.modo == 'manual':
+            return []
+        if dia.modo == 'pasillos':
+            tramo = dia.tramo_ids.filtered(lambda t: t.employee_id == employee and t._tiene_tramo())[:1]
+            intentos = [('pasillos', tramo)] if tramo else []
+            if not tramo or dia.pasillos_a_auto:
+                intentos.append(('auto', None))
+            return intentos
+        return [('auto', None)]
+
+    @api.model
+    def _crear_para(self, employee, dia, origen, tipo, obj):
+        vals = {'employee_id': employee.id, 'tipo': tipo, 'origen': origen, 'estado': 'cola',
+                'secuencia': self._ultima_secuencia(employee), 'company_id': dia.company_id.id}
+        if tipo == 'agrupacion':
+            vals['batch_id'] = obj.id
+        else:
+            vals.update({'picking_id': obj.id, 'batch_id': obj.batch_id.id or False})
+        return self._crear_segura(vals)
+
+    @api.model
+    def _dar_nueva(self, employee, dia):
+        """La PDA pide y la cola esta vacia: le da la siguiente libre segun el modo, solo si el responsable lo ha
+        dejado encendido (v2.1: si no, espera a que le repartan otro bloque con etiquetas)."""
+        if not dia.dar_sin_etiqueta:
+            return False
+        for origen, tramo in self._intentos(dia, employee):
+            for _fecha, tipo, obj in self._candidatos(dia, employee, tramo):
+                asig = self._crear_para(employee, dia, origen, tipo, obj)
+                if asig:
+                    return asig
+        return False
+
+    @api.model
+    def _dar_de_listas(self, dia, employee, listas, usados):
+        """Como _dar_nueva, pero para repartir bloques: los candidatos se buscan una sola vez por tramo y se van
+        gastando (listas y usados se comparten entre todos los operarios del reparto)."""
+        for origen, tramo in self._intentos(dia, employee):
+            clave = tramo.id if tramo else 'auto'
+            if clave not in listas:
+                listas[clave] = self._candidatos(dia, employee, tramo)
+            lista = listas[clave]
+            while lista:
+                _fecha, tipo, obj = lista.pop(0)
+                if (tipo, obj.id) in usados:
+                    continue
+                usados.add((tipo, obj.id))
+                asig = self._crear_para(employee, dia, origen, tipo, obj)
+                if asig:
+                    return asig
+        return False
+
+    # ------------------------------------------------------------------ etiquetas (v2.1)
+    def _grupos_etiquetas(self):
+        """[(operario, asignaciones en el orden en que las hara, OUT en ese orden)] para imprimir."""
+        grupos = []
+        for emp in self.mapped('employee_id'):
+            suyas = self.filtered(lambda a: a.employee_id == emp).sorted(
+                lambda a: (a.estado != 'curso', a.secuencia, a.id))
+            outs = self.env['stock.picking']
+            for a in suyas:
+                outs |= a._pickings().sorted('name').filtered(lambda p: p.state not in ('done', 'cancel'))
+            grupos.append((emp, suyas, outs))
+        return grupos
+
+    def _imprimir_etiquetas(self, dia=None):
+        """Reserva las matriculas con la accion de siempre (KOROSHI Etiquetas zona: reutiliza las que la OUT ya
+        tenga) y devuelve un PDF: por cada operario una hoja con su nombre y sus etiquetas en orden."""
+        asigs = self.filtered(lambda a: a.employee_id and a.estado in ('cola', 'curso'))
+        if not asigs:
+            raise UserError(_('No hay pedidos en cola para imprimir.'))
+        zona = self.env['ir.actions.report'].search([('report_name', '=', INFORME_ZONA)], limit=1)
+        # se busca con sudo, pero se ejecuta con el usuario (igual que desde el menu Accion)
+        accion = self.env['ir.actions.server'].sudo().search([('name', '=', ACCION_ZONA),
+                                                              ('model_id.model', '=', 'stock.picking')], limit=1)
+        accion = self.env['ir.actions.server'].browse(accion.id)
+        if not zona or not accion:
+            raise UserError(_('No se encuentra el informe "%s" o la accion "%s" de las etiquetas de zona.')
+                            % (INFORME_ZONA, ACCION_ZONA))
+        grupos = asigs._grupos_etiquetas()
+        todas = self.env['stock.picking']
+        for _emp, _suyas, outs in grupos:
+            todas |= outs
+        if todas:
+            # reserva las CJ que falten (si la accion esta en DIAGNOSTICO avisa y no imprime nada)
+            accion.with_context(active_model='stock.picking', active_ids=todas.ids, active_id=todas[0].id).run()
+        portada = self.env.ref('koroshi_operarios.action_report_portada_operario')
+        pdfs = []
+        for _emp, suyas, outs in grupos:
+            pdfs.append(portada.render_qweb_pdf(suyas.ids)[0])
+            if outs:
+                pdfs.append(zona.render_qweb_pdf(outs.ids)[0])
+        asigs.write({'etiqueta_impresa': fields.Datetime.now()})
+        ahora = datetime.datetime.now(pytz.timezone(ZONA_HORARIA))
+        nombre = 'Etiquetas operarios %s.pdf' % ahora.strftime('%d-%m %H%M')
+        adjunto = self.env['ir.attachment'].create({
+            'name': nombre,
+            'type': 'binary',
+            'datas': base64.b64encode(_unir_pdf(pdfs)),
+            'mimetype': 'application/pdf',
+            'res_model': 'koroshi.operario.dia' if dia else False,
+            'res_id': dia.id if dia else 0,
+        })
+        _logger.info('KOROSHI OPERARIOS etiquetas: %s', ', '.join(
+            '%s %d OUT' % (emp.name, len(outs)) for emp, _s, outs in grupos))
+        return {'type': 'ir.actions.act_url', 'url': '/web/content/%d' % adjunto.id, 'target': 'new'}
+
+    def _ahora_texto(self):
+        return datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).strftime('%d/%m/%Y %H:%M')
+
+    def action_imprimir_etiquetas(self):
+        """Colas: Accion > Imprimir etiquetas de lo seleccionado (tambien para reimprimir)."""
+        return self._imprimir_etiquetas(self.env['koroshi.operario.dia'].de_hoy())
+
+    # ------------------------------------------------------------------ PDA
+    @api.model
+    def cola_de(self, employee):
+        return self.sudo().search([('employee_id', '=', employee.id), ('estado', 'in', ('cola', 'curso'))],
+                                  order='secuencia asc, id asc')
+
+    @api.model
+    def siguiente(self, employee):
+        """Lo que tiene que hacer ahora el operario. Devuelve (asignacion, nueva).
+        nueva=False si sigue con la que ya estaba haciendo (no hace falta abrirla sola al volver)."""
+        dia = self.env['koroshi.operario.dia'].de_hoy()
+        actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')],
+                                    order='write_date desc', limit=1)
+        if actual:
+            if actual._terminada():
+                actual._cerrar_hecha()
+            else:
+                actual._asegurar_tarea(employee)
+                return actual, False
+        for asig in self.cola_de(employee):
+            if asig._terminada():
+                asig._cerrar_hecha()
+                continue
+            asig._empezar(employee)
+            return asig, True
+        asig = self._dar_nueva(employee, dia)
+        if asig:
+            asig._empezar(employee)
+            return asig, True
+        return self.browse(), True
+
+    def _empezar(self, employee):
+        """Pasa a 'haciendose' y empieza la tarea (productividad)."""
+        self.ensure_one()
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        otras = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso'),
+                                    ('id', '!=', self.id)])
+        if otras:
+            # no deberia pasar: la que estaba haciendo vuelve la primera de su cola
+            otras.write({'estado': 'cola', 'secuencia': self._primera_secuencia(employee)})
+        codigo = self.batch_id.name if self.tipo == 'agrupacion' else self.picking_id.name
+        tarea, _msg = Tarea.empezar(employee, codigo)
+        self.write({'estado': 'curso', 'tarea_id': tarea.id})
+        return tarea
+
+    def _asegurar_tarea(self, employee):
+        """Si la tarea se cerro (medianoche, fin de turno), empieza otra para no contar la noche."""
+        self.ensure_one()
+        if self.tarea_id and self.tarea_id.estado == 'curso':
+            return self.tarea_id
+        return self._empezar(employee)
+
+    def _cerrar_hecha(self):
+        for a in self:
+            a.write({'estado': 'hecha'})
+        return True
+
+    @api.model
+    def saltar(self, employee, motivo, nota=''):
+        """La OUT que esta haciendo se salta. Devuelve (asignacion saltada, destino)."""
+        actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')],
+                                    order='write_date desc', limit=1)
+        if not actual:
+            raise UserError(_('No tienes ningun pedido empezado'))
+        if motivo.pide_nota and not (nota or '').strip():
+            raise UserError(_('Escribe el motivo'))
+        tarea = actual.tarea_id
+        if tarea and tarea.estado == 'curso':
+            tarea._cerrar('dejada', 'saltar')
+            tarea.write({'nota': ('%s %s' % (motivo.name, nota or '')).strip()})
+        vals = {'motivo_id': motivo.id, 'nota': (nota or '').strip(), 'saltos': actual.saltos + 1,
+                'fecha_salto': fields.Datetime.now(), 'tarea_id': False}
+        if motivo.destino == 'oficina':
+            vals['estado'] = 'oficina'
+        elif motivo.destino == 'final':
+            vals.update({'estado': 'cola', 'secuencia': self._ultima_secuencia(employee)})
+        else:
+            vals.update({'estado': 'cola', 'secuencia': self._primera_secuencia(employee)})
+        actual.write(vals)
+        return actual, motivo.destino
+
+    @api.model
+    def leida_a_mano(self, employee, tipo, picking, lote):
+        """El operario lee una OUT a mano: si esta libre (o ya es suya) pasa a ser la que hace."""
+        objetivo_lote = lote if tipo == 'agrupacion' else None
+        viva = self._viva_de(picking=picking if tipo == 'out' else None, lote=objetivo_lote)
+        if viva and viva.employee_id and viva.employee_id != employee:
+            raise UserError(_('%s esta asignada a %s') % (viva.name, viva.employee_id.name))
+        if viva and viva.estado == 'oficina':
+            raise UserError(_('%s esta en oficina (%s). Que la libere el responsable.')
+                            % (viva.name, viva.motivo_id.name or ''))
+        actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')])
+        if actual and actual != viva:
+            # la que estaba haciendo vuelve la primera de su cola
+            actual.write({'estado': 'cola', 'secuencia': self._primera_secuencia(employee), 'tarea_id': False})
+        if not viva:
+            vals = {'employee_id': employee.id, 'tipo': tipo, 'origen': 'leida', 'estado': 'cola',
+                    'secuencia': self._primera_secuencia(employee), 'company_id': (lote or picking).company_id.id}
+            if tipo == 'agrupacion':
+                vals['batch_id'] = lote.id
+            else:
+                vals.update({'picking_id': picking.id, 'batch_id': picking.batch_id.id or False})
+            viva = self._crear_segura(vals)
+            if not viva:
+                raise UserError(_('Otra PDA acaba de coger este pedido. Lee otro.'))
+        return viva
+
+    # ------------------------------------------------------------------ responsable
+    def action_liberar(self):
+        """Oficina -> libre (se podra dar otra vez en automatico)."""
+        self.filtered(lambda a: a.estado == 'oficina').write({'estado': 'quitada'})
+        return True
+
+    def action_quitar(self):
+        """Quita de la cola. Si se estaba haciendo, la tarea se cierra como dejada."""
+        for a in self.filtered(lambda x: x.estado in ('cola', 'curso')):
+            if a.tarea_id and a.tarea_id.estado == 'curso':
+                a.tarea_id._cerrar('dejada', 'manual')
+            a.write({'estado': 'quitada', 'tarea_id': False})
+        return True
+
+    def action_subir(self):
+        """La pone la primera de la cola de su operario."""
+        for a in self.filtered(lambda x: x.estado == 'cola' and x.employee_id):
+            a.secuencia = self._primera_secuencia(a.employee_id)
+        return True
+
+    @api.model
+    def cron_actualizar(self):
+        """Cada 5 min: marca como hechas las asignaciones cuyo pedido ya esta validado o cancelado."""
+        for a in self.sudo().search([('estado', 'in', ('cola', 'curso', 'oficina'))]):
+            if a._terminada():
+                a._cerrar_hecha()
+        return True

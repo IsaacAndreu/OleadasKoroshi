@@ -12,6 +12,9 @@
 .o_koroshi_monitor .km-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; margin-bottom: 4px; }
 .o_koroshi_monitor .km-ctl { display: flex; gap: 8px; align-items: center; }
 .o_koroshi_monitor .km-ctl select { padding: 4px 8px; border: 1px solid var(--km-line); border-radius: 6px; background: var(--km-card); }
+.o_koroshi_monitor .km-ctl input.km-buscar { min-width: 190px; padding: 5px 8px; border: 1px solid var(--km-line); border-radius: 6px; background: var(--km-card); }
+.o_koroshi_monitor .km-ctl .km-filtro { max-width: 150px; }
+.o_koroshi_monitor .km-filtro-activo { margin: 8px 0 14px; padding: 8px 10px; border: 1px solid #b8cbe0; border-radius: 7px; background: #eef5fb; color: #31506d; font-size: 13px; }
 .o_koroshi_monitor .km-sub { color: var(--km-muted); margin: 0 0 18px; }
 .o_koroshi_monitor .km-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .o_koroshi_monitor .km-card { background: var(--km-card); border: 1px solid var(--km-line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
@@ -30,6 +33,8 @@
 .o_koroshi_monitor table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
 .o_koroshi_monitor th, .o_koroshi_monitor td { padding: 6px 7px; border-bottom: 1px solid var(--km-line); text-align: left; white-space: nowrap; }
 .o_koroshi_monitor th { color: var(--km-muted); font-size: 12px; font-weight: 600; }
+.o_koroshi_monitor th.km-sort { cursor: pointer; user-select: none; }
+.o_koroshi_monitor th.km-sort:hover, .o_koroshi_monitor th.km-sort-active { color: var(--km-ink); background: #f0eee8; }
 .o_koroshi_monitor td.r, .o_koroshi_monitor th.r { text-align: right; }
 .o_koroshi_monitor tr.km-tot td { font-weight: 700; }
 .o_koroshi_monitor .m { font-family: ui-monospace, Consolas, monospace; font-size: 12.5px; }
@@ -69,6 +74,8 @@
 .o_koroshi_monitor tr.km-r-hecha td { background: #eaf5ee; }
 .o_koroshi_monitor tr.km-r-curso td { background: #fff6e2; }
 .o_koroshi_monitor tr.km-r-parcial td { background: #f1eaf9; }
+.o_koroshi_monitor .km-out tr.km-r-transport td { background: #dde5ef; color: #3d5a80; }
+.o_koroshi_monitor .km-out tr.km-r-transport .km-cel { background: #3d5a80; color: #fff; }
 .o_koroshi_monitor tr.km-parada td { background: #fde4dc; }
 .o_koroshi_monitor .km-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .o_koroshi_monitor .km-chip { display: inline-block; padding: 4px 10px; border-radius: 7px; background: var(--km-bar); font-size: 14px; color: var(--km-muted); }
@@ -96,7 +103,7 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-tvmain .km-chip { font-size: 22px; padding: 6px 12px; }
 .o_koroshi_monitor .km-tvmain .km-aviso { font-size: 19px; }
 /* v1.7: el contenedor de Odoo es flex: sin esto la pagina se salia de ancho en pantallas estrechas */
-.o_koroshi_monitor main { width: 100%; min-width: 0; box-sizing: border-box; }
+.o_koroshi_monitor main { width: 100%; max-width: none; min-width: 0; margin-left: 0; margin-right: 0; box-sizing: border-box; }
 .o_koroshi_monitor .km-card { max-width: 100%; overflow-x: auto; }
 /* v1.9: zonas con 8 o mas zonas sin arrastrar: pagina mas ancha y casillas de la matriz compactas */
 /* v1.9: zonas a todo el ancho de la pantalla, de izquierda a derecha */
@@ -115,6 +122,13 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-matriz tr.km-r-etq .km-cel { background: #3d5a80; color: #fff; }
 .o_koroshi_monitor .km-chip-etq { background: #3d5a80; }
 .o_koroshi_monitor .km-chip-etq b { color: #fff; }
+.o_koroshi_monitor .km-transport { white-space: normal; min-width: 145px; }
+.o_koroshi_monitor .km-transport .km-muted { color: var(--km-muted); font-style: italic; }
+.o_koroshi_monitor .km-etiqueta { display: inline-block; margin-top: 2px; padding: 1px 5px; border-radius: 4px; background: #3d5a80; color: #fff; font-family: ui-monospace, Consolas, monospace; font-size: 11px; }
+.o_koroshi_monitor .km-hora-stack { align-items: stretch; }
+.o_koroshi_monitor .km-hora-stack i { min-width: 2px; }
+.o_koroshi_monitor .km-out-ley { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 12px; color: var(--km-muted); font-size: 12px; }
+.o_koroshi_monitor .km-out-ley i { display: inline-block; width: 10px; height: 10px; margin-right: 4px; border-radius: 3px; vertical-align: -1px; }
 /* v1.11: las OUT se pueden pulsar (abren la OUT en otra pestana) */
 .o_koroshi_monitor a.km-a { color: inherit; text-decoration: none; cursor: pointer; }
 .o_koroshi_monitor a.km-a:hover .km-cel, .o_koroshi_monitor a.km-a:hover { outline: 2px solid #1d1d1b; outline-offset: 1px; }
@@ -124,3 +138,8 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-matriz .km-cel small.km-bx { color: inherit; }
 .o_koroshi_monitor .km-bx-txt { color: #c0392b; }
 .o_koroshi_monitor .km-matriz .km-cel.km-bx-mal small.km-bx { color: inherit; opacity: 1; text-decoration: underline; }
+
+/* v1.18: codigos de operario (OP1, OP2...), sin nombres */
+.o_koroshi_monitor .km-op { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--km-cur); color: #fff; font-family: monospace; font-size: .95em; }
+.o_koroshi_monitor .km-op-old { background: transparent; color: inherit; opacity: .55; border: 1px solid currentColor; }
+.o_koroshi_monitor table.km-ops tr.km-op-activo td { font-weight: 600; }
