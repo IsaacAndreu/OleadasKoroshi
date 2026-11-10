@@ -34,8 +34,9 @@ cuando hay algo leído; barra de progreso gruesa con el número dentro; el opera
 v3.2.0 (10/11/2026): «Faltante» sin lista: trabaja con la línea que se ve, enseña hasta 3 ubicaciones con stock
 (la más cercana primero), se lee la ubicación de donde se coge y la línea pasa allí; «Tampoco está aquí» (dos
 toques) la manda a faltantes. Sin cambios en el servidor.
+v3.2.1 (10/11/2026): en la hoja de Faltante las uds van debajo de la ubicación (las reales son largas).
 """,
-    'version': '13.0.3.2.0',
+    'version': '13.0.3.2.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

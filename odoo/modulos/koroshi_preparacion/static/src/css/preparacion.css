@@ -251,6 +251,10 @@
 .o_koroshi_preparacion .o_kp_f_alt_ubi { font-size: 22px; font-weight: bold; overflow-wrap: anywhere; }
 .o_koroshi_preparacion .o_kp_f_alternativas li:first-child .o_kp_f_alt_ubi { font-size: 28px; color: var(--kp-verde); }
 .o_koroshi_preparacion .o_kp_f_alt_libre { flex: 0 0 auto; font-size: 15px; color: var(--kp-suave); text-align: right; }
+/* v3.2.1: las ubicaciones reales son largas («L87 P23 C2 · KO_130826_523»): las uds van debajo, no al lado */
+.o_koroshi_preparacion .o_kp_f_alternativas li { flex-direction: column; align-items: flex-start; gap: 2px; }
+.o_koroshi_preparacion .o_kp_f_alt_libre { text-align: left; }
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child .o_kp_f_alt_ubi { font-size: 24px; }
 .o_koroshi_preparacion .o_kp_f_instruccion { font-size: 17px; margin: 0 0 8px; }
 .o_koroshi_preparacion .o_kp_f_codigo {
     width: 100%; min-height: 48px; font-size: 18px; padding: 8px 12px; border: 2px solid var(--kp-azul);
