@@ -232,3 +232,37 @@
 }
 /* sin foto: el texto ocupa todo el ancho (la imagen está oculta) */
 .o_koroshi_preparacion .o_kp_foto { flex-basis: 110px; width: 110px; height: 110px; }
+
+/* ---------------------------------------------------------------- v3.2: Faltante de la línea que se ve */
+.o_koroshi_preparacion .o_kp_f_cabecera { display: flex; gap: 12px; align-items: center; margin-bottom: 12px; }
+.o_koroshi_preparacion .o_kp_f_foto {
+    flex: 0 0 72px; width: 72px; height: 72px; object-fit: contain; border: 1px solid var(--kp-borde); border-radius: 8px;
+}
+.o_koroshi_preparacion .o_kp_f_producto { font-size: 18px; font-weight: bold; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_f_no_esta { font-size: 20px; font-weight: bold; color: var(--kp-rojo); overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_f_cargando { font-size: 18px; color: var(--kp-suave); margin-bottom: 12px; }
+.o_koroshi_preparacion .o_kp_f_etq { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--kp-suave); }
+.o_koroshi_preparacion .o_kp_f_alternativas { list-style: none; margin: 4px 0 10px; padding: 0; }
+.o_koroshi_preparacion .o_kp_f_alternativas li {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px; border: 2px solid var(--kp-borde);
+    border-left: 8px solid var(--kp-borde); border-radius: 10px; padding: 8px 12px; margin-bottom: 6px; background: #fff;
+}
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child { border-color: var(--kp-verde); border-left-color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_f_alt_ubi { font-size: 22px; font-weight: bold; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child .o_kp_f_alt_ubi { font-size: 28px; color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_f_alt_libre { flex: 0 0 auto; font-size: 15px; color: var(--kp-suave); text-align: right; }
+.o_koroshi_preparacion .o_kp_f_instruccion { font-size: 17px; margin: 0 0 8px; }
+.o_koroshi_preparacion .o_kp_f_codigo {
+    width: 100%; min-height: 48px; font-size: 18px; padding: 8px 12px; border: 2px solid var(--kp-azul);
+    border-radius: 10px; margin-bottom: 12px; background: #fff; color: var(--kp-texto);
+}
+.o_koroshi_preparacion .o_kp_f_sin_alt {
+    font-size: 18px; font-weight: bold; color: #4a2d00; background: var(--kp-ambar-claro); border: 2px solid var(--kp-ambar);
+    border-radius: 10px; padding: 10px 12px; margin-bottom: 12px;
+}
+.o_koroshi_preparacion .o_kp_rojo { background: var(--kp-rojo); }
+.o_koroshi_preparacion .o_kp_rojo.o_kp_confirmar { box-shadow: 0 0 0 4px #111827 inset; font-size: 20px; }
+.o_koroshi_preparacion .o_kp_f_lista {
+    display: block; margin: 4px auto 0; border: 0; background: none; color: var(--kp-azul); font-size: 16px;
+    text-decoration: underline; padding: 8px; cursor: pointer;
+}

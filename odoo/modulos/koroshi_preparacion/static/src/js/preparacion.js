@@ -1,6 +1,8 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Preparación en Lecturas v3.1.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+/* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.2: «Faltante» trabaja con la línea que se ve: dice dónde probar (la ubicación con stock más cercana) y se lee
+ * la ubicación de donde se coge, o «Tampoco está aquí». Sin lista ni pantalla aparte (rutas de koroshi_faltantes).
  * v3.0.1: foto del producto (la misma imagen que enseña la app de código de barras) y flechas ◀ ▶ para ver la línea
  * de antes o la siguiente; tocar una línea de la lista la pone en grande. Al completar una línea salta sola a la
  * siguiente pendiente.
@@ -24,6 +26,8 @@ var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
 var CLAVE_PDA = 'koroshi_preparacion_pda';
 var RE_CJ = /^CJ\d{9}$/i;
+var CONFIRMAR_MS = 4000;       // v3.2: «Tampoco está aquí» se pulsa dos veces
+var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 
 var Pantalla = AbstractAction.extend({
@@ -42,6 +46,11 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_pendiente_no': '_onPendienteNo',
         'click .o_kp_pendiente_cancelar': '_cerrarHoja',
         'click .o_kp_faltante': '_onFaltante',
+        // v3.2: Faltante de la línea que se ve
+        'click .o_kp_f_nada': '_onFaltaNada',
+        'click .o_kp_f_cancelar': '_onCancelarFaltante',
+        'click .o_kp_f_lista': '_onFaltanteLista',
+        'keydown .o_kp_f_codigo': '_onKeydownFaltante',
         'click .o_kp_deshacer': '_onDeshacer',
         'click .o_kp_ver_lineas': '_onVerLineas',
         // v3.0.1: flechas, tocar una línea de la lista y volver a la que toca
@@ -58,7 +67,8 @@ var Pantalla = AbstractAction.extend({
         this.operario = ctx.preparacion_operario || null;   // {id, nombre}
         this.estado = null;
         this.verId = null;             // v3.0.1: línea que se ve en grande (null = la que toca)
-        this.modo = 'leer';            // 'leer' | 'caja' (esperando la etiqueta) | 'pregunta' | 'validando'
+        this.modo = 'leer';            // 'leer' | 'caja' (esperando la etiqueta) | 'faltante' | 'pregunta' | 'validando'
+        this.faltante = null;          // v3.2: {linea, listo, ocupado}
         this.cola = [];                // lecturas pendientes de mandar
         this.enviando = false;
         this.sinRed = false;
@@ -90,6 +100,7 @@ var Pantalla = AbstractAction.extend({
         return this._super.apply(this, arguments).then(function () {
             // v3.0.1: producto sin foto -> no se ve el hueco
             self.$('.o_kp_foto').on('error', function () { $(this).hide(); }).on('load', function () { $(this).show(); });
+            self.$('.o_kp_f_foto').on('error', function () { $(this).hide(); });   // v3.2
             self._pintar();
             if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
             self._foco();
@@ -111,6 +122,7 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerAviso);
         clearTimeout(this.timerReintento);
         clearTimeout(this.timerVolver);
+        clearTimeout(this.timerConfirmar);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -167,6 +179,7 @@ var Pantalla = AbstractAction.extend({
             return this._pitido(false);
         }
         if (this.modo === 'pregunta' || this.modo === 'validando') { return; }
+        if (this.modo === 'faltante') { return this._reubicar(codigo); }   // v3.2: la ubicación de donde se coge
         var tipo = this.modo === 'caja' ? 'caja' : 'leer';
         this.cola.push({tipo: tipo, codigo: codigo, id: this._nuevoId()});
         this._enviar();
@@ -226,7 +239,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
                                         ' a esta caja. Lee la etiqueta CJ de la caja.');
         this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
-        this.$('.o_kp_hoja_pregunta').hide();
+        this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante').hide();
         this.$('.o_kp_hoja_caja').show();
         this.$('.o_kp_hoja').show();
         this._foco();
@@ -253,6 +266,7 @@ var Pantalla = AbstractAction.extend({
 
     _onFondoHoja: function () {
         if (this.modo === 'caja') { this._salirDeCaja(); } else if (this.modo === 'pregunta') { this._cerrarHoja(); }
+        else if (this.modo === 'faltante') { this._cerrarFaltante(); }
     },
 
     _cerrarHoja: function () {
@@ -291,7 +305,7 @@ var Pantalla = AbstractAction.extend({
             self._ocultarCapa();
             if (r && r.que === 'preguntar') {
                 self.modo = 'pregunta';
-                self.$('.o_kp_hoja_caja').hide();
+                self.$('.o_kp_hoja_caja, .o_kp_hoja_faltante').hide();
                 self.$('.o_kp_hoja_pregunta').show();
                 self.$('.o_kp_hoja').show();
                 return;
@@ -333,9 +347,14 @@ var Pantalla = AbstractAction.extend({
         });
     },
 
-    _onFaltante: function () {
+    _onFaltanteLista: function () {
+        // la pantalla de Faltante de siempre (para marcar varias a la vez)
         var out = this._out();
-        if (!out || this.sinRed || this.modo !== 'leer') { return; }
+        if (!out || this.sinRed || (this.modo !== 'leer' && this.modo !== 'faltante')) { return; }
+        if (this.modo === 'faltante') {
+            if (this.faltante && this.faltante.ocupado) { return; }
+            this._cerrarFaltante(true);
+        }
         return this.do_action('koroshi_faltantes.action_koroshi_faltantes_pantalla', {
             additional_context: {
                 desde_operarios: true,       // al validar o salir, koroshi_faltantes vuelve atrás (a esta pantalla)
@@ -348,10 +367,11 @@ var Pantalla = AbstractAction.extend({
 
     _onVolver: function () {
         if (this.modo === 'validando') { return; }
+        if (this.modo === 'faltante') { return this._cerrarFaltante(); }
         this.trigger_up('history_back');
     },
 
-    _recargar: function () {
+    _recargar: function (despues) {
         var self = this;
         if (!this._out()) { return; }
         return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id}}, {shadow: true})
@@ -364,12 +384,199 @@ var Pantalla = AbstractAction.extend({
                     self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
                     return;
                 }
+                if (despues) { despues(); }
                 self._pintar();
             }).guardedCatch(function (e) {
                 if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
                 if (self._esSinConexion(e)) { self._sinConexion(); }
             });
     },
+
+    // ------------------------------------------------------------ v3.2: Faltante de la línea que se ve
+    _onFaltante: function () {
+        var self = this;
+        var e = this.estado;
+        if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
+        var id = this._idVisto();
+        var l = id && _.findWhere(e.lineas, {id: id});
+        if (!l) { this._aviso('No queda ninguna línea por coger.', 'info'); return this._foco(); }
+        if (l.completa || l.caja) {
+            this._aviso('Esta línea ya está cogida. Con ◀ ▶ busca la que no encuentras.', 'info');
+            return this._foco();
+        }
+        this.modo = 'faltante';
+        this.faltante = {linea: l, listo: false, ocupado: false};
+        this._sinConfirmar();
+        var falta = Math.max(l.pedidas - l.leidas, 0);
+        var $f = this.$('.o_kp_f_foto');
+        if (l.producto_id && l.tiene_foto !== false) {
+            $f.attr('src', '/web/image/product.product/' + l.producto_id + '/image_128').show();
+        } else { $f.removeAttr('src').hide(); }
+        this.$('.o_kp_f_producto').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : ''));
+        this.$('.o_kp_f_no_esta').text('No está en ' + l.ubicacion + ' · ' + falta + (falta === 1 ? ' ud' : ' uds'));
+        this.$('.o_kp_f_cargando').show();
+        this.$('.o_kp_f_prueba, .o_kp_f_sin_alt, .o_kp_f_nada').hide();
+        this.$('.o_kp_f_alternativas').empty();
+        this.$('.o_kp_f_codigo').val('');
+        this._avisoFaltante('', '');
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta').hide();
+        this.$('.o_kp_hoja_faltante').show();
+        this.$('.o_kp_hoja').show();
+        this._pintar();
+        return this._rpc({route: '/koroshi/faltantes/buscar', params: {move_line_id: l.id}}).then(function (r) {
+            if (self.modo !== 'faltante') { return; }
+            self.$('.o_kp_f_cargando').hide();
+            if (!r || !r.ok || !r.linea) { return self._avisoFaltante((r && r.msg) || 'No se ha podido buscar.', 'mal'); }
+            var lin = r.linea;
+            if (lin.motivo) { return self._avisoFaltante(lin.motivo, 'mal'); }
+            self.faltante.listo = true;
+            self.$('.o_kp_f_no_esta').text('No está en ' + lin.ubicacion + ' · ' + lin.pendiente +
+                                           (lin.pendiente === 1 ? ' ud' : ' uds'));
+            var alt = (lin.alternativas || []).slice(0, MAX_ALTERNATIVAS);
+            var $ol = self.$('.o_kp_f_alternativas').empty();
+            alt.forEach(function (a, i) {
+                var $li = $('<li/>');
+                $('<span class="o_kp_f_alt_ubi"/>').text(a.nombre).appendTo($li);
+                $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' : '') + a.libre +
+                    (a.libre === 1 ? ' ud' : ' uds')).appendTo($li);
+                $ol.append($li);
+            });
+            self.$('.o_kp_f_prueba').toggle(!!alt.length);
+            self.$('.o_kp_f_sin_alt').toggle(!alt.length);
+            self.$('.o_kp_f_nada').show();
+            self._sinConfirmar();
+            self._foco();
+        }).guardedCatch(function (err) {
+            if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+            if (self.modo !== 'faltante') { return; }
+            self.$('.o_kp_f_cargando').hide();
+            if (self._esSinConexion(err)) { self._cerrarFaltante(); return self._sinConexion(); }
+            self._avisoFaltante(self._mensajeError(err), 'mal');
+        });
+    },
+
+    _onKeydownFaltante: function (ev) {
+        if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            ev.stopPropagation();
+            var $i = this.$('.o_kp_f_codigo');
+            var c = ($i.val() || '').trim();
+            $i.val('');
+            if (c) { this._leer(c); }
+        }
+    },
+
+    _reubicar: function (codigo) {
+        var self = this;
+        var f = this.faltante;
+        if (!f || !f.listo || f.ocupado) { return; }
+        if (RE_CJ.test(codigo)) {
+            this._avisoFaltante('Eso es una caja. Lee la ubicación de donde coges la pieza.', 'mal');
+            return this._pitido(false);
+        }
+        f.ocupado = true;
+        this._sinConfirmar();
+        this._avisoFaltante('Cambiando a ' + codigo + '…', 'info');
+        return this._rpc({route: '/koroshi/faltantes/reubicar', params: {
+            move_line_id: f.linea.id, codigo: codigo, employee_id: this.operario ? this.operario.id : false,
+        }}).then(function (r) {
+            f.ocupado = false;
+            if (r && r.ok && r.que === 'tarjeta') {
+                self._avisoFaltante('Es una tarjeta. Lee la ubicación de donde coges la pieza.', 'mal');
+                return self._pitido(false);
+            }
+            if (!r || !r.ok) {
+                self._avisoFaltante((r && r.msg) || 'No se ha podido cambiar.', 'mal');
+                return self._pitido(false);
+            }
+            var nueva = r.ubicacion_nueva;
+            var productoId = f.linea.producto_id;
+            self._cerrarFaltante(true);
+            self._pitido(true);
+            return self._recargar(function () {
+                // se ve la línea en su ubicación nueva: ahora se lee el EAN como siempre
+                var l = _.find(self.estado.lineas, function (x) {
+                    return x.producto_id === productoId && x.ubicacion === nueva && !x.completa && !x.caja;
+                });
+                self.verId = l && l.id !== self.estado.siguiente_id ? l.id : null;
+                self._aviso('Cambiada a ' + nueva + '. Ahora lee el producto.', 'info');
+            });
+        }).guardedCatch(function (err) {
+            f.ocupado = false;
+            if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+            if (self._esSinConexion(err)) { self._cerrarFaltante(); return self._sinConexion(); }
+            self._avisoFaltante(self._mensajeError(err), 'mal');
+            self._pitido(false);
+        });
+    },
+
+    _onFaltaNada: function () {
+        var self = this;
+        var f = this.faltante;
+        if (!f || !f.listo || f.ocupado) { return; }
+        if (!this.confirmarNada) {
+            this.confirmarNada = true;
+            this.$('.o_kp_f_nada').addClass('o_kp_confirmar').text('Pulsa otra vez: va a faltantes');
+            clearTimeout(this.timerConfirmar);
+            this.timerConfirmar = setTimeout(function () { self._sinConfirmar(); }, CONFIRMAR_MS);
+            return;
+        }
+        this._sinConfirmar();
+        f.ocupado = true;
+        this._avisoFaltante('Mandando a faltantes…', 'info');
+        return this._rpc({route: '/koroshi/faltantes/sin_alternativa', params: {
+            move_line_id: f.linea.id, employee_id: this.operario ? this.operario.id : false,
+        }}).then(function (r) {
+            f.ocupado = false;
+            if (!r || !r.ok) {
+                self._avisoFaltante((r && r.msg) || 'No se ha podido mandar a faltantes.', 'mal');
+                return self._pitido(false);
+            }
+            self._cerrarFaltante(true);
+            self._pitido(true);
+            return self._recargar(function () {
+                self.verId = null;
+                var e = self.estado;
+                var txt = 'Va a faltantes: la OUT sale sin esa pieza.';
+                if (e.todo_leido && e.leidas) { txt += e.sin_caja ? ' Cierra la caja y valida.' : ' Pulsa Validar.'; }
+                self._aviso(txt, 'info');
+            });
+        }).guardedCatch(function (err) {
+            f.ocupado = false;
+            if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+            if (self._esSinConexion(err)) { self._cerrarFaltante(); return self._sinConexion(); }
+            self._avisoFaltante(self._mensajeError(err), 'mal');
+            self._pitido(false);
+        });
+    },
+
+    _sinConfirmar: function () {
+        clearTimeout(this.timerConfirmar);
+        this.confirmarNada = false;
+        var hay = this.$('.o_kp_f_alternativas li').length;
+        this.$('.o_kp_f_nada').removeClass('o_kp_confirmar').text(hay ? 'Tampoco está aquí' : 'Mandar a faltantes');
+    },
+
+    _avisoFaltante: function (texto, clase) {
+        var tipo = clase || 'info';
+        this.$('.o_kp_f_aviso').attr('class', 'o_kp_hoja_aviso o_kp_f_aviso' + (texto ? ' o_kp_mal o_kp_' + tipo : ''))
+            .text(texto ? (ICONOS[tipo] || ICONOS.info) + ' ' + texto : '');
+    },
+
+    _onCancelarFaltante: function () {
+        this._cerrarFaltante();
+    },
+
+    _cerrarFaltante: function (callado) {
+        if (this.faltante && this.faltante.ocupado) { return; }
+        clearTimeout(this.timerConfirmar);
+        this.confirmarNada = false;
+        this.faltante = null;
+        this.$('.o_kp_hoja_faltante').hide();
+        this._cerrarHoja();
+        if (!callado) { this._aviso('', ''); }
+    },
+
 
     // ------------------------------------------------------------ v3.0.1: flechas
     _idVisto: function () {
@@ -542,7 +749,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_validar').prop('disabled', !libre || !!e.sin_caja || !e.leidas)
             .toggleClass('o_kp_destacado', !e.sin_caja && e.todo_leido);
         this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas);
-        this.$('.o_kp_faltante').prop('disabled', !libre);
+        this.$('.o_kp_faltante').prop('disabled', !libre || e.todo_leido || !e.siguiente_id);
         this._pintarLineas();
     },
 
@@ -603,7 +810,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _foco: function () {
-        var $i = this.$('.o_kp_codigo');
+        var $i = this.$(this.modo === 'faltante' ? '.o_kp_f_codigo' : '.o_kp_codigo');
         if ($i.length && !('ontouchstart' in window)) { $i.focus(); }
         this._estadoLector();
     },

@@ -1,7 +1,20 @@
-# KOROSHI Preparación en Lecturas (v3.1.0, 10/11/2026)
+# KOROSHI Preparación en Lecturas (v3.2.0, 10/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.2.0: Faltante de la línea que se ve
+
+- «Faltante» ya no abre la lista: trabaja con la **línea que está en pantalla** (la que toca o la elegida con ◀ ▶).
+- Sale una hoja con la foto, el nombre y la talla, «No está en X» y hasta **3 ubicaciones con stock libre**, la más
+  cercana primero (mismo orden que koroshi_faltantes: el lineal más cercano y después más uds).
+- El operario va, coge la pieza y **lee la ubicación** (lector o campo): la línea pasa a esa ubicación
+  (`/koroshi/faltantes/reubicar`) y vuelve a la pantalla con la línea en su sitio nuevo para leer el EAN.
+- **«Tampoco está aquí»** (se pulsa dos veces en 4 s) manda la pieza a faltantes (`/koroshi/faltantes/sin_alternativa`):
+  la OUT sale sin ella. Si no hay ninguna otra ubicación, el botón dice «Mandar a faltantes».
+- «Marcar varias a la vez» abre la pantalla de Faltante de siempre. «Cancelar», tocar fuera o «←» cierran la hoja.
+- Leer una CJ o una tarjeta en la hoja da aviso y no hace nada. El botón se apaga cuando ya está todo leído.
+- Sin cambios en el servidor (solo JS, plantilla y CSS).
 
 ## v3.1.0 (tras la prueba en Odoo del 10/11)
 
@@ -34,8 +47,8 @@ entera sin salir a la app de código de barras: leer productos, cerrar cajas con
    Al validar vuelve a Lecturas, que enseña «¡Hecho!» y abre la siguiente.
 5. **Deshacer** quita la última lectura del operario (si aún no está en una caja).
 6. **←** vuelve a Lecturas sin validar (Continuar / Faltante / Saltar, como al volver de la app).
-7. **Faltante** abre la pantalla de koroshi_faltantes con la OUT y el operario. «Volver a la OUT» regresa a esta
-   pantalla; si se valida allí, se vuelve a Lecturas con «¡Hecho!».
+7. **Faltante** (v3.2): hoja sobre la línea que se ve, con dónde probar; se lee la ubicación de donde se coge o
+   «Tampoco está aquí». «Marcar varias a la vez» abre la pantalla de koroshi_faltantes; al volver, regresa aquí.
 
 No hace falta tocar el campo para leer: el lector llega por el bus de Odoo, como en la app (v3.0.2: el punto dice
 siempre «Lector preparado»; gris solo sin conexión). Sin conexión: banda roja; la lectura que estaba en camino se guarda al volver la red con el mismo id (no cuenta dos
