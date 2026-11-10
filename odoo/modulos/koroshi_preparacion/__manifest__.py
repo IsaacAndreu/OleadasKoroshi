@@ -26,8 +26,11 @@ v3.0.1 (10/11/2026): foto del producto (la misma de la app) y flechas ◀ ▶ pa
 tocar una línea de la lista la pone en grande. Al completar una línea salta sola a la siguiente.
 v3.0.2 (10/11/2026): el punto del lector dice «Lector preparado» siempre (no hace falta tocar el campo); gris solo
 sin conexión.
+v3.1.0 (10/11/2026): tras probarla en Odoo: sin foto no sale el icono gris de Odoo; el nombre del producto una sola
+vez y en grande con la talla destacada (atributo Talla o lo último del nombre); avisos cortos; «Todo en caja» solo
+cuando hay algo leído; barra de progreso gruesa con el número dentro; el operario no se parte en la cabecera.
 """,
-    'version': '13.0.3.0.2',
+    'version': '13.0.3.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -1,7 +1,16 @@
-# KOROSHI Preparación en Lecturas (v3.0.2, 10/11/2026)
+# KOROSHI Preparación en Lecturas (v3.1.0, 10/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.1.0 (tras la prueba en Odoo del 10/11)
+
+- Productos sin foto: no se pinta el icono gris de Odoo; el texto ocupa todo el ancho (`tiene_foto` con `bin_size`).
+- Nombre del producto una vez y en grande (`[X] X` -> `X`) y **talla** en un recuadro negro (atributo Talla o lo
+  último de MODELO-COLOR-TALLA). La referencia interna solo si es distinta del nombre y del EAN.
+- Avisos cortos: «2511TR12-000002-XL · 1 de 1».
+- «Todo en caja» solo cuando hay algo leído. Barra de progreso gruesa con «N de M uds» dentro.
+- El nombre del operario no se parte en la cabecera.
 
 ## Cuándo se usa
 
