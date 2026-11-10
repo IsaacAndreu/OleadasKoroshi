@@ -14,7 +14,9 @@ Opción B (KOROSHI, Effective Logistics). Pantalla de preparación propia dentro
   diálogo «Nombre del Paquete» de la app (Brain Station y koroshi_caja_existente funcionan igual).
 - Validar: la misma validación que koroshi_faltantes (button_validate, todo o nada). Después vuelve a Lecturas,
   que enseña «¡Hecho!» y abre la siguiente.
-- Faltante: abre la pantalla de koroshi_faltantes con la OUT y el operario; al volver, regresa a esta pantalla.
+- Faltante (v3.2): sobre la línea que se ve. Dice dónde probar (la ubicación con stock más cercana) y se lee la
+  ubicación de donde se coge, o «Tampoco está aquí». Usa las rutas de koroshi_faltantes (buscar, reubicar,
+  sin_alternativa). «Marcar varias a la vez» abre la pantalla de Faltante de siempre.
 - Cada lectura queda apuntada en la tabla koroshi.preparacion.lectura (quién, qué, cuándo, resultado).
 
 Sin campos nuevos en albaranes, movimientos, agrupaciones ni tipos de operación. No toca stock_barcode, no escribe
@@ -29,8 +31,11 @@ sin conexión.
 v3.1.0 (10/11/2026): tras probarla en Odoo: sin foto no sale el icono gris de Odoo; el nombre del producto una sola
 vez y en grande con la talla destacada (atributo Talla o lo último del nombre); avisos cortos; «Todo en caja» solo
 cuando hay algo leído; barra de progreso gruesa con el número dentro; el operario no se parte en la cabecera.
+v3.2.0 (10/11/2026): «Faltante» sin lista: trabaja con la línea que se ve, enseña hasta 3 ubicaciones con stock
+(la más cercana primero), se lee la ubicación de donde se coge y la línea pasa allí; «Tampoco está aquí» (dos
+toques) la manda a faltantes. Sin cambios en el servidor.
 """,
-    'version': '13.0.3.1.0',
+    'version': '13.0.3.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
