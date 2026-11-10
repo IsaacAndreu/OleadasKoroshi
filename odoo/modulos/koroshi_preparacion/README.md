@@ -1,7 +1,12 @@
-# KOROSHI Preparación en Lecturas (v3.2.0, 10/11/2026)
+# KOROSHI Preparación en Lecturas (v3.2.1, 10/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.2.1
+
+- Hoja de Faltante: las uds libres van debajo de la ubicación; con las ubicaciones reales («L87 P23 C2 · KO_130826_523»)
+  la verde se partía en 4 líneas.
 
 ## v3.2.0: Faltante de la línea que se ve
 
