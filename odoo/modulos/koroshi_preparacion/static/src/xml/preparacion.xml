@@ -19,10 +19,11 @@
                 </div>
 
                 <!-- progreso -->
+                <!-- v3.1: barra gruesa con el número dentro -->
                 <div class="o_kp_progreso">
-                    <div class="o_kp_barra"><div class="o_kp_barra_lleno"/></div>
+                    <div class="o_kp_barra"><div class="o_kp_barra_lleno"/><span class="o_kp_progreso_texto"/></div>
                     <div class="o_kp_progreso_fila">
-                        <span class="o_kp_progreso_texto"/>
+                        <span class="o_kp_cajas_resumen"/>
                         <span class="o_kp_sin_caja"/>
                     </div>
                 </div>
@@ -43,6 +44,7 @@
                         <img class="o_kp_foto" alt=""/>
                         <div class="o_kp_articulo_texto">
                             <div class="o_kp_producto_ref"/>
+                            <div class="o_kp_talla_fila"><span class="o_kp_talla_etq">Talla</span> <span class="o_kp_talla"/></div>
                             <div class="o_kp_producto"/>
                             <div class="o_kp_cuantas"/>
                         </div>

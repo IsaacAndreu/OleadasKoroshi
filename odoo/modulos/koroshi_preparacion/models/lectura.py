@@ -78,6 +78,26 @@ class Lectura(models.Model):
             lambda l: (l.location_id.complete_name or '', l.product_id.default_code or '', l.id))
 
     @api.model
+    def _nombre(self, product):
+        """v3.1: el nombre del producto sin repetir la referencia («[X] X» -> «X»)."""
+        return product.name or product.display_name or ''
+
+    @api.model
+    def _talla(self, product):
+        """v3.1: talla = atributo «Talla» si lo hay; si no, lo último del nombre MODELO-COLOR-TALLA (2511TR12-000002-XL -> XL)."""
+        for v in product.product_template_attribute_value_ids:
+            if 'TALLA' in (v.attribute_id.name or '').upper() or 'SIZE' in (v.attribute_id.name or '').upper():
+                return v.name or ''
+        partes = (product.name or '').split('-')
+        if len(partes) >= 3 and 0 < len(partes[-1]) <= 5:
+            return partes[-1]
+        return ''
+
+    @api.model
+    def _corto(self, product):
+        return self._nombre(product)
+
+    @api.model
     def _sin_caja(self, picking):
         return picking.move_line_ids.filtered(
             lambda l: not l.result_package_id and float_compare(l.qty_done, 0, precision_digits=3) > 0)
@@ -86,16 +106,24 @@ class Lectura(models.Model):
     def estado(self, picking):
         lineas = []
         siguiente = False
+        fotos = {}
         for ml in self._lineas(picking):
             pedidas = ml.product_uom_qty
             leidas = ml.qty_done
             completa = float_compare(leidas, pedidas, precision_digits=3) >= 0 and not float_is_zero(
                 pedidas + leidas, precision_digits=3)
+            p = ml.product_id
+            if p.id not in fotos:
+                # v3.1: solo el tamaño (bin_size), sin bajar la imagen; False = sin foto (no se pinta el icono de Odoo)
+                fotos[p.id] = bool(p.with_context(bin_size=True).image_128)
             lineas.append({
                 'id': ml.id,
-                'producto_id': ml.product_id.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
-                'producto': ml.product_id.display_name or '',
-                'ref': ml.product_id.default_code or '',
+                'producto_id': p.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
+                'producto': p.display_name or '',
+                'nombre': self._nombre(p),
+                'talla': self._talla(p),
+                'tiene_foto': fotos[p.id],
+                'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
                 'ean': ml.product_id.barcode or '',
                 'ubicacion': ml.location_id.name or '',
                 'ubicacion_completa': ml.location_id.complete_name or '',
@@ -233,7 +261,7 @@ class Lectura(models.Model):
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
             return {'ok': False, 'que': 'desconocido', 'msg': msg}
         if not en_la_out:
-            msg = _('%s no es de este pedido. No cuenta.') % producto.display_name
+            msg = _('%s no es de este pedido. No cuenta.') % self._corto(producto)
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
                           producto=producto.display_name)
             return {'ok': False, 'que': 'no_es_del_pedido', 'msg': msg}
@@ -243,7 +271,7 @@ class Lectura(models.Model):
             and float_compare(l.qty_done, l.product_uom_qty, precision_digits=3) < 0)
         if not lineas:
             total = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('product_uom_qty'))
-            msg = _('Ya tienes todas las uds de %s (%s). No cuenta.') % (producto.display_name, round(total))
+            msg = _('Ya tienes todas las uds de %s (%s). No cuenta.') % (self._corto(producto), round(total))
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
                           producto=producto.display_name)
             return {'ok': False, 'que': 'completo', 'msg': msg}
@@ -259,7 +287,7 @@ class Lectura(models.Model):
                 _logger.info('KOROSHI preparacion: set_barcode_start_date %s: %s', picking.name, e)
         hechas = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('qty_done'))
         total = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('product_uom_qty'))
-        msg = '%s  %s de %s' % (producto.default_code or producto.display_name, round(hechas), round(total))
+        msg = '%s · %s de %s' % (self._corto(producto), round(hechas), round(total))
         self._apuntar(picking, employee, 'leer', codigo, 'ok', msg, ml=ml, cantidad=1, id_lectura=id_lectura)
         return {'ok': True, 'que': 'producto', 'msg': msg, 'linea_id': ml.id}
 
@@ -278,13 +306,13 @@ class Lectura(models.Model):
         ml = ultima.move_line_id
         if ml.result_package_id:
             return {'ok': False, 'msg': _('%s ya está en la caja %s: no se puede deshacer.')
-                    % (ml.product_id.default_code or ml.product_id.display_name, ml.result_package_id.name)}
+                    % (self._corto(ml.product_id), ml.result_package_id.name)}
         if float_compare(ml.qty_done, 1, precision_digits=3) < 0:
             ultima.deshecha = True
             return {'ok': False, 'msg': _('Esa línea ya no tiene uds leídas.')}
         ml.write({'qty_done': ml.qty_done - 1})
         ultima.deshecha = True
-        msg = _('Deshecha: %s (−1)') % (ml.product_id.default_code or ml.product_id.display_name)
+        msg = _('Deshecha: %s (−1)') % self._corto(ml.product_id)
         self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-1)
         return {'ok': True, 'msg': msg, 'linea_id': ml.id}
 

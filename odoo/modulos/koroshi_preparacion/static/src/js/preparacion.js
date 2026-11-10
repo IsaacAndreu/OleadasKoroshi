@@ -1,6 +1,6 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Preparación en Lecturas v3.0.1 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+/* KOROSHI Preparación en Lecturas v3.1.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
  * v3.0.1: foto del producto (la misma imagen que enseña la app de código de barras) y flechas ◀ ▶ para ver la línea
  * de antes o la siguiente; tocar una línea de la lista la pone en grande. Al completar una línea salta sola a la
  * siguiente pendiente.
@@ -490,8 +490,11 @@ var Pantalla = AbstractAction.extend({
         var pct = e.pedidas ? Math.round(100 * Math.min(e.leidas, e.pedidas) / e.pedidas) : 0;
         this.$('.o_kp_barra_lleno').css('width', pct + '%');
         this.$('.o_kp_progreso_texto').text(e.leidas + ' de ' + e.pedidas + ' uds');
-        this.$('.o_kp_sin_caja').text(e.sin_caja ? 'Sin caja: ' + e.sin_caja + ' uds' : 'Todo en caja')
-            .toggleClass('o_kp_hay', !!e.sin_caja);
+        // v3.1: con 0 leídas no se dice nada de cajas («Todo en caja» confundía)
+        var txtCaja = e.sin_caja ? 'Sin caja: ' + e.sin_caja + (e.sin_caja === 1 ? ' ud' : ' uds')
+            : (e.leidas ? '✓ Todo en caja' : '');
+        this.$('.o_kp_sin_caja').text(txtCaja).toggleClass('o_kp_hay', !!e.sin_caja).toggle(!!txtCaja);
+        this.$('.o_kp_cajas_resumen').text(e.cajas.length ? '📦 ' + e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
         this.$('.o_kp_progreso').show();
         // la línea en grande: la que toca o la elegida con las flechas (v3.0.1)
         var idVisto = this._idVisto();
@@ -504,16 +507,22 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_anterior').prop('disabled', pos <= 0);
             this.$('.o_kp_posterior').prop('disabled', pos >= e.lineas.length - 1);
             this.$('.o_kp_ubicacion').text(sig.ubicacion);
-            this.$('.o_kp_producto_ref').text(sig.ref || '');
-            this.$('.o_kp_producto').text(sig.producto);
+            // v3.1: nombre una sola vez y en grande, talla destacada, referencia solo si es distinta
+            this.$('.o_kp_producto_ref').text(sig.nombre || sig.producto);
+            this.$('.o_kp_talla').text(sig.talla || '');
+            this.$('.o_kp_talla_fila').toggle(!!sig.talla);
+            this.$('.o_kp_producto').text(sig.ref ? 'Ref. ' + sig.ref : '').toggle(!!sig.ref);
             this.$('.o_kp_cuantas').text((sig.completa ? '✓ ' : '') + 'Cogidas ' + sig.leidas + ' de ' + sig.pedidas +
                                          (sig.caja ? ' · 📦 ' + sig.caja : ''));
-            var src = sig.producto_id ? '/web/image/product.product/' + sig.producto_id + '/image_256' : '';
+            // v3.1: sin foto no se pinta nada (ni el icono gris de Odoo): el texto ocupa todo el ancho
+            var conFoto = sig.tiene_foto !== false && !!sig.producto_id;
+            var src = conFoto ? '/web/image/product.product/' + sig.producto_id + '/image_256' : '';
             var $f = this.$('.o_kp_foto');
             if ($f.attr('src') !== src) {
                 $f.hide();
                 if (src) { $f.attr('src', src); } else { $f.removeAttr('src'); }
             }
+            if (!conFoto) { $f.hide(); }
             this.$('.o_kp_siguiente').toggleClass('o_kp_vista_hecha', !!sig.completa)
                 .toggleClass('o_kp_vista_otra', !esLaQueToca).show();
             this.$('.o_kp_ir_pendiente').text(e.todo_leido ? 'Volver al resumen ▸' : 'Ir a la que toca ▸')
@@ -544,7 +553,7 @@ var Pantalla = AbstractAction.extend({
             var $li = $('<li/>').attr('data-id', l.id).toggleClass('o_kp_hecha', l.completa)
                 .toggleClass('o_kp_ahora', l.id === e.siguiente_id);
             $('<span class="o_kp_l_marca" aria-hidden="true"/>').text(l.completa ? '✓' : '').appendTo($li);
-            if (l.producto_id) {
+            if (l.producto_id && l.tiene_foto !== false) {
                 // v3.0.1: miniatura (solo se descarga al abrir la lista)
                 $('<img class="o_kp_l_foto" alt="" loading="lazy"/>')
                     .attr('src', '/web/image/product.product/' + l.producto_id + '/image_128')
@@ -552,7 +561,7 @@ var Pantalla = AbstractAction.extend({
             }
             var $t = $('<span class="o_kp_l_texto"/>').appendTo($li);
             $('<span class="o_kp_l_ubi"/>').text(l.ubicacion).appendTo($t);
-            $('<span class="o_kp_l_prod"/>').text((l.ref ? l.ref + ' · ' : '') + l.producto).appendTo($t);
+            $('<span class="o_kp_l_prod"/>').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : '')).appendTo($t);
             if (l.caja) { $('<span class="o_kp_l_caja"/>').text('📦 ' + l.caja).appendTo($t); }
             $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
             $l.append($li);
