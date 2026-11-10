@@ -140,6 +140,15 @@ class KoroshiMonitor(http.Controller):
         hora_caja = {}
         for pq in env['stock.quant.package'].sudo().search_read([('id', 'in', ids_caja)], ['create_date']):
             hora_caja[pq['id']] = pq['create_date']
+        # v1.18.2: una caja usada en dos OUT (koroshi_caja_existente: OUT pequena metida en la caja de otra OUT)
+        # cuenta solo en su OUT duena, la de la primera linea que la uso (la misma regla que los bultos de Odoo)
+        dueno_caja = {}
+        if ids_caja:
+            for ml in env['stock.move.line'].sudo().search_read(
+                    [('result_package_id', 'in', ids_caja), ('state', '!=', 'cancel')],
+                    ['picking_id', 'result_package_id'], order='id'):
+                if ml['picking_id'] and ml['result_package_id'][0] not in dueno_caja:
+                    dueno_caja[ml['result_package_id'][0]] = ml['picking_id'][0]
         por_hora = {}
         # Desglose por hora y OUT para que la franja inferior pueda mostrar
         # qué OUT compone cada total. Se mantiene el total agregado anterior
@@ -160,7 +169,8 @@ class KoroshiMonitor(http.Controller):
                     f['_mu'].add(mu.group(1))
             f['leido'] += ml['qty_done']
             if ml['qty_done'] > 0:
-                if ml['result_package_id']:
+                if ml['result_package_id'] and dueno_caja.get(ml['result_package_id'][0],
+                                                               ml['picking_id'][0]) == ml['picking_id'][0]:
                     f['_cajas'].add(ml['result_package_id'][0])
                 w = ml['result_package_id'] and hora_caja.get(ml['result_package_id'][0]) or ml['write_date']
                 if not f['_a'] or w < f['_a']:

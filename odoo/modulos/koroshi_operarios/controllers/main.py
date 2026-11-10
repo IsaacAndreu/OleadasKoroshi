@@ -9,11 +9,17 @@
 # JSON /koroshi/operarios/saltar     {employee_id, motivo_id, nota} -> v2: saltar la que esta haciendo
 # JSON /koroshi/operarios/motivos    {}                           -> v2: motivos para saltar
 # JSON /koroshi/operarios/dejar      {employee_id}                -> "Dejar aqui" (v1, se mantiene)
-# JSON /koroshi/operarios/estado     {}                           -> tareas abiertas
+# JSON /koroshi/operarios/estado     {employee_id}                -> tareas abiertas (+ v2.3: n_operarios, contador
+#                                                                    del dia del operario, minutos_inactividad)
+#
+# v2.3: las respuestas llevan claves nuevas (solo lectura, el contrato de antes no cambia): en la asignacion y en
+# cada pedido de la cola zona, lineas, uds, hechas; en la tarea minutos desde que empezo, hechas y uds.
 #
 # La tarjeta se busca en todas las empresas. Solo escribe en las tablas del modulo (con sudo, porque el usuario
 # de la PDA no tiene permisos sobre ellas).
 # =============================================================================
+import datetime
+
 import pytz
 
 from odoo import fields, http
@@ -33,6 +39,39 @@ def _error(e):
     return {'ok': False, 'msg': e.name if hasattr(e, 'name') else str(e)}
 
 
+def _zona(lote):
+    nombre = lote.name or ''
+    if '-' in nombre:
+        return nombre.rsplit('-', 1)[-1]
+    return nombre.rsplit('_', 1)[-1] if '_' in nombre else ''
+
+
+def _detalle(pickings, lote):
+    """v2.3 (solo lectura): zona, n de lineas, uds pedidas y uds ya leidas de una OUT o de un lote Z-."""
+    Tarea = request.env['koroshi.operario.tarea'].sudo()
+    pickings = pickings.sudo()
+    moves = pickings.mapped('move_lines').filtered(lambda m: m.state != 'cancel')
+    return {
+        'zona': _zona(lote),
+        'lineas': len(moves),
+        'uds': round(Tarea._uds_pedidas(pickings)),
+        'hechas': round(Tarea._uds_leidas(pickings)),
+    }
+
+
+def _asig_json(a):
+    """asignacion.json() + v2.3 zona / lineas / uds / hechas."""
+    if not a:
+        return False
+    res = a.json()
+    try:
+        lote = a.batch_id if a.tipo == 'agrupacion' else a.picking_id.batch_id
+        res.update(_detalle(a._pickings(), lote))
+    except Exception:  # el detalle es solo informativo: nunca rompe la pantalla
+        pass
+    return res
+
+
 def _tarea_json(t):
     if not t:
         return False
@@ -49,6 +88,9 @@ def _tarea_json(t):
         'inicio': _hora(t.inicio),
         'estado': t.estado,
         'uds_total': t.uds_total,
+        # v2.3
+        'minutos': int(max((fields.Datetime.now() - t.inicio).total_seconds() // 60, 0)) if t.inicio else 0,
+        'zona': t.zona or '',
     }
 
 
@@ -62,12 +104,12 @@ class KoroshiOperarios(http.Controller):
 
     def _cola_json(self, emp):
         Asig = request.env['koroshi.operario.asignacion'].sudo()
-        return [a.json() for a in Asig.cola_de(emp)[:10]]
+        return [_asig_json(a) for a in Asig.cola_de(emp)[:10]]
 
     def _siguiente(self, emp):
         Asig = request.env['koroshi.operario.asignacion'].sudo()
         asig, nueva = Asig.siguiente(emp)
-        res = {'ok': True, 'que': 'siguiente', 'nueva': nueva, 'asignacion': asig.json() if asig else False,
+        res = {'ok': True, 'que': 'siguiente', 'nueva': nueva, 'asignacion': _asig_json(asig) if asig else False,
                'tarea': _tarea_json(asig.tarea_id) if asig else False, 'cola': self._cola_json(emp),
                'operario': emp.name, 'employee_id': emp.id}
         if not asig:
@@ -85,6 +127,10 @@ class KoroshiOperarios(http.Controller):
         if emp:
             return {'ok': True, 'que': 'tarjeta', 'employee_id': emp.id, 'operario': emp.name,
                     'abierta': _tarea_json(Tarea.abierta_de(emp))}
+        if not employee_id and request.env.user.has_group('koroshi_operarios.grupo_tarjeta_obligatoria'):
+            # v2.2: para este grupo, sin tarjeta no se abre nada (el JS tampoco lo abre por su cuenta)
+            return {'ok': False, 'obligatoria': True,
+                    'msg': 'Lee primero tu tarjeta. Sin tarjeta no se puede abrir ningún pedido.'}
         Asig = request.env['koroshi.operario.asignacion'].sudo()
         try:
             emp = self._empleado(employee_id)
@@ -99,7 +145,7 @@ class KoroshiOperarios(http.Controller):
         except UserError as e:
             return _error(e)
         return {'ok': True, 'que': 'empezada', 'msg': '', 'tarea': _tarea_json(tarea),
-                'asignacion': asig.json(), 'cola': self._cola_json(emp)}
+                'asignacion': _asig_json(asig), 'cola': self._cola_json(emp)}
 
     @http.route('/koroshi/operarios/operario', type='json', auth='user')
     def operario(self, employee_id=False, **kw):
@@ -157,8 +203,37 @@ class KoroshiOperarios(http.Controller):
                 'minutos': round(tarea.minutos)}
 
     @http.route('/koroshi/operarios/estado', type='json', auth='user')
-    def estado(self, **kw):
+    def estado(self, employee_id=False, **kw):
         Tarea = request.env['koroshi.operario.tarea'].sudo()
         abiertas = Tarea.search([('estado', '=', 'curso')], order='inicio asc', limit=200)
-        return {'ok': True, 'ahora': _hora(fields.Datetime.now()),
-                'abiertas': [_tarea_json(t) for t in abiertas]}
+        res = {'ok': True, 'ahora': _hora(fields.Datetime.now()),
+               'abiertas': [_tarea_json(t) for t in abiertas],
+               # v2.3
+               'n_operarios': len(abiertas.mapped('employee_id')),
+               'minutos_inactividad': self._minutos_inactividad()}
+        emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+        if emp:
+            res['dia'] = self._contador_dia(emp)
+        return res
+
+    def _minutos_inactividad(self):
+        valor = request.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.minutos_inactividad', '0')
+        try:
+            return max(int(float(valor or 0)), 0)
+        except ValueError:
+            return 0
+
+    def _contador_dia(self, emp):
+        """v2.3: pedidos y uds de hoy del operario, igual que Productividad (informe._datos): uds de las tareas
+        cerradas + lo leido desde que empezo en la abierta; pedidos = tareas acabadas (validadas)."""
+        Tarea = request.env['koroshi.operario.tarea'].sudo()
+        hoy = datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).date()
+        pedidos, uds = 0, 0.0
+        for t in Tarea.search([('dia', '=', hoy), ('employee_id', '=', emp.id)]):
+            if t.estado == 'curso':
+                uds += max(Tarea._uds_leidas(t._pickings()) - (t.uds_inicio or 0.0), 0.0)
+            else:
+                uds += t.uds or 0.0
+                if t.estado == 'acabada':
+                    pedidos += 1
+        return {'pedidos': pedidos, 'uds': int(round(uds))}

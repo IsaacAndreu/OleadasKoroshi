@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- KOROSHI Preparación en Lecturas v3.0.0: pantalla para preparar una OUT suelta en la PDA. -->
+    <t t-name="koroshi_preparacion.Pantalla">
+        <div class="o_koroshi_preparacion">
+            <div class="o_kp_offline" role="alert" style="display: none;">
+                <span aria-hidden="true">⚠</span>
+                <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
+            </div>
+            <div class="o_kp_app">
+                <!-- cabecera: volver, OUT, tienda, operario -->
+                <div class="o_kp_cabecera">
+                    <button type="button" class="o_kp_volver" aria-label="Volver a Lecturas">←</button>
+                    <div class="o_kp_cabecera_texto">
+                        <div class="o_kp_ref"/>
+                        <div class="o_kp_tienda"/>
+                    </div>
+                    <div class="o_kp_operario"/>
+                </div>
+
+                <!-- progreso -->
+                <div class="o_kp_progreso">
+                    <div class="o_kp_barra"><div class="o_kp_barra_lleno"/></div>
+                    <div class="o_kp_progreso_fila">
+                        <span class="o_kp_progreso_texto"/>
+                        <span class="o_kp_sin_caja"/>
+                    </div>
+                </div>
+
+                <!-- lo siguiente que hay que coger -->
+                <div class="o_kp_siguiente">
+                    <!-- v3.0.1: flechas para ver la línea de antes / la siguiente y foto del producto -->
+                    <div class="o_kp_nav">
+                        <button type="button" class="o_kp_anterior" aria-label="Línea anterior">◀</button>
+                        <div class="o_kp_nav_centro">
+                            <div class="o_kp_etiqueta">Ve a</div>
+                            <div class="o_kp_posicion"/>
+                        </div>
+                        <button type="button" class="o_kp_posterior" aria-label="Línea siguiente">▶</button>
+                    </div>
+                    <div class="o_kp_ubicacion"/>
+                    <div class="o_kp_articulo">
+                        <img class="o_kp_foto" alt=""/>
+                        <div class="o_kp_articulo_texto">
+                            <div class="o_kp_producto_ref"/>
+                            <div class="o_kp_producto"/>
+                            <div class="o_kp_cuantas"/>
+                        </div>
+                    </div>
+                    <button type="button" class="o_kp_ir_pendiente" style="display: none;">Ir a la que toca ▸</button>
+                </div>
+                <div class="o_kp_completa" style="display: none;">
+                    <div class="o_kp_completa_titulo">✓ Todo leído</div>
+                    <div class="o_kp_completa_texto"/>
+                </div>
+
+                <div class="o_kp_aviso" role="status" aria-live="polite"/>
+
+                <!-- botones -->
+                <button type="button" class="o_kp_boton o_kp_caja">📦 Caja</button>
+                <button type="button" class="o_kp_boton o_kp_validar">✓ Validar</button>
+                <div class="o_kp_fila_botones">
+                    <button type="button" class="o_kp_boton o_kp_faltante">Faltante</button>
+                    <button type="button" class="o_kp_boton o_kp_deshacer">↶ Deshacer</button>
+                </div>
+
+                <!-- lineas -->
+                <button type="button" class="o_kp_ver_lineas" aria-expanded="false">Ver líneas</button>
+                <ol class="o_kp_lineas" style="display: none;"/>
+                <div class="o_kp_cajas"/>
+
+                <input class="o_kp_codigo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                       placeholder="Leer producto o escribir EAN y Enter"/>
+                <div class="o_kp_pie">
+                    <span class="o_kp_lector"><span class="o_kp_punto"/><span class="o_kp_lector_texto">Lector preparado</span></span>
+                </div>
+            </div>
+
+            <!-- hoja: escanea la caja -->
+            <div class="o_kp_hoja" style="display: none;">
+                <div class="o_kp_hoja_fondo"/>
+                <div class="o_kp_hoja_panel" role="dialog" aria-modal="true">
+                    <div class="o_kp_hoja_caja">
+                        <div class="o_kp_hoja_icono" aria-hidden="true">📦</div>
+                        <h2 class="o_kp_hoja_titulo">Escanea la caja</h2>
+                        <p class="o_kp_hoja_texto"/>
+                        <div class="o_kp_hoja_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
+                    </div>
+                    <div class="o_kp_hoja_pregunta" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Faltan uds</h2>
+                        <p>¿Crear un pedido pendiente con lo que falta?
+                            <b>Sí</b> = saldrá otro día. <b>No</b> = la OUT sale sin esas piezas.</p>
+                        <button type="button" class="o_kp_boton o_kp_pendiente_si">Sí, pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_pendiente_no">No, sin pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_pendiente_cancelar">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- capa: validando / validada -->
+            <div class="o_kp_capa" style="display: none;">
+                <div class="o_kp_capa_centro">
+                    <div class="o_kp_rueda" aria-hidden="true"/>
+                    <div class="o_kp_capa_texto"/>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

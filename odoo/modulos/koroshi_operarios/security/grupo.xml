@@ -9,4 +9,13 @@
         <field name="category_id" ref="base.module_category_hidden"/>
         <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
     </record>
+
+    <!-- v2.2: usuarios que no pueden abrir pedidos en Lecturas (PDA) sin leer antes la tarjeta del operario.
+         Al instalar NO tiene a nadie. Para probar, se anade el usuario en Ajustes > Usuarios y companias >
+         Grupos > "KOROSHI Operarios: tarjeta obligatoria" > pestana Usuarios (modo desarrollador), y en el
+         usuario, Preferencias > Accion inicial = "Operarios". -->
+    <record id="grupo_tarjeta_obligatoria" model="res.groups">
+        <field name="name">KOROSHI Operarios: tarjeta obligatoria</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
 </odoo>

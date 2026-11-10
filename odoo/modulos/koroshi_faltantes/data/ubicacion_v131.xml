@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.3.1 (10/11/2026): la ubicacion se llama FALTANTE (antes FALTANT). Solo cambia el nombre y el codigo de
+         barras; es la misma ubicacion (mismo id), con su stock y sus movimientos. -->
+    <function model="stock.location" name="write"
+              eval="[[ref('ubicacion_faltant')], {'name': 'FALTANTE', 'barcode': 'FALTANTE'}]"/>
+</odoo>

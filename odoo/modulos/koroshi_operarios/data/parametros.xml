@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v2.3: salida automatica del operario por inactividad en la PDA (minutos). 0 = desactivado.
+         noupdate: si se cambia en Ajustes > Tecnico > Parametros del sistema, al actualizar no se pisa. -->
+    <data noupdate="1">
+        <record id="parametro_minutos_inactividad" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.minutos_inactividad</field>
+            <field name="value">0</field>
+        </record>
+    </data>
+</odoo>

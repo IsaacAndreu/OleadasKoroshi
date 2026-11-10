@@ -9,7 +9,7 @@ odoo.define('koroshi_faltantes.Pantalla', function (require) {
  *      linea pendiente de alli) o el EAN.
  *   3. Para cada linea, UNA ubicacion recomendada (la de stock libre mas cercana):
  *        - leer la ubicacion de donde se coge -> /koroshi/faltantes/reubicar
- *        - "Tampoco esta aqui" + confirmar -> /koroshi/faltantes/sin_alternativa (la pieza va a FALTANT)
+ *        - "Tampoco esta aqui" + confirmar -> /koroshi/faltantes/sin_alternativa (la pieza va a FALTANTE)
  *        - "Ver mas ubicaciones" ensena la lista de antes (hasta 5).
  *   4. Al acabar: si no queda nada por coger, se valida sola (/koroshi/faltantes/validar) o con el boton
  *      "Validar OUT". Si Odoo pregunta por el pedido pendiente: "Si, pedido pendiente" / "No, sin pedido pendiente".
@@ -542,7 +542,7 @@ var Pantalla = AbstractAction.extend({
         if (_.contains(['fin', 'preguntar', 'validada'], this.paso) && this.hechos.length) {
             var reub = _.where(this.hechos, {tipo: 'reubicado'}).length;
             var falt = _.where(this.hechos, {tipo: 'sin_alternativa'}).length;
-            $res.append($('<div/>').text(this.hechos.length + ' faltantes: ' + reub + ' reubicados, ' + falt + ' a FALTANT'));
+            $res.append($('<div/>').text(this.hechos.length + ' faltantes: ' + reub + ' reubicados, ' + falt + ' a FALTANTE'));
             _.where(this.hechos, {tipo: 'reubicado'}).forEach(function (h) {
                 $res.append($('<div class="o_kf_sub"/>').text(h.ref + ': cógela en ' + h.ubicacion));
             });

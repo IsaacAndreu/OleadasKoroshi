@@ -37,8 +37,28 @@ v2.1 (09/11/2026): reparto por bloques. Reparto de hoy: operarios de hoy, "Repar
 hasta N pedidos) e "Imprimir etiquetas" (por persona: hoja con su nombre + sus etiquetas de zona en orden; reserva las
 matriculas con la accion "KOROSHI Etiquetas zona" de siempre). Linea en naranja cuando le quedan pocos. Con la cola
 vacia la PDA ya no da otra sola, salvo que se encienda "darle otra solo (sin etiqueta)".
+v2.2 (09/11/2026): al entrar en Lecturas con el operario guardado (iniciar sesion, menu, recargar) la OUT se abre
+directamente; Continuar / Saltar / Faltante solo al volver con la flecha atras sin validar. Grupo nuevo "KOROSHI
+Operarios: tarjeta obligatoria" (vacio al instalar): sus usuarios no pueden abrir pedidos sin tarjeta (tambien lo
+comprueba el servidor). Para probar: el usuario en el grupo y su Accion inicial = "Operarios".
+v2.2.1 (10/11/2026): al saltar solo "No hay stock" y "Fin de turno" (los otros 3 motivos se archivan).
+v2.2.2 (10/11/2026): grupo "tarjeta obligatoria": sin tarjeta la pantalla Lecturas queda bloqueada (sin barra de Odoo
+ni boton "Menu codigo de barras"); solo se puede leer la tarjeta. Al leerla vuelve todo. Resto de usuarios igual.
+v2.3.0 (10/11/2026): pantalla nueva de Lecturas (solo aspecto y ayudas; mismo funcionamiento y mismas rutas).
+Con tarjeta obligatoria: pantalla completa "Lee tu tarjeta" con punto verde (lector preparado) o gris ("Toca la
+pantalla"); si leen un pedido sin tarjeta, aviso rojo. Cabecera con iniciales y nombre del operario y "Salir" (pide
+confirmar y avisa si deja un pedido a medias). Leer la tarjeta de otro operario pregunta "Cambiar a X?". Botones grandes:
+Continuar (verde), Faltante (naranja) y Saltar (gris). Avisos con icono (bien / info / cuidado / mal); los verdes se
+van solos. Saltar en una hoja con los motivos como tarjetas. Pantalla "Abriendo..." (no acepta lecturas mientras
+abre) y "Hecho!" al volver con el pedido validado (el siguiente en 3 s o "Parar aqui"). Sin conexion: banda roja, no
+acepta lecturas y reintenta cada 5 s. Sonido y vibracion bien/mal (se apagan por PDA). Pedido actual con tienda, zona,
+lineas, uds, minutos y progreso; cola numerada; "Cogiendo ahora" plegado; contador del dia (pedidos y uds, como
+Productividad). Menu como icono abajo (con tarjeta obligatoria, pulsacion larga de 2 s). Parametro nuevo
+koroshi_operarios.minutos_inactividad (0 = desactivado): sale solo el operario tras esos minutos sin usar la PDA.
+v2.3.1 (10/11/2026): en la PDA no sale nada de productividad: fuera el contador del dia (pedidos / uds), los
+minutos del pedido y el texto "no cuenta en productividad" al abrir sin tarjeta.
 """,
-    'version': '13.0.2.1.0',
+    'version': '13.0.2.3.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -48,7 +68,9 @@ vacia la PDA ya no da otra sola, salvo que se encienda "darle otra solo (sin eti
         'security/ir.model.access.csv',
         'data/categoria.xml',
         'data/motivos.xml',
+        'data/motivos_v221.xml',
         'data/cron.xml',
+        'data/parametros.xml',
         'data/informe.xml',
         'views/assets.xml',
         'views/tarea_views.xml',

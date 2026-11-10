@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Faltantes - asistente "Encontrado": devuelve las uds de FALTANT a la ubicacion que se elija.
+# KOROSHI Faltantes - asistente "Encontrado": devuelve las uds de FALTANTE a la ubicacion que se elija.
 # =============================================================================
 from odoo import fields, models
 from odoo.exceptions import UserError

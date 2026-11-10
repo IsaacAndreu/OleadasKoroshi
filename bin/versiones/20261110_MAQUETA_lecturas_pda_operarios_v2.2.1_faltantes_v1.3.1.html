@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lecturas PDA v2.2.1</title>
+<style>
+:root{--fondo:#e9ecef;--pda:#f1f3f5;--txt:#1f2933;--gris:#52606d;--borde:#cbd2d9;--verde:#2f9e44;--naranja:#e67700;--azul:#1971c2;--rojo:#c92a2a;--panel:#fff}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--txt);font-family:Arial,Helvetica,sans-serif}
+.envoltura{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;padding:20px 16px}
+.lado{max-width:380px;flex:1 1 300px}
+h1{font-size:22px;margin:0 0 6px}
+.lado p{color:var(--gris);font-size:14px;line-height:1.45;margin:6px 0}
+.pasos{list-style:none;padding:0;margin:12px 0}
+.pasos li{background:var(--panel);border-radius:8px;padding:8px 10px;margin-bottom:6px;font-size:14px;cursor:pointer;border-left:4px solid transparent}
+.pasos li.activo{border-left-color:var(--azul);font-weight:bold}
+.pasos li small{display:block;font-weight:normal;color:var(--gris);margin-top:2px}
+.nota{background:#fff3bf;border-radius:8px;padding:10px;font-size:13px;line-height:1.4;margin-top:10px}
+.modo{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+.modo button{border:1px solid var(--borde);background:#fff;border-radius:20px;padding:6px 12px;cursor:pointer;font-size:13px}
+.modo button.on{background:var(--azul);color:#fff;border-color:var(--azul)}
+/* PDA */
+.pda{width:360px;max-width:100%;background:#212529;border-radius:28px;padding:14px 10px 18px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.pantalla{background:var(--pda);border-radius:14px;height:640px;overflow:auto;position:relative}
+.barra{background:#714b67;color:#fff;font-size:13px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;z-index:2}
+.barra .atras{cursor:pointer;font-size:18px;padding:0 6px}
+.app{padding:10px}
+.cab{display:flex;justify-content:space-between;font-size:13px;color:var(--gris);margin-bottom:8px}
+.caja{border-radius:10px;padding:12px;margin-bottom:10px;font-size:18px;line-height:1.3}
+.quien{background:#fff;border:2px solid var(--borde);font-size:22px;font-weight:bold;text-align:center}
+.quien.vacio{color:#9aa5b1;font-weight:normal;font-size:18px}
+.aviso{text-align:center;font-weight:bold;font-size:15px}
+.ok{background:#d3f9d8;color:#1b5e20}.mal{background:#ffe3e3;color:#b71c1c}.info{background:#e3f2fd;color:#0d47a1}
+.actual{background:#fff;border:2px solid var(--verde)}
+.sub{display:block;font-size:14px;color:var(--gris)}
+.ref{font-size:21px;font-weight:bold;margin:4px 0 10px}
+.btn{width:100%;font-size:18px;padding:12px;border:0;border-radius:10px;margin-bottom:8px;color:#fff;font-weight:bold;cursor:pointer}
+.b-verde{background:var(--verde)}.b-naranja{background:var(--naranja)}.b-gris{background:#495057}.b-azul{background:var(--azul)}.b-rojo{background:var(--rojo)}
+.b-claro{background:#fff;color:var(--txt);border:1px solid var(--borde)}
+.btn:disabled{background:var(--borde);color:#7b8794;cursor:default}
+.input{width:100%;font-size:15px;padding:9px;border:1px solid #9aa5b1;border-radius:10px;margin-bottom:10px;background:#fff;color:#9aa5b1}
+.titulo{margin:14px 0 6px;font-size:13px;color:var(--gris)}
+.fila{background:#fff;border-radius:8px;padding:7px 10px;margin-bottom:6px;font-size:14px;display:flex;justify-content:space-between;gap:8px}
+.pie{display:flex;justify-content:space-between;margin-top:16px;font-size:13px}
+.enlace{color:var(--azul);cursor:pointer;background:none;border:0;font-size:13px;padding:4px 0}
+/* lineas faltante */
+.lin{background:#fff;border:2px solid var(--borde);border-radius:10px;padding:8px 10px;margin-bottom:6px;cursor:pointer;display:flex;gap:10px;align-items:center}
+.lin.marcada{border-color:var(--naranja);background:#fff4e6}
+.lin .cb{width:24px;height:24px;border:2px solid #9aa5b1;border-radius:5px;flex:none;display:flex;align-items:center;justify-content:center;font-weight:bold;color:#fff}
+.lin.marcada .cb{background:var(--naranja);border-color:var(--naranja)}
+.lin .r{font-size:19px;font-weight:bold}
+.lin .v{font-size:13px;color:var(--gris)}
+.lin .u{margin-left:auto;text-align:right;font-size:13px;color:var(--gris)}
+.lin .u b{display:block;font-size:17px;color:var(--txt)}
+.ubi{background:#fff;border:2px solid var(--verde);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer;display:flex;justify-content:space-between;font-size:17px}
+.ubi.otra{border-color:var(--borde)}
+/* barcode falso */
+.bc{padding:0}
+.bc .bcab{background:#fff;padding:10px;border-bottom:1px solid var(--borde);font-size:14px}
+.bc .bloc{background:#dee2e6;padding:6px 10px;font-size:12px;color:var(--gris)}
+.bc .bl{background:#fff;margin:6px 8px;border-radius:6px;padding:8px;font-size:13px;display:flex;justify-content:space-between}
+.bc .bl.hecha{background:#d3f9d8}
+.bc .bpie{display:flex;gap:6px;padding:10px 8px}
+.bc .bpie button{flex:1;padding:10px;border:0;border-radius:6px;font-size:13px}
+.etq{position:absolute;top:44px;right:8px;background:#fff3bf;color:#5c3c00;font-size:11px;padding:3px 7px;border-radius:10px;z-index:3}
+@media (max-width:420px){.pda{border-radius:16px;padding:8px}.pantalla{height:600px}}
+</style>
+</head>
+<body>
+<div class="envoltura">
+  <div class="lado">
+    <h1>Lecturas (PDA) · v2.2.1 + Faltante v1.3.1</h1>
+    <p>Maqueta navegable de cómo queda la pantalla. Se pulsa en la PDA igual que en la real, o en un paso de la lista. Los datos son de ejemplo.</p>
+    <div class="modo">
+      <button id="m-normal" class="on">Usuario normal (Almacén Nath)</button>
+      <button id="m-oblig">Tarjeta obligatoria (Departament IT)</button>
+    </div>
+    <ul class="pasos" id="pasos"></ul>
+    <div class="nota" id="nota"></div>
+  </div>
+  <div class="pda"><div class="pantalla" id="p"></div></div>
+</div>
+<script>
+var S = {oblig:false, op:null, paso:'inicio', marcadas:{}, cola:[], verMas:false, confirmar:false, aviso:null, hecha:{}};
+var OUT = {ref:'OUT/23512', tienda:'K14 Valencia Centro'};
+var COLA = [{ref:'OUT/23518', t:'K22 Castellón'}, {ref:'OUT/23521', t:'K31 Gandía'}];
+var LINEAS = [
+  {id:1, ref:'KS-24117', v:'Negro · M', ubi:'P07-03-B', uds:2},
+  {id:2, ref:'KS-24117', v:'Negro · L', ubi:'P07-03-C', uds:1},
+  {id:3, ref:'KT-10552', v:'Blanco · 38', ubi:'P12-01-A', uds:3, leidas:1},
+  {id:4, ref:'KC-88310', v:'Azul · S', ubi:'P15-04-D', uds:2}
+];
+var ALT = {1:[['P07-05-A',6],['P22-02-B',2],['P30-01-C',1]], 2:[], 3:[['P12-06-B',4]], 4:[['P18-02-A',3],['P19-01-B',1]]};
+
+var PASOS = [
+  ['inicio','1. Entrar en Lecturas','Al iniciar sesión (Acción inicial = Operarios) o desde el menú'],
+  ['sintarjeta','2. Leer una OUT sin tarjeta','Normal: se abre y no cuenta. Obligatoria: no se abre'],
+  ['abriendo','3. Leer la tarjeta OP9990001','Se abre directa su OUT, sin preguntar'],
+  ['barcode','4. App de código de barras','La de siempre (no se toca)'],
+  ['volver','5. Flecha atrás sin validar','Ahora sí: Continuar / Saltar / Faltante'],
+  ['saltar','6. Saltar','Motivos'],
+  ['lista','7. Faltante: lista de lo que queda','Marcar las que no están'],
+  ['ubic','8. Ubicación recomendada','Una sola; «Ver más» y «Tampoco está aquí»'],
+  ['reubicada','9. Está allí: leer la ubicación','La línea cambia de ubicación en la OUT'],
+  ['validada','10. Tampoco está: validada','A FALTANTE y se valida sola, sin pedido pendiente']
+];
+var NOTAS = {
+  inicio:'Si la PDA ya tiene el operario guardado (iniciar sesión, menú o F5), la OUT que estaba haciendo <b>se abre sola</b> al entrar. Si no, espera la tarjeta.',
+  sintarjeta: '',
+  abriendo:'Al leer la tarjeta (o una OUT con operario) se abre <b>directamente</b>. Antes salían las 3 opciones; ahora no.',
+  barcode:'Es la app de código de barras de Odoo, sin cambios. El botón Validar sigue saliendo solo en la última página. Truco: leer el código <b>O-BTN.validate</b> impreso valida desde cualquier página.',
+  volver:'Solo al volver con la flecha atrás <b>sin haber validado</b> salen Continuar / Saltar / Faltante. Si valida, vuelve y se abre la siguiente.',
+  saltar:'v2.2.1: solo 2 motivos. <b>No hay stock</b> = la OUT va a oficina hasta que el responsable la libere. <b>Fin de turno</b> = sigue suya y mañana se le abre la primera.',
+  lista:'Lista de lo que <b>queda por coger</b>, en el mismo orden que la app (por ubicación). Ya no hace falta leer el EAN. Se pueden marcar varias. Una línea leída a medias sale con lo que falta.',
+  ubic:'Una ubicación recomendada (la de más stock libre). Si está allí, el operario va y <b>lee esa ubicación</b> con la PDA (tocar no basta). «Tampoco está aquí» pide confirmar y manda lo que falta a <b>FALTANTE</b>.',
+  reubicada:'Al leer la ubicación nueva, Odoo de golpe: <b>1)</b> la línea de la OUT pasa de P07-03-B a P07-05-A (quita la reserva vieja y reserva en la nueva, solo stock libre); <b>2)</b> las 2 uds que no estaban van de P07-03-B a FALTANTE con un movimiento interno; <b>3)</b> registro de faltante y nota en el historial de la OUT (qué, de dónde, a dónde, operario). En la app de código de barras la línea ya sale en la página «Desde P07-05-A»: se lee esa ubicación y el artículo como siempre. La vieja ya no sale.',
+  validada:'v1.3.1: si lo que falta ha ido a FALTANTE y ya no queda nada por coger, la OUT se valida <b>sola y sin pedido pendiente</b> (no pregunta). Se cierra la tarea y a los 2 segundos vuelve sola a Lecturas, que abre la siguiente.'
+};
+
+function $(id){return document.getElementById(id)}
+function h(s){return s}
+function ir(p){S.paso=p; S.aviso=null; S.confirmar=false; if(p==='lista'){S.marcadas={}} if(p==='reubicada'||p==='abriendo'||p==='volver'||p==='saltar'||p==='lista'||p==='ubic'||p==='preguntar'||p==='validada'||p==='barcode'){S.op=S.op||'Isaac'} if(p==='inicio'||p==='sintarjeta'){S.op=null} if(p==='ubic'&&!S.cola.length){S.cola=[1]} pintar()}
+
+function barra(titulo, atras){return '<div class="barra"><span>'+(atras?'<span class="atras" data-ir="'+atras+'">&#8592;</span>':'')+titulo+'</span><span>Departament IT</span></div>'}
+
+function lecturas(){
+  var a = S.aviso, html = barra('Lecturas (PDA)') + '<div class="app"><div class="cab"><span>Operarios KOROSHI</span><span>08:42</span></div>';
+  if(!S.op) html += '<div class="caja quien vacio">Lee tu tarjeta (o directamente la OUT)</div>';
+  else html += '<div class="caja quien">'+S.op+'</div>';
+  if(a) html += '<div class="caja aviso '+a[1]+'">'+a[0]+'</div>';
+  if(S.paso==='volver'){
+    html += '<div class="caja actual"><span class="sub">Estás haciendo</span><div class="ref">'+OUT.ref+' · '+OUT.tienda+'</div>'+
+      '<button class="btn b-verde" data-ir="barcode">Continuar</button>'+
+      '<button class="btn b-naranja" data-ir="saltar">Saltar</button>'+
+      '<button class="btn b-naranja" data-ir="lista">Faltante</button></div>';
+  }
+  if(S.paso==='saltar'){
+    html += '<div class="caja" style="background:#fff;border:2px solid var(--naranja)"><b>¿Por qué saltas '+OUT.ref+'?</b><div style="margin-top:10px">'+
+      ['No hay stock / en espera','Fin de turno (la sigo mañana)'].map(function(m){return '<button class="btn b-gris" data-ir="volver">'+m+'</button>'}).join('')+
+      '</div><button class="enlace" data-ir="volver">No saltar</button></div>';
+  }
+  html += '<div class="input">'+(S.paso==='sintarjeta'?'OUT/23512':'Escribir tarjeta o pedido y Enter')+'</div>';
+  if(S.paso==='inicio'){
+    html += '<button class="btn b-claro" data-ir="sintarjeta">▶ Simular: leer OUT/23512 sin tarjeta</button>';
+    html += '<button class="btn b-claro" data-ir="abriendo">▶ Simular: leer tarjeta OP9990001</button>';
+  }
+  if(S.paso==='sintarjeta'){
+    html += '<button class="btn b-claro" data-ir="abriendo">▶ Simular: leer tarjeta OP9990001</button>';
+  }
+  if(S.op){
+    html += '<div class="titulo">Después te tocan</div>' + COLA.map(function(c){return '<div class="fila"><span>'+c.ref+'</span><span>'+c.t+'</span></div>'}).join('');
+  }
+  html += '<div class="titulo">Cogiendo ahora</div>' + (S.op && S.paso!=='validada' ? '<div class="fila"><span><b>Isaac</b> · '+OUT.ref+'</span><span>08:31</span></div>' : '') +
+    '<div class="fila"><span><b>Marta</b> · OUT/23509</span><span>08:20</span></div>';
+  html += '<div class="pie">'+(S.op?'<button class="enlace" data-ir="inicio">Salir (otro operario)</button>':'<span></span>')+'<button class="enlace">Menú código de barras</button></div></div>';
+  return html;
+}
+
+function barcode(){
+  var lin = LINEAS.map(function(l){return '<div class="bl'+(l.id===3?'':'')+'"><span><b>'+l.ref+'</b> '+l.v+'</span><span>'+(l.leidas||0)+' / '+l.uds+'</span></div>'});
+  return barra(OUT.ref, 'volver') + '<div class="bc"><div class="bcab"><b>'+OUT.ref+'</b> · '+OUT.tienda+'<br><small>Página 1 / 4</small></div>'+
+    '<div class="bloc">Desde P07-03-B</div>'+lin[0]+'<div class="bloc">Desde P07-03-C</div>'+lin[1]+
+    '<div class="bloc">Desde P12-01-A</div>'+lin[2]+'<div class="bloc">Desde P15-04-D</div>'+lin[3]+
+    '<div class="bpie"><button>Anterior</button><button>Siguiente</button><button style="background:#ced4da">Validar (última página)</button></div>'+
+    '<div style="padding:8px 10px;font-size:12px;color:var(--gris)">Pulsa la flecha &#8592; de arriba para volver a Lecturas sin validar.</div></div>';
+}
+
+function cabFalt(){return barra('Faltante', 'volver') + '<div class="app"><div class="cab"><span>Faltante</span><span>Isaac</span></div><div class="caja quien" style="font-size:18px">'+OUT.ref+' · '+OUT.tienda+'</div>'}
+
+function lista(){
+  var n = Object.keys(S.marcadas).length;
+  var html = cabFalt() + '<div class="caja info aviso">Marca lo que no está y pulsa Continuar</div>';
+  html += LINEAS.map(function(l){
+    var pend = l.uds-(l.leidas||0);
+    return '<div class="lin'+(S.marcadas[l.id]?' marcada':'')+'" data-marca="'+l.id+'"><div class="cb">'+(S.marcadas[l.id]?'✓':'')+'</div><div><div class="r">'+l.ref+'</div><div class="v">'+l.v+'</div></div>'+
+      '<div class="u"><b>'+pend+' uds</b>'+l.ubi+(l.leidas?'<br>'+l.leidas+' ya leída':'')+'</div></div>';
+  }).join('');
+  html += '<button class="btn b-naranja" '+(n?'':'disabled')+' data-ir="ubic">Continuar'+(n?' ('+n+')':'')+'</button>';
+  html += '<button class="btn b-claro" data-ir="volver">Volver a la OUT</button>';
+  html += '<div class="pie"><button class="enlace">Empezar de nuevo</button><button class="enlace" data-ir="volver">Salir</button></div></div>';
+  return html;
+}
+
+function ubic(){
+  var ids = Object.keys(S.marcadas).map(Number); if(!ids.length) ids=[1];
+  var l = LINEAS.filter(function(x){return x.id===ids[0]})[0], alt = ALT[l.id];
+  var html = cabFalt();
+  if(S.aviso) html += '<div class="caja aviso '+S.aviso[1]+'">'+S.aviso[0]+'</div>';
+  html += '<div class="caja" style="background:#fff;border:2px solid var(--naranja)"><div class="r" style="font-size:22px;font-weight:bold">'+l.ref+'</div><div class="sub">'+l.v+' · '+(l.uds-(l.leidas||0))+' uds</div>'+
+    '<div class="sub" style="margin-top:6px">No está en <b>'+l.ubi+'</b></div>'+(ids.length>1?'<div class="sub">Después: '+(ids.length-1)+' más</div>':'')+'</div>';
+  if(alt.length){
+    html += '<div class="titulo">Prueba en · si está, lee la ubicación</div><div class="ubi"><b>'+alt[0][0]+'</b><span>'+alt[0][1]+' libres</span></div>';
+    if(S.verMas) html += alt.slice(1).map(function(a){return '<div class="ubi otra"><b>'+a[0]+'</b><span>'+a[1]+' libres</span></div>'}).join('');
+    html += '<button class="btn b-claro" data-ir="reubicada">▶ Simular: leer '+alt[0][0]+'</button>';
+    if(alt.length>1) html += '<button class="enlace" data-vermas="1">'+(S.verMas?'Ocultar las demás':'Ver más ('+(alt.length-1)+')')+'</button>';
+  } else html += '<div class="fila">No hay stock libre en ninguna otra ubicación</div>';
+  html += S.confirmar ? '<button class="btn b-rojo" data-ir="validada">Sí, tampoco está: a FALTANTE</button><button class="btn b-claro" data-confirmar="0">No, cancelar</button>'
+                      : '<button class="btn b-gris" data-confirmar="1">Tampoco está aquí</button>';
+  html += '<button class="enlace" data-ir="lista">Esta no: dejarla y seguir</button>';
+  html += '<div class="pie"><button class="enlace">Empezar de nuevo</button><button class="enlace" data-ir="volver">Salir</button></div></div>';
+  return html;
+}
+
+function reubicada(){
+  var lin = function(l, ubi, nueva){return '<div class="bl'+(nueva?'" style="border:2px solid var(--verde)':'')+'"><span><b>'+l.ref+'</b> '+l.v+'</span><span>'+(l.leidas||0)+' / '+l.uds+'</span></div>'};
+  return '<div class="etq">antes: ok verde en Faltante → «Volver a la OUT»</div>' + barra(OUT.ref, 'ubic') + '<div class="bc"><div class="bcab"><b>'+OUT.ref+'</b> · '+OUT.tienda+'<br><small>Página 1 / 4 · recargada</small></div>'+
+    '<div class="bloc">Desde P07-03-C</div>'+lin(LINEAS[1])+
+    '<div class="bloc" style="background:#d3f9d8;color:#1b5e20"><b>Desde P07-05-A</b> (nueva)</div>'+lin(LINEAS[0],0,1)+
+    '<div class="bloc">Desde P12-01-A</div>'+lin(LINEAS[2])+'<div class="bloc">Desde P15-04-D</div>'+lin(LINEAS[3])+
+    '<div style="padding:8px 10px;font-size:12px;color:var(--gris)">P07-03-B ya no sale en la OUT. Historial de la OUT: «Faltante: KS-24117 Negro M 2 uds no estaban en P07-03-B; se cogen en P07-05-A. 2 uds de la ubicación vieja a FALTANTE. Operario: Isaac.»</div></div>';
+}
+
+function preguntar(){
+  return cabFalt() + '<div class="caja ok aviso">Enviada a FALTANTE. No queda nada por coger en '+OUT.ref+'.</div>'+
+    '<div class="caja" style="background:#fff;font-size:15px">Odoo pregunta qué hacer con lo que falta:<br><b>Sí</b> = se crea un pedido pendiente con lo que falta (saldrá otro día);<br><b>No</b> = la OUT sale sin esas piezas y no queda nada pendiente.</div>'+
+    '<button class="btn b-azul" data-ir="validada">Sí, pedido pendiente</button><button class="btn b-gris" data-ir="validada">No, sin pedido pendiente</button>'+
+    '<div class="sub" style="text-align:center;margin-top:8px">Con el parámetro <i>pedido_pendiente</i> = si / no no se pregunta.</div></div>';
+}
+
+function validada(){
+  return cabFalt() + '<div class="caja ok aviso">Enviada a FALTANTE. No queda nada por coger.</div><div class="caja ok aviso" style="font-size:20px">'+OUT.ref+' validada ✓<br><small style="font-weight:normal">sin pedido pendiente</small></div><div class="caja info aviso">Tarea de Isaac cerrada. Volviendo a Lecturas...</div>'+
+    '<button class="btn b-verde" data-ir="siguiente">▶ (2 s después) Lecturas</button></div>';
+}
+
+function pintar(){
+  var p = $('p'), html, etq='';
+  if(S.paso==='sintarjeta'){
+    S.aviso = S.oblig ? ['Lee primero tu tarjeta. Sin tarjeta no se puede abrir ningún pedido.','mal'] : ['Sin tarjeta: abriendo OUT/23512 (no cuenta en productividad)...','info'];
+  }
+  if(S.paso==='abriendo'){ S.op='Isaac'; S.aviso=['Empezado '+OUT.ref+' · abriendo...','ok']; }
+  if(S.paso==='inicio'||S.paso==='sintarjeta'||S.paso==='abriendo'||S.paso==='volver'||S.paso==='saltar') html = lecturas();
+  else if(S.paso==='barcode') html = barcode();
+  else if(S.paso==='lista') html = lista();
+  else if(S.paso==='ubic') html = ubic();
+  else if(S.paso==='preguntar') html = preguntar();
+  else if(S.paso==='reubicada') html = reubicada();
+  else if(S.paso==='validada') html = validada();
+  if(S.paso==='abriendo') etq = '<div class="etq">en la real pasa sola a la app</div>';
+  p.innerHTML = etq + html; p.scrollTop = 0;
+  $('pasos').innerHTML = PASOS.map(function(x){return '<li data-paso="'+x[0]+'" class="'+(x[0]===S.paso?'activo':'')+'">'+x[1]+'<small>'+x[2]+'</small></li>'}).join('');
+  var nota = NOTAS[S.paso];
+  if(S.paso==='sintarjeta') nota = S.oblig ? 'Con el grupo <b>tarjeta obligatoria</b> no se abre nada sin tarjeta (lo comprueba también el servidor). Límite: desde «Menú código de barras» sí se puede.' : 'Usuario normal (como hoy Almacén Nath): sin tarjeta se abre igual pero no cuenta en productividad.';
+  $('nota').innerHTML = nota;
+  if(S.paso==='abriendo') setTimeout(function(){ if(S.paso==='abriendo') ir('barcode') }, 1500);
+}
+
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-ir],[data-paso],[data-marca],[data-vermas],[data-confirmar]'); if(!t) return;
+  if(t.dataset.paso) return ir(t.dataset.paso);
+  if(t.dataset.marca){ var id=t.dataset.marca; if(S.marcadas[id]) delete S.marcadas[id]; else S.marcadas[id]=1; return pintar(); }
+  if(t.dataset.vermas){ S.verMas=!S.verMas; return pintar(); }
+  if(t.dataset.confirmar){ S.confirmar = t.dataset.confirmar==='1'; return pintar(); }
+  var d = t.dataset.ir;
+  if(d==='volver-ok'){ S.paso='barcode'; return pintar(); }
+  if(d==='siguiente'){ OUT = {ref:COLA[0].ref, tienda:COLA[0].t}; COLA = COLA.slice(1).concat([{ref:'OUT/23530',t:'K07 Alzira'}]); S.paso='abriendo'; return pintar(); }
+  ir(d);
+});
+$('m-normal').onclick=function(){S.oblig=false;this.className='on';$('m-oblig').className='';ir('inicio')};
+$('m-oblig').onclick=function(){S.oblig=true;this.className='on';$('m-normal').className='';ir('inicio')};
+pintar();
+</script>
+</body>
+</html>

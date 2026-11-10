@@ -1,0 +1,564 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Preparación en Lecturas</title>
+<style>
+:root{
+  --bg:#f3f4f6; --panel:#ffffff; --ink:#111827; --muted:#4b5563; --line:#d1d5db;
+  --ok:#15803d; --ok-bg:#dcfce7; --ok-ink:#14532d; --mal:#b91c1c; --mal-bg:#fee2e2; --mal-ink:#7f1d1d;
+  --info:#1d4ed8; --info-bg:#dbeafe; --info-ink:#1e3a8a; --warn:#c2410c; --warn-bg:#ffedd5; --warn-ink:#7c2d12;
+  --amar:#a16207; --amar-bg:#fef9c3; --gris:#374151; --odoo:#714b67;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.45}
+header.doc{background:var(--odoo);color:#fff;padding:20px 16px}
+header.doc h1{margin:0 0 4px;font-size:22px}
+header.doc p{margin:0;opacity:.92;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.nota{background:#fff8e1;border-left:4px solid #b45309;padding:10px 14px;border-radius:6px;font-size:14px;margin:12px 0}
+code{background:#eef0f3;border-radius:4px;padding:0 4px;font-size:.92em}
+.etq{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;margin-right:4px;vertical-align:middle}
+.v31{background:var(--ok-bg);color:var(--ok-ink)} .v32{background:#ede9fe;color:#4c1d95} .v30{background:var(--info-bg);color:var(--info-ink)} .v33{background:var(--warn-bg);color:var(--warn-ink)}
+
+/* ---- Pestañas ---- */
+.pestanas{display:flex;flex-wrap:wrap;gap:6px;margin:14px 0 4px}
+.pestanas button{font:inherit;font-size:13px;background:#fff;border:2px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--ink);cursor:pointer}
+.pestanas button[aria-selected="true"]{background:var(--odoo);border-color:var(--odoo);color:#fff;font-weight:700}
+.pestanas button:focus-visible{outline:3px solid #f59e0b;outline-offset:2px}
+section.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0}
+section.panel h2{margin:0 0 4px;font-size:19px}
+.porque{color:var(--muted);font-size:14px;margin:6px 0 12px}
+.comparar{display:flex;flex-wrap:wrap;gap:22px;align-items:flex-start}
+.col{flex:1 1 300px;min-width:0}
+.col h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 6px}
+ul.puntos{margin:8px 0 0;padding-left:18px;font-size:14px}
+ul.puntos li{margin:4px 0}
+
+/* ---- PDA 375 px ---- */
+.pda{width:395px;max-width:100%;background:#111;border-radius:24px;padding:12px 10px 18px;box-shadow:0 6px 18px rgba(0,0,0,.2);flex:none}
+.pantalla{width:375px;max-width:100%;background:#fff;border-radius:8px;height:640px;overflow:hidden;display:flex;flex-direction:column;font-size:15px;position:relative}
+.barra{background:var(--odoo);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px;flex:none}
+.cab{padding:8px 10px;background:#f9fafb;border-bottom:1px solid var(--line);flex:none}
+.cab .l1{display:flex;align-items:center;gap:8px}
+.avatar{width:34px;height:34px;border-radius:50%;background:#0369a1;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:14px;flex:none}
+.cab .out{font-weight:800;font-size:17px}
+.cab .tienda{font-size:12px;color:var(--muted)}
+.cab .uds{margin-left:auto;font-weight:800;font-size:16px;text-align:right}
+.prog{height:10px;background:#e5e7eb;border-radius:999px;margin-top:6px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok);border-radius:999px}
+
+.tarjeta{flex:1;margin:10px;border-radius:14px;padding:12px;display:flex;flex-direction:column;justify-content:center;text-align:center;border:3px solid var(--line)}
+.t-azul{background:var(--info-bg);border-color:var(--info);color:var(--info-ink)}
+.t-blanca{background:#fff;border-color:var(--ink)}
+.t-amar{background:var(--amar-bg);border-color:var(--amar);color:#422006}
+.t-verde{background:var(--ok-bg);border-color:var(--ok);color:var(--ok-ink)}
+.t-naranja{background:var(--warn-bg);border-color:var(--warn);color:var(--warn-ink)}
+.tarjeta .sub{font-size:13px;text-transform:uppercase;font-weight:800;letter-spacing:.05em}
+.tarjeta .ubic{font-size:42px;font-weight:900;letter-spacing:.02em;line-height:1.1;margin:4px 0}
+.tarjeta .ref{font-size:28px;font-weight:800;line-height:1.15}
+.tarjeta .det{font-size:16px;margin-top:4px}
+.tarjeta .coge{font-size:24px;font-weight:800;margin-top:10px}
+.circulos{display:flex;gap:10px;justify-content:center;margin-top:12px}
+.circulos span{width:30px;height:30px;border-radius:50%;border:3px solid var(--ink)}
+.circulos span.ok{background:var(--ok);border-color:var(--ok)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px}
+.chip{background:#fff;border:2px solid currentColor;border-radius:999px;padding:3px 9px;font-size:13px;font-weight:700}
+
+.aviso{margin:0 10px;border-radius:10px;padding:9px 10px;font-size:14px;font-weight:700;display:flex;gap:8px;align-items:center;min-height:44px;flex:none}
+.aviso.ok{background:var(--ok-bg);color:var(--ok-ink)}.aviso.mal{background:var(--mal-bg);color:var(--mal-ink);border:2px solid var(--mal)}
+.aviso.info{background:var(--info-bg);color:var(--info-ink)}.aviso.warn{background:var(--warn-bg);color:var(--warn-ink)}
+.aviso .ico{font-size:20px;line-height:1}
+
+.botonera{display:flex;gap:12px;padding:10px;flex:none}
+.b{flex:1;display:flex;align-items:center;justify-content:center;gap:6px;border:none;border-radius:12px;color:#fff;font-weight:800;font-size:16px;min-height:64px;font-family:inherit}
+.b.gris{background:#374151}.b.amar{background:var(--amar)}.b.verde{background:var(--ok)}.b.naranja{background:var(--warn)}.b.azul{background:var(--info)}.b.rojo{background:var(--mal)}
+.b.blanco{background:#fff;color:var(--ink);border:2px solid var(--ink)}
+.b.alto{min-height:80px;font-size:20px}
+.b.desact{background:#e5e7eb;color:#6b7280}
+.pila{display:flex;flex-direction:column;gap:12px;padding:10px;flex:none}
+
+.pie{padding:8px 12px;border-top:1px solid var(--line);font-size:14px;color:var(--gris);display:flex;justify-content:space-between;align-items:center;flex:none}
+.pie .menu{font-size:22px;font-weight:800;padding:2px 10px;border:2px solid var(--line);border-radius:8px}
+
+.capa{position:absolute;inset:0;background:rgba(17,24,39,.6);display:flex;align-items:flex-end}
+.hoja{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:14px 12px}
+.hoja h4{margin:0 0 4px;font-size:18px}
+.hoja p{margin:0 0 8px;font-size:14px;color:var(--muted)}
+.opcion{display:flex;align-items:center;gap:10px;border:2px solid var(--line);border-radius:12px;padding:12px;margin:8px 0;font-weight:700;font-size:16px;min-height:60px}
+.opcion small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.opcion .ico{font-size:22px;width:28px;text-align:center}
+
+.centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px}
+.spinner{width:56px;height:56px;border:7px solid #dbeafe;border-top-color:var(--info);border-radius:50%;animation:g 1s linear infinite;margin-bottom:14px}
+@keyframes g{to{transform:rotate(360deg)}}
+.centro .gr{font-size:24px;font-weight:800}
+.centro .pq{color:var(--muted);font-size:14px;margin-top:4px}
+.check{width:96px;height:96px;border-radius:50%;background:#fff;color:var(--ok);font-size:56px;display:flex;align-items:center;justify-content:center;margin-bottom:12px;font-weight:900}
+.fondo-verde{background:var(--ok);color:#fff}
+.fondo-verde .pq{color:#fff;opacity:.95}
+
+.banda-off{background:var(--mal);color:#fff;font-weight:800;font-size:14px;padding:8px 10px;display:flex;justify-content:space-between;align-items:center;flex:none}
+.banda-off span.r{background:#fff;color:var(--mal);border-radius:6px;padding:3px 9px;font-size:13px}
+.banda-sim{background:repeating-linear-gradient(45deg,#7c2d12 0 10px,#9a3412 10px 20px);color:#fff;font-weight:900;text-align:center;font-size:14px;letter-spacing:.12em;padding:6px;flex:none}
+.atenuado{opacity:.45}
+
+.lista{margin:0 10px;flex:1;overflow:hidden}
+.item{display:flex;align-items:center;gap:8px;border:2px solid var(--line);border-radius:10px;padding:7px 9px;margin-bottom:6px;font-size:14px}
+.item .der{margin-left:auto;font-weight:800}
+
+table.tabla{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
+table.tabla th,table.tabla td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+table.tabla th{background:#f9fafb;font-size:12px;text-transform:uppercase;color:var(--muted)}
+.tabla-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 16px}
+
+@media (prefers-reduced-motion:reduce){*{animation:none !important;transition:none !important}}
+@media (max-width:440px){
+  main{padding:12px}
+  .pda{width:100%;padding:8px 6px 12px;border-radius:18px}
+  .pantalla{width:100%}
+}
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Lecturas v3.x · Pantalla de preparación propia (opción B)</h1>
+  <p>Maqueta v1 · 10/11/2026 · Solo ideas: no hay nada instalado. Acompaña al plan <code style="background:rgba(255,255,255,.18);color:#fff">20261110_PLAN_preparacion_en_lecturas_v1.md</code></p>
+</header>
+<main>
+  <div class="nota"><b>Qué es esto:</b> una pantalla por paso del flujo de preparación de una OUT en una PDA de 375 px.
+  Todo se guarda en datos estándar (<code>qty_done</code> y caja con <code>put_in_pack</code>), sin campos nuevos en albaranes y sin tocar <code>stock_barcode</code>.
+  En el primer piloto (<span class="etq v31">v3.1</span>) <b>la validación se hace en la app clásica</b>.
+  Pedidos, tiendas, referencias y nombres son inventados.</div>
+
+  <div class="pestanas" role="tablist" aria-label="Pantallas del flujo">
+    <button role="tab" id="t1" aria-controls="p1" aria-selected="true">1 · Abriendo</button>
+    <button role="tab" id="t2" aria-controls="p2" aria-selected="false">2 · Ve a</button>
+    <button role="tab" id="t3" aria-controls="p3" aria-selected="false">3 · Leer</button>
+    <button role="tab" id="t4" aria-controls="p4" aria-selected="false">4 · Error de lectura</button>
+    <button role="tab" id="t5" aria-controls="p5" aria-selected="false">5 · Cerrar caja</button>
+    <button role="tab" id="t6" aria-controls="p6" aria-selected="false">6 · Cantidad / Deshacer</button>
+    <button role="tab" id="t7" aria-controls="p7" aria-selected="false">7 · Todo leído</button>
+    <button role="tab" id="t8" aria-controls="p8" aria-selected="false">8 · Faltan uds</button>
+    <button role="tab" id="t9" aria-controls="p9" aria-selected="false">9 · Menú ☰</button>
+    <button role="tab" id="t10" aria-controls="p10" aria-selected="false">10 · Sin conexión</button>
+    <button role="tab" id="t11" aria-controls="p11" aria-selected="false">11 · Simulación</button>
+    <button role="tab" id="t12" aria-controls="p12" aria-selected="false">12 · Pedido pendiente</button>
+    <button role="tab" id="t13" aria-controls="p13" aria-selected="false">13 · Validada</button>
+    <button role="tab" id="t14" aria-controls="p14" aria-selected="false">Lecturas y versiones</button>
+  </div>
+
+  <!-- 1 Abriendo -->
+  <section class="panel" role="tabpanel" id="p1" aria-labelledby="t1">
+    <h2><span class="etq v30">v3.0</span> 1 · Abriendo la OUT (paso <code>cargando</code>)</h2>
+    <p class="porque">Se llega desde Lecturas al leer la tarjeta y tocar una OUT suelta. La capa es la misma de la v2.3.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:41</span></div>
+        <div class="centro"><div class="spinner"></div><div class="gr">KO/OUT/01234</div><div class="pq">Abriendo para Isaac…</div><div class="pq">Tienda Centro · 8 líneas · 40 uds</div></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Llama a <code>/koroshi/preparacion/cargar</code>: líneas pendientes en el orden de Faltantes, cajas y progreso.</li>
+          <li>Mientras carga, el lector se ignora (no se pisan lecturas).</li>
+          <li>Si <code>/cargar</code> rechaza la OUT (lote Z-, otra PDA con ella, lotes/paquetes de origen, estado distinto de «Preparado»…), aviso rojo con el motivo y un único botón <b>«Abrir en la app»</b>.</li>
+          <li>Si el modo no es «propia» (interruptor, grupo o PDA en «app»), se abre la app clásica como hoy.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 Ve a -->
+  <section class="panel" role="tabpanel" id="p2" aria-labelledby="t2" hidden>
+    <h2><span class="etq v31">v3.1</span> 2 · «Ve a» (paso <code>ir_a</code>, azul)</h2>
+    <p class="porque">Una sola cosa grande: dónde ir y qué coger. Se puede leer directamente el EAN; leer la ubicación llega en la v3.3 (parámetro).</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:42</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">12/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:30%"></i></div></div>
+        <div class="tarjeta t-azul">
+          <div class="sub">Ve a</div>
+          <div class="ubic">03-12-B-2</div>
+          <div class="ref">Ref 40518</div>
+          <div class="det">Camiseta · Rojo · M</div>
+          <div class="coge">Coge 3</div>
+        </div>
+        <div class="aviso ok"><span class="ico">✔</span><span>Ref 40512 completa (2 de 2)</span></div>
+        <div class="botonera"><button class="b gris">Cantidad</button><button class="b gris">↶ Deshacer</button><button class="b amar">▣ Caja</button></div>
+        <div class="pie"><span class="menu">☰</span><span>10:42</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Ubicación ≥ 40 px y referencia ≥ 28 px: se leen a un brazo de distancia.</li>
+          <li>Cabecera fija: quién, qué OUT, qué tienda y «uds 12/40» con barra (sale de <code>qty_done</code>, no de un campo nuevo).</li>
+          <li>Botones de 64 px separados 12 px: se aciertan con guantes. Siempre en el mismo sitio.</li>
+          <li>Leer el EAN del artículo pasa directamente a «Leer» y suma 1.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 Leer -->
+  <section class="panel" role="tabpanel" id="p3" aria-labelledby="t3" hidden>
+    <h2><span class="etq v31">v3.1</span> 3 · Leer (paso <code>leer</code>, blanca)</h2>
+    <p class="porque">Cada lectura se suma en el servidor (bloqueo de la línea + <code>id_lectura</code>). Lo que el servidor no confirma no cuenta.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:43</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">14/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:35%"></i></div></div>
+        <div class="tarjeta t-blanca">
+          <div class="sub" style="color:var(--muted)">03-12-B-2</div>
+          <div class="ref">Ref 40518</div>
+          <div class="det">Camiseta · Rojo · M</div>
+          <div class="coge">2 de 3</div>
+          <div class="circulos"><span class="ok"></span><span class="ok"></span><span></span></div>
+        </div>
+        <div class="aviso ok"><span class="ico">✔</span><span>+1 · Ref 40518 (2 de 3)</span></div>
+        <div class="botonera"><button class="b gris">Cantidad</button><button class="b gris">↶ Deshacer</button><button class="b amar">▣ Caja</button></div>
+        <div class="pie"><span class="menu">☰</span><span>10:43</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li><b>Pitido agudo</b> = sumado. <b>Doble agudo</b> = línea completa. <b>Triple + fondo verde</b> = OUT completa.</li>
+          <li>Línea completa: pasa a la siguiente «Ve a», o se queda en «Leer» si la siguiente está en la misma ubicación.</li>
+          <li>EAN de <b>otra línea pendiente</b> de la OUT: se suma a esa y avisa en naranja «Era la ref 40530».</li>
+          <li>El servidor elige la línea: mismo producto, sin llegar a lo reservado, primero la ubicación actual.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 Error -->
+  <section class="panel" role="tabpanel" id="p4" aria-labelledby="t4" hidden>
+    <h2><span class="etq v31">v3.1</span> 4 · Lectura con error</h2>
+    <p class="porque">Rojo + tono grave + vibración, y <b>la pantalla no avanza</b>. El aviso se queda hasta la siguiente lectura.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:44</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">15/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:38%"></i></div></div>
+        <div class="tarjeta t-blanca">
+          <div class="sub" style="color:var(--muted)">03-12-B-2</div>
+          <div class="ref">Ref 40518</div>
+          <div class="det">Camiseta · Rojo · M</div>
+          <div class="coge">3 de 3</div>
+          <div class="circulos"><span class="ok"></span><span class="ok"></span><span class="ok"></span></div>
+        </div>
+        <div class="aviso mal"><span class="ico">✖</span><span>Ya tienes las 3. No se ha sumado.</span></div>
+        <div class="botonera"><button class="b gris">Cantidad</button><button class="b gris">↶ Deshacer</button><button class="b amar">▣ Caja</button></div>
+        <div class="pie"><span class="menu">☰</span><span>10:44</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Mensajes de error (cortos)</h3>
+        <div class="tabla-wrap"><table class="tabla">
+          <thead><tr><th>Caso</th><th>Mensaje</th></tr></thead>
+          <tbody>
+            <tr><td>EAN que no está en la OUT</td><td>Este artículo no está en este pedido</td></tr>
+            <tr><td>Línea ya completa</td><td>Ya tienes las 3</td></tr>
+            <tr><td>Código desconocido</td><td>Código no reconocido</td></tr>
+            <tr><td>Tarjeta de otro operario</td><td>Termina esta OUT antes de cambiar</td></tr>
+            <tr><td>Otra OUT</td><td>Estás en KO/OUT/01234; usa Saltar</td></tr>
+            <tr><td>Otra PDA bloquea la línea</td><td>Otra PDA está leyendo esta OUT</td></tr>
+            <tr><td>Reserva cambiada (S4T, reubicar)</td><td>El pedido ha cambiado. Recargando…</td></tr>
+          </tbody>
+        </table></div>
+        <ul class="puntos"><li>Nunca se crean líneas ni se lee de más: lo que no cuadra va a <b>Faltante</b> o a la app.</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 Caja -->
+  <section class="panel" role="tabpanel" id="p5" aria-labelledby="t5" hidden>
+    <h2><span class="etq v31">v3.1</span> 5 · Cerrar caja (paso <code>caja</code>, amarilla)</h2>
+    <p class="porque">Sustituye al diálogo «Nombre del Paquete» de la app. Se lee la matrícula CJ o se pulsa «Caja».</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:51</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">22/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:55%"></i></div></div>
+        <div class="tarjeta t-amar">
+          <div class="sub">Cerrar caja</div>
+          <div class="ref" style="font-size:34px">CJ0081452</div>
+          <div class="coge">con 8 uds</div>
+          <div class="det">3 referencias sin caja</div>
+        </div>
+        <div class="aviso info"><span class="ico">ℹ</span><span>Lee la matrícula de la caja</span></div>
+        <div class="botonera"><button class="b blanco">No, seguir</button><button class="b amar">▣ Cerrar</button></div>
+        <div class="pie"><span class="menu">☰</span><span>10:51</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Llama a <code>put_in_pack</code> con el nombre CJ leído: pasa por caja_existente y por Brain Station igual que hoy.</li>
+          <li>Sin lecturas sin caja: «La caja está vacía», sin llamar al servidor.</li>
+          <li>Si Odoo pide un asistente (destino del paquete…): rojo «Ciérrala en la app». No se fuerza nada.</li>
+          <li>El error de la acción automática de cajas duplicadas se muestra tal cual.</li>
+          <li><span class="etq v33">v3.3</span> Opción: leer una CJ nueva cierra la caja sola (parámetro).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 Cantidad / Deshacer -->
+  <section class="panel" role="tabpanel" id="p6" aria-labelledby="t6" hidden>
+    <h2><span class="etq v31">v3.1</span> 6 · Cantidad y Deshacer</h2>
+    <p class="porque">Para cajas de muchas unidades iguales y para corregir una lectura de más.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:46</span></div>
+        <div class="cab atenuado"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">16/40</div></div></div>
+        <div class="tarjeta t-blanca atenuado"><div class="ref">Ref 40530</div></div>
+        <div class="capa"><div class="hoja">
+          <h4>Cantidad · Ref 40530</h4>
+          <p>Calcetín · Negro · 39-42 · reservadas 12</p>
+          <div style="display:flex;align-items:center;gap:12px;margin:10px 0">
+            <button class="b gris" style="flex:none;width:72px">−</button>
+            <div style="flex:1;text-align:center;font-size:40px;font-weight:900;border:3px solid var(--ink);border-radius:12px;padding:4px">12</div>
+            <button class="b gris" style="flex:none;width:72px">+</button>
+          </div>
+          <p>Máximo 12 (lo reservado). Solo puedes bajar lo que has leído tú.</p>
+          <div class="pila" style="padding:0"><button class="b verde">Guardar 12</button><button class="b blanco">No, volver</button></div>
+        </div></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li><b>Cantidad</b>: fija lo leído en esa línea, entre 0 y lo reservado (<code>/cantidad</code>).</li>
+          <li><b>Deshacer</b>: quita la última lectura de esta PDA en esta OUT, solo si aún no está en una caja (<code>/deshacer</code>).</li>
+          <li>No hay «poner todo a 0»: ese caso lo vigila el aviso de puestos a cero.</li>
+          <li>Cada cambio queda en la tabla de lecturas (auditoría del piloto).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 Todo leído -->
+  <section class="panel" role="tabpanel" id="p7" aria-labelledby="t7" hidden>
+    <h2><span class="etq v31">v3.1</span> 7 · Todo leído (paso <code>resumen</code>, verde)</h2>
+    <p class="porque">En el primer piloto el botón principal abre la app clásica para validar: bultos, XPO e impresión siguen exactamente como hoy.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>11:02</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">40/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:100%"></i></div></div>
+        <div class="tarjeta t-verde">
+          <div class="sub">Todo leído</div>
+          <div class="ref">40 uds · 4 cajas</div>
+          <div class="chips"><span class="chip">CJ0081450 · 12</span><span class="chip">CJ0081451 · 10</span><span class="chip">CJ0081452 · 8</span><span class="chip">CJ0081453 · 10</span></div>
+        </div>
+        <div class="pila"><button class="b verde alto">Validar en la app ›</button></div>
+        <div class="pie"><span class="menu">☰</span><span>11:02</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li><span class="etq v31">v3.1</span> «Validar en la app» abre la OUT en la app clásica encima de la pila. Al validar allí y volver, Lecturas muestra «¡Hecho!».</li>
+          <li><span class="etq v32">v3.2</span> Con <code>validar_propia='1'</code>: «Validar» aquí mismo, o «Cerrar caja y validar» si queda algo sin caja.</li>
+          <li>Si queda algo leído sin caja, antes sale el paso «Cerrar caja».</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 8 Faltan -->
+  <section class="panel" role="tabpanel" id="p8" aria-labelledby="t8" hidden>
+    <h2><span class="etq v31">v3.1</span> 8 · Faltan unidades (resumen incompleto)</h2>
+    <p class="porque">No existe «Validar igual»: <code>validar_out</code> nunca valida con líneas pendientes. Lo que falta va a Faltante.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>11:05</span></div>
+        <div class="cab"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div><div class="tienda">Tienda Centro</div></div><div class="uds">37/40<br><span style="font-size:11px;font-weight:600;color:var(--muted)">uds</span></div></div><div class="prog"><i style="width:92%"></i></div></div>
+        <div class="tarjeta t-naranja" style="flex:0 0 auto">
+          <div class="sub">Faltan</div>
+          <div class="ref">3 uds de 2 refs</div>
+        </div>
+        <div class="lista">
+          <div class="item"><div><b>Ref 40541</b><br><span style="color:var(--muted)">05-02-A-1 · Gorro · Gris</span></div><span class="der">falta 2</span></div>
+          <div class="item"><div><b>Ref 40577</b><br><span style="color:var(--muted)">05-07-C-3 · Bufanda · Azul</span></div><span class="der">falta 1</span></div>
+        </div>
+        <div class="pila"><button class="b naranja alto">⚠ Ir a Faltante</button><button class="b blanco">Abrir en la app</button></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>«Ir a Faltante» abre la pantalla de koroshi_faltantes; «Volver a la OUT» regresa aquí y se recarga.</li>
+          <li>Lo ya leído está guardado antes de reubicar: Faltantes trabaja sobre datos reales.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 Menú -->
+  <section class="panel" role="tabpanel" id="p9" aria-labelledby="t9" hidden>
+    <h2><span class="etq v31">v3.1</span> 9 · Menú ☰</h2>
+    <p class="porque">Lo que no es el camino normal va al menú: no ocupa sitio y no se pulsa sin querer.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:48</span></div>
+        <div class="cab atenuado"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div></div><div class="uds">18/40</div></div></div>
+        <div class="capa"><div class="hoja">
+          <h4>KO/OUT/01234</h4>
+          <div class="opcion"><span class="ico">⚠</span><div>Faltante<small>No encuentro un artículo</small></div></div>
+          <div class="opcion"><span class="ico">⏭</span><div>Saltar<small>Vuelve a la cola con un motivo</small></div></div>
+          <div class="opcion"><span class="ico">↗</span><div>Abrir en la app<small>Sigue en la app clásica sin perder nada</small></div></div>
+          <div class="opcion"><span class="ico">⏏</span><div>Salir<small>Pide confirmación</small></div></div>
+          <button class="b blanco" style="width:100%">Cerrar menú</button>
+        </div></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li><b>Abrir en la app</b> es la salida de emergencia: los datos son estándar, la app ve lo ya leído.</li>
+          <li>No se abre la app si hay otra tarea viva en la OUT (la app guarda valores absolutos).</li>
+          <li>Pulsación larga en ☰ (responsable): cambiar esta PDA entre «app» y «propia». «app» gana siempre.</li>
+          <li>Saltar usa los motivos y la ruta de la v2.3, sin cambios.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 Sin conexión -->
+  <section class="panel" role="tabpanel" id="p10" aria-labelledby="t10" hidden>
+    <h2><span class="etq v31">v3.1</span> 10 · Sin conexión</h2>
+    <p class="porque">Ninguna lectura se da por buena sin respuesta del servidor.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>10:49</span></div>
+        <div class="banda-off"><span>📶 Sin conexión con Odoo</span><span class="r">Reintentar</span></div>
+        <div class="cab atenuado"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div></div><div class="uds">18/40</div></div></div>
+        <div class="centro"><div class="gr">No leas más</div><div class="pq">La última lectura (Ref 40530) no se ha guardado. Acércate a una antena WiFi.</div></div>
+        <div class="pie"><span class="menu">☰</span><span>10:49</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Banda roja fija de la v2.3 y reintento cada 5 s.</li>
+          <li>«Reintentar» reenvía con el <b>mismo <code>id_lectura</code></b>: si el servidor ya la había guardado, no se duplica.</li>
+          <li>Al volver: aviso verde y recarga de la OUT.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 Simulación -->
+  <section class="panel" role="tabpanel" id="p11" aria-labelledby="t11" hidden>
+    <h2><span class="etq v30">v3.0</span> 11 · Simulación (<code>activa='sombra'</code>)</h2>
+    <p class="porque">Para medir latencia, orden y choques de códigos con OUT reales sin escribir nada en stock.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.0</span><span>09:15</span></div>
+        <div class="banda-sim">SIMULACIÓN · NO SE GUARDA</div>
+        <div class="cab"><div class="l1"><div class="avatar" style="background:#7c2d12">RS</div><div><div class="out">KO/OUT/01262</div><div class="tienda">Tienda Norte</div></div><div class="uds">3/22<br><span style="font-size:11px;font-weight:600;color:var(--muted)">simuladas</span></div></div><div class="prog"><i style="width:14%;background:#9a3412"></i></div></div>
+        <div class="tarjeta t-blanca">
+          <div class="sub" style="color:var(--muted)">02-04-A-1</div>
+          <div class="ref">Ref 40602</div>
+          <div class="det">Sumaría a la línea 2 · 180 ms</div>
+        </div>
+        <div class="aviso warn"><span class="ico">⚑</span><span>Simulado: +1 Ref 40602 (no guardado)</span></div>
+        <div class="botonera"><button class="b desact">Cantidad</button><button class="b desact">Deshacer</button><button class="b desact">Caja</button></div>
+        <div class="pie"><span class="menu">☰</span><span>09:15</span><span>🔊</span></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>La simulación es un <b>valor del parámetro</b>, nunca una constante del código.</li>
+          <li>El servidor responde igual que en real y guarda la lectura en su tabla con <code>simulada=True</code>; no toca <code>qty_done</code>.</li>
+          <li>Lo usa el responsable sobre una OUT antes de que el operario la prepare.</li>
+          <li>Botones de escritura apagados.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 12 Pedido pendiente -->
+  <section class="panel" role="tabpanel" id="p12" aria-labelledby="t12" hidden>
+    <h2><span class="etq v32">v3.2</span> 12 · ¿Dejar pedido pendiente? (paso <code>preguntar</code>)</h2>
+    <p class="porque">Solo con validación propia y cuando Faltante ha dejado líneas sin stock. Mismo texto que Faltantes, según <code>koroshi_faltantes.pedido_pendiente</code>.</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.2</span><span>11:10</span></div>
+        <div class="cab atenuado"><div class="l1"><div class="avatar">IS</div><div><div class="out">KO/OUT/01234</div></div><div class="uds">38/40</div></div></div>
+        <div class="capa"><div class="hoja">
+          <h4>¿Dejar pedido pendiente con lo que falta?</h4>
+          <p>Faltan 2 uds de 1 ref. 38 uds en 4 cajas.</p>
+          <div class="pila" style="padding:0"><button class="b verde alto">Sí, dejar pendiente</button><button class="b blanco alto">No, validar sin pendiente</button></div>
+        </div></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Valida con <code>koroshi.faltante.validar_out</code> (todo o nada); solo acepta el asistente de pedido pendiente.</li>
+          <li>Bultos y XPO según lo que diga el diagnóstico (X1/X7). Hasta entonces, esta pantalla no existe.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 13 Validada -->
+  <section class="panel" role="tabpanel" id="p13" aria-labelledby="t13" hidden>
+    <h2>13 · OUT validada (paso <code>validada</code>)</h2>
+    <p class="porque">Fondo verde 1,5 s y vuelta a Lecturas, que muestra «¡Hecho!» y la siguiente OUT en 3 s (como la v2.3).</p>
+    <div class="comparar">
+      <div class="pda"><div class="pantalla">
+        <div class="barra"><span>Lecturas v3.1</span><span>11:12</span></div>
+        <div class="centro fondo-verde"><div class="check">✔</div><div class="gr">KO/OUT/01234 validada</div><div class="pq">40 uds · 4 cajas</div><div class="pq" style="margin-top:14px">Volviendo a Lecturas…</div></div>
+      </div></div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li><span class="etq v31">v3.1</span> Se ve al volver de la app clásica con la OUT ya validada.</li>
+          <li>La tarea del operario se cierra como <b>acabada/validada</b> (con la corrección de <code>empezar</code> en operarios v2.3.3).</li>
+          <li>Triple pitido agudo.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 Lecturas y versiones -->
+  <section class="panel" role="tabpanel" id="p14" aria-labelledby="t14" hidden>
+    <h2>Qué hace cada lectura y qué llega en cada versión</h2>
+    <p class="porque">El servidor clasifica cada código siempre en el mismo orden (a confirmar con el diagnóstico de códigos).</p>
+    <div class="tabla-wrap"><table class="tabla">
+      <thead><tr><th>#</th><th>Se lee</th><th>Qué pasa</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Matrícula CJ…</td><td>Cerrar caja con lo leído sin caja</td></tr>
+        <tr><td>2</td><td>O-BTN.* <span class="etq v32">v3.2</span></td><td>Validar / cerrar caja con código de orden</td></tr>
+        <tr><td>3</td><td>EAN o referencia de la OUT</td><td>+1 en su línea (o en otra pendiente, avisando)</td></tr>
+        <tr><td>4</td><td>Embalaje <span class="etq v33">v3.3</span></td><td>Solo si el diagnóstico encuentra embalajes con código</td></tr>
+        <tr><td>5</td><td>Ubicación</td><td>Confirma «Ve a» (v3.3: no / aviso / obligatoria)</td></tr>
+        <tr><td>6</td><td>Tarjeta de empleado</td><td>«Ya estás dentro» o «Termina esta OUT antes de cambiar»</td></tr>
+        <tr><td>7</td><td>Otra OUT</td><td>«Estás en KO/OUT/x; usa Saltar»</td></tr>
+        <tr><td>8</td><td>Otro</td><td>Error rojo, no avanza</td></tr>
+      </tbody>
+    </table></div>
+    <div class="tabla-wrap" style="margin-top:14px"><table class="tabla">
+      <thead><tr><th>Versión</th><th>Qué trae</th><th>Valida</th></tr></thead>
+      <tbody>
+        <tr><td>operarios v2.3.3</td><td>Corrección de <code>empezar</code> (tareas validadas no quedan como «dejada»)</td><td>—</td></tr>
+        <tr><td><span class="etq v30">v3.0</span></td><td>Pantalla completa en simulación, apagada al instalar</td><td>No</td></tr>
+        <tr><td><span class="etq v31">v3.1</span> piloto</td><td>Leer, cantidad, deshacer, cerrar caja, Faltante, Saltar, salida a la app</td><td>En la app clásica</td></tr>
+        <tr><td><span class="etq v32">v3.2</span></td><td>Validar aquí (solo con bultos y XPO aclarados)</td><td>En la pantalla</td></tr>
+        <tr><td><span class="etq v33">v3.3</span></td><td>Ubicación, cierre automático, validar al completar, sesión, embalajes</td><td>En la pantalla</td></tr>
+        <tr><td>v3.4</td><td>Lotes Z- con diseño propio</td><td>OUT a OUT</td></tr>
+      </tbody>
+    </table></div>
+  </section>
+</main>
+<footer>KOROSHI · Ideas preparación en Lecturas v1 · 10/11/2026 · maqueta, no instalada · datos inventados</footer>
+<script>
+(function(){
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('[role="tab"]'));
+  function activar(tab, foco){
+    tabs.forEach(function(t){
+      var sel = t === tab;
+      t.setAttribute('aria-selected', sel ? 'true' : 'false');
+      t.tabIndex = sel ? 0 : -1;
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !sel;
+    });
+    if (foco) { tab.focus(); }
+  }
+  tabs.forEach(function(t, i){
+    t.addEventListener('click', function(){ activar(t, false); });
+    t.addEventListener('keydown', function(e){
+      var n = null;
+      if (e.key === 'ArrowRight') { n = tabs[(i + 1) % tabs.length]; }
+      if (e.key === 'ArrowLeft') { n = tabs[(i - 1 + tabs.length) % tabs.length]; }
+      if (e.key === 'Home') { n = tabs[0]; }
+      if (e.key === 'End') { n = tabs[tabs.length - 1]; }
+      if (n) { e.preventDefault(); activar(n, true); }
+    });
+  });
+  activar(tabs[0], false);
+})();
+</script>
+</body>
+</html>

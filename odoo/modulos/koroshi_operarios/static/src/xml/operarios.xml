@@ -1,34 +1,143 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
+    <!-- v2.3.0: pantalla nueva. Se conservan las clases que usa koroshi_faltantes: .o_ko_dejar (su boton Faltante
+         se pone detras, con t-jquery=".o_ko_dejar" t-operation="after") y el contenedor .o_koroshi_operarios. -->
     <t t-name="koroshi_operarios.Pantalla">
         <div class="o_koroshi_operarios">
-            <div class="o_ko_app">
-                <div class="o_ko_cabecera">
-                    <span>Operarios KOROSHI</span>
-                    <span class="o_ko_reloj"/>
+            <!-- sin conexion: banda roja fija arriba -->
+            <div class="o_ko_offline" role="alert" style="display: none;">
+                <span class="o_ko_icono" aria-hidden="true">⚠</span>
+                <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
+            </div>
+
+            <!-- tarjeta obligatoria sin operario: pantalla completa -->
+            <div class="o_ko_bloqueo" style="display: none;">
+                <div class="o_ko_bloqueo_centro">
+                    <div class="o_ko_bloqueo_tarjeta" aria-hidden="true">
+                        <span class="o_ko_bloqueo_banda"/>
+                        <span class="o_ko_bloqueo_linea"/>
+                        <span class="o_ko_bloqueo_linea o_ko_corta"/>
+                    </div>
+                    <h1 class="o_ko_bloqueo_titulo">Lee tu tarjeta</h1>
+                    <p class="o_ko_bloqueo_texto">Pasa el lector por el código de tu tarjeta de operario.</p>
+                    <div class="o_ko_lector o_ko_lector_grande">
+                        <span class="o_ko_punto"/>
+                        <span class="o_ko_lector_texto">Lector preparado</span>
+                    </div>
+                    <div class="o_ko_bloqueo_aviso" role="alert"/>
                 </div>
-                <div class="o_ko_quien o_ko_caja o_ko_vacio">Lee tu tarjeta (o directamente la OUT)</div>
-                <div class="o_ko_aviso o_ko_caja"/>
+                <div class="o_ko_bloqueo_pie"><span class="o_ko_reloj"/></div>
+            </div>
+
+            <!-- capa: abriendo / hecho -->
+            <div class="o_ko_capa" style="display: none;">
+                <div class="o_ko_abriendo" style="display: none;">
+                    <div class="o_ko_spinner" aria-hidden="true"/>
+                    <div class="o_ko_capa_sub">Abriendo</div>
+                    <div class="o_ko_capa_ref o_ko_abriendo_ref"/>
+                    <div class="o_ko_capa_sub o_ko_abriendo_para"/>
+                    <div class="o_ko_capa_nota">No leas nada mientras se abre</div>
+                </div>
+                <div class="o_ko_hecho" style="display: none;">
+                    <div class="o_ko_hecho_check" aria-hidden="true">✓</div>
+                    <div class="o_ko_hecho_titulo">¡Hecho!</div>
+                    <div class="o_ko_capa_sub o_ko_hecho_ref"/>
+                    <div class="o_ko_hecho_siguiente">
+                        <div class="o_ko_capa_sub">Siguiente</div>
+                        <div class="o_ko_capa_ref o_ko_hecho_sig_ref"/>
+                        <div class="o_ko_capa_sub o_ko_hecho_sig_tienda"/>
+                        <div class="o_ko_cuenta">Se abre en <b class="o_ko_cuenta_n">3</b> s</div>
+                    </div>
+                    <div class="o_ko_hecho_fin o_ko_capa_sub" style="display: none;"/>
+                    <button class="o_ko_parar o_ko_boton o_ko_gris" type="button">
+                        <span class="o_ko_icono" aria-hidden="true">✋</span> <span class="o_ko_parar_texto">Parar aquí</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="o_ko_app">
+                <!-- quien soy -->
+                <div class="o_ko_cabecera">
+                    <div class="o_ko_avatar" aria-hidden="true">?</div>
+                    <div class="o_ko_cabecera_texto">
+                        <div class="o_ko_quien o_ko_vacio">Lee tu tarjeta (o directamente la OUT)</div>
+                        <div class="o_ko_dia"/>
+                    </div>
+                    <button class="o_ko_salir" type="button" style="display: none;">
+                        <span class="o_ko_icono" aria-hidden="true">⎋</span> Salir
+                    </button>
+                </div>
+
+                <div class="o_ko_aviso" role="status"/>
+
+                <!-- pedido que esta haciendo -->
                 <div class="o_ko_actual o_ko_caja" style="display: none;">
                     <span class="o_ko_sub">Estás haciendo</span>
                     <div class="o_ko_actual_ref"/>
-                    <button class="o_ko_continuar" type="button">Continuar</button>
-                    <!-- o_ko_dejar: el boton "Faltante" de koroshi_faltantes se pone detras de este -->
-                    <button class="o_ko_saltar o_ko_dejar" type="button">Saltar</button>
+                    <div class="o_ko_actual_tienda"/>
+                    <div class="o_ko_datos"/>
+                    <div class="o_ko_progreso" style="display: none;">
+                        <div class="o_ko_barra"><span class="o_ko_barra_lleno"/></div>
+                        <div class="o_ko_progreso_texto"/>
+                    </div>
+                    <button class="o_ko_continuar o_ko_boton" type="button">
+                        <span class="o_ko_icono" aria-hidden="true">▶</span> Continuar
+                    </button>
+                    <div class="o_ko_botonera">
+                        <!-- o_ko_dejar: el boton "Faltante" de koroshi_faltantes se pone detras de este; con CSS sale
+                             naranja y delante (order) en esta misma fila -->
+                        <button class="o_ko_saltar o_ko_dejar o_ko_boton" type="button">
+                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar
+                        </button>
+                    </div>
                 </div>
-                <div class="o_ko_salto o_ko_caja" style="display: none;">
-                    <div class="o_ko_salto_titulo"/>
-                    <div class="o_ko_salto_motivos"/>
-                    <button class="o_ko_cancelar_salto btn btn-link" type="button">No saltar</button>
+
+                <div class="o_ko_entrada">
+                    <input class="o_ko_codigo" type="text" autocomplete="off" placeholder="Escribir tarjeta o pedido y Enter"/>
+                    <div class="o_ko_lector">
+                        <span class="o_ko_punto"/>
+                        <span class="o_ko_lector_texto">Lector preparado</span>
+                    </div>
                 </div>
-                <input class="o_ko_codigo" type="text" autocomplete="off" placeholder="Escribir tarjeta o pedido y Enter"/>
+
                 <div class="o_ko_titulo o_ko_cola_titulo" style="display: none;">Después te tocan</div>
-                <div class="o_ko_cola"/>
-                <div class="o_ko_titulo">Cogiendo ahora</div>
-                <div class="o_ko_abiertas"/>
+                <ol class="o_ko_cola"/>
+
+                <details class="o_ko_ahora">
+                    <summary class="o_ko_titulo">Cogiendo ahora <span class="o_ko_n_operarios"/></summary>
+                    <div class="o_ko_abiertas"/>
+                </details>
+
                 <div class="o_ko_pie">
-                    <button class="o_ko_salir btn btn-link" type="button" style="display: none;">Salir (otro operario)</button>
-                    <button class="o_ko_menu btn btn-link" type="button">Menú código de barras</button>
+                    <button class="o_ko_menu" type="button" title="Menú código de barras" aria-label="Menú código de barras">☰</button>
+                    <span class="o_ko_reloj"/>
+                    <button class="o_ko_sonido" type="button" title="Sonido y vibración" aria-label="Sonido y vibración">🔊</button>
+                </div>
+            </div>
+
+            <!-- hoja inferior: saltar / confirmar (salir, cambiar de operario) -->
+            <div class="o_ko_hoja" style="display: none;">
+                <div class="o_ko_hoja_fondo"/>
+                <div class="o_ko_hoja_panel" role="dialog" aria-modal="true">
+                    <div class="o_ko_hoja_asa" aria-hidden="true"/>
+                    <div class="o_ko_salto" style="display: none;">
+                        <div class="o_ko_hoja_titulo o_ko_salto_titulo"/>
+                        <div class="o_ko_salto_motivos"/>
+                        <div class="o_ko_nota_caja" style="display: none;">
+                            <label class="o_ko_nota_label">Escribe el motivo</label>
+                            <input class="o_ko_nota" type="text" autocomplete="off"/>
+                        </div>
+                        <button class="o_ko_confirmar_salto o_ko_boton o_ko_naranja" type="button" disabled="disabled">
+                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar pedido
+                        </button>
+                        <button class="o_ko_cancelar_salto o_ko_boton o_ko_gris" type="button">No, volver</button>
+                    </div>
+                    <div class="o_ko_confirmar" style="display: none;">
+                        <div class="o_ko_hoja_titulo o_ko_confirmar_titulo"/>
+                        <div class="o_ko_confirmar_texto"/>
+                        <button class="o_ko_confirmar_si o_ko_boton" type="button"/>
+                        <button class="o_ko_confirmar_no o_ko_boton o_ko_gris" type="button"/>
+                    </div>
                 </div>
             </div>
         </div>

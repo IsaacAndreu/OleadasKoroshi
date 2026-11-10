@@ -4,8 +4,8 @@
 # koroshi_faltantes_pantalla, static/src/js/faltantes_pantalla.js). Usuario con sesion (p. ej. "Almacen Nath").
 #
 # JSON /koroshi/faltantes/buscar           {codigo, out_id, move_line_id}   -> tarjeta, OUT, lineas o linea
-# JSON /koroshi/faltantes/reubicar         {move_line_id, codigo, employee_id} -> cambia la reserva + FALTANT
-# JSON /koroshi/faltantes/sin_alternativa  {move_line_id, employee_id}      -> quita la reserva + FALTANT
+# JSON /koroshi/faltantes/reubicar         {move_line_id, codigo, employee_id} -> cambia la reserva + FALTANTE
+# JSON /koroshi/faltantes/sin_alternativa  {move_line_id, employee_id}      -> quita la reserva + FALTANTE
 # JSON /koroshi/faltantes/pendientes       {out_id | lote_id}               -> v1.3: lo que queda por coger
 # JSON /koroshi/faltantes/validar          {out_id, pedido_pendiente}       -> v1.3: valida la OUT (button_validate)
 #
@@ -155,7 +155,7 @@ class KoroshiFaltantes(http.Controller):
     def _respuesta_validar(self, picking, Faltante, pedido_pendiente=None):
         """Valida la OUT (v1.3). pedido_pendiente: None -> usa el parametro (preguntar / si / no)."""
         if pedido_pendiente is None:
-            fijo = self._parametro('koroshi_faltantes.pedido_pendiente', 'preguntar')
+            fijo = self._parametro('koroshi_faltantes.pedido_pendiente', 'no')
             pedido_pendiente = fijo if fijo in ('si', 'no') else None
         try:
             r = Faltante.validar_out(picking, pedido_pendiente)
@@ -179,7 +179,7 @@ class KoroshiFaltantes(http.Controller):
             pass
 
     def _tras_faltante(self, picking, Faltante, res):
-        """v1.3: despues de reubicar o mandar a FALTANT, lo que queda por coger de la OUT y, si no queda
+        """v1.3: despues de reubicar o mandar a FALTANTE, lo que queda por coger de la OUT y, si no queda
         nada y esta encendido, la validacion."""
         pendientes = _pendientes(picking, Faltante)
         res['pendientes'] = pendientes
@@ -292,7 +292,7 @@ class KoroshiFaltantes(http.Controller):
         except (UserError, ValidationError) as e:
             return {'ok': False, 'msg': _msg(e)}
         texto = 'Hecho: la linea pasa a %s. Ve a cogerla alli.' % nombre_corto(f.ubicacion_nueva_id)
-        texto += ' %s ud a FALTANT.' % f.cantidad_faltant if f.cantidad_faltant else ''
+        texto += ' %s ud a FALTANTE.' % f.cantidad_faltant if f.cantidad_faltant else ''
         # v1.3: la pieza esta en la ubicacion nueva pero aun no se ha leido: la linea sigue pendiente
         return self._tras_faltante(picking, Faltante, {
             'ok': True, 'que': 'hecho', 'tipo': 'reubicado', 'msg': texto, 'nota': f.nota or '',
@@ -310,7 +310,7 @@ class KoroshiFaltantes(http.Controller):
         except (UserError, ValidationError) as e:
             return {'ok': False, 'msg': _msg(e)}
         texto = 'Hecho: la pieza va a faltantes; la OUT se valida sin ella.'
-        texto += ' %s ud a FALTANT.' % f.cantidad_faltant if f.cantidad_faltant else ''
+        texto += ' %s ud a FALTANTE.' % f.cantidad_faltant if f.cantidad_faltant else ''
         return self._tras_faltante(picking, Faltante, {
             'ok': True, 'que': 'hecho', 'tipo': 'sin_alternativa', 'msg': texto, 'nota': f.nota or '',
             'out': _out_json(picking), 'faltante_id': f.id})
@@ -329,7 +329,7 @@ class KoroshiFaltantes(http.Controller):
     @http.route('/koroshi/faltantes/validar', type='json', auth='user')
     def validar(self, out_id=False, pedido_pendiente=False, **kw):
         """v1.3: valida la OUT con la validacion normal de Odoo. pedido_pendiente: 'si' / 'no' (respuesta
-        del operario) o vacio (usa el parametro koroshi_faltantes.pedido_pendiente; 'preguntar' de inicio)."""
+        del operario) o vacio (usa el parametro koroshi_faltantes.pedido_pendiente; 'no' de inicio desde la v1.3.1)."""
         Faltante = request.env['koroshi.faltante']
         picking = request.env['stock.picking'].browse(int(out_id or 0)).exists()
         if not picking:

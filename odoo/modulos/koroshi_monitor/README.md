@@ -79,5 +79,7 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   listas de cada zona y en los totales por zona; tabla «Operarios» con lo que coge ahora, pedidos, uds, minutos y u/h
   del día. En negrita quien la tiene abierta ahora; en gris quien la empezó o la dejó. El buscador también encuentra
   por código. Si `koroshi_operarios` no está instalado, el monitor sale igual que antes (no depende de él).
+- **v1.18.2:** una caja que está en dos OUT (OUT pequeña metida con la PDA en la caja de otra OUT, módulo
+  `koroshi_caja_existente`) cuenta como caja/bulto solo en la OUT que la usó primero. K8 del 10/11: salían 6 y son 5.
 - **v1.18.1:** si la OUT o la agrupación ya está validada, el operario sale como acabado al momento (hora de
   validación), sin esperar al cron de `koroshi_operarios`, que cierra cada 5 min.

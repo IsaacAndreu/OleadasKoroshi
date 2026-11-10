@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: lo que se cambie a mano en Parámetros del sistema no se pisa al actualizar -->
+    <data noupdate="1">
+        <!-- '1' = la pantalla nueva funciona para los operarios de la lista; '0' = todo como antes (vuelta atrás) -->
+        <record id="param_activa" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.activa</field>
+            <field name="value">1</field>
+        </record>
+        <!-- códigos de tarjeta (ID de credencial) separados por comas; '*' = todos los operarios -->
+        <record id="param_empleados" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.empleados</field>
+            <field name="value">OP9990001,OP9980001</field>
+        </record>
+    </data>
+</odoo>

@@ -4,15 +4,15 @@
 #
 # Desde la pantalla "Faltante" de la PDA (controllers/main.py):
 #   - reubicar():        la linea reservada pasa a otra ubicacion con stock libre y la unidad que falta
-#                        va de la ubicacion vieja a FALTANT.
+#                        va de la ubicacion vieja a FALTANTE.
 #   - sin_alternativa(): no esta en ningun sitio: se quita la reserva de esa linea y la unidad que falta
-#                        va de la ubicacion vieja a FALTANT.
+#                        va de la ubicacion vieja a FALTANTE.
 # En la oficina (revision diaria):
-#   - action_no_encontrado(): de FALTANT a perdidas de inventario.
-#   - Encontrado (wizard/encontrado.py): de FALTANT a la ubicacion que se elija.
+#   - action_no_encontrado(): de FALTANTE a perdidas de inventario.
+#   - Encontrado (wizard/encontrado.py): de FALTANTE a la ubicacion que se elija.
 # Ronda de revision (v1.1):
 #   - crear_ronda(): una INT normal (tipo Transferencias internas) con una linea por faltante pendiente,
-#     de FALTANT a su ubicacion vieja, ordenada por lineal. Se hace en la PDA con la app de codigo de barras.
+#     de FALTANTE a su ubicacion vieja, ordenada por lineal. Se hace en la PDA con la app de codigo de barras.
 #   - sincronizar_rondas() (cron cada 15 min): linea hecha -> Encontrado (en la ubicacion donde se leyo);
 #     INT validada "Sin pedido pendiente" -> lo no leido queda cancelado -> No encontrado (a perdidas);
 #     "Crear pedido pendiente" -> sigue pendiente en la INT nueva; INT cancelada entera -> vuelve a pendiente.
@@ -20,7 +20,7 @@
 # Como se cambia la reserva: se escribe location_id en la stock.move.line reservada (sin nada leido).
 # Es el write estandar de Odoo 13: quita la reserva de la vieja y reserva en la nueva con strict=True,
 # solo de stock libre (no quita nada a otra OUT). Nunca "Forzar disponibilidad" ni stock.quant a mano.
-# Los movimientos a/desde FALTANT son stock.move con su linea hecha (qty_done) y _action_done(),
+# Los movimientos a/desde FALTANTE son stock.move con su linea hecha (qty_done) y _action_done(),
 # como hace Odoo al ajustar cantidades.
 # Todo dentro de un savepoint: si algo falla, no se hace nada.
 # No anade campos a albaranes, movimientos, lineas, agrupaciones ni tipos de operacion.
@@ -32,7 +32,7 @@ import pytz
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
-from odoo.tools import float_compare, float_is_zero
+from odoo.tools import float_compare, float_is_zero, html_escape
 
 ZONA_HORARIA = 'Europe/Madrid'
 MAX_ALTERNATIVAS = 5
@@ -76,8 +76,8 @@ class KoroshiFaltante(models.Model):
     product_id = fields.Many2one('product.product', 'Articulo', required=True, index=True, ondelete='restrict')
     cantidad = fields.Float('Uds de la linea', digits='Product Unit of Measure',
                             help='Uds de la linea de la OUT que no estaban')
-    cantidad_faltant = fields.Float('Uds a FALTANT', digits='Product Unit of Measure',
-                                    help='Uds que se han movido a FALTANT. Puede ser menos que la linea si en '
+    cantidad_faltant = fields.Float('Uds a FALTANTE', digits='Product Unit of Measure',
+                                    help='Uds que se han movido a FALTANTE. Puede ser menos que la linea si en '
                                          'la ubicacion vieja ya no quedaba stock en Odoo.')
     ubicacion_vieja_id = fields.Many2one('stock.location', 'Ubicacion vieja', required=True, ondelete='restrict')
     ubicacion_nueva_id = fields.Many2one('stock.location', 'Ubicacion nueva', ondelete='restrict')
@@ -93,7 +93,7 @@ class KoroshiFaltante(models.Model):
     ], 'Estado', default='pendiente', required=True, index=True)
     fecha = fields.Datetime('Fecha', required=True, default=fields.Datetime.now, index=True)
     dia = fields.Date('Dia', compute='_compute_dia', store=True, index=True)
-    move_faltant_id = fields.Many2one('stock.move', 'Movimiento a FALTANT', ondelete='set null', readonly=True)
+    move_faltant_id = fields.Many2one('stock.move', 'Movimiento a FALTANTE', ondelete='set null', readonly=True)
     move_revision_id = fields.Many2one('stock.move', 'Movimiento de la revision', ondelete='set null',
                                        readonly=True)
     ubicacion_revision_id = fields.Many2one('stock.location', 'Devuelto a', ondelete='set null', readonly=True)
@@ -126,16 +126,16 @@ class KoroshiFaltante(models.Model):
     def _ubicacion_faltant(self):
         loc = self.env.ref('koroshi_faltantes.ubicacion_faltant', raise_if_not_found=False)
         if not loc:
-            raise UserError('No existe la ubicacion FALTANT (koroshi_faltantes.ubicacion_faltant)')
+            raise UserError('No existe la ubicacion FALTANTE (koroshi_faltantes.ubicacion_faltant)')
         return loc
 
     @api.model
     def _raiz_stock(self, picking):
-        """Stock donde se reserva (EFFEC/Stock). FALTANT debe estar fuera."""
+        """Stock donde se reserva (EFFEC/Stock). FALTANTE debe estar fuera."""
         raiz = picking.picking_type_id.warehouse_id.lot_stock_id or picking.location_id
         faltant = self._ubicacion_faltant()
         if faltant.parent_path and raiz.parent_path and faltant.parent_path.startswith(raiz.parent_path):
-            raise UserError('La ubicacion FALTANT esta dentro de %s: las OUT podrian reservar en ella. '
+            raise UserError('La ubicacion FALTANTE esta dentro de %s: las OUT podrian reservar en ella. '
                             'Muevela fuera antes de usar la pantalla.' % raiz.complete_name)
         return raiz
 
@@ -296,7 +296,7 @@ class KoroshiFaltante(models.Model):
 
     @api.model
     def reubicar(self, ml, ubicacion_leida, employee=False):
-        """La linea pasa a la ubicacion leida y la unidad que falta va a FALTANT. Todo o nada."""
+        """La linea pasa a la ubicacion leida y la unidad que falta va a FALTANTE. Todo o nada."""
         return self._todo_o_nada(self._reubicar, ml, ubicacion_leida, employee)
 
     @api.model
@@ -324,10 +324,12 @@ class KoroshiFaltante(models.Model):
             # a') v1.3, linea con una parte leida: lo leido se queda en la linea; lo que falta se reserva aparte
             self._reservar_resto_en(ml, qty_prod, destino)
 
-        # b) despues, la unidad que falta: de la vieja a FALTANT (solo lo que Odoo tiene alli libre)
+        # b) despues, la unidad que falta: de la vieja a FALTANTE (solo lo que Odoo tiene alli libre)
         move, movido, nota = self._a_faltant(product, qty_prod, vieja, faltant, company, picking)
 
-        # c) el registro
+        # c) el registro y (v1.3.1) la nota en la OUT
+        self._nota_out(picking, employee, 'Faltante: %s %s uds no estaban en %s; se cogen en %s.'
+                       % (product.display_name, qty_linea, nombre_corto(vieja), nombre_corto(destino)), movido)
         return self.create({
             'employee_id': employee.id if employee else False,
             'picking_id': picking.id,
@@ -344,9 +346,17 @@ class KoroshiFaltante(models.Model):
         })
 
     @api.model
+    def _nota_out(self, picking, employee, texto, movido):
+        """v1.3.1: deja escrito en el historial (chatter) de la OUT que se ha cambiado, quien y cuando."""
+        texto += ' %s uds de la ubicación vieja a FALTANTE.' % movido if movido else ''
+        if employee:
+            texto += ' Operario: %s.' % employee.name
+        picking.message_post(body=html_escape(texto))
+
+    @api.model
     def sin_alternativa(self, ml, employee=False):
         """No esta en ningun sitio: se quita la reserva de esa linea (como "Anular reserva" pero solo de
-        ella) y la unidad que falta va a FALTANT. La OUT se valida sin esa pieza, como ahora."""
+        ella) y la unidad que falta va a FALTANTE. La OUT se valida sin esa pieza, como ahora."""
         return self._todo_o_nada(self._sin_alternativa, ml, employee)
 
     @api.model
@@ -373,9 +383,11 @@ class KoroshiFaltante(models.Model):
             self.flush()
             move._recompute_state()
 
-        # b) la unidad que falta: de la vieja a FALTANT
+        # b) la unidad que falta: de la vieja a FALTANTE
         move, movido, nota = self._a_faltant(product, qty_prod, vieja, faltant, company, picking)
 
+        self._nota_out(picking, employee, 'Faltante: %s %s uds no estaban en %s ni en ninguna otra ubicación; '
+                       'la OUT sale sin ellas.' % (product.display_name, qty_linea, nombre_corto(vieja)), movido)
         return self.create({
             'employee_id': employee.id if employee else False,
             'picking_id': picking.id,
@@ -451,7 +463,7 @@ class KoroshiFaltante(models.Model):
 
     @api.model
     def _a_faltant(self, product, qty, vieja, faltant, company, picking):
-        """Mueve a FALTANT lo que falta, pero nunca mas de lo que Odoo tiene libre en la vieja (si no,
+        """Mueve a FALTANTE lo que falta, pero nunca mas de lo que Odoo tiene libre en la vieja (si no,
         Odoo quitaria reservas a otras OUT). Devuelve (move, uds movidas, nota)."""
         rounding = product.uom_id.rounding
         libre = self._libre_en(product, vieja)
@@ -475,7 +487,7 @@ class KoroshiFaltante(models.Model):
                                 '(o se cancela la INT).' % (f.name, f.ronda_move_id.picking_id.name or ''))
 
     def action_no_encontrado(self):
-        """De FALTANT a perdidas de inventario (lo que antes se hacia poniendo a 0 en la PDA)."""
+        """De FALTANTE a perdidas de inventario (lo que antes se hacia poniendo a 0 en la PDA)."""
         self._comprobar_revision()
         for f in self:
             f._cerrar_no_encontrado()
@@ -495,13 +507,13 @@ class KoroshiFaltante(models.Model):
         self.write(vals)
 
     def marcar_encontrado(self, ubicacion):
-        """De FALTANT a la ubicacion elegida (asistente Encontrado)."""
+        """De FALTANTE a la ubicacion elegida (asistente Encontrado)."""
         self._comprobar_revision()
         faltant = self._ubicacion_faltant()
         if ubicacion.usage != 'internal':
             raise UserError('Elige una ubicacion interna.')
         if ubicacion == faltant:
-            raise UserError('Elige una ubicacion distinta de FALTANT.')
+            raise UserError('Elige una ubicacion distinta de FALTANTE.')
         for f in self:
             move = False
             if not float_is_zero(f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding):
@@ -514,7 +526,7 @@ class KoroshiFaltante(models.Model):
     def _mover_desde_faltant(self, f, faltant, destino):
         libre = self._libre_en(f.product_id, faltant)
         if float_compare(libre, f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding) < 0:
-            raise UserError('En FALTANT solo hay %s uds de %s y este faltante es de %s. Revisa FALTANT.'
+            raise UserError('En FALTANTE solo hay %s uds de %s y este faltante es de %s. Revisa FALTANTE.'
                             % (libre, f.product_id.display_name, f.cantidad_faltant))
         return self._mover(f.product_id, f.cantidad_faltant, faltant, destino, f.company_id,
                            'KOROSHI Revision faltante %s' % f.picking_id.name, f.picking_id.name)
@@ -543,15 +555,15 @@ class KoroshiFaltante(models.Model):
 
     def crear_ronda(self):
         """Crea la INT de revision con los faltantes seleccionados (o todos los pendientes si no hay
-        seleccion) que tienen uds en FALTANT y no estan ya en una ronda abierta. Una linea por faltante,
-        de FALTANT a su ubicacion vieja, por orden de lineal."""
+        seleccion) que tienen uds en FALTANTE y no estan ya en una ronda abierta. Una linea por faltante,
+        de FALTANTE a su ubicacion vieja, por orden de lineal."""
         self.sincronizar_rondas()
         faltantes = self.exists() or self.search([('estado', '=', 'pendiente')])
         faltantes = faltantes.filtered(
             lambda f: f.estado == 'pendiente' and not f.en_ronda and
             not float_is_zero(f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding))
         if not faltantes:
-            raise UserError('No hay faltantes pendientes con uds en FALTANT que no esten ya en una ronda.')
+            raise UserError('No hay faltantes pendientes con uds en FALTANTE que no esten ya en una ronda.')
         faltant = self._ubicacion_faltant()
         tz = pytz.timezone(ZONA_HORARIA)
         ahora = datetime.datetime.now(tz).strftime('%d/%m %H:%M')
@@ -596,7 +608,7 @@ class KoroshiFaltante(models.Model):
             picking.action_assign()
             for f in grupo:
                 if f.ronda_move_id.state != 'assigned':
-                    f.nota = ('%s En FALTANT no hay stock para la ronda %s.' % (f.nota or '', picking.name)).strip()
+                    f.nota = ('%s En FALTANTE no hay stock para la ronda %s.' % (f.nota or '', picking.name)).strip()
             pickings |= picking
         if len(pickings) == 1:
             return {'type': 'ir.actions.act_window', 'name': 'Ronda de faltantes', 'res_model': 'stock.picking',
