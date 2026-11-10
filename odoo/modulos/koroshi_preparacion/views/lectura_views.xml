@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_preparacion_lectura_tree" model="ir.ui.view">
+        <field name="name">koroshi.preparacion.lectura.tree</field>
+        <field name="model">koroshi.preparacion.lectura</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" decoration-danger="resultado == 'error'" decoration-muted="deshecha">
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="picking_id"/>
+                <field name="tipo"/>
+                <field name="codigo"/>
+                <field name="producto"/>
+                <field name="cantidad" sum="Uds"/>
+                <field name="resultado"/>
+                <field name="mensaje"/>
+                <field name="deshecha"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_preparacion_lectura_search" model="ir.ui.view">
+        <field name="name">koroshi.preparacion.lectura.search</field>
+        <field name="model">koroshi.preparacion.lectura</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="employee_id"/>
+                <field name="codigo"/>
+                <filter name="hoy" string="Hoy" domain="[('fecha', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="errores" string="Errores" domain="[('resultado', '=', 'error')]"/>
+                <separator/>
+                <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                <filter name="g_out" string="OUT" context="{'group_by': 'picking_id'}"/>
+                <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_preparacion_lectura" model="ir.actions.act_window">
+        <field name="name">Lecturas de preparación</field>
+        <field name="res_model">koroshi.preparacion.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_hoy': 1}</field>
+    </record>
+
+    <!-- pantalla de preparación (la abre Lecturas; no tiene menú propio) -->
+    <record id="action_koroshi_preparacion_pantalla" model="ir.actions.client">
+        <field name="name">Preparar</field>
+        <field name="tag">koroshi_preparacion_pantalla</field>
+    </record>
+
+    <menuitem id="menu_koroshi_preparacion_lecturas" name="Lecturas de preparación"
+              parent="koroshi_operarios.menu_koroshi_operarios_root"
+              action="action_koroshi_preparacion_lectura" sequence="90"
+              groups="koroshi_operarios.grupo_productividad"/>
+</odoo>

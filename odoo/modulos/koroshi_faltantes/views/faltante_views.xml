@@ -11,7 +11,7 @@
                 <field name="picking_id"/>
                 <field name="product_id"/>
                 <field name="cantidad" sum="Uds"/>
-                <field name="cantidad_faltant" sum="Uds a FALTANT"/>
+                <field name="cantidad_faltant" sum="Uds a FALTANTE"/>
                 <field name="ubicacion_vieja_id"/>
                 <field name="ubicacion_nueva_id"/>
                 <field name="tipo"/>
@@ -26,7 +26,7 @@
                         groups="stock.group_stock_manager"/>
                 <button name="action_no_encontrado" type="object" string="No encontrado" icon="fa-times"
                         attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
-                        confirm="Las uds de FALTANT pasan a perdidas de inventario. ¿Seguro?"
+                        confirm="Las uds de FALTANTE pasan a perdidas de inventario. ¿Seguro?"
                         groups="stock.group_stock_manager"/>
             </tree>
         </field>
@@ -43,7 +43,7 @@
                             groups="stock.group_stock_manager"/>
                     <button name="action_no_encontrado" type="object" string="No encontrado"
                             attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
-                            confirm="Las uds de FALTANT pasan a perdidas de inventario. ¿Seguro?"
+                            confirm="Las uds de FALTANTE pasan a perdidas de inventario. ¿Seguro?"
                             groups="stock.group_stock_manager"/>
                     <field name="estado" widget="statusbar"/>
                 </header>
@@ -145,8 +145,8 @@
         <field name="context">{'search_default_pendiente': 1}</field>
         <field name="help" type="html">
             <p class="o_view_nocontent_smiling_face">No hay faltantes pendientes</p>
-            <p>Se crean desde la pantalla "Faltante" de la PDA. Cada dia: Encontrado (vuelve de FALTANT a su
-               ubicacion) o No encontrado (de FALTANT a perdidas de inventario).</p>
+            <p>Se crean desde la pantalla "Faltante" de la PDA. Cada dia: Encontrado (vuelve de FALTANTE a su
+               ubicacion) o No encontrado (de FALTANTE a perdidas de inventario).</p>
         </field>
     </record>
 
@@ -157,7 +157,7 @@
         <field name="code">action = model.action_puestos_a_cero()</field>
     </record>
 
-    <!-- v1.1 Ronda de revision: una INT con los faltantes pendientes (de FALTANT a su ubicacion vieja). -->
+    <!-- v1.1 Ronda de revision: una INT con los faltantes pendientes (de FALTANTE a su ubicacion vieja). -->
     <record id="action_koroshi_crear_ronda" model="ir.actions.server">
         <field name="name">Crear ronda de revision</field>
         <field name="model_id" ref="model_koroshi_faltante"/>

@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_preparacion_lectura_user,koroshi.preparacion.lectura usuario stock,model_koroshi_preparacion_lectura,stock.group_stock_user,1,1,1,0
+access_koroshi_preparacion_lectura_manager,koroshi.preparacion.lectura responsable stock,model_koroshi_preparacion_lectura,stock.group_stock_manager,1,1,1,1

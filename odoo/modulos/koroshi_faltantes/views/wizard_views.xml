@@ -5,7 +5,7 @@
         <field name="model">koroshi.faltante.encontrado</field>
         <field name="arch" type="xml">
             <form string="Encontrado">
-                <p>Las uds de FALTANT de estos faltantes vuelven a la ubicacion que elijas.</p>
+                <p>Las uds de FALTANTE de estos faltantes vuelven a la ubicacion que elijas.</p>
                 <group>
                     <field name="ubicacion_id" options="{'no_create': True}"/>
                     <field name="faltante_ids" widget="many2many_tags" readonly="1"/>

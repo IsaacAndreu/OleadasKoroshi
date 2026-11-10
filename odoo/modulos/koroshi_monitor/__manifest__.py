@@ -53,11 +53,12 @@ v1.17.1: las OUT hechas con transportista o etiqueta aparecen con fondo azul y e
 
 v1.18: operarios por codigo (OP1, OP2...), nunca por nombre, si esta instalado koroshi_operarios: columna Operario
 en Tiendas y zonas y tabla Operarios (que coge ahora, uds, minutos, u/h del dia). Sin ese modulo, igual que antes.
+v1.18.2: una caja usada en dos OUT (koroshi_caja_existente) cuenta solo en su OUT duena (K8 10/11: salian 6 bultos).
 v1.18.1: OUT o agrupacion ya validada = operario acabado al momento, sin esperar al cron de cierre (5 min).
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.18.1',
+    'version': '13.0.1.18.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

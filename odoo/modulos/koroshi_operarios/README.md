@@ -1,4 +1,4 @@
-# KOROSHI Operarios (v2.1, 09/11/2026)
+# KOROSHI Operarios (v2.3.1, 10/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
@@ -23,15 +23,15 @@ El tiempo se cierra solo cuando se valida el pedido.
 
 ### Saltar
 
-| Motivo (por defecto) | Adónde va |
+Desde la v2.2.1 solo hay **2 motivos**:
+
+| Motivo | Adónde va |
 |---|---|
 | No hay stock / en espera | **Oficina**: no se da a nadie hasta que el responsable la libere |
-| Falta material (caja, etiquetas) | **Final de su cola** |
-| Muy grande / que la haga otro | **Oficina** |
 | Fin de turno (la sigo mañana) | **Sigue suya y la primera**. La PDA queda libre. Al día siguiente, al leer la tarjeta, se abre esa |
-| Otro (pide escribir el motivo) | **Oficina** |
 
-Los motivos y su destino se cambian en *KOROSHI Operarios > Motivos para saltar*. Saltar cierra la tarea como
+«Falta material», «Muy grande» y «Otro» quedan **archivados** (no borrados) por `data/motivos_v221.xml`, que los vuelve
+a archivar en cada actualización del módulo (para recuperarlos, quitar ese fichero del manifiesto). Los motivos y su destino se cambian en *KOROSHI Operarios > Motivos para saltar*. Saltar cierra la tarea como
 *dejada* (motivo «Saltada»). Al volver a empezarla se abre otra tarea, así la noche no cuenta.
 
 ## Reparto (responsable, v2.0)
@@ -53,6 +53,61 @@ Los motivos y su destino se cambian en *KOROSHI Operarios > Motivos para saltar*
 - Una OUT o agrupación solo puede estar en una cola a la vez (índice único en la base de datos): dos PDA nunca reciben
   la misma.
 - Cada 5 min (cron de cierre) lo validado o cancelado pasa a *hecha*.
+
+## Entrar directo y tarjeta obligatoria (v2.2)
+
+- **La OUT se abre directamente.** Al entrar en *Lecturas (PDA)* con el operario ya guardado en la PDA (al iniciar
+  sesión, desde el menú o al recargar), se abre sola la OUT que está haciendo o la siguiente de su cola. Al leer la
+  tarjeta o una OUT, igual. **Continuar / Saltar / Faltante** solo salen al volver con la **flecha atrás sin haber
+  validado** (que es cuando hacen falta para el faltante). Para todos los usuarios.
+- **Tarjeta obligatoria:** grupo **«KOROSHI Operarios: tarjeta obligatoria»**, vacío al instalar. Para sus usuarios, en
+  Lecturas sin tarjeta **no se abre nada**: «Lee primero tu tarjeta». Lo comprueba también el servidor
+  (`/koroshi/operarios/leer`). Los demás usuarios siguen igual (sin tarjeta se abre y no cuenta).
+- **Lecturas al iniciar sesión:** en el usuario, *Preferencias > Acción inicial* = **Operarios**.
+- **Para probar sin afectar al almacén:** solo **Departament IT** en el grupo y con la Acción inicial. **No tocar
+  «Almacén Nath»** hasta decidirlo (mejor un usuario solo para las PDA).
+  - Quitarlo: vaciar la *Acción inicial* del usuario y sacarlo del grupo (*Ajustes > Usuarios y compañías > Grupos*, en
+    modo desarrollador).
+- **Pantalla bloqueada sin tarjeta (v2.2.2):** para los usuarios del grupo, mientras no hay operario en Lecturas
+  **no sale la barra de Odoo** (ni el menú de aplicaciones ni el del usuario) **ni el botón «Menú código de barras»**,
+  y el texto es solo «Lee tu tarjeta». Solo se puede leer la tarjeta. Al leerla vuelve todo (barra y Menú), y con
+  **Salir (otro operario)** se bloquea otra vez. Los demás usuarios lo ven todo igual que antes.
+- **Límite:** con operario, el botón **Menú** lleva al menú de código de barras (hace falta para inventarios y demás)
+  y desde allí se puede abrir una OUT de otro, sin pasar por su cola. Eso no se puede impedir sin tocar la app
+  `stock_barcode`. Escribir una URL a mano en el navegador tampoco se puede impedir desde aquí (en la PDA no hay
+  barra de direcciones a la vista).
+
+## Pantalla nueva de Lecturas (v2.3)
+
+Solo cambia el **aspecto** y se añaden ayudas. Funciona igual que la v2.2.2: abre directo al leer la tarjeta,
+Continuar / Saltar / Faltante al volver con la flecha atrás, los 2 motivos, el grupo *tarjeta obligatoria*, la misma
+clave de la PDA (`koroshi_operarios_pda_2`) y las mismas rutas (solo devuelven datos de más, de lectura).
+**Almacén Nath** y los usuarios fuera del grupo hacen lo mismo que hoy (pueden leer una OUT sin tarjeta).
+
+- **Pantalla bloqueada «Lee tu tarjeta»** (solo tarjeta obligatoria): ocupa toda la pantalla. El punto verde
+  parpadeando = el lector está listo; gris con «Toca la pantalla» = se ha perdido el foco (tocar y vuelve). Si se lee
+  una OUT sin tarjeta sale en rojo «Esto es un pedido. Primero tu tarjeta.».
+- **Cabecera:** círculo con las iniciales (color según el nombre), nombre, contador del día y **Salir**.
+- **Botones grandes:** **Continuar** verde; debajo, en la misma fila, **Faltante** naranja y **Saltar** gris.
+- **Avisos** con icono y color: verde (bien, se van solos a los 4 s), azul (info), naranja (atención), rojo (mal).
+- **Salir** y **leer la tarjeta de otro** piden confirmación en una hoja abajo («¿Salir, X?» / «¿Cambiar a Y?»).
+  Si deja un pedido a medias, lo avisa (sigue siendo suyo).
+- **Saltar:** hoja abajo con los motivos como tarjetas; el que pide nota no deja confirmar sin escribirla.
+- **Abriendo:** mientras se abre la OUT, pantalla «Abriendo KO/OUT/… para X» con ruedecita (no leer nada).
+- **¡Hecho!:** al validar, pantalla verde con la siguiente y cuenta atrás de 3 s; **Parar aquí** la detiene.
+- **Sin conexión:** banda roja arriba, no se lee nada (avisa) y se reintenta cada 5 s; al volver la conexión se quita.
+- **Sonido y vibración** al leer (bien / mal). Se apaga con el altavoz de abajo (se guarda en la PDA).
+- **Salida por inactividad:** parámetro `koroshi_operarios.minutos_inactividad` (*Ajustes > Técnico > Parámetros
+  del sistema*). `0` = desactivado (de inicio). Con p. ej. `20`, si en la PDA no se toca nada en 20 min (y no está
+  dentro de un pedido), sale el operario. No se pisa al actualizar.
+- **Menú ☰:** con tarjeta obligatoria hay que **mantenerlo pulsado 2 s** (para que no se abra sin querer). Los
+  demás usuarios, un toque.
+- **Datos (solo lectura):** del pedido en curso tienda, zona, líneas, uds, minutos y barra de uds leídas; la cola
+  numerada («Después te tocan»); «Cogiendo ahora» plegado con el n.º de operarios; y el contador del día (pedidos y
+  uds, como en *Productividad*).
+- Respeta *reducir movimiento* del sistema (sin animaciones) y usa colores de alto contraste. Sin librerías externas.
+- **koroshi_faltantes** no cambia: su botón sigue detrás de `.o_ko_dejar` y la pantalla lo pinta naranja y delante de
+  Saltar con CSS.
 
 ## Bloques y etiquetas (v2.1)
 
@@ -167,9 +222,12 @@ controllers/main.py          /koroshi/operarios/leer, /operario, /siguiente, /sa
 views/reparto_views.xml      v2: Reparto de hoy, Colas, Motivos, asistente
 views/etiquetas_report.xml   v2.1: hoja con el nombre del operario + accion Imprimir etiquetas en Colas
 data/motivos.xml             v2: motivos para saltar (noupdate)
+data/motivos_v221.xml        v2.2.1: archiva 3 motivos (solo quedan No hay stock y Fin de turno)
+data/parametros.xml          v2.3: koroshi_operarios.minutos_inactividad (noupdate, 0 = desactivado)
 views/assets.xml             css y js en web.assets_backend
 static/src/js/operarios_pantalla.js  accion de cliente koroshi_operarios_pantalla
 static/src/xml/operarios.xml        plantilla de la pantalla
+static/src/css/operarios.css        estilos de la pantalla (v2.3)
 views/tarea_views.xml        lista, ficha, pivot, grafico, filtros, acciones
 data/cron.xml                cron de cierre (5 min)
 data/categoria.xml           etiqueta "Operario KOROSHI"

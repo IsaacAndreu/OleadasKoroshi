@@ -1,0 +1,465 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ideas interfaz Operarios</title>
+<style>
+:root{
+  --bg:#f3f4f6; --panel:#ffffff; --ink:#1f2937; --muted:#6b7280; --line:#e5e7eb;
+  --ok:#16a34a; --ok-bg:#dcfce7; --mal:#dc2626; --mal-bg:#fee2e2; --info:#2563eb; --info-bg:#dbeafe;
+  --warn:#ea580c; --warn-bg:#ffedd5; --gris:#4b5563; --odoo:#714b67;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;line-height:1.45}
+header.doc{background:var(--odoo);color:#fff;padding:20px 16px}
+header.doc h1{margin:0 0 4px;font-size:22px}
+header.doc p{margin:0;opacity:.85;font-size:14px}
+main{max-width:1180px;margin:0 auto;padding:16px}
+.nota{background:#fff8e1;border-left:4px solid #f59e0b;padding:10px 14px;border-radius:6px;font-size:14px;margin:12px 0}
+nav.indice{display:flex;flex-wrap:wrap;gap:6px;margin:12px 0 4px}
+nav.indice a{background:#fff;border:1px solid var(--line);border-radius:999px;padding:4px 10px;font-size:13px;color:var(--ink);text-decoration:none}
+section.idea{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:16px;margin:18px 0}
+section.idea h2{margin:0 0 4px;font-size:19px}
+.etq{display:inline-block;font-size:11px;font-weight:700;border-radius:4px;padding:2px 6px;margin-right:4px;vertical-align:middle}
+.alta{background:var(--mal-bg);color:var(--mal)} .media{background:var(--warn-bg);color:var(--warn)} .baja{background:var(--info-bg);color:var(--info)}
+.facil{background:var(--ok-bg);color:var(--ok)} .servidor{background:#ede9fe;color:#6d28d9}
+.porque{color:var(--muted);font-size:14px;margin:6px 0 12px}
+.comparar{display:flex;flex-wrap:wrap;gap:18px;align-items:flex-start}
+.col{flex:1 1 300px;min-width:0}
+.col h3{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);margin:0 0 6px}
+ul.puntos{margin:8px 0 0;padding-left:18px;font-size:14px}
+ul.puntos li{margin:3px 0}
+
+/* ---- PDA ---- */
+.pda{width:300px;max-width:100%;background:#111;border-radius:22px;padding:12px 10px 18px;box-shadow:0 6px 18px rgba(0,0,0,.18)}
+.pantalla{background:#fff;border-radius:8px;min-height:470px;overflow:hidden;display:flex;flex-direction:column;font-size:14px;position:relative}
+.barra{background:var(--odoo);color:#fff;display:flex;justify-content:space-between;align-items:center;padding:6px 10px;font-size:13px}
+.p{padding:8px 10px}
+.vieja .caja{border:1px solid #ccc;border-radius:4px;padding:8px;margin:6px 0}
+.vieja .input{border:1px solid #bbb;border-radius:4px;padding:7px;color:#999;font-size:12px;margin:6px 0}
+.vieja .btn{display:inline-block;border:1px solid #bbb;border-radius:4px;padding:6px 10px;margin:3px 3px 0 0;background:#f8f8f8;font-size:13px}
+.vieja .link{color:#00a09d;font-size:12px;margin-right:8px}
+.vieja .tit{font-weight:600;font-size:12px;color:#555;margin-top:8px}
+.vieja .fila{font-size:12px;border-bottom:1px solid #eee;padding:3px 0}
+
+.bloq{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:16px;background:#1f2937;color:#fff}
+.bloq .icono{width:110px;height:72px;border:4px solid #fff;border-radius:10px;position:relative;margin-bottom:16px}
+.bloq .icono:before{content:"";position:absolute;left:10px;top:12px;width:26px;height:20px;background:#facc15;border-radius:3px}
+.bloq .icono:after{content:"";position:absolute;left:10px;bottom:10px;right:10px;height:8px;background:repeating-linear-gradient(90deg,#fff 0 3px,transparent 3px 6px)}
+.bloq .grande{font-size:26px;font-weight:800}
+.bloq .peq{opacity:.75;font-size:13px;margin-top:6px}
+.pulso{width:14px;height:14px;border-radius:50%;background:#22c55e;margin:16px auto 0;box-shadow:0 0 0 0 rgba(34,197,94,.7);animation:p 1.6s infinite}
+@keyframes p{70%{box-shadow:0 0 0 14px rgba(34,197,94,0)}100%{box-shadow:0 0 0 0 rgba(34,197,94,0)}}
+@media (prefers-reduced-motion:reduce){.pulso{animation:none}}
+
+.quien{display:flex;align-items:center;gap:10px;padding:10px;background:#f9fafb;border-bottom:1px solid var(--line)}
+.avatar{width:42px;height:42px;border-radius:50%;background:#0ea5e9;color:#fff;font-weight:800;display:flex;align-items:center;justify-content:center;font-size:17px;flex:none}
+.quien .nom{font-weight:800;font-size:17px}
+.quien .det{font-size:12px;color:var(--muted)}
+.quien .salir{margin-left:auto;border:1px solid var(--line);border-radius:8px;padding:6px 8px;font-size:12px;color:var(--gris);background:#fff}
+
+.tarjeta{border:2px solid var(--info);border-radius:12px;margin:10px;padding:10px}
+.tarjeta .sub{font-size:11px;text-transform:uppercase;color:var(--info);font-weight:700;letter-spacing:.04em}
+.tarjeta .ref{font-size:24px;font-weight:800;letter-spacing:.01em}
+.tarjeta .tienda{font-size:13px;color:var(--muted)}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.chip{background:#f3f4f6;border-radius:999px;padding:3px 8px;font-size:12px;font-weight:600}
+.prog{height:10px;background:#e5e7eb;border-radius:999px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ok);border-radius:999px}
+.prog-t{font-size:12px;color:var(--muted);margin-top:3px;display:flex;justify-content:space-between}
+
+.bgrande{display:flex;align-items:center;justify-content:center;gap:8px;border:none;border-radius:12px;color:#fff;font-weight:800;font-size:18px;min-height:58px;width:100%;margin-top:8px}
+.verde{background:var(--ok)} .naranja{background:var(--warn)} .grisb{background:#6b7280} .azul{background:var(--info)} .rojo{background:var(--mal)}
+.fila2{display:flex;gap:8px}.fila2 .bgrande{font-size:15px;min-height:52px}
+.ico{font-size:20px;line-height:1}
+
+.aviso{margin:8px 10px 0;border-radius:10px;padding:8px 10px;font-size:13px;font-weight:600;display:flex;gap:8px;align-items:flex-start}
+.aviso.ok{background:var(--ok-bg);color:#166534}.aviso.mal{background:var(--mal-bg);color:#991b1b}.aviso.info{background:var(--info-bg);color:#1e40af}.aviso.warn{background:var(--warn-bg);color:#9a3412}
+.aviso .accion{margin-left:auto;background:#fff;border-radius:6px;padding:3px 7px;font-size:12px;white-space:nowrap;border:1px solid currentColor}
+
+.lista{margin:6px 10px}
+.lista .t{font-size:11px;text-transform:uppercase;color:var(--muted);font-weight:700;margin:10px 0 4px}
+.item{display:flex;align-items:center;gap:8px;border:1px solid var(--line);border-radius:8px;padding:6px 8px;margin-bottom:5px;font-size:13px}
+.item b{font-size:14px}.item .der{margin-left:auto;font-size:12px;color:var(--muted)}
+.num{width:22px;height:22px;border-radius:50%;background:#e5e7eb;font-size:12px;font-weight:700;display:flex;align-items:center;justify-content:center;flex:none}
+.pie{margin-top:auto;padding:8px 10px;border-top:1px solid var(--line);font-size:12px;color:var(--muted);display:flex;justify-content:space-between}
+
+.motivo{display:flex;align-items:center;gap:10px;border:2px solid var(--line);border-radius:12px;padding:12px;margin:8px 10px;font-weight:700;font-size:15px}
+.motivo .ico{font-size:24px}
+.motivo.sel{border-color:var(--warn);background:var(--warn-bg)}
+.motivo small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+
+.capa{position:absolute;inset:0;background:rgba(17,24,39,.55);display:flex;align-items:flex-end}
+.hoja{background:#fff;width:100%;border-radius:16px 16px 0 0;padding:14px 12px}
+.hoja h4{margin:0 0 4px;font-size:17px}
+.hoja p{margin:0 0 8px;font-size:13px;color:var(--muted)}
+
+.centro{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:18px}
+.spinner{width:52px;height:52px;border:6px solid #dbeafe;border-top-color:var(--info);border-radius:50%;animation:g 1s linear infinite;margin-bottom:14px}
+@keyframes g{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spinner{animation:none}}
+.centro .gr{font-size:22px;font-weight:800}
+.centro .pq{color:var(--muted);font-size:13px;margin-top:4px}
+.check{width:72px;height:72px;border-radius:50%;background:var(--ok);color:#fff;font-size:40px;display:flex;align-items:center;justify-content:center;margin-bottom:12px}
+
+.banda-off{background:var(--mal);color:#fff;font-weight:700;font-size:13px;padding:6px 10px;display:flex;justify-content:space-between;align-items:center}
+.banda-off span.r{background:#fff;color:var(--mal);border-radius:6px;padding:2px 8px;font-size:12px}
+
+table.prio{width:100%;border-collapse:collapse;font-size:14px;background:#fff}
+table.prio th,table.prio td{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+table.prio th{background:#f9fafb;font-size:12px;text-transform:uppercase;color:var(--muted)}
+.tabla-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px}
+footer{color:var(--muted);font-size:12px;text-align:center;padding:24px 16px}
+@media (max-width:640px){.pda{width:100%}}
+</style>
+</head>
+<body>
+<header class="doc">
+  <h1>Operarios KOROSHI · Ideas para una interfaz más clara en la PDA</h1>
+  <p>Propuesta v1 · 10/11/2026 · Solo ideas: no cambia nada de lo que hay instalado (operarios v2.2.2 / faltantes v1.3.1)</p>
+</header>
+<main>
+  <div class="nota"><b>Qué es esto:</b> una maqueta para decidir qué mejoras valen la pena. Cada idea enseña <b>Hoy</b> y <b>Propuesta</b>.
+  Todas se harían solo en <code>koroshi_operarios</code> (XML/JS/CSS de la pantalla), sin campos nuevos en albaranes ni tocar <code>stock_barcode</code>.
+  Las marcadas <span class="etq servidor">DATO SERVIDOR</span> necesitan que el controlador devuelva algún dato más (lectura, sin escribir nada nuevo).
+  Los nombres y pedidos de la maqueta son de ejemplo.</div>
+
+  <nav class="indice">
+    <a href="#i1">1 · Pantalla bloqueada</a><a href="#i2">2 · Quién soy</a><a href="#i3">3 · Pedido actual</a>
+    <a href="#i4">4 · Botones grandes</a><a href="#i5">5 · Saltar</a><a href="#i6">6 · Avisos</a>
+    <a href="#i7">7 · Abriendo / hecho</a><a href="#i8">8 · Cola</a><a href="#i9">9 · Salir y Menú</a>
+    <a href="#i10">10 · Sin conexión</a><a href="#i11">11 · Sonido y vibración</a><a href="#prio">Prioridades</a>
+  </nav>
+
+  <!-- 1 -->
+  <section class="idea" id="i1">
+    <h2><span class="etq alta">ALTA</span><span class="etq facil">FÁCIL</span> 1 · Pantalla bloqueada a pantalla completa: «Lee tu tarjeta»</h2>
+    <p class="porque">Hoy, sin tarjeta, se ve toda la pantalla (cola, abiertas, menú, campo de texto) aunque no se pueda hacer nada. El operario no sabe a la primera qué se espera de él.</p>
+    <div class="comparar">
+      <div class="col"><h3>Hoy</h3>
+        <div class="pda"><div class="pantalla vieja">
+          <div class="barra"><span>Operarios KOROSHI</span><span>08:02</span></div>
+          <div class="p">
+            <div class="caja" style="color:#888">Lee tu tarjeta</div>
+            <div class="input">Escribir tarjeta o pedido y Enter</div>
+            <div class="tit">Cogiendo ahora</div>
+            <div class="fila">KO/OUT/01234 · Tienda Centro</div>
+            <div class="fila">KO/OUT/01240 · Tienda Norte</div>
+            <div class="fila">Z-1011-03 · Agrupación</div>
+            <div style="margin-top:10px"><span class="link">Menú código de barras</span></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Propuesta</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="bloq">
+            <div class="icono"></div>
+            <div class="grande">Lee tu tarjeta</div>
+            <div class="peq">Pasa el lector por el código de tu tarjeta de operario</div>
+            <div class="pulso" title="Lector preparado"></div>
+            <div class="peq" style="margin-top:6px">Lector preparado</div>
+          </div>
+        </div></div>
+        <ul class="puntos">
+          <li>Fondo oscuro y un único mensaje: imposible confundirse.</li>
+          <li>El campo de texto sigue ahí pero <b>invisible y con el foco</b> (el lector escribe en él).</li>
+          <li>Punto verde que late = «la PDA está escuchando». Si pierde el foco, se pone gris y dice «Toca la pantalla».</li>
+          <li>Si leen una OUT en vez de la tarjeta: aviso rojo grande «Esto es un pedido. Primero tu tarjeta».</li>
+          <li>Solo en modo <i>tarjeta obligatoria</i>; Almacén Nath sigue como hoy.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 2 -->
+  <section class="idea" id="i2">
+    <h2><span class="etq alta">ALTA</span><span class="etq facil">FÁCIL</span> 2 · Cabecera «quién soy» fija arriba</h2>
+    <p class="porque">Hoy el nombre del operario sale en una caja de texto entre otras. Si dos personas usan la misma PDA, cuesta ver quién está dentro.</p>
+    <div class="comparar">
+      <div class="col"><h3>Propuesta</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="barra"><span>Lecturas (PDA)</span><span>10:41</span></div>
+          <div class="quien">
+            <div class="avatar">IS</div>
+            <div><div class="nom">Isaac</div><div class="det">Hoy: 14 pedidos · 312 uds</div></div>
+            <div class="salir">⏏ Salir</div>
+          </div>
+          <div class="p" style="color:var(--muted);font-size:13px">(resto de la pantalla)</div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Círculo con las <b>iniciales</b> y un color propio por operario (calculado del nombre, sin guardar nada).</li>
+          <li>Nombre grande. Debajo, el contador del día <span class="etq servidor">DATO SERVIDOR</span> (ya está en Productividad; se leería igual).</li>
+          <li>«Salir» pasa de enlace pequeño abajo a botón arriba a la derecha, pero <b>pide confirmación</b> (idea 9).</li>
+          <li>Motiva: ver «14 pedidos» ayuda a que lean la tarjeta siempre.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="idea" id="i3">
+    <h2><span class="etq alta">ALTA</span><span class="etq servidor">DATO SERVIDOR</span> 3 · Tarjeta del pedido actual con lo importante</h2>
+    <p class="porque">Hoy al volver atrás solo se ve «Estás haciendo KO/OUT/01234». No se sabe cuánto falta, ni de qué zona es.</p>
+    <div class="comparar">
+      <div class="col"><h3>Hoy</h3>
+        <div class="pda"><div class="pantalla vieja">
+          <div class="barra"><span>Operarios KOROSHI</span><span>10:41</span></div>
+          <div class="p">
+            <div class="caja">Isaac</div>
+            <div class="caja"><span style="font-size:11px;color:#777">Estás haciendo</span><br><b>KO/OUT/01234</b><br>
+              <span class="btn">Continuar</span><span class="btn">Saltar</span><span class="btn">Faltante</span></div>
+            <div class="input">Escribir tarjeta o pedido y Enter</div>
+            <div class="tit">Después te tocan</div>
+            <div class="fila">KO/OUT/01251</div>
+            <div class="fila">KO/OUT/01255</div>
+          </div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Propuesta</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="barra"><span>Lecturas (PDA)</span><span>10:41</span></div>
+          <div class="quien"><div class="avatar">IS</div><div><div class="nom">Isaac</div><div class="det">Hoy: 14 pedidos · 312 uds</div></div><div class="salir">⏏ Salir</div></div>
+          <div class="tarjeta">
+            <div class="sub">Estás haciendo</div>
+            <div class="ref">KO/OUT/01234</div>
+            <div class="tienda">Tienda Centro</div>
+            <div class="chips"><span class="chip">Zona 03</span><span class="chip">8 líneas</span><span class="chip">46 uds</span><span class="chip">⏱ 12 min</span></div>
+            <div class="prog"><i style="width:62%"></i></div>
+            <div class="prog-t"><span>Leídas 29 de 46</span><span>62 %</span></div>
+          </div>
+          <div style="padding:0 10px">
+            <button class="bgrande verde"><span class="ico">▶</span> Continuar</button>
+            <div class="fila2"><button class="bgrande naranja"><span class="ico">⚠</span> Faltante</button><button class="bgrande grisb"><span class="ico">⏭</span> Saltar</button></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <ul class="puntos">
+      <li><b>Referencia grande</b> + tienda: lo que se mira para saber «¿es este?».</li>
+      <li>Chips: zona, líneas, uds y tiempo desde que se empezó. La barra de progreso usa lo ya leído en la OUT (cantidad hecha / reservada). Son lecturas, no hace falta ningún campo nuevo.</li>
+      <li>Así el operario sabe si le queda poco antes de decidir Saltar o Faltante.</li>
+    </ul>
+  </section>
+
+  <!-- 4 -->
+  <section class="idea" id="i4">
+    <h2><span class="etq alta">ALTA</span><span class="etq facil">FÁCIL</span> 4 · Botones grandes, con color y orden fijo</h2>
+    <p class="porque">Hoy los tres botones tienen el mismo tamaño y estilo. Con guantes o con prisa se pulsa el que no toca.</p>
+    <div class="comparar">
+      <div class="col">
+        <ul class="puntos">
+          <li><b>Continuar</b>: verde, el más grande y arriba (es el 90 % de las veces). Ocupa todo el ancho.</li>
+          <li><b>Faltante</b> naranja y <b>Saltar</b> gris, más pequeños, debajo y uno al lado del otro.</li>
+          <li>Altura mínima 52–58 px: se aciertan con guantes.</li>
+          <li>Icono + texto: se reconocen sin leer.</li>
+          <li>Siempre en el mismo sitio: la mano aprende la posición.</li>
+          <li>Opcional: leer con el lector el código <code>CONTINUAR</code> pegado en el carro hace lo mismo que el botón.</li>
+        </ul>
+      </div>
+      <div class="col">
+        <div class="pda"><div class="pantalla" style="min-height:auto;padding:10px">
+          <button class="bgrande verde"><span class="ico">▶</span> Continuar</button>
+          <div class="fila2"><button class="bgrande naranja"><span class="ico">⚠</span> Faltante</button><button class="bgrande grisb"><span class="ico">⏭</span> Saltar</button></div>
+        </div></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5 -->
+  <section class="idea" id="i5">
+    <h2><span class="etq media">MEDIA</span><span class="etq facil">FÁCIL</span> 5 · Saltar en una hoja que sube desde abajo, con los motivos como botones</h2>
+    <p class="porque">Hoy los motivos salen en la misma pantalla y «No saltar» es un enlace pequeño. Si el motivo pide texto, hay que escribir en el campo de abajo.</p>
+    <div class="comparar">
+      <div class="col"><h3>Propuesta</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="barra"><span>Lecturas (PDA)</span><span>10:43</span></div>
+          <div class="tarjeta" style="opacity:.5"><div class="sub">Estás haciendo</div><div class="ref">KO/OUT/01234</div></div>
+          <div class="capa"><div class="hoja">
+            <h4>¿Por qué saltas KO/OUT/01234?</h4>
+            <p>El pedido vuelve a la cola para otro operario.</p>
+            <div class="motivo sel" style="margin:8px 0"><span class="ico">🧍</span><div>Motivo 1<small>(los 2 motivos activos de hoy)</small></div></div>
+            <div class="motivo" style="margin:8px 0"><span class="ico">✎</span><div>Otro motivo<small>Escribir…</small></div></div>
+            <button class="bgrande naranja">Saltar pedido</button>
+            <button class="bgrande" style="background:#fff;color:var(--ink);border:2px solid var(--line)">No, volver</button>
+          </div></div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Hoja inferior que tapa el resto: está claro que es una pregunta que hay que contestar.</li>
+          <li>Motivos como tarjetas grandes con icono. Se marca uno y se confirma con «Saltar pedido» (2 toques, nunca 1 por error).</li>
+          <li>«No, volver» es un botón del mismo tamaño, no un enlace.</li>
+          <li>Si el motivo pide texto, el cuadro de texto aparece <b>dentro de la hoja</b>, no abajo del todo.</li>
+          <li>Los textos de los motivos salen de los motivos activos en Odoo (no cambia nada de los datos).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6 -->
+  <section class="idea" id="i6">
+    <h2><span class="etq alta">ALTA</span><span class="etq facil">FÁCIL</span> 6 · Avisos con color, icono y «qué hago ahora»</h2>
+    <p class="porque">Hoy los avisos son una línea de texto. Algunos son largos («No se ha podido abrir … Pulsa Continuar o ábrela desde el menú…») y en la PDA no se leen.</p>
+    <div class="comparar">
+      <div class="col">
+        <div class="pda"><div class="pantalla" style="min-height:auto;padding-bottom:10px">
+          <div class="aviso ok"><span class="ico">✔</span><span>Hola, Isaac. Abriendo KO/OUT/01234…</span></div>
+          <div class="aviso info"><span class="ico">ℹ</span><span>No tienes más pedidos. Avisa al responsable.</span></div>
+          <div class="aviso warn"><span class="ico">⚠</span><span>KO/OUT/01240 lo está haciendo Marta</span></div>
+          <div class="aviso mal"><span class="ico">✖</span><span>No se ha podido abrir KO/OUT/01234</span><span class="accion">Reintentar</span></div>
+          <div class="aviso mal"><span class="ico">✖</span><span>Esto es un pedido. Primero tu tarjeta</span></div>
+        </div></div>
+      </div>
+      <div class="col">
+        <ul class="puntos">
+          <li>4 tipos fijos: <b style="color:var(--ok)">verde</b> hecho, <b style="color:var(--info)">azul</b> información, <b style="color:var(--warn)">naranja</b> atención, <b style="color:var(--mal)">rojo</b> no se ha hecho.</li>
+          <li>Frases cortas (máx. ~8 palabras). La explicación larga, solo si se toca el aviso.</li>
+          <li>Si hay algo que hacer, un <b>botón dentro del aviso</b> («Reintentar», «Abrir menú») en vez de explicarlo.</li>
+          <li>Los verdes se van solos a los 4 s; los rojos se quedan hasta la siguiente lectura.</li>
+          <li>Hoy ya existen las clases <code>ok / mal / info</code> en <code>_aviso</code>: es sobre todo CSS y acortar textos.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 7 -->
+  <section class="idea" id="i7">
+    <h2><span class="etq media">MEDIA</span><span class="etq facil">FÁCIL</span> 7 · Pantallas de «Abriendo…» y «Pedido hecho»</h2>
+    <p class="porque">Entre leer la tarjeta y que se abra la OUT pasan 1–3 s sin nada claro en pantalla. Si leen otra vez, se pueden pisar lecturas.</p>
+    <div class="comparar">
+      <div class="col"><h3>Abriendo</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="centro"><div class="spinner"></div><div class="gr">KO/OUT/01234</div><div class="pq">Abriendo para Isaac…</div><div class="pq">Tienda Centro · 46 uds</div></div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Al volver con la OUT validada</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="centro"><div class="check">✔</div><div class="gr">¡Hecho!</div><div class="pq">KO/OUT/01234 validada</div>
+            <div style="width:100%;margin-top:18px"><div class="pq" style="margin-bottom:4px">Siguiente en 3 s…</div><button class="bgrande verde">Siguiente: KO/OUT/01251</button><button class="bgrande" style="background:#fff;color:var(--ink);border:2px solid var(--line)">Parar aquí</button></div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <ul class="puntos">
+      <li>Mientras abre, se ignoran las lecturas del lector (evita dobles).</li>
+      <li>Al acabar un pedido, una confirmación clara y la siguiente OUT en cuenta atrás, con opción de parar (para pausas o fin de turno).</li>
+    </ul>
+  </section>
+
+  <!-- 8 -->
+  <section class="idea" id="i8">
+    <h2><span class="etq media">MEDIA</span> 8 · Cola «Después te tocan» y «Cogiendo ahora» más limpias</h2>
+    <p class="porque">Hoy son dos listas de texto seguidas. «Cogiendo ahora» (lo de los demás) ocupa sitio y al operario le sirve poco.</p>
+    <div class="comparar">
+      <div class="col"><h3>Propuesta</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="barra"><span>Lecturas (PDA)</span><span>10:41</span></div>
+          <div class="lista">
+            <div class="t">Después te tocan (3)</div>
+            <div class="item"><span class="num">1</span><div><b>KO/OUT/01251</b><br><span style="color:var(--muted)">Tienda Norte</span></div><span class="der">Zona 03 · 22 uds</span></div>
+            <div class="item"><span class="num">2</span><div><b>KO/OUT/01255</b><br><span style="color:var(--muted)">Tienda Sur</span></div><span class="der">Zona 05 · 40 uds</span></div>
+            <div class="item"><span class="num">3</span><div><b>Z-1011-03</b><br><span style="color:var(--muted)">Agrupación</span></div><span class="der">Zona 03</span></div>
+            <div class="t">▸ Cogiendo ahora (5 operarios)</div>
+          </div>
+          <div class="pie"><span>Menú ☰</span><span>v2.3 (idea)</span></div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Lista numerada: «el 1 es el siguiente», sin pensar.</li>
+          <li>Zona y uds a la derecha <span class="etq servidor">DATO SERVIDOR</span>: ayuda a ver si el siguiente está cerca.</li>
+          <li>«Cogiendo ahora» <b>plegado</b> por defecto, con el número de operarios. Se abre tocándolo.</li>
+          <li>Se mantiene el orden que da Odoo: la pantalla solo lo enseña mejor.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 9 -->
+  <section class="idea" id="i9">
+    <h2><span class="etq alta">ALTA</span><span class="etq facil">FÁCIL</span> 9 · Salir con confirmación y Menú escondido</h2>
+    <p class="porque">«Salir (otro operario)» está pegado a «Menú código de barras». Un toque sin querer cierra la sesión del operario. Y desde el Menú se puede abrir una OUT sin tarjeta (límite conocido).</p>
+    <div class="comparar">
+      <div class="col"><h3>Confirmar salida</h3>
+        <div class="pda"><div class="pantalla">
+          <div class="barra"><span>Lecturas (PDA)</span><span>14:00</span></div>
+          <div class="quien"><div class="avatar">IS</div><div><div class="nom">Isaac</div><div class="det">Hoy: 31 pedidos · 702 uds</div></div><div class="salir">⏏ Salir</div></div>
+          <div class="capa"><div class="hoja">
+            <h4>¿Salir, Isaac?</h4>
+            <p>KO/OUT/01262 sigue siendo tuyo. Hoy: 31 pedidos.</p>
+            <button class="bgrande rojo">Sí, salir</button>
+            <button class="bgrande" style="background:#fff;color:var(--ink);border:2px solid var(--line)">No, seguir</button>
+            <p style="margin-top:8px">O lee la tarjeta de otro operario para cambiar directamente.</p>
+          </div></div>
+        </div></div>
+      </div>
+      <div class="col"><h3>Detalle</h3>
+        <ul class="puntos">
+          <li>Salir siempre pregunta, y avisa si deja un pedido a medias.</li>
+          <li><b>Cambio rápido:</b> si con un operario dentro se lee otra tarjeta, preguntar «¿Cambiar a Marta?» en lugar de cambiar sin avisar.</li>
+          <li><b>Menú</b> pasa a un icono ☰ discreto abajo. En modo <i>tarjeta obligatoria</i> se puede:
+            <br>a) esconder del todo, o b) pedir mantenerlo pulsado 2 s (para el responsable).
+            <br>Así se reduce el agujero de abrir OUT sin tarjeta, sin tocar <code>stock_barcode</code>.</li>
+          <li>Salir automático tras X minutos sin lecturas (opcional, parámetro): evita que el siguiente trabaje con la tarjeta del anterior.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 10 -->
+  <section class="idea" id="i10">
+    <h2><span class="etq media">MEDIA</span><span class="etq facil">FÁCIL</span> 10 · Sin conexión: banda roja fija y reintento</h2>
+    <p class="porque">Hoy sale «Sin conexion con Odoo» como un aviso más, que desaparece con la siguiente lectura.</p>
+    <div class="comparar">
+      <div class="col">
+        <div class="pda"><div class="pantalla" style="min-height:auto">
+          <div class="banda-off"><span>📶 Sin conexión con Odoo</span><span class="r">Reintentar</span></div>
+          <div class="bloq" style="background:#fff;color:var(--ink);min-height:200px"><div class="grande" style="font-size:20px">Espera un momento</div><div class="peq" style="color:var(--muted)">Acércate a una antena WiFi. No leas más códigos hasta que vuelva.</div></div>
+        </div></div>
+      </div>
+      <div class="col">
+        <ul class="puntos">
+          <li>Banda roja fija arriba hasta que vuelva la conexión (reintenta sola cada 5 s).</li>
+          <li>Bloquea lecturas mientras tanto: así no hay lecturas perdidas que el operario cree hechas.</li>
+          <li>Al volver: aviso verde «Conexión recuperada».</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 11 -->
+  <section class="idea" id="i11">
+    <h2><span class="etq baja">BAJA</span><span class="etq facil">FÁCIL</span> 11 · Sonido y vibración según el resultado</h2>
+    <p class="porque">En el almacén se mira poco la pantalla. Un sonido distinto para «bien» y «mal» evita volver a mirar.</p>
+    <ul class="puntos">
+      <li>Bien: un pitido corto agudo. Mal: dos pitidos graves + vibración (si la PDA lo permite en el navegador).</li>
+      <li>Se hace con el propio navegador (Web Audio / <code>navigator.vibrate</code>), sin archivos ni instalar nada.</li>
+      <li>Interruptor en el menú para quitarlo en una PDA concreta (se guarda solo en esa PDA).</li>
+    </ul>
+  </section>
+
+  <!-- prioridades -->
+  <section class="idea" id="prio">
+    <h2>Prioridades y esfuerzo</h2>
+    <p class="porque">Propuesta de orden. Lo de «Paquete 1» es casi todo CSS/plantilla y textos: poco riesgo y se nota mucho.</p>
+    <div class="tabla-wrap"><table class="prio">
+      <thead><tr><th>Paquete</th><th>Ideas</th><th>Qué se toca</th><th>Esfuerzo</th><th>Riesgo</th></tr></thead>
+      <tbody>
+        <tr><td><b>1</b></td><td>1 Pantalla bloqueada · 2 Quién soy · 4 Botones · 6 Avisos · 9 Salir/Menú</td><td>XML + CSS + JS de la pantalla</td><td>Bajo (1 día)</td><td>Bajo. Almacén Nath: solo cambia el aspecto, no lo que hace.</td></tr>
+        <tr><td><b>2</b></td><td>5 Saltar en hoja · 7 Abriendo/Hecho · 10 Sin conexión · 11 Sonido</td><td>JS + CSS</td><td>Medio (1–2 días)</td><td>Bajo–medio: probar bien el bloqueo de lecturas mientras abre.</td></tr>
+        <tr><td><b>3</b></td><td>3 Progreso y chips · 8 Zona/uds en la cola · contador del día</td><td>Controlador (solo lectura) + JS</td><td>Medio</td><td>Bajo: son lecturas, sin campos nuevos ni escrituras.</td></tr>
+      </tbody>
+    </table></div>
+    <ul class="puntos">
+      <li>Se mantiene todo lo de hoy: abrir directo al leer tarjeta, Continuar/Saltar/Faltante al volver, los 2 motivos, el grupo <i>tarjeta obligatoria</i>.</li>
+      <li>Cada paquete sería una versión nueva con fecha (ZIP y script nuevos, sin sobrescribir), probada fuera de horas.</li>
+      <li>Para decidir: decir qué ideas sí / no / cambiadas, y se prepara el Paquete 1 en una versión nueva.</li>
+    </ul>
+  </section>
+</main>
+<footer>KOROSHI · Ideas interfaz Operarios v1 · 10/11/2026 · maqueta, no instalada</footer>
+</body>
+</html>

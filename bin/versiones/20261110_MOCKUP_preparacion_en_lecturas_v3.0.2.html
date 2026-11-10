@@ -1,0 +1,2817 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Maqueta preparación v3.0.2</title>
+<style>body{margin:0;font-family:Roboto,Arial,sans-serif;background:#f0f0f0}
+.o_main_navbar{height:46px;background:#875a7b;color:#fff;display:flex;align-items:center;padding:0 12px}
+#barcode{display:none;padding:20px;font-size:20px} #barcode button{font-size:18px;padding:12px;margin:6px}
+.falt{padding:20px;font-size:20px} .falt button{display:block;font-size:18px;padding:12px;margin:8px 0}
+/* KOROSHI Operarios v2.3.0 - pantalla de la PDA (letra grande, contraste alto). Todo dentro de .o_koroshi_operarios
+   para no tocar el resto de Odoo (salvo body.o_ko_bloqueado, al final). Sin librerias externas. */
+.o_koroshi_operarios {
+    --ko-fondo: #eef1f4;
+    --ko-texto: #111827;
+    --ko-suave: #4b5563;
+    --ko-borde: #c4cbd3;
+    --ko-verde: #1e7b34;
+    --ko-verde-claro: #d3f4dc;
+    --ko-naranja: #c25e00;
+    --ko-gris: #3f4954;
+    --ko-rojo: #b3171c;
+    --ko-rojo-claro: #ffe1e1;
+    --ko-azul: #0b4f9c;
+    --ko-azul-claro: #dcebfb;
+    --ko-ambar: #8a5300;
+    --ko-ambar-claro: #fff1c7;
+    background: var(--ko-fondo);
+    color: var(--ko-texto);
+    min-height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    position: relative;
+}
+.o_koroshi_operarios * { box-sizing: border-box; }
+.o_koroshi_operarios .o_ko_app { max-width: 640px; margin: 0 auto; padding: 10px 12px 16px; }
+.o_koroshi_operarios .o_ko_icono { display: inline-block; min-width: 1.1em; text-align: center; }
+
+/* ---------------------------------------------------------------- botones grandes */
+.o_koroshi_operarios .o_ko_boton {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 58px; padding: 12px 14px; margin: 0 0 10px;
+    border: 0; border-radius: 12px; font-size: 22px; font-weight: bold; line-height: 1.15;
+    color: #fff; background: var(--ko-verde); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.o_koroshi_operarios .o_ko_boton:active { filter: brightness(0.88); }
+.o_koroshi_operarios .o_ko_boton:focus-visible { outline: 4px solid #111827; outline-offset: 2px; }
+.o_koroshi_operarios .o_ko_boton:disabled { background: #c4cbd3; color: #4b5563; cursor: default; filter: none; }
+.o_koroshi_operarios .o_ko_gris { background: var(--ko-gris); }
+.o_koroshi_operarios .o_ko_naranja { background: var(--ko-naranja); }
+.o_koroshi_operarios .o_ko_rojo { background: var(--ko-rojo); }
+
+/* ---------------------------------------------------------------- cabecera "quien soy" */
+.o_koroshi_operarios .o_ko_cabecera {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 2px solid var(--ko-borde); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;
+}
+.o_koroshi_operarios .o_ko_avatar {
+    flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #9aa5b1; color: #fff; font-size: 22px; font-weight: bold; letter-spacing: 0.5px;
+}
+.o_koroshi_operarios .o_ko_cabecera_texto { flex: 1 1 auto; min-width: 0; }
+.o_koroshi_operarios .o_ko_quien { font-size: 26px; font-weight: bold; line-height: 1.15; overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_quien.o_ko_vacio { font-size: 18px; font-weight: normal; color: var(--ko-suave); }
+.o_koroshi_operarios .o_ko_dia { font-size: 15px; color: var(--ko-suave); margin-top: 2px; }
+.o_koroshi_operarios .o_ko_dia b { color: var(--ko-texto); }
+.o_koroshi_operarios .o_ko_salir {
+    flex: 0 0 auto; min-height: 48px; padding: 8px 12px; border: 2px solid var(--ko-gris); border-radius: 10px;
+    background: #fff; color: var(--ko-gris); font-size: 17px; font-weight: bold; cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- avisos (ok / info / warn / mal) */
+.o_koroshi_operarios .o_ko_aviso { display: none; }
+.o_koroshi_operarios .o_ko_aviso.o_ko_ok,
+.o_koroshi_operarios .o_ko_aviso.o_ko_info,
+.o_koroshi_operarios .o_ko_aviso.o_ko_warn,
+.o_koroshi_operarios .o_ko_aviso.o_ko_mal {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 20px; font-weight: bold; line-height: 1.25;
+    border-left: 8px solid transparent;
+}
+.o_koroshi_operarios .o_ko_aviso .o_ko_aviso_icono { font-size: 24px; flex: 0 0 auto; }
+.o_koroshi_operarios .o_ko_aviso .o_ko_aviso_texto { flex: 1 1 160px; min-width: 0; }
+.o_koroshi_operarios .o_ko_aviso.o_ko_ok { background: var(--ko-verde-claro); color: #0f4d20; border-left-color: var(--ko-verde); }
+.o_koroshi_operarios .o_ko_aviso.o_ko_info { background: var(--ko-azul-claro); color: #082f5e; border-left-color: var(--ko-azul); }
+.o_koroshi_operarios .o_ko_aviso.o_ko_warn { background: var(--ko-ambar-claro); color: #5c3700; border-left-color: #d98e04; }
+.o_koroshi_operarios .o_ko_aviso.o_ko_mal { background: var(--ko-rojo-claro); color: #7f0d10; border-left-color: var(--ko-rojo); }
+.o_koroshi_operarios .o_ko_aviso_accion {
+    flex: 0 0 auto; min-height: 44px; padding: 6px 14px; border: 2px solid currentColor; border-radius: 10px;
+    background: #fff; color: inherit; font-size: 17px; font-weight: bold; cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- pedido actual */
+.o_koroshi_operarios .o_ko_caja { border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.o_koroshi_operarios .o_ko_actual { background: #fff; border: 3px solid var(--ko-verde); }
+.o_koroshi_operarios .o_ko_sub { display: block; font-size: 16px; color: var(--ko-suave); }
+.o_koroshi_operarios .o_ko_actual_ref { font-size: 30px; font-weight: bold; line-height: 1.1; margin: 2px 0 4px; overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_actual_tienda { font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 8px; overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_datos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.o_koroshi_operarios .o_ko_dato {
+    display: inline-block; padding: 4px 10px; border-radius: 999px; background: #e5e9ee; color: #1f2937;
+    font-size: 16px; font-weight: bold;
+}
+.o_koroshi_operarios .o_ko_dato.o_ko_zona { background: #1f2937; color: #fff; }
+.o_koroshi_operarios .o_ko_progreso { margin-bottom: 12px; }
+.o_koroshi_operarios .o_ko_barra { height: 14px; border-radius: 7px; background: #e5e9ee; overflow: hidden; border: 1px solid var(--ko-borde); }
+.o_koroshi_operarios .o_ko_barra_lleno { display: block; height: 100%; width: 0; background: var(--ko-verde); transition: width 0.4s ease; }
+.o_koroshi_operarios .o_ko_progreso_texto { font-size: 15px; color: var(--ko-suave); margin-top: 4px; }
+.o_koroshi_operarios .o_ko_continuar { background: var(--ko-verde); font-size: 24px; min-height: 64px; }
+/* Faltante (de koroshi_faltantes, detras de .o_ko_dejar) y Saltar en la misma fila: Faltante naranja delante */
+.o_koroshi_operarios .o_ko_botonera { display: flex; gap: 10px; }
+.o_koroshi_operarios .o_ko_botonera > .o_ko_boton,
+.o_koroshi_operarios .o_ko_botonera > button { flex: 1 1 0; margin: 0; min-width: 0; }
+.o_koroshi_operarios .o_ko_saltar { background: var(--ko-gris); }
+.o_koroshi_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante {
+    order: -1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: auto; min-height: 58px; padding: 12px 14px; margin: 0; border: 0; border-radius: 12px;
+    background: var(--ko-naranja); color: #fff; font-size: 22px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante::before { content: "\26A0"; font-size: 20px; }
+
+/* ---------------------------------------------------------------- entrada y lector */
+.o_koroshi_operarios .o_ko_entrada { margin: 6px 0 4px; }
+.o_koroshi_operarios .o_ko_codigo {
+    width: 100%; font-size: 18px; padding: 12px; min-height: 52px;
+    border: 2px solid #8792a0; border-radius: 12px; background: #fff; color: var(--ko-texto);
+}
+.o_koroshi_operarios .o_ko_codigo:focus { border-color: var(--ko-verde); outline: none; box-shadow: 0 0 0 3px rgba(30, 123, 52, 0.25); }
+.o_koroshi_operarios .o_ko_lector { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ko-suave); margin: 6px 2px 0; cursor: pointer; }
+.o_koroshi_operarios .o_ko_punto { width: 14px; height: 14px; border-radius: 50%; background: #8792a0; flex: 0 0 14px; }
+.o_koroshi_operarios .o_ko_lector.o_ko_listo { color: var(--ko-verde); font-weight: bold; }
+.o_koroshi_operarios .o_ko_lector.o_ko_listo .o_ko_punto { background: #22a447; animation: o_ko_latido 1.4s ease-in-out infinite; }
+@keyframes o_ko_latido {
+    0% { box-shadow: 0 0 0 0 rgba(34, 164, 71, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 164, 71, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 164, 71, 0); }
+}
+
+/* ---------------------------------------------------------------- cola y "cogiendo ahora" */
+.o_koroshi_operarios .o_ko_titulo { margin: 16px 0 6px; font-size: 16px; font-weight: bold; color: var(--ko-suave); }
+.o_koroshi_operarios .o_ko_cola { list-style: none; margin: 0; padding: 0; counter-reset: o_ko_n; }
+.o_koroshi_operarios .o_ko_cola > li {
+    counter-increment: o_ko_n; display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1px solid var(--ko-borde); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+}
+.o_koroshi_operarios .o_ko_cola > li::before {
+    content: counter(o_ko_n); flex: 0 0 30px; height: 30px; border-radius: 50%; background: #1f2937; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px;
+}
+.o_koroshi_operarios .o_ko_cola_txt { flex: 1 1 auto; min-width: 0; }
+.o_koroshi_operarios .o_ko_cola_ref { display: block; font-size: 18px; font-weight: bold; overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_cola_tienda { display: block; font-size: 15px; color: var(--ko-suave); overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_cola_extra { flex: 0 0 auto; text-align: right; font-size: 15px; font-weight: bold; }
+.o_koroshi_operarios .o_ko_cola_extra .o_ko_dato { font-size: 13px; padding: 2px 8px; }
+.o_koroshi_operarios .o_ko_ahora { margin-top: 14px; }
+.o_koroshi_operarios .o_ko_ahora > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; margin: 0; }
+.o_koroshi_operarios .o_ko_n_operarios {
+    display: inline-block; min-width: 26px; padding: 1px 8px; border-radius: 999px; background: #1f2937; color: #fff; font-size: 14px; text-align: center;
+}
+.o_koroshi_operarios .o_ko_fila { background: #fff; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 16px; display: flex; justify-content: space-between; gap: 8px; }
+
+/* ---------------------------------------------------------------- pie: menu discreto, reloj, sonido */
+.o_koroshi_operarios .o_ko_pie { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; color: var(--ko-suave); font-size: 16px; }
+.o_koroshi_operarios .o_ko_menu,
+.o_koroshi_operarios .o_ko_sonido {
+    width: 48px; height: 48px; border: 1px solid var(--ko-borde); border-radius: 10px; background: #fff;
+    color: var(--ko-suave); font-size: 22px; cursor: pointer; position: relative; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+.o_koroshi_operarios .o_ko_sonido.o_ko_mudo { opacity: 0.55; }
+/* pulsacion larga (2 s) en modo tarjeta obligatoria: se llena de abajo arriba */
+.o_koroshi_operarios .o_ko_menu::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(30, 123, 52, 0.35);
+}
+.o_koroshi_operarios .o_ko_menu.o_ko_cargando::after { height: 100%; transition: height 2s linear; }
+
+/* ---------------------------------------------------------------- sin conexion */
+.o_koroshi_operarios .o_ko_offline {
+    position: sticky; top: 0; z-index: 1060; display: flex; align-items: center; gap: 10px;
+    background: var(--ko-rojo); color: #fff; font-size: 18px; font-weight: bold; padding: 12px 14px;
+}
+.o_koroshi_operarios.o_ko_sin_red .o_ko_codigo { background: #f3f4f6; }
+
+/* ---------------------------------------------------------------- pantalla bloqueada "Lee tu tarjeta" */
+.o_koroshi_operarios .o_ko_bloqueo {
+    position: fixed; inset: 0; z-index: 1040; background: #10233a; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px;
+    text-align: center; cursor: pointer;
+}
+.o_koroshi_operarios .o_ko_bloqueo_centro { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 420px; width: 100%; }
+.o_koroshi_operarios .o_ko_bloqueo_tarjeta {
+    width: 150px; height: 96px; border-radius: 12px; background: #fff; position: relative; margin-bottom: 26px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+.o_koroshi_operarios .o_ko_bloqueo_banda { position: absolute; left: 0; right: 0; top: 14px; height: 16px; background: #1f2937; }
+.o_koroshi_operarios .o_ko_bloqueo_linea { position: absolute; left: 14px; right: 14px; bottom: 30px; height: 8px; border-radius: 4px; background: #c4cbd3; }
+.o_koroshi_operarios .o_ko_bloqueo_linea.o_ko_corta { right: 60px; bottom: 14px; }
+.o_koroshi_operarios .o_ko_bloqueo_titulo { font-size: 40px; font-weight: bold; margin: 0 0 10px; color: #fff; }
+.o_koroshi_operarios .o_ko_bloqueo_texto { font-size: 20px; line-height: 1.3; margin: 0 0 22px; color: #dbe4ee; }
+.o_koroshi_operarios .o_ko_lector_grande { font-size: 20px; color: #dbe4ee; justify-content: center; margin: 0; }
+.o_koroshi_operarios .o_ko_lector_grande .o_ko_punto { width: 20px; height: 20px; flex-basis: 20px; }
+.o_koroshi_operarios .o_ko_lector_grande.o_ko_listo { color: #8ff0a8; }
+.o_koroshi_operarios .o_ko_bloqueo_aviso { display: none; margin-top: 22px; padding: 14px 16px; border-radius: 12px; font-size: 20px; font-weight: bold; width: 100%; }
+.o_koroshi_operarios .o_ko_bloqueo_aviso.o_ko_mal { display: block; background: var(--ko-rojo); color: #fff; }
+.o_koroshi_operarios .o_ko_bloqueo_aviso.o_ko_ok { display: block; background: var(--ko-verde); color: #fff; }
+.o_koroshi_operarios .o_ko_bloqueo_pie { flex: 0 0 auto; font-size: 18px; color: #9fb3c8; }
+/* en bloqueo el campo sigue con foco (el lector escribe en el) pero no se ve ni saca el teclado */
+.o_koroshi_operarios.o_ko_modo_bloqueo .o_ko_app { visibility: hidden; }
+.o_koroshi_operarios.o_ko_modo_bloqueo .o_ko_codigo {
+    visibility: visible; position: fixed; top: 0; left: 0; width: 2px; height: 2px; min-height: 0; padding: 0;
+    border: 0; opacity: 0; z-index: 1041;
+}
+
+/* ---------------------------------------------------------------- capa: abriendo / hecho */
+.o_koroshi_operarios .o_ko_capa {
+    position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center;
+    padding: 24px 20px; text-align: center; background: #10233a; color: #fff;
+}
+.o_koroshi_operarios .o_ko_capa.o_ko_capa_hecho { background: var(--ko-verde); }
+.o_koroshi_operarios .o_ko_abriendo,
+.o_koroshi_operarios .o_ko_hecho { width: 100%; max-width: 420px; }
+.o_koroshi_operarios .o_ko_spinner {
+    width: 72px; height: 72px; margin: 0 auto 24px; border-radius: 50%;
+    border: 8px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: o_ko_gira 0.9s linear infinite;
+}
+@keyframes o_ko_gira { to { transform: rotate(360deg); } }
+.o_koroshi_operarios .o_ko_capa_sub { font-size: 20px; color: #e3ebf3; margin: 4px 0; }
+.o_koroshi_operarios .o_ko_capa_ref { font-size: 38px; font-weight: bold; line-height: 1.1; margin: 6px 0; overflow-wrap: anywhere; }
+.o_koroshi_operarios .o_ko_capa_nota { margin-top: 26px; font-size: 17px; color: #ffd8a8; font-weight: bold; }
+.o_koroshi_operarios .o_ko_hecho_check {
+    width: 96px; height: 96px; margin: 0 auto 12px; border-radius: 50%; background: #fff; color: var(--ko-verde);
+    font-size: 64px; line-height: 96px; font-weight: bold;
+}
+.o_koroshi_operarios .o_ko_hecho_titulo { font-size: 42px; font-weight: bold; margin-bottom: 4px; }
+.o_koroshi_operarios .o_ko_hecho_siguiente { margin: 22px 0 18px; padding: 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.22); }
+.o_koroshi_operarios .o_ko_cuenta { font-size: 22px; margin-top: 10px; }
+.o_koroshi_operarios .o_ko_cuenta_n { font-size: 32px; }
+.o_koroshi_operarios .o_ko_hecho_fin { margin: 22px 0 18px; font-size: 22px; font-weight: bold; }
+.o_koroshi_operarios .o_ko_capa .o_ko_parar { background: #fff; color: var(--ko-texto); }
+
+/* ---------------------------------------------------------------- hoja inferior (saltar / confirmar) */
+.o_koroshi_operarios .o_ko_hoja { position: fixed; inset: 0; z-index: 1055; }
+.o_koroshi_operarios .o_ko_hoja_fondo { position: absolute; inset: 0; background: rgba(17, 24, 39, 0.6); }
+.o_koroshi_operarios .o_ko_hoja_panel {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow-y: auto;
+    max-width: 640px; margin: 0 auto; background: #fff; border-radius: 18px 18px 0 0; padding: 10px 16px 18px;
+    animation: o_ko_sube 0.18s ease-out;
+}
+@keyframes o_ko_sube { from { transform: translateY(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.o_koroshi_operarios .o_ko_hoja_asa { width: 46px; height: 5px; border-radius: 3px; background: #c4cbd3; margin: 0 auto 12px; }
+.o_koroshi_operarios .o_ko_hoja_titulo { font-size: 24px; font-weight: bold; margin-bottom: 12px; line-height: 1.2; }
+.o_koroshi_operarios .o_ko_salto_motivos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.o_koroshi_operarios .o_ko_motivo {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 14px; text-align: left;
+    border: 3px solid var(--ko-borde); border-radius: 14px; background: #fff; color: var(--ko-texto);
+    font-size: 20px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_operarios .o_ko_motivo .o_ko_motivo_txt { flex: 1 1 auto; }
+.o_koroshi_operarios .o_ko_motivo .o_ko_motivo_destino { display: block; font-size: 15px; font-weight: normal; color: var(--ko-suave); margin-top: 2px; }
+.o_koroshi_operarios .o_ko_motivo .o_ko_marca {
+    flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--ko-borde);
+}
+.o_koroshi_operarios .o_ko_motivo.o_ko_elegido { border-color: var(--ko-naranja); background: #fff4e6; }
+.o_koroshi_operarios .o_ko_motivo.o_ko_elegido .o_ko_marca { border-color: var(--ko-naranja); background: var(--ko-naranja); box-shadow: inset 0 0 0 4px #fff; }
+.o_koroshi_operarios .o_ko_nota_caja { margin-bottom: 14px; }
+.o_koroshi_operarios .o_ko_nota_label { display: block; font-size: 17px; font-weight: bold; margin-bottom: 6px; }
+.o_koroshi_operarios .o_ko_nota { width: 100%; min-height: 52px; font-size: 20px; padding: 10px 12px; border: 2px solid var(--ko-naranja); border-radius: 12px; }
+.o_koroshi_operarios .o_ko_confirmar_texto { font-size: 19px; line-height: 1.35; margin-bottom: 16px; color: #1f2937; }
+.o_koroshi_operarios .o_ko_confirmar_texto .o_ko_warn_txt { display: block; margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--ko-ambar-claro); color: #5c3700; font-weight: bold; }
+
+/* ---------------------------------------------------------------- movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+    .o_koroshi_operarios *,
+    .o_koroshi_operarios *::before,
+    .o_koroshi_operarios *::after { animation: none !important; transition: none !important; }
+    .o_koroshi_operarios .o_ko_spinner { border-top-color: rgba(255, 255, 255, 0.25); border-left-color: #fff; border-right-color: #fff; }
+    .o_koroshi_operarios .o_ko_lector.o_ko_listo .o_ko_punto { box-shadow: 0 0 0 4px rgba(34, 164, 71, 0.45); }
+    .o_koroshi_operarios .o_ko_menu.o_ko_cargando::after { height: 100%; }
+}
+
+/* v2.2.2: grupo "tarjeta obligatoria" sin tarjeta: sin barra de Odoo (menu de aplicaciones y de usuario).
+   La clase solo se pone en body mientras se ve Lecturas sin operario. */
+body.o_ko_bloqueado .o_main_navbar { display: none !important; }
+
+/* KOROSHI Preparación en Lecturas v3.0.0 - pantalla de la PDA (mismo estilo que Lecturas v2.3: letra grande,
+   contraste alto, botones para guantes). Todo dentro de .o_koroshi_preparacion. Sin librerías externas. */
+.o_koroshi_preparacion {
+    --kp-fondo: #eef1f4;
+    --kp-texto: #111827;
+    --kp-suave: #4b5563;
+    --kp-borde: #c4cbd3;
+    --kp-verde: #1e7b34;
+    --kp-verde-claro: #d3f4dc;
+    --kp-naranja: #c25e00;
+    --kp-gris: #3f4954;
+    --kp-rojo: #b3171c;
+    --kp-rojo-claro: #ffe1e1;
+    --kp-azul: #0b4f9c;
+    --kp-azul-claro: #dcebfb;
+    --kp-ambar: #8a5300;
+    --kp-ambar-claro: #fff1c7;
+    --kp-caja: #f2b705;
+    background: var(--kp-fondo);
+    color: var(--kp-texto);
+    min-height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    position: relative;
+}
+.o_koroshi_preparacion * { box-sizing: border-box; }
+.o_koroshi_preparacion .o_kp_app { max-width: 640px; margin: 0 auto; padding: 10px 12px 16px; }
+
+/* ---------------------------------------------------------------- cabecera */
+.o_koroshi_preparacion .o_kp_cabecera {
+    display: flex; align-items: center; gap: 10px; background: #fff; border: 2px solid var(--kp-borde);
+    border-radius: 14px; padding: 8px 10px; margin-bottom: 10px;
+}
+.o_koroshi_preparacion .o_kp_volver {
+    flex: 0 0 52px; height: 52px; border: 2px solid var(--kp-gris); border-radius: 10px; background: #fff;
+    color: var(--kp-gris); font-size: 28px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_cabecera_texto { flex: 1 1 auto; min-width: 0; }
+.o_koroshi_preparacion .o_kp_ref { font-size: 22px; font-weight: bold; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_tienda { font-size: 15px; color: var(--kp-suave); overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_operario {
+    flex: 0 1 auto; font-size: 15px; font-weight: bold; color: var(--kp-azul); text-align: right; max-width: 35%;
+    overflow-wrap: anywhere;
+}
+
+/* ---------------------------------------------------------------- progreso */
+.o_koroshi_preparacion .o_kp_progreso { margin-bottom: 10px; }
+.o_koroshi_preparacion .o_kp_barra { height: 14px; background: #d5dbe1; border-radius: 7px; overflow: hidden; }
+.o_koroshi_preparacion .o_kp_barra_lleno { height: 100%; width: 0; background: var(--kp-verde); transition: width .2s; }
+.o_koroshi_preparacion .o_kp_progreso_fila {
+    display: flex; justify-content: space-between; gap: 8px; margin-top: 4px; font-size: 16px; font-weight: bold;
+}
+.o_koroshi_preparacion .o_kp_sin_caja { color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_sin_caja.o_kp_hay {
+    color: #3d2e00; background: var(--kp-ambar-claro); border: 2px solid var(--kp-caja); border-radius: 8px; padding: 0 8px;
+}
+
+/* ---------------------------------------------------------------- siguiente */
+.o_koroshi_preparacion .o_kp_siguiente,
+.o_koroshi_preparacion .o_kp_completa {
+    background: #fff; border: 3px solid var(--kp-azul); border-radius: 14px; padding: 12px 14px; margin-bottom: 10px;
+}
+.o_koroshi_preparacion .o_kp_etiqueta { font-size: 14px; text-transform: uppercase; letter-spacing: .5px; color: var(--kp-suave); }
+.o_koroshi_preparacion .o_kp_ubicacion { font-size: 34px; font-weight: bold; line-height: 1.1; color: var(--kp-azul); overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_producto_ref { font-size: 24px; font-weight: bold; margin-top: 6px; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_producto { font-size: 17px; color: var(--kp-suave); overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_cuantas { font-size: 18px; font-weight: bold; margin-top: 6px; }
+.o_koroshi_preparacion .o_kp_completa { border-color: var(--kp-verde); background: var(--kp-verde-claro); }
+.o_koroshi_preparacion .o_kp_completa_titulo { font-size: 26px; font-weight: bold; color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_completa_texto { font-size: 18px; margin-top: 4px; }
+
+/* ---------------------------------------------------------------- avisos */
+.o_koroshi_preparacion .o_kp_aviso { min-height: 0; margin-bottom: 10px; font-size: 18px; font-weight: bold; }
+.o_koroshi_preparacion .o_kp_aviso:not(:empty) {
+    display: flex; gap: 8px; align-items: flex-start; padding: 10px 12px; border-radius: 10px; border: 2px solid;
+}
+.o_koroshi_preparacion .o_kp_aviso_icono { flex: 0 0 auto; }
+.o_koroshi_preparacion .o_kp_ok { background: var(--kp-verde-claro); border-color: var(--kp-verde); color: #0d4a1d; }
+.o_koroshi_preparacion .o_kp_info { background: var(--kp-azul-claro); border-color: var(--kp-azul); color: #072f5e; }
+.o_koroshi_preparacion .o_kp_warn { background: var(--kp-ambar-claro); border-color: var(--kp-ambar); color: #4a2d00; }
+.o_koroshi_preparacion .o_kp_mal { background: var(--kp-rojo-claro); border-color: var(--kp-rojo); color: #6b0d10; }
+
+/* ---------------------------------------------------------------- botones */
+.o_koroshi_preparacion .o_kp_boton {
+    display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 58px;
+    padding: 12px 14px; margin: 0 0 10px; border: 0; border-radius: 12px; font-size: 22px; font-weight: bold;
+    line-height: 1.15; color: #fff; background: var(--kp-verde); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.o_koroshi_preparacion .o_kp_boton:active { filter: brightness(0.88); }
+.o_koroshi_preparacion .o_kp_boton:focus-visible,
+.o_koroshi_preparacion .o_kp_volver:focus-visible { outline: 4px solid #111827; outline-offset: 2px; }
+.o_koroshi_preparacion .o_kp_boton:disabled { background: #c4cbd3; color: #4b5563; cursor: default; filter: none; }
+.o_koroshi_preparacion .o_kp_caja { background: var(--kp-caja); color: #1f1600; }
+.o_koroshi_preparacion .o_kp_validar { background: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_destacado { min-height: 72px; font-size: 26px; box-shadow: 0 0 0 4px #111827 inset; }
+.o_koroshi_preparacion .o_kp_fila_botones { display: flex; gap: 10px; }
+.o_koroshi_preparacion .o_kp_fila_botones .o_kp_boton { flex: 1 1 0; font-size: 19px; }
+.o_koroshi_preparacion .o_kp_faltante { background: var(--kp-naranja); }
+.o_koroshi_preparacion .o_kp_deshacer,
+.o_koroshi_preparacion .o_kp_gris { background: var(--kp-gris); }
+.o_koroshi_preparacion .o_kp_blanco { background: #fff; color: var(--kp-gris); border: 2px solid var(--kp-gris); }
+
+/* ---------------------------------------------------------------- líneas */
+.o_koroshi_preparacion .o_kp_ver_lineas {
+    width: 100%; min-height: 48px; margin: 4px 0 8px; border: 2px solid var(--kp-borde); border-radius: 10px;
+    background: #fff; font-size: 17px; font-weight: bold; text-align: left; padding: 8px 12px; cursor: pointer; color: var(--kp-texto);
+}
+.o_koroshi_preparacion .o_kp_lineas { list-style: none; margin: 0 0 10px; padding: 0; }
+.o_koroshi_preparacion .o_kp_lineas li {
+    display: flex; gap: 8px; align-items: center; background: #fff; border: 2px solid var(--kp-borde);
+    border-radius: 10px; padding: 8px 10px; margin-bottom: 6px; font-size: 15px;
+}
+.o_koroshi_preparacion .o_kp_lineas li.o_kp_ahora { border-color: var(--kp-azul); border-width: 3px; }
+.o_koroshi_preparacion .o_kp_lineas li.o_kp_hecha { background: #f3f8f4; color: var(--kp-suave); }
+.o_koroshi_preparacion .o_kp_l_marca { flex: 0 0 22px; font-weight: bold; color: var(--kp-verde); font-size: 20px; }
+.o_koroshi_preparacion .o_kp_l_texto { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.o_koroshi_preparacion .o_kp_l_ubi { font-weight: bold; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_l_prod, .o_koroshi_preparacion .o_kp_l_caja { overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_l_cant { flex: 0 0 auto; font-weight: bold; font-size: 18px; }
+.o_koroshi_preparacion .o_kp_cajas { font-size: 15px; color: var(--kp-suave); margin-bottom: 10px; overflow-wrap: anywhere; }
+
+/* ---------------------------------------------------------------- lector */
+.o_koroshi_preparacion .o_kp_codigo {
+    width: 100%; min-height: 48px; font-size: 18px; padding: 8px 12px; border: 2px solid var(--kp-borde);
+    border-radius: 10px; margin-bottom: 8px; background: #fff; color: var(--kp-texto);
+}
+.o_koroshi_preparacion .o_kp_pie { display: flex; justify-content: center; }
+.o_koroshi_preparacion .o_kp_lector {
+    display: inline-flex; align-items: center; gap: 8px; font-size: 16px; font-weight: bold; color: var(--kp-suave);
+    cursor: pointer; padding: 6px 10px;
+}
+.o_koroshi_preparacion .o_kp_punto { width: 14px; height: 14px; border-radius: 50%; background: #9aa5b1; }
+.o_koroshi_preparacion .o_kp_lector.o_kp_listo { color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_lector.o_kp_listo .o_kp_punto { background: #22a447; animation: o_kp_latido 1.4s infinite; }
+@keyframes o_kp_latido { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* ---------------------------------------------------------------- hoja inferior */
+.o_koroshi_preparacion .o_kp_hoja { position: fixed; inset: 0; z-index: 1050; }
+.o_koroshi_preparacion .o_kp_hoja_fondo { position: absolute; inset: 0; background: rgba(17, 24, 39, .55); }
+.o_koroshi_preparacion .o_kp_hoja_panel {
+    position: absolute; left: 0; right: 0; bottom: 0; max-width: 640px; margin: 0 auto; background: #fff;
+    border-radius: 18px 18px 0 0; padding: 18px 16px 14px; max-height: 92%; overflow: auto;
+}
+.o_koroshi_preparacion .o_kp_hoja_caja { text-align: center; }
+.o_koroshi_preparacion .o_kp_hoja_icono { font-size: 64px; line-height: 1; }
+.o_koroshi_preparacion .o_kp_hoja_titulo { font-size: 30px; font-weight: bold; margin: 8px 0; }
+.o_koroshi_preparacion .o_kp_hoja_texto,
+.o_koroshi_preparacion .o_kp_hoja_pregunta p { font-size: 19px; margin: 0 0 12px; }
+.o_koroshi_preparacion .o_kp_hoja_aviso { font-size: 18px; font-weight: bold; margin-bottom: 12px; }
+.o_koroshi_preparacion .o_kp_hoja_aviso.o_kp_mal { padding: 10px 12px; border-radius: 10px; border: 2px solid; }
+
+/* ---------------------------------------------------------------- capa validando / validada */
+.o_koroshi_preparacion .o_kp_capa {
+    position: fixed; inset: 0; z-index: 1060; background: rgba(238, 241, 244, .96);
+    display: flex; align-items: center; justify-content: center;
+}
+.o_koroshi_preparacion .o_kp_capa_centro { text-align: center; padding: 20px; }
+.o_koroshi_preparacion .o_kp_capa_texto { font-size: 28px; font-weight: bold; margin-top: 14px; overflow-wrap: anywhere; }
+.o_koroshi_preparacion .o_kp_rueda {
+    width: 56px; height: 56px; margin: 0 auto; border-radius: 50%; border: 6px solid #c4cbd3;
+    border-top-color: var(--kp-azul); animation: o_kp_girar 1s linear infinite;
+}
+.o_koroshi_preparacion .o_kp_capa_hecho { background: var(--kp-verde-claro); }
+.o_koroshi_preparacion .o_kp_capa_hecho .o_kp_rueda { display: none; }
+.o_koroshi_preparacion .o_kp_capa_hecho .o_kp_capa_texto { color: var(--kp-verde); font-size: 32px; }
+@keyframes o_kp_girar { to { transform: rotate(360deg); } }
+
+/* ---------------------------------------------------------------- sin conexión */
+.o_koroshi_preparacion .o_kp_offline {
+    position: sticky; top: 0; z-index: 1070; background: var(--kp-rojo); color: #fff; font-size: 18px;
+    font-weight: bold; padding: 10px 12px; display: flex; gap: 8px;
+}
+.o_koroshi_preparacion.o_kp_sin_red .o_kp_app { opacity: .6; }
+
+@media (prefers-reduced-motion: reduce) {
+    .o_koroshi_preparacion .o_kp_lector.o_kp_listo .o_kp_punto,
+    .o_koroshi_preparacion .o_kp_rueda { animation: none; }
+    .o_koroshi_preparacion .o_kp_barra_lleno { transition: none; }
+}
+
+/* ---------------------------------------------------------------- v3.0.1: flechas y foto */
+.o_koroshi_preparacion .o_kp_nav { display: flex; align-items: center; gap: 8px; margin-bottom: 2px; }
+.o_koroshi_preparacion .o_kp_nav_centro { flex: 1 1 auto; text-align: center; }
+.o_koroshi_preparacion .o_kp_posicion { font-size: 14px; color: var(--kp-suave); }
+.o_koroshi_preparacion .o_kp_anterior,
+.o_koroshi_preparacion .o_kp_posterior {
+    flex: 0 0 56px; height: 48px; border: 2px solid var(--kp-azul); border-radius: 10px; background: #fff;
+    color: var(--kp-azul); font-size: 22px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_anterior:disabled,
+.o_koroshi_preparacion .o_kp_posterior:disabled { border-color: var(--kp-borde); color: #9aa5b1; cursor: default; }
+.o_koroshi_preparacion .o_kp_articulo { display: flex; gap: 12px; align-items: flex-start; margin-top: 6px; }
+.o_koroshi_preparacion .o_kp_foto {
+    flex: 0 0 104px; width: 104px; height: 104px; object-fit: contain; background: #fff;
+    border: 1px solid var(--kp-borde); border-radius: 10px;
+}
+.o_koroshi_preparacion .o_kp_articulo_texto { flex: 1 1 auto; min-width: 0; }
+.o_koroshi_preparacion .o_kp_articulo .o_kp_producto_ref { margin-top: 0; }
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_otra { border-style: dashed; }
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_hecha { border-color: var(--kp-verde); background: #f3f8f4; }
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_hecha .o_kp_ubicacion { color: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_ir_pendiente {
+    width: 100%; min-height: 48px; margin-top: 10px; border: 2px solid var(--kp-azul); border-radius: 10px;
+    background: var(--kp-azul-claro); color: var(--kp-azul); font-size: 18px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_lineas li { cursor: pointer; }
+.o_koroshi_preparacion .o_kp_l_foto {
+    flex: 0 0 44px; width: 44px; height: 44px; object-fit: contain; background: #fff; border-radius: 6px;
+}
+
+body{background:#d9dee4}
+.mq{display:flex;gap:20px;align-items:flex-start;justify-content:center;padding:16px;flex-wrap:wrap}
+.mq_panel{width:300px;max-width:100%;background:#fff;border-radius:12px;padding:14px;font:15px Arial,sans-serif;color:#111827;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+.mq_panel h1{font-size:18px;margin:0 0 4px}.mq_panel p{margin:4px 0 10px;color:#4b5563;font-size:13px}
+.mq_panel h2{font-size:13px;text-transform:uppercase;letter-spacing:.5px;color:#4b5563;margin:14px 0 6px}
+.mq_panel button{display:block;width:100%;text-align:left;margin:0 0 6px;padding:9px 10px;border:1px solid #c4cbd3;border-radius:8px;background:#f6f8fa;font:14px Arial,sans-serif;cursor:pointer;color:#111827}
+.mq_panel button.mq_on{background:#ffe1e1;border-color:#b3171c}
+.mq_pda{width:375px;max-width:100%;height:780px;background:#eef1f4;border:10px solid #1f2937;border-radius:28px;overflow:auto;position:relative;transform:translateZ(0)}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/underscore.js/1.13.6/underscore-min.js"></script>
+</head><body>
+<div class="mq"><div class="mq_panel">
+<h1>Preparación en Lecturas v3.0.2 · maqueta</h1>
+<p>JS, plantilla y CSS reales de koroshi_preparacion v3.0.2 y koroshi_operarios v2.3.1 con un servidor simulado (datos inventados). La pantalla de Faltante es una imitación.</p>
+<h2>Empezar</h2>
+<button onclick="MOCK.arrancar()">Reiniciar Lecturas</button>
+<button onclick="MOCK.leer('OP9990001')">Tarjeta Isaac (activado)</button>
+<button onclick="MOCK.leer('OP0000005')">Tarjeta Marta (no activada: app de siempre)</button>
+<h2>Leer en la OUT KO/OUT/04512</h2>
+<button onclick="MOCK.leer('8435000000017')">EAN camiseta M (1 ud)</button>
+<button onclick="MOCK.leer('8435000000024')">EAN camiseta L (2 uds)</button>
+<button onclick="MOCK.leer('8435000000031')">EAN pantalón 38 (1 ud)</button>
+<button onclick="MOCK.leer('8435999999999')">EAN de otro pedido (error)</button>
+<button onclick="MOCK.leer('CJ000000123')">Etiqueta de caja CJ000000123</button>
+<h2>Situaciones</h2>
+<button id="mq_red" onclick="MOCK.offline=!MOCK.offline;this.classList.toggle('mq_on',MOCK.offline);this.textContent=MOCK.offline?'Volver a poner la conexión':'Quitar la conexión';window.dispatchEvent(new Event(MOCK.offline?'offline':'online'))">Quitar la conexión</button>
+<p>Orden de prueba: tarjeta Isaac → EANs → Caja (en la PDA) → CJ → Validar.</p>
+</div><div class="mq_pda"><div class="o_main_navbar">Odoo · Inventario</div>
+<div id="accion"></div>
+<div id="barcode"><b>App código de barras (la de siempre)</b><p class="ref"></p>
+<button onclick="MOCK.volverApp(true)">Validar</button><button onclick="MOCK.volverApp(false)">← Atrás</button></div>
+</div></div>
+<template id="tpl"><div class="o_koroshi_operarios">
+            
+            <div class="o_ko_offline" role="alert" style="display: none;">
+                <span class="o_ko_icono" aria-hidden="true">⚠</span>
+                <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
+            </div>
+
+            
+            <div class="o_ko_bloqueo" style="display: none;">
+                <div class="o_ko_bloqueo_centro">
+                    <div class="o_ko_bloqueo_tarjeta" aria-hidden="true">
+                        <span class="o_ko_bloqueo_banda"></span>
+                        <span class="o_ko_bloqueo_linea"></span>
+                        <span class="o_ko_bloqueo_linea o_ko_corta"></span>
+                    </div>
+                    <h1 class="o_ko_bloqueo_titulo">Lee tu tarjeta</h1>
+                    <p class="o_ko_bloqueo_texto">Pasa el lector por el código de tu tarjeta de operario.</p>
+                    <div class="o_ko_lector o_ko_lector_grande">
+                        <span class="o_ko_punto"></span>
+                        <span class="o_ko_lector_texto">Lector preparado</span>
+                    </div>
+                    <div class="o_ko_bloqueo_aviso" role="alert"></div>
+                </div>
+                <div class="o_ko_bloqueo_pie"><span class="o_ko_reloj"></span></div>
+            </div>
+
+            
+            <div class="o_ko_capa" style="display: none;">
+                <div class="o_ko_abriendo" style="display: none;">
+                    <div class="o_ko_spinner" aria-hidden="true"></div>
+                    <div class="o_ko_capa_sub">Abriendo</div>
+                    <div class="o_ko_capa_ref o_ko_abriendo_ref"></div>
+                    <div class="o_ko_capa_sub o_ko_abriendo_para"></div>
+                    <div class="o_ko_capa_nota">No leas nada mientras se abre</div>
+                </div>
+                <div class="o_ko_hecho" style="display: none;">
+                    <div class="o_ko_hecho_check" aria-hidden="true">✓</div>
+                    <div class="o_ko_hecho_titulo">¡Hecho!</div>
+                    <div class="o_ko_capa_sub o_ko_hecho_ref"></div>
+                    <div class="o_ko_hecho_siguiente">
+                        <div class="o_ko_capa_sub">Siguiente</div>
+                        <div class="o_ko_capa_ref o_ko_hecho_sig_ref"></div>
+                        <div class="o_ko_capa_sub o_ko_hecho_sig_tienda"></div>
+                        <div class="o_ko_cuenta">Se abre en <b class="o_ko_cuenta_n">3</b> s</div>
+                    </div>
+                    <div class="o_ko_hecho_fin o_ko_capa_sub" style="display: none;"></div>
+                    <button class="o_ko_parar o_ko_boton o_ko_gris" type="button">
+                        <span class="o_ko_icono" aria-hidden="true">✋</span> <span class="o_ko_parar_texto">Parar aquí</span>
+                    </button>
+                </div>
+            </div>
+
+            <div class="o_ko_app">
+                
+                <div class="o_ko_cabecera">
+                    <div class="o_ko_avatar" aria-hidden="true">?</div>
+                    <div class="o_ko_cabecera_texto">
+                        <div class="o_ko_quien o_ko_vacio">Lee tu tarjeta (o directamente la OUT)</div>
+                        <div class="o_ko_dia"></div>
+                    </div>
+                    <button class="o_ko_salir" type="button" style="display: none;">
+                        <span class="o_ko_icono" aria-hidden="true">⎋</span> Salir
+                    </button>
+                </div>
+
+                <div class="o_ko_aviso" role="status"></div>
+
+                
+                <div class="o_ko_actual o_ko_caja" style="display: none;">
+                    <span class="o_ko_sub">Estás haciendo</span>
+                    <div class="o_ko_actual_ref"></div>
+                    <div class="o_ko_actual_tienda"></div>
+                    <div class="o_ko_datos"></div>
+                    <div class="o_ko_progreso" style="display: none;">
+                        <div class="o_ko_barra"><span class="o_ko_barra_lleno"></span></div>
+                        <div class="o_ko_progreso_texto"></div>
+                    </div>
+                    <button class="o_ko_continuar o_ko_boton" type="button">
+                        <span class="o_ko_icono" aria-hidden="true">▶</span> Continuar
+                    </button>
+                    <div class="o_ko_botonera">
+                        
+                        <button class="o_ko_saltar o_ko_dejar o_ko_boton" type="button">
+                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar
+                        </button><button class="o_kf_abrir_faltante" type="button">Faltante</button>
+                    </div>
+                </div>
+
+                <div class="o_ko_entrada">
+                    <input class="o_ko_codigo" type="text" autocomplete="off" placeholder="Escribir tarjeta o pedido y Enter">
+                    <div class="o_ko_lector">
+                        <span class="o_ko_punto"></span>
+                        <span class="o_ko_lector_texto">Lector preparado</span>
+                    </div>
+                </div>
+
+                <div class="o_ko_titulo o_ko_cola_titulo" style="display: none;">Después te tocan</div>
+                <ol class="o_ko_cola"></ol>
+
+                <details class="o_ko_ahora">
+                    <summary class="o_ko_titulo">Cogiendo ahora <span class="o_ko_n_operarios"></span></summary>
+                    <div class="o_ko_abiertas"></div>
+                </details>
+
+                <div class="o_ko_pie">
+                    <button class="o_ko_menu" type="button" title="Menú código de barras" aria-label="Menú código de barras">☰</button>
+                    <span class="o_ko_reloj"></span>
+                    <button class="o_ko_sonido" type="button" title="Sonido y vibración" aria-label="Sonido y vibración">🔊</button>
+                </div>
+            </div>
+
+            
+            <div class="o_ko_hoja" style="display: none;">
+                <div class="o_ko_hoja_fondo"></div>
+                <div class="o_ko_hoja_panel" role="dialog" aria-modal="true">
+                    <div class="o_ko_hoja_asa" aria-hidden="true"></div>
+                    <div class="o_ko_salto" style="display: none;">
+                        <div class="o_ko_hoja_titulo o_ko_salto_titulo"></div>
+                        <div class="o_ko_salto_motivos"></div>
+                        <div class="o_ko_nota_caja" style="display: none;">
+                            <label class="o_ko_nota_label">Escribe el motivo</label>
+                            <input class="o_ko_nota" type="text" autocomplete="off">
+                        </div>
+                        <button class="o_ko_confirmar_salto o_ko_boton o_ko_naranja" type="button" disabled="disabled">
+                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar pedido
+                        </button>
+                        <button class="o_ko_cancelar_salto o_ko_boton o_ko_gris" type="button">No, volver</button>
+                    </div>
+                    <div class="o_ko_confirmar" style="display: none;">
+                        <div class="o_ko_hoja_titulo o_ko_confirmar_titulo"></div>
+                        <div class="o_ko_confirmar_texto"></div>
+                        <button class="o_ko_confirmar_si o_ko_boton" type="button"></button>
+                        <button class="o_ko_confirmar_no o_ko_boton o_ko_gris" type="button"></button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+<template id="tpl_prep"><div class="o_koroshi_preparacion">
+            <div class="o_kp_offline" role="alert" style="display: none;">
+                <span aria-hidden="true">⚠</span>
+                <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
+            </div>
+            <div class="o_kp_app">
+                
+                <div class="o_kp_cabecera">
+                    <button type="button" class="o_kp_volver" aria-label="Volver a Lecturas">←</button>
+                    <div class="o_kp_cabecera_texto">
+                        <div class="o_kp_ref"></div>
+                        <div class="o_kp_tienda"></div>
+                    </div>
+                    <div class="o_kp_operario"></div>
+                </div>
+
+                
+                <div class="o_kp_progreso">
+                    <div class="o_kp_barra"><div class="o_kp_barra_lleno"></div></div>
+                    <div class="o_kp_progreso_fila">
+                        <span class="o_kp_progreso_texto"></span>
+                        <span class="o_kp_sin_caja"></span>
+                    </div>
+                </div>
+
+                
+                <div class="o_kp_siguiente">
+                    
+                    <div class="o_kp_nav">
+                        <button type="button" class="o_kp_anterior" aria-label="Línea anterior">◀</button>
+                        <div class="o_kp_nav_centro">
+                            <div class="o_kp_etiqueta">Ve a</div>
+                            <div class="o_kp_posicion"></div>
+                        </div>
+                        <button type="button" class="o_kp_posterior" aria-label="Línea siguiente">▶</button>
+                    </div>
+                    <div class="o_kp_ubicacion"></div>
+                    <div class="o_kp_articulo">
+                        <img class="o_kp_foto" alt="">
+                        <div class="o_kp_articulo_texto">
+                            <div class="o_kp_producto_ref"></div>
+                            <div class="o_kp_producto"></div>
+                            <div class="o_kp_cuantas"></div>
+                        </div>
+                    </div>
+                    <button type="button" class="o_kp_ir_pendiente" style="display: none;">Ir a la que toca ▸</button>
+                </div>
+                <div class="o_kp_completa" style="display: none;">
+                    <div class="o_kp_completa_titulo">✓ Todo leído</div>
+                    <div class="o_kp_completa_texto"></div>
+                </div>
+
+                <div class="o_kp_aviso" role="status" aria-live="polite"></div>
+
+                
+                <button type="button" class="o_kp_boton o_kp_caja">📦 Caja</button>
+                <button type="button" class="o_kp_boton o_kp_validar">✓ Validar</button>
+                <div class="o_kp_fila_botones">
+                    <button type="button" class="o_kp_boton o_kp_faltante">Faltante</button>
+                    <button type="button" class="o_kp_boton o_kp_deshacer">↶ Deshacer</button>
+                </div>
+
+                
+                <button type="button" class="o_kp_ver_lineas" aria-expanded="false">Ver líneas</button>
+                <ol class="o_kp_lineas" style="display: none;"></ol>
+                <div class="o_kp_cajas"></div>
+
+                <input class="o_kp_codigo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Leer producto o escribir EAN y Enter">
+                <div class="o_kp_pie">
+                    <span class="o_kp_lector"><span class="o_kp_punto"></span><span class="o_kp_lector_texto">Lector preparado</span></span>
+                </div>
+            </div>
+
+            
+            <div class="o_kp_hoja" style="display: none;">
+                <div class="o_kp_hoja_fondo"></div>
+                <div class="o_kp_hoja_panel" role="dialog" aria-modal="true">
+                    <div class="o_kp_hoja_caja">
+                        <div class="o_kp_hoja_icono" aria-hidden="true">📦</div>
+                        <h2 class="o_kp_hoja_titulo">Escanea la caja</h2>
+                        <p class="o_kp_hoja_texto"></p>
+                        <div class="o_kp_hoja_aviso" role="alert"></div>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
+                    </div>
+                    <div class="o_kp_hoja_pregunta" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Faltan uds</h2>
+                        <p>¿Crear un pedido pendiente con lo que falta?
+                            <b>Sí</b> = saldrá otro día. <b>No</b> = la OUT sale sin esas piezas.</p>
+                        <button type="button" class="o_kp_boton o_kp_pendiente_si">Sí, pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_pendiente_no">No, sin pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_pendiente_cancelar">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            
+            <div class="o_kp_capa" style="display: none;">
+                <div class="o_kp_capa_centro">
+                    <div class="o_kp_rueda" aria-hidden="true"></div>
+                    <div class="o_kp_capa_texto"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+<template id="tpl_falt"><div class="falt"><b>Faltante (koroshi_faltantes)</b><p class="f_out"></p>
+<button class="f_volver">Volver a la OUT</button><button class="f_validar">Validar OUT</button><button class="f_salir">Salir</button></div></template>
+<script>
+window.MOCK = {obligatoria: false, offline: false, lento: false, log: [], pila: []};
+var _mods = {};
+window.odoo = {define: function (name, fn) { _mods[name] = fn(function (n) { if (!_mods[n]) { throw new Error('falta ' + n); } return _mods[n]; }); }};
+Promise.prototype.guardedCatch = function (fn) { return this.catch(fn); };
+function Class() {}
+Class.extend = function (props) {
+    var parent = this.prototype;
+    function C() { if (this.init) { this.init.apply(this, arguments); } }
+    C.prototype = Object.create(parent);
+    C.prototype.constructor = C;
+    C.extend = Class.extend; C.include = Class.include;
+    mix(C.prototype, props, parent);
+    return C;
+};
+Class.include = function (props) { mix(this.prototype, props, Object.getPrototypeOf(this.prototype)); };
+function mix(proto, props, parent) {
+    Object.keys(props).forEach(function (k) {
+        var v = props[k], prev = proto[k];
+        if (typeof v === 'function' && /_super/.test(v.toString())) {
+            var sup = (proto.hasOwnProperty(k) ? prev : parent[k]) || function () {};
+            proto[k] = function () {
+                var tmp = this._super; this._super = sup;
+                try { return v.apply(this, arguments); } finally { this._super = tmp; }
+            };
+        } else { proto[k] = v; }
+    });
+}
+var bus = {h: {}, on: function (ev, ctx, fn) { (this.h[ev] = this.h[ev] || []).push([ctx, fn]); },
+           off: function (ev, ctx, fn) { this.h[ev] = (this.h[ev] || []).filter(function (x) { return x[1] !== fn; }); },
+           trigger: function (ev) { var a = [].slice.call(arguments, 1); (this.h[ev] || []).forEach(function (x) { x[1].apply(x[0], a); }); }};
+window.CLASES = {};
+_mods['web.core'] = {bus: bus, action_registry: {add: function (n, c) { window.CLASES[n] = c; }}};
+_mods['web.session'] = {uid: 2, user_has_group: function () { return Promise.resolve(window.MOCK.obligatoria); }};
+var TPL = {'koroshi_operarios.Pantalla': 'tpl', 'koroshi_preparacion.Pantalla': 'tpl_prep', 'koroshi_faltantes.Pantalla': 'tpl_falt'};
+_mods['web.AbstractAction'] = Class.extend({
+    init: function () {},
+    willStart: function () { return Promise.resolve(); },
+    start: function () { return Promise.resolve(); },
+    $: function (s) { return this.$el.find(s); },
+    appendTo: function (target) {
+        var self = this;
+        return this.willStart().then(function () {
+            self.$el = $(document.getElementById(TPL[self.contentTemplate]).innerHTML.trim());
+            self.el = self.$el[0];
+            Object.keys(self.events).forEach(function (k) {
+                var i = k.indexOf(' '), ev = i < 0 ? k : k.slice(0, i), sel = i < 0 ? null : k.slice(i + 1);
+                var fn = self[self.events[k]];
+                var h = function (e) { return fn.call(self, e); };
+                if (ev === 'focus') { ev = 'focusin'; } if (ev === 'blur') { ev = 'focusout'; }
+                if (sel) { self.$el.on(ev, sel, h); } else { self.$el.on(ev, h); }
+            });
+            self.$el.appendTo(target);
+            return self.start();
+        }).then(function () { self.on_attach_callback(); });
+    },
+    on_attach_callback: function () {}, on_detach_callback: function () {}, destroy: function () {},
+    do_action: function (a, opts) { MOCK.log.push(['do_action', a, opts]); return MOCK.accion(this, a, opts || {}); },
+    trigger_up: function (ev) { MOCK.log.push(['trigger_up', ev]); if (ev === 'history_back') { MOCK.atras(); } },
+    _rpc: function (q) { return MOCK.rpc(q); },
+});
+// pantalla de Faltante simulada (koroshi_faltantes): solo lo que usa el include
+_mods['koroshi_faltantes.Pantalla'] = _mods['web.AbstractAction'].extend({
+    contentTemplate: 'koroshi_faltantes.Pantalla',
+    events: {'click .f_volver': '_onVolver', 'click .f_validar': '_onValidarFalso', 'click .f_salir': '_onSalirFalso'},
+    init: function (parent, action) {
+        var ctx = (action && action.context) || {};
+        this.desdeOperarios = !!ctx.desde_operarios;
+        this.operario = ctx.faltante_operario || null;
+        this.out = {id: 1, name: ctx.faltante_out, batch_id: false};
+        this.paso = 'lista';
+    },
+    start: function () { this.$('.f_out').text(this.out.name + ' · ' + (this.operario ? this.operario.nombre : '?')); return Promise.resolve(); },
+    _empleadoId: function () { return this.operario ? this.operario.id : false; },
+    _onVolver: function () { MOCK.log.push(['faltantes_volver_de_siempre']); return this.do_action({tipo: 'barcode', ref: this.out.name}); },
+    _onValidarFalso: function () { MOCK.validarOut(this.out.name, true); this.paso = 'validada'; this.trigger_up('history_back'); },
+    _onSalirFalso: function () { this.trigger_up('history_back'); },
+});
+</script>
+<script>odoo.define('koroshi_operarios.Pantalla', function (require) {
+'use strict';
+/* KOROSHI Operarios v2.3.0 - pantalla de la PDA dentro de Odoo (accion de cliente).
+ *
+ * v2.2: al entrar con el operario guardado (iniciar sesion, menu, recargar) la OUT se abre directamente; las 3
+ * opciones solo salen al volver con la flecha atras sin validar. Grupo "KOROSHI Operarios: tarjeta obligatoria":
+ * sin tarjeta no se abre nada (lo comprueba tambien el servidor en /koroshi/operarios/leer).
+ * v2.2.2: en ese grupo, sin tarjeta la pantalla queda bloqueada: sin barra de Odoo y sin menu de codigo de barras.
+ *
+ * v2.3.0 (solo cambia el aspecto y la forma de usarla; la logica de colas es la misma):
+ * - Tarjeta obligatoria sin operario: pantalla completa "Lee tu tarjeta". El campo sigue con foco pero no se ve;
+ *   punto verde = lector preparado, gris + "Toca la pantalla" si pierde el foco. Una OUT sin tarjeta: aviso rojo.
+ * - Cabecera "quien soy": iniciales con color sacado del nombre, nombre grande, contador del dia y Salir.
+ * - Botones grandes: Continuar verde; Faltante (koroshi_faltantes) naranja y Saltar gris en una fila.
+ * - Avisos ok / info / warn / mal con icono y boton de accion (Reintentar); los verdes se van a los 4 s.
+ * - Salir y cambiar de operario con confirmacion en hoja inferior. Saltar: motivos como tarjetas en hoja inferior.
+ * - "Abriendo X para Y" (no lee nada mientras abre) y "¡Hecho!" al volver con la OUT validada (siguiente en 3 s).
+ * - Sin conexion: banda roja, no lee, reintenta cada 5 s. Sonido + vibracion con interruptor por PDA.
+ * - Salida por inactividad: parametro koroshi_operarios.minutos_inactividad (0 = no).
+ * - Menu (☰): en tarjeta obligatoria, pulsacion larga de 2 s.
+ *
+ * Se conserva lo que usa koroshi_faltantes: this.actual, this.operario, events como objeto, .o_ko_dejar.
+ */
+var AbstractAction = require('web.AbstractAction');
+var core = require('web.core');
+var session = require('web.session');
+
+var REPETIDA_MS = 700;       // la misma lectura dos veces seguidas (bus + campo) cuenta una
+var PREFIJOS_ZONA = ['Z-'];  // agrupaciones que se abren enteras (igual que models/tarea.py)
+var AVISO_OK_MS = 4000;      // los avisos verdes se van solos
+var REINTENTO_MS = 5000;     // sin conexion: reintento
+var CUENTA_HECHO = 3;        // segundos antes de abrir la siguiente
+var MENU_LARGO_MS = 2000;    // pulsacion larga del menu en tarjeta obligatoria
+var CLAVE_SONIDO = 'koroshi_operarios_sonido';
+var PLACEHOLDER = 'Escribir tarjeta o pedido y Enter';
+var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
+var DESTINOS = {oficina: 'Queda en oficina', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno'};
+
+var Pantalla = AbstractAction.extend({
+    contentTemplate: 'koroshi_operarios.Pantalla',
+    // objeto plano: koroshi_faltantes hace _.extend({}, Operarios.prototype.events, {...})
+    events: {
+        'keydown .o_ko_codigo': '_onKeydown',
+        'focus .o_ko_codigo': '_onFocoLector',
+        'blur .o_ko_codigo': '_onFocoLector',
+        'click .o_ko_bloqueo': '_onTocarBloqueo',
+        'click .o_ko_lector': '_onTocarBloqueo',
+        'click .o_ko_continuar': '_onContinuar',
+        'click .o_ko_saltar': '_onSaltar',
+        'click .o_ko_motivo': '_onMotivo',
+        'click .o_ko_confirmar_salto': '_onConfirmarSalto',
+        'click .o_ko_cancelar_salto': '_onCancelarSalto',
+        'keydown .o_ko_nota': '_onNotaKeydown',
+        'input .o_ko_nota': '_onNotaInput',
+        'click .o_ko_hoja_fondo': '_cerrarHoja',
+        'click .o_ko_confirmar_si': '_onConfirmarSi',
+        'click .o_ko_confirmar_no': '_cerrarHoja',
+        'click .o_ko_salir': '_onSalir',
+        'click .o_ko_menu': '_onMenu',
+        'pointerdown .o_ko_menu': '_onMenuAbajo',
+        'pointerup .o_ko_menu': '_onMenuArriba',
+        'pointerleave .o_ko_menu': '_onMenuArriba',
+        'pointercancel .o_ko_menu': '_onMenuArriba',
+        'contextmenu .o_ko_menu': '_onMenuContextual',
+        'click .o_ko_parar': '_onParar',
+        'click .o_ko_sonido': '_onSonido',
+        'click .o_ko_aviso_accion': '_onAvisoAccion',
+        'pointerdown': '_marcarActividad',
+        'keydown': '_marcarActividad',
+    },
+
+    init: function () {
+        this._super.apply(this, arguments);
+        this.operario = null;      // {id, nombre}
+        this.actual = null;        // asignacion que esta haciendo
+        this.tarea = null;
+        this.cola = [];
+        this.motivos = [];
+        this.ocupado = false;
+        this.ultima = {codigo: '', t: 0};
+        this.obligatoria = false;  // v2.2.2: usuario en el grupo "tarjeta obligatoria"
+        // v2.3
+        this.capa = null;          // 'abriendo' | 'hecho' | null
+        this.sinRed = false;
+        this.motivoElegido = null;
+        this.confirmarAccion = null;
+        this.minutosInactividad = 0;
+        this.ultimaActividad = Date.now();
+        this.refHecho = null;      // ref de la OUT que estaba haciendo al irse a la app (para "¡Hecho!")
+        this.sonido = this._leerSonido();
+        this._enLinea = this._onEnLinea.bind(this);
+        this._fueraDeLinea = this._onFueraDeLinea.bind(this);
+    },
+
+    willStart: function () {
+        var self = this;
+        var grupo = session.user_has_group('koroshi_operarios.grupo_tarjeta_obligatoria').then(function (v) {
+            self.obligatoria = !!v;
+        });
+        return Promise.all([this._super.apply(this, arguments), grupo]);
+    },
+
+    start: function () {
+        var self = this;
+        core.bus.on('barcode_scanned', this, this._onBarcodeScanned);
+        window.addEventListener('online', this._enLinea);
+        window.addEventListener('offline', this._fueraDeLinea);
+        return this._super.apply(this, arguments).then(function () {
+            self._pintarSonido();
+            self._pintarOperario();
+            self._pintarAbiertas();
+            self.timerAbiertas = setInterval(self._pintarAbiertas.bind(self), 60000);
+            self.timerInactividad = setInterval(self._comprobarInactividad.bind(self), 30000);
+            self._cargarMotivos();
+            var guardado = self._guardado();
+            if (guardado) {
+                // la PDA ya tenia operario: v2.2 abre directamente la OUT que esta haciendo o la siguiente.
+                return self._rpc({route: '/koroshi/operarios/operario', params: {employee_id: guardado.id}})
+                    .then(function (r) {
+                        if (r && r.ok) {
+                            self._ponerOperario(r.employee_id, r.operario);
+                            // se abre en on_attach_callback (abrir otra accion desde start lia las migas de pan)
+                            self.abrirAlEntrar = true;
+                            return;
+                        }
+                        self._olvidarOperario();
+                    }).guardedCatch(function () {
+                        // sin red al entrar: se queda con el guardado y se reintenta
+                        self.operario = {id: guardado.id, nombre: guardado.nombre};
+                        self._sinConexion();
+                    });
+            }
+        });
+    },
+
+    on_attach_callback: function () {
+        // vuelve de la app de codigo de barras (validada o flecha atras) o de la pantalla de Faltante
+        this._super.apply(this, arguments);
+        this.ocupado = false;
+        this._ocultarCapa();
+        this._marcarActividad();
+        this._pintarAbiertas();
+        if (this.operario) {
+            var modo = this.abrirAlEntrar ? 'abrir' : 'si_nueva';
+            this.abrirAlEntrar = false;
+            // v2.3: si vuelve con la OUT validada se ensena "¡Hecho!" con la siguiente
+            this.refHecho = modo === 'si_nueva' && this.actual ? this.actual.ref : null;
+            this._siguiente(modo);
+        }
+        this._pintarOperario();
+        this._foco();
+    },
+
+    on_detach_callback: function () {
+        this._bloquear(false);
+        this._pararCuenta();
+        this._super.apply(this, arguments);
+    },
+
+    destroy: function () {
+        this._bloquear(false);
+        core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
+        window.removeEventListener('online', this._enLinea);
+        window.removeEventListener('offline', this._fueraDeLinea);
+        clearInterval(this.timerAbiertas);
+        clearInterval(this.timerInactividad);
+        clearTimeout(this.timerReintento);
+        clearTimeout(this.timerAviso);
+        clearTimeout(this.timerMenu);
+        this._pararCuenta();
+        if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
+        this._super.apply(this, arguments);
+    },
+
+    // ------------------------------------------------------------ operario guardado en la PDA
+    _clave: function () {
+        return 'koroshi_operarios_pda_' + (session.uid || '');
+    },
+    _guardado: function () {
+        try {
+            var v = window.localStorage.getItem(this._clave());
+            return v ? JSON.parse(v) : null;
+        } catch (e) { return null; }
+    },
+    _ponerOperario: function (id, nombre) {
+        this.operario = {id: id, nombre: nombre};
+        try { window.localStorage.setItem(this._clave(), JSON.stringify(this.operario)); } catch (e) { /* nada */ }
+        this._marcarActividad();
+        this._pintarOperario();
+        this._pintarAbiertas();
+    },
+    _olvidarOperario: function () {
+        this.operario = null;
+        this.actual = null;
+        this.tarea = null;
+        this.cola = [];
+        this.refHecho = null;
+        try { window.localStorage.removeItem(this._clave()); } catch (e) { /* nada */ }
+        this._cerrarHoja();
+        this._ocultarCapa();
+        this.$('.o_ko_dia').text('');
+        this._pintarOperario();
+        this._pintarActual();
+        this._foco();
+    },
+
+    // ------------------------------------------------------------ lecturas
+    _onBarcodeScanned: function (barcode) {
+        if (!this.el || !$.contains(document, this.el)) {
+            return;     // la pantalla no se ve (estan en la app de codigo de barras): no es para nosotros
+        }
+        this._leer(barcode);
+    },
+
+    _onKeydown: function (ev) {
+        if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            var $i = this.$('.o_ko_codigo');
+            var c = ($i.val() || '').trim();
+            $i.val('');
+            if (c) { this._leer(c); }
+        }
+    },
+
+    _leer: function (codigo) {
+        var self = this;
+        codigo = (codigo || '').trim();
+        var ahora = Date.now();
+        if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) {
+            return;
+        }
+        this.ultima = {codigo: codigo, t: ahora};
+        this._marcarActividad();
+        if (this.sinRed) {
+            this._aviso('Sin conexión: no se ha leído ' + codigo + '. Espera a que vuelva.', 'mal');
+            this._pitido(false);
+            return;
+        }
+        // v2.3: mientras abre, con "¡Hecho!" o con una hoja abierta no se lee nada
+        if (this.ocupado || this.capa || this.$('.o_ko_hoja').is(':visible')) {
+            return;
+        }
+        this.ocupado = true;
+        return this._rpc({
+            route: '/koroshi/operarios/leer',
+            params: {codigo: codigo, employee_id: this.operario ? this.operario.id : false},
+        }).then(function (r) {
+            if (r && r.ok && r.que === 'tarjeta') {
+                self.ocupado = false;
+                if (self.operario && self.operario.id !== r.employee_id) {
+                    // v2.3: tarjeta de otro con uno dentro -> se pregunta
+                    self._pitido(true);
+                    return self._preguntarCambio(r);
+                }
+                self._ponerOperario(r.employee_id, r.operario);
+                self._pitido(true);
+                return self._siguiente('abrir');
+            }
+            if (r && !r.ok && !self.operario && !r.obligatoria) {
+                // sin tarjeta -> se abre igual, sin contar tiempo (no para el grupo "tarjeta obligatoria")
+                return self._abrirSinTarjeta(codigo);
+            }
+            if (r && r.obligatoria) {
+                self.ocupado = false;
+                self._aviso('Esto es un pedido. Primero tu tarjeta.', 'mal');
+                self._pitido(false);
+                return;
+            }
+            if (!r || !r.ok) {
+                self.ocupado = false;
+                self._aviso((r && r.msg) || 'Error', 'mal');
+                self._pitido(false);
+                return;
+            }
+            // OUT leida a mano: pasa a ser la que hace
+            self.actual = r.asignacion;
+            self.tarea = r.tarea;
+            self.cola = r.cola || [];
+            self._pintarActual();
+            self._pitido(true);
+            return self._abrir(r.tarea || r.asignacion);
+        }).guardedCatch(function (e) {
+            self.ocupado = false;
+            self._falloRpc(e, function () { self.ultima = {codigo: '', t: 0}; self._leer(codigo); });
+        });
+    },
+
+    _preguntarCambio: function (r) {
+        var self = this;
+        var actual = this.operario.nombre;
+        var texto = actual + ' está dentro' + (this.actual ? ' con ' + this.actual.ref + ' (sigue siendo suyo).' : '.');
+        this._confirmar('¿Cambiar a ' + r.operario + '?', texto, 'Sí, soy ' + r.operario, 'No, sigue ' + actual,
+            function () {
+                self.actual = null;
+                self.tarea = null;
+                self.cola = [];
+                self._ponerOperario(r.employee_id, r.operario);
+                self._aviso('Hola, ' + r.operario + '.', 'ok');
+                return self._siguiente('abrir');
+            });
+    },
+
+    // ------------------------------------------------------------ cola
+    _siguiente: function (abrir) {
+        // abrir: 'abrir' (siempre), 'si_nueva' (solo si ha cambiado: la anterior esta validada), 'no'
+        var self = this;
+        if (!this.operario) { return Promise.resolve(); }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/operarios/siguiente', params: {employee_id: this.operario.id}})
+            .then(function (r) { return self._trasSiguiente(r, abrir); })
+            .guardedCatch(function (e) {
+                self.ocupado = false;
+                self._falloRpc(e, function () { self._siguiente(abrir); });
+            });
+    },
+
+    _trasSiguiente: function (r, abrir, previo) {
+        this.ocupado = false;
+        var hecho = this.refHecho;
+        this.refHecho = null;
+        if (!r || !r.ok) {
+            this._aviso((r && r.msg) || 'Error', 'mal');
+            this._pitido(false);
+            if (r && r.msg === 'Lee primero tu tarjeta') { this._olvidarOperario(); }
+            return;
+        }
+        this.actual = r.asignacion;
+        this.tarea = r.tarea;
+        this.cola = r.cola || [];
+        this._pintarActual();
+        var nueva = abrir === 'abrir' || (abrir === 'si_nueva' && r.nueva);
+        if (abrir === 'si_nueva' && hecho && (r.nueva || !r.asignacion) && (!r.asignacion || r.asignacion.ref !== hecho)) {
+            // v2.3: vuelve con la OUT validada -> "¡Hecho!" y la siguiente en cuenta atras
+            this._pitido(true);
+            this._pintarAbiertas();
+            return this._mostrarHecho(hecho, r.asignacion ? (r.tarea || r.asignacion) : null, r.msg);
+        }
+        if (!r.asignacion) {
+            this._aviso((previo ? previo + ' · ' : '') + (r.msg || 'No tienes más pedidos'), 'info');
+            return;
+        }
+        if (nueva) {
+            if (previo) { this._aviso(previo, 'info'); }
+            return this._abrir(r.tarea || r.asignacion);
+        }
+        this._aviso(previo || '', previo ? 'info' : '');
+    },
+
+    _onContinuar: function () {
+        if (!this.actual || this.ocupado || this.sinRed) { return; }
+        return this._abrir(this.tarea || this.actual);
+    },
+
+    _abrir: function (obj) {
+        // abre la OUT o la agrupacion en la app de codigo de barras, como si se leyera alli
+        var self = this;
+        var ref = obj.ref || obj.picking_name;
+        var fallo = function (msg) {
+            self.ocupado = false;
+            self._ocultarCapa();
+            self._aviso('No se ha podido abrir ' + ref + ': ' + msg + '. Pulsa Continuar o ábrela desde el menú de código de barras.', 'mal',
+                        {texto: 'Reintentar', fn: function () { self._abrir(obj); }});
+            self._pitido(false);
+        };
+        var prom;
+        this.ocupado = true;
+        this._mostrarAbriendo(ref, this.operario ? this.operario.nombre : '');
+        if (obj.tipo === 'agrupacion' && obj.batch_id) {
+            prom = this._rpc({model: 'stock.picking.batch', method: 'start_batch_processing', args: [[obj.batch_id]]})
+                .then(function (accion) {
+                    if (!accion) { return fallo('la agrupación no devuelve pantalla'); }
+                    return self.do_action(accion);
+                });
+        } else {
+            prom = this._rpc({route: '/stock_barcode/scan_from_main_menu', params: {barcode: obj.picking_name || ref}})
+                .then(function (res) {
+                    if (res && res.action) { return self.do_action(res.action); }
+                    return fallo((res && res.warning) || 'sin respuesta');
+                });
+        }
+        return prom.then(function () { self.ocupado = false; }).guardedCatch(function (e) {
+            if (self._esSinConexion(e)) {
+                self.ocupado = false;
+                self._ocultarCapa();
+                return self._sinConexion();
+            }
+            fallo('error de Odoo');
+        });
+    },
+
+    _abrirSinTarjeta: function (codigo) {
+        // OUT (o agrupacion) leida sin tarjeta: se abre como en el menu de codigo de barras y NO se crea tarea.
+        var self = this;
+        var fallo = function (msg) {
+            self.ocupado = false;
+            self._ocultarCapa();
+            self._aviso(msg, 'mal');
+            self._pitido(false);
+        };
+        var abrirLote = function (batchId) {
+            return self._rpc({model: 'stock.picking.batch', method: 'start_batch_processing', args: [[batchId]]})
+                .then(function (accion) {
+                    if (!accion) { return fallo('La agrupación no devuelve pantalla'); }
+                    return self.do_action(accion);
+                });
+        };
+        var esZona = function (nombre) {
+            return PREFIJOS_ZONA.some(function (p) { return (nombre || '').indexOf(p) === 0; });
+        };
+        // v2.3.1: los operarios no ven nada de productividad
+        this._aviso('Sin tarjeta: abriendo ' + codigo + '. Lee tu tarjeta la próxima vez.', 'warn');
+        this._mostrarAbriendo(codigo, '');
+        var prom = this._rpc({model: 'stock.picking', method: 'search_read',
+                              args: [[['name', '=', codigo]], ['name', 'batch_id']], kwargs: {limit: 1}})
+            .then(function (pk) {
+                if (pk.length && pk[0].batch_id && esZona(pk[0].batch_id[1])) {
+                    return abrirLote(pk[0].batch_id[0]);
+                }
+                if (pk.length) {
+                    return self._rpc({route: '/stock_barcode/scan_from_main_menu', params: {barcode: pk[0].name}});
+                }
+                return self._rpc({model: 'stock.picking.batch', method: 'search_read',
+                                  args: [[['name', '=', codigo]], ['name']], kwargs: {limit: 1}})
+                    .then(function (lotes) {
+                        if (lotes.length) { return abrirLote(lotes[0].id); }
+                        return self._rpc({route: '/stock_barcode/scan_from_main_menu', params: {barcode: codigo}});
+                    });
+            })
+            .then(function (res) {
+                if (res && res.action) { return self.do_action(res.action); }
+                if (res && res.warning) { return fallo(res.warning); }
+            });
+        return prom.then(function () { self.ocupado = false; })
+            .guardedCatch(function (e) {
+                if (self._esSinConexion(e)) {
+                    self.ocupado = false;
+                    self._ocultarCapa();
+                    return self._sinConexion();
+                }
+                fallo('No se ha podido abrir ' + codigo);
+            });
+    },
+
+    // ------------------------------------------------------------ capa: abriendo / hecho
+    _mostrarAbriendo: function (ref, para) {
+        this._pararCuenta();
+        this.capa = 'abriendo';
+        this.$('.o_ko_abriendo_ref').text(ref || '');
+        this.$('.o_ko_abriendo_para').text(para ? 'para ' + para : 'sin tarjeta');
+        this.$('.o_ko_hecho').hide();
+        this.$('.o_ko_abriendo').show();
+        this.$('.o_ko_capa').removeClass('o_ko_capa_hecho').show();
+    },
+
+    _mostrarHecho: function (ref, siguiente, msg) {
+        var self = this;
+        this._pararCuenta();
+        this.capa = 'hecho';
+        this.siguienteHecho = siguiente;
+        this.$('.o_ko_hecho_ref').text(ref + ' validado');
+        this.$('.o_ko_abriendo').hide();
+        if (siguiente) {
+            this.$('.o_ko_hecho_sig_ref').text(siguiente.ref || siguiente.picking_name || '');
+            this.$('.o_ko_hecho_sig_tienda').text(siguiente.tienda || (siguiente.zona ? 'Zona ' + siguiente.zona : ''));
+            this.$('.o_ko_hecho_siguiente').show();
+            this.$('.o_ko_hecho_fin').hide();
+            this.$('.o_ko_parar_texto').text('Parar aquí');
+            var n = CUENTA_HECHO;
+            this.$('.o_ko_cuenta_n').text(n);
+            this.timerCuenta = setInterval(function () {
+                n -= 1;
+                self.$('.o_ko_cuenta_n').text(Math.max(n, 0));
+                if (n <= 0) {
+                    self._pararCuenta();
+                    var obj = self.siguienteHecho;
+                    self.siguienteHecho = null;
+                    self._abrir(obj);
+                }
+            }, 1000);
+        } else {
+            this.$('.o_ko_hecho_siguiente').hide();
+            this.$('.o_ko_hecho_fin').text(msg || 'No tienes más pedidos. Pide a tu responsable.').show();
+            this.$('.o_ko_parar_texto').text('Vale');
+        }
+        this.$('.o_ko_hecho').show();
+        this.$('.o_ko_capa').addClass('o_ko_capa_hecho').show();
+    },
+
+    _pararCuenta: function () {
+        clearInterval(this.timerCuenta);
+        this.timerCuenta = null;
+    },
+
+    _ocultarCapa: function () {
+        this._pararCuenta();
+        this.capa = null;
+        this.$('.o_ko_capa').hide().removeClass('o_ko_capa_hecho');
+    },
+
+    _onParar: function () {
+        var habia = !!this.siguienteHecho;
+        this.siguienteHecho = null;
+        this._ocultarCapa();
+        if (habia) { this._aviso('Parado. Pulsa Continuar cuando quieras.', 'info'); }
+        this._foco();
+    },
+
+    // ------------------------------------------------------------ saltar (hoja inferior)
+    _cargarMotivos: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/operarios/motivos', params: {}}).then(function (r) {
+            self.motivos = (r && r.ok && r.motivos) || [];
+        }).guardedCatch(function () { /* se reintenta al abrir la hoja */ });
+    },
+
+    _onSaltar: function () {
+        if (!this.actual || this.ocupado || this.sinRed) { return; }
+        if (!this.motivos.length) { this._cargarMotivos(); }
+        var $m = this.$('.o_ko_salto_motivos').empty();
+        this.motivoElegido = null;
+        this.motivos.forEach(function (m) {
+            var $b = $('<button type="button" class="o_ko_motivo"/>').attr('data-id', m.id);
+            $('<span class="o_ko_marca" aria-hidden="true"/>').appendTo($b);
+            $('<span class="o_ko_motivo_txt"/>').text(m.nombre)
+                .append($('<span class="o_ko_motivo_destino"/>').text(DESTINOS[m.destino] || ''))
+                .appendTo($b);
+            $b.appendTo($m);
+        });
+        if (!this.motivos.length) {
+            $('<div class="o_ko_capa_sub"/>').text('No se han podido cargar los motivos. Cierra y vuelve a probar.').appendTo($m);
+        }
+        this.$('.o_ko_salto_titulo').text('¿Por qué saltas ' + this.actual.ref + '?');
+        this.$('.o_ko_nota').val('');
+        this.$('.o_ko_nota_caja').hide();
+        this.$('.o_ko_confirmar').hide();
+        this.$('.o_ko_salto').show();
+        this._pintarBotonSalto();
+        this._abrirHoja();
+    },
+
+    _onMotivo: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        var m = _.findWhere(this.motivos, {id: id});
+        if (!m || this.ocupado) { return; }
+        this.motivoElegido = m;
+        this.$('.o_ko_motivo').removeClass('o_ko_elegido').attr('aria-pressed', 'false');
+        $(ev.currentTarget).addClass('o_ko_elegido').attr('aria-pressed', 'true');
+        this.$('.o_ko_nota_caja').toggle(!!m.pide_nota);
+        if (m.pide_nota) { this.$('.o_ko_nota').focus(); }
+        this._pintarBotonSalto();
+    },
+
+    _onNotaInput: function () { this._pintarBotonSalto(); },
+
+    _onNotaKeydown: function (ev) {
+        ev.stopPropagation();   // el Enter de la nota no es una lectura
+        if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            this._onConfirmarSalto();
+        }
+    },
+
+    _salteValido: function () {
+        var m = this.motivoElegido;
+        return !!m && (!m.pide_nota || !!(this.$('.o_ko_nota').val() || '').trim());
+    },
+
+    _pintarBotonSalto: function () {
+        this.$('.o_ko_confirmar_salto').prop('disabled', !this._salteValido() || this.ocupado);
+    },
+
+    _onConfirmarSalto: function () {
+        if (!this._salteValido() || this.ocupado) { return; }
+        var m = this.motivoElegido;
+        return this._saltar(m, m.pide_nota ? (this.$('.o_ko_nota').val() || '').trim() : '');
+    },
+
+    _onCancelarSalto: function () {
+        this._cerrarHoja();
+    },
+
+    _saltar: function (motivo, nota) {
+        var self = this;
+        this.ocupado = true;
+        this._pintarBotonSalto();
+        return this._rpc({route: '/koroshi/operarios/saltar',
+                          params: {employee_id: this.operario.id, motivo_id: motivo.id, nota: nota || ''}})
+            .then(function (r) {
+                self.ocupado = false;
+                self.motivoElegido = null;
+                self._cerrarHoja();
+                if (!r || !r.ok) {
+                    self._pintarActual();
+                    self._aviso((r && r.msg) || 'Error', 'mal');
+                    self._pitido(false);
+                    return;
+                }
+                self._pitido(true);
+                if (r.destino === 'suya') {
+                    // fin de turno: la PDA queda libre para el siguiente
+                    var nombre = self.operario.nombre;
+                    self._olvidarOperario();
+                    self._aviso(r.msg + '. Hasta mañana, ' + nombre + '.', 'info');
+                    return;
+                }
+                return self._trasSiguiente(r, 'abrir', r.msg_salto);
+            }).guardedCatch(function (e) {
+                self.ocupado = false;
+                self._pintarBotonSalto();
+                self._falloRpc(e);
+            });
+    },
+
+    // ------------------------------------------------------------ hoja inferior / confirmar
+    _abrirHoja: function () {
+        this.$('.o_ko_hoja').show();
+        var $p = this.$('.o_ko_hoja_panel');
+        setTimeout(function () { $p.find('button:not(:disabled)').first().focus(); }, 0);
+    },
+
+    _cerrarHoja: function () {
+        this.motivoElegido = null;
+        this.confirmarAccion = null;
+        this.$('.o_ko_hoja').hide();
+        this.$('.o_ko_salto').hide();
+        this.$('.o_ko_confirmar').hide();
+        this._foco();
+    },
+
+    _confirmar: function (titulo, texto, si, no, accion, aviso) {
+        this.confirmarAccion = accion;
+        this.$('.o_ko_salto').hide();
+        this.$('.o_ko_confirmar_titulo').text(titulo);
+        var $t = this.$('.o_ko_confirmar_texto').empty();
+        if (aviso) { $('<div class="o_ko_warn_txt"/>').text('⚠ ' + aviso).appendTo($t); }
+        if (texto) { $('<div/>').text(texto).appendTo($t); }
+        this.$('.o_ko_confirmar_si').text(si);
+        this.$('.o_ko_confirmar_no').text(no);
+        this.$('.o_ko_confirmar').show();
+        this._abrirHoja();
+    },
+
+    _onConfirmarSi: function () {
+        var accion = this.confirmarAccion;
+        this._cerrarHoja();
+        if (accion) { accion(); }
+    },
+
+    // ------------------------------------------------------------ salir / menu
+    _onSalir: function () {
+        if (!this.operario) { return; }
+        var self = this;
+        var nombre = this.operario.nombre;
+        var aviso = this.actual ? 'Dejas ' + this.actual.ref + ' a medias: sigue siendo tuyo y será el primero al volver.' : '';
+        this._confirmar('¿Salir, ' + nombre + '?', 'La PDA queda libre para otro operario.', 'Sí, salir', 'No, seguir',
+                        function () { self._salirYa(); }, aviso);
+    },
+
+    _salirYa: function (porque) {
+        var nombre = this.operario ? this.operario.nombre : '';
+        var pendiente = this.actual ? this.actual.ref : '';
+        this._olvidarOperario();
+        if (!nombre) { return; }
+        var texto = porque === 'inactividad' ? 'Salida automática por inactividad: ' + nombre + '.' : 'Adiós, ' + nombre + '.';
+        this._aviso(texto + (pendiente ? ' ' + pendiente + ' sigue siendo tuyo.' : ''), 'info');
+    },
+
+    _onMenu: function (ev) {
+        if (this.obligatoria) {
+            // v2.3: en tarjeta obligatoria solo con pulsacion larga (_onMenuAbajo)
+            if (ev) { ev.preventDefault(); }
+            if (!this.menuLargo) { this._aviso('Mantén pulsado ☰ 2 segundos para ir al menú.', 'info'); }
+            this.menuLargo = false;
+            return;
+        }
+        this._irMenu();
+    },
+
+    _irMenu: function () {
+        if (this.obligatoria && !this.operario) {
+            return this._aviso('Lee primero tu tarjeta.', 'mal');
+        }
+        this.do_action('stock_barcode.stock_barcode_action_main_menu');
+    },
+
+    _onMenuAbajo: function () {
+        if (!this.obligatoria) { return; }
+        var self = this;
+        clearTimeout(this.timerMenu);
+        this.menuLargo = false;
+        this.$('.o_ko_menu').addClass('o_ko_cargando');
+        this.timerMenu = setTimeout(function () {
+            self.menuLargo = true;
+            self.$('.o_ko_menu').removeClass('o_ko_cargando');
+            self._vibrar(60);
+            self._irMenu();
+        }, MENU_LARGO_MS);
+    },
+
+    _onMenuArriba: function () {
+        clearTimeout(this.timerMenu);
+        this.$('.o_ko_menu').removeClass('o_ko_cargando');
+    },
+
+    _onMenuContextual: function (ev) { ev.preventDefault(); },
+
+    // ------------------------------------------------------------ inactividad
+    _marcarActividad: function () {
+        this.ultimaActividad = Date.now();
+    },
+
+    _comprobarInactividad: function () {
+        if (!this.minutosInactividad || !this.operario || this.capa) { return; }
+        if (!this.el || !$.contains(document, this.el)) { return; }   // en la app de codigo de barras: no
+        if (Date.now() - this.ultimaActividad >= this.minutosInactividad * 60000) {
+            this._salirYa('inactividad');
+        }
+    },
+
+    // ------------------------------------------------------------ sin conexion
+    _esSinConexion: function (e) {
+        if (!navigator.onLine) { return true; }
+        var err = e && (e.message || e);
+        if (!err) { return false; }
+        if (err.code === -32098) { return true; }
+        var tipo = err.data && err.data.type;
+        return !!(tipo && String(tipo).indexOf('xhr') === 0);
+    },
+
+    _falloRpc: function (e, reintentar) {
+        if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }   // sin dialogo de Odoo
+        if (this._esSinConexion(e)) { return this._sinConexion(); }
+        this._ocultarCapa();
+        var err = e && (e.message || e);
+        var msg = (err && err.data && err.data.message) || (err && err.message) || 'Error de Odoo';
+        this._aviso(msg, 'mal', reintentar ? {texto: 'Reintentar', fn: reintentar} : null);
+        this._pitido(false);
+    },
+
+    _sinConexion: function () {
+        var self = this;
+        if (!this.sinRed) {
+            this.sinRed = true;
+            this.$el.addClass('o_ko_sin_red');
+            this.$('.o_ko_offline').show();
+            this._pitido(false);
+        }
+        clearTimeout(this.timerReintento);
+        this.timerReintento = setTimeout(function () { self._probarConexion(); }, REINTENTO_MS);
+    },
+
+    _probarConexion: function () {
+        var self = this;
+        if (!this.sinRed) { return; }
+        return this._rpc({route: '/koroshi/operarios/estado', params: {}}, {shadow: true})
+            .then(function (r) {
+                if (r && r.ok) { return self._conexionVuelta(); }
+                self._sinConexion();
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                self._sinConexion();
+            });
+    },
+
+    _conexionVuelta: function () {
+        clearTimeout(this.timerReintento);
+        this.sinRed = false;
+        this.$el.removeClass('o_ko_sin_red');
+        this.$('.o_ko_offline').hide();
+        this.ocupado = false;
+        this._aviso('Conexión recuperada. Ya puedes leer.', 'ok');
+        this._pitido(true);
+        this._pintarAbiertas();
+        if (!this.motivos.length) { this._cargarMotivos(); }
+        if (this.operario) { this._siguiente('no'); }
+    },
+
+    _onEnLinea: function () {
+        if (this.sinRed) { this._probarConexion(); }
+    },
+
+    _onFueraDeLinea: function () {
+        this._sinConexion();
+    },
+
+    // ------------------------------------------------------------ pintar
+    _foco: function () {
+        var $i = this.$('.o_ko_codigo');
+        if (!$i.length) { return; }
+        // en bloqueo el campo es invisible y no saca teclado (inputmode=none): siempre con foco
+        if (this._enBloqueo() || !('ontouchstart' in window)) {
+            $i.focus();
+        }
+        this._estadoLector();
+    },
+
+    _enBloqueo: function () {
+        return this.obligatoria && !this.operario;
+    },
+
+    _onFocoLector: function (ev) {
+        var self = this;
+        if (ev.type === 'focusout' || ev.type === 'blur') {
+            // en bloqueo se recupera el foco (salvo que se este escribiendo la nota de una hoja)
+            setTimeout(function () {
+                if (self._enBloqueo() && self.el && $.contains(document, self.el) && !self.$('.o_ko_hoja').is(':visible')) {
+                    self.$('.o_ko_codigo').focus();
+                }
+                self._estadoLector();
+            }, 50);
+            return;
+        }
+        this._estadoLector();
+    },
+
+    _onTocarBloqueo: function () {
+        this.$('.o_ko_codigo').focus();
+        this._estadoLector();
+    },
+
+    _estadoLector: function () {
+        var listo = !!this.el && document.activeElement === this.$('.o_ko_codigo')[0];
+        this.$('.o_ko_lector').toggleClass('o_ko_listo', listo);
+        this.$('.o_ko_lector_texto').text(listo ? 'Lector preparado' : 'Toca la pantalla');
+    },
+
+    _aviso: function (texto, clase, accion) {
+        var self = this;
+        clearTimeout(this.timerAviso);
+        var $a = this.$('.o_ko_aviso').empty();
+        var tipo = clase || 'info';
+        this.avisoAccion = null;
+        $a.attr('class', 'o_ko_aviso' + (texto ? ' o_ko_' + tipo : ''));
+        var $b = this.$('.o_ko_bloqueo_aviso');
+        if (!texto) {
+            $b.attr('class', 'o_ko_bloqueo_aviso').text('');
+            return;
+        }
+        $('<span class="o_ko_aviso_icono" aria-hidden="true"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
+        $('<span class="o_ko_aviso_texto"/>').text(texto).appendTo($a);
+        if (accion) {
+            this.avisoAccion = accion.fn;
+            $('<button type="button" class="o_ko_aviso_accion"/>').text(accion.texto).appendTo($a);
+        }
+        // en la pantalla bloqueada solo se ven los rojos y los verdes
+        if (this._enBloqueo() && (tipo === 'mal' || tipo === 'ok')) {
+            $b.attr('class', 'o_ko_bloqueo_aviso o_ko_' + tipo).text((ICONOS[tipo] || '') + ' ' + texto);
+        } else {
+            $b.attr('class', 'o_ko_bloqueo_aviso').text('');
+        }
+        if (tipo === 'ok') {
+            this.timerAviso = setTimeout(function () { self._aviso('', ''); }, AVISO_OK_MS);
+        }
+    },
+
+    _onAvisoAccion: function () {
+        var fn = this.avisoAccion;
+        this._aviso('', '');
+        if (fn) { fn(); }
+    },
+
+    // ------------------------------------------------------------ sonido y vibracion
+    _leerSonido: function () {
+        try { return window.localStorage.getItem(CLAVE_SONIDO) !== '0'; } catch (e) { return true; }
+    },
+
+    _onSonido: function () {
+        this.sonido = !this.sonido;
+        try { window.localStorage.setItem(CLAVE_SONIDO, this.sonido ? '1' : '0'); } catch (e) { /* nada */ }
+        this._pintarSonido();
+        if (this.sonido) { this._pitido(true); }
+        this._aviso(this.sonido ? 'Sonido y vibración activados' : 'Sonido y vibración desactivados', 'ok');
+    },
+
+    _pintarSonido: function () {
+        this.$('.o_ko_sonido').toggleClass('o_ko_mudo', !this.sonido).text(this.sonido ? '🔊' : '🔇')
+            .attr('aria-pressed', this.sonido ? 'true' : 'false');
+    },
+
+    _vibrar: function (patron) {
+        // sin un toque/tecla previo Chrome bloquea vibrate y saca un error en consola: solo si ya hubo interaccion
+        try {
+            var activo = !navigator.userActivation || navigator.userActivation.hasBeenActive;
+            if (this.sonido && activo && navigator.vibrate) { navigator.vibrate(patron); }
+        } catch (e) { /* nada */ }
+    },
+
+    _pitido: function (bien) {
+        this._vibrar(bien ? 80 : [120, 80, 120]);
+        if (!this.sonido) { return; }
+        try {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) { return; }
+            if (!this.audio) { this.audio = new Ctx(); }
+            var ctx = this.audio;
+            if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
+            var o = ctx.createOscillator();
+            var g = ctx.createGain();
+            o.type = bien ? 'sine' : 'square';
+            o.frequency.value = bien ? 880 : 220;
+            g.gain.value = 0.2;
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + (bien ? 0.12 : 0.4));
+        } catch (e) { /* sin sonido */ }
+    },
+
+    // v2.2.2: grupo "tarjeta obligatoria" sin operario -> sin barra de Odoo ni menu de codigo de barras
+    _bloquear: function (si) {
+        $('body').toggleClass('o_ko_bloqueado', !!si);
+    },
+
+    _iniciales: function (nombre) {
+        var partes = (nombre || '').trim().split(/\s+/).filter(Boolean);
+        if (!partes.length) { return '?'; }
+        var ini = partes[0].charAt(0) + (partes.length > 1 ? partes[partes.length - 1].charAt(0) : (partes[0].charAt(1) || ''));
+        return ini.toUpperCase();
+    },
+
+    _colorNombre: function (nombre) {
+        var h = 0;
+        for (var i = 0; i < (nombre || '').length; i++) { h = (h * 31 + nombre.charCodeAt(i)) % 360; }
+        return 'hsl(' + h + ', 55%, 32%)';   // oscuro: texto blanco con buen contraste
+    },
+
+    _pintarOperario: function () {
+        var $q = this.$('.o_ko_quien');
+        var bloqueado = this._enBloqueo();
+        this._bloquear(bloqueado && this.el && $.contains(document, this.el));
+        this.$el.toggleClass('o_ko_modo_bloqueo', bloqueado);
+        this.$('.o_ko_bloqueo').toggle(bloqueado);
+        this.$('.o_ko_codigo').attr('inputmode', bloqueado ? 'none' : null)
+            .attr('placeholder', PLACEHOLDER);
+        this.$('.o_ko_menu').toggle(!bloqueado);
+        var $av = this.$('.o_ko_avatar');
+        if (!this.operario) {
+            $q.attr('class', 'o_ko_quien o_ko_vacio')
+                .text(this.obligatoria ? 'Lee tu tarjeta' : 'Lee tu tarjeta (o directamente la OUT)');
+            $av.text('?').css('background-color', '');
+            this.$('.o_ko_salir').hide();
+        } else {
+            $q.attr('class', 'o_ko_quien').text(this.operario.nombre);
+            $av.text(this._iniciales(this.operario.nombre)).css('background-color', this._colorNombre(this.operario.nombre));
+            this.$('.o_ko_salir').show();
+        }
+        if (bloqueado) { this._foco(); } else { this._estadoLector(); }
+    },
+
+    _dato: function (texto, clase) {
+        return $('<span class="o_ko_dato"/>').addClass(clase || '').text(texto);
+    },
+
+    _pintarActual: function () {
+        var self = this;
+        var $a = this.$('.o_ko_actual');
+        var $c = this.$('.o_ko_cola').empty();
+        if (!this.operario) {
+            $a.hide();
+            this.$('.o_ko_cola_titulo').hide();
+            return;
+        }
+        if (this.actual) {
+            var x = this.actual;
+            var t = this.tarea || {};
+            this.$('.o_ko_actual_ref').text(x.ref);
+            this.$('.o_ko_actual_tienda').text(x.tienda || (x.tipo === 'agrupacion' ? 'Agrupación' : ''));
+            var $d = this.$('.o_ko_datos').empty();
+            var zona = x.zona || t.zona;
+            if (zona) { $d.append(this._dato('Zona ' + zona, 'o_ko_zona')); }
+            if (x.lineas) { $d.append(this._dato(x.lineas + (x.lineas === 1 ? ' línea' : ' líneas'))); }
+            if (x.uds) { $d.append(this._dato(x.uds + ' uds')); }
+            // v2.3.1: sin minutos (los operarios no ven nada de productividad)
+            if (x.uds) {
+                var hechas = Math.min(x.hechas || 0, x.uds);
+                var pct = Math.round(100 * hechas / x.uds);
+                this.$('.o_ko_barra_lleno').css('width', pct + '%');
+                this.$('.o_ko_progreso_texto').text(hechas + ' de ' + x.uds + ' uds leídas (' + pct + ' %)');
+                this.$('.o_ko_progreso').show();
+            } else {
+                this.$('.o_ko_progreso').hide();
+            }
+            $a.show();
+        } else {
+            $a.hide();
+        }
+        var resto = this.cola.filter(function (y) { return !self.actual || y.id !== self.actual.id; });
+        this.$('.o_ko_cola_titulo').toggle(!!resto.length);
+        resto.forEach(function (y) {
+            var $txt = $('<span class="o_ko_cola_txt"/>')
+                .append($('<span class="o_ko_cola_ref"/>').text(y.ref))
+                .append($('<span class="o_ko_cola_tienda"/>').text(y.tienda || (y.tipo === 'agrupacion' ? 'Agrupación' : '')));
+            var $extra = $('<span class="o_ko_cola_extra"/>');
+            if (y.zona) { $extra.append(self._dato(y.zona, 'o_ko_zona')); }
+            if (y.uds) { $extra.append(self._dato(y.uds + ' uds')); }
+            $('<li/>').append($txt).append($extra).appendTo($c);
+        });
+    },
+
+    _pintarAbiertas: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/operarios/estado',
+                          params: {employee_id: this.operario ? this.operario.id : false}}, {shadow: true})
+            .then(function (r) {
+                if (!r || !r.ok) { return; }
+                self.$('.o_ko_reloj').text(r.ahora);
+                self.minutosInactividad = r.minutos_inactividad || 0;
+                var n = r.n_operarios !== undefined ? r.n_operarios : r.abiertas.length;
+                self.$('.o_ko_n_operarios').text('(' + n + ')');
+                // v2.3.1: sin contador del día (pedidos / uds): los operarios no ven nada de productividad
+                self.$('.o_ko_dia').text('');
+                var $c = self.$('.o_ko_abiertas').empty();
+                if (!r.abiertas.length) { $c.text('Nadie'); return; }
+                r.abiertas.forEach(function (t) {
+                    var $f = $('<div class="o_ko_fila"/>');
+                    var $a = $('<span/>').append($('<b/>').text(t.operario))
+                        .append(document.createTextNode(' · ' + t.ref + (t.tienda ? ' · ' + t.tienda : '')));
+                    $f.append($a).append($('<span/>').text(t.inicio));
+                    $c.append($f);
+                });
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                if (self._esSinConexion(e)) { self._sinConexion(); }
+            });
+    },
+});
+
+core.action_registry.add('koroshi_operarios_pantalla', Pantalla);
+return Pantalla;
+});
+</script>
+<script>
+// boton Faltante de Lecturas (koroshi_faltantes .include)
+_mods['koroshi_operarios.Pantalla'].include({
+    events: _.extend({}, _mods['koroshi_operarios.Pantalla'].prototype.events, {'click .o_kf_abrir_faltante': '_onFaltante'}),
+    _onFaltante: function () { return this.do_action('koroshi_faltantes.action_koroshi_faltantes_pantalla', {additional_context: {desde_operarios: true,
+        faltante_out: this.actual && this.actual.picking_name, faltante_operario: this.operario}}); },
+});
+</script>
+<script>odoo.define('koroshi_preparacion.Pantalla', function (require) {
+'use strict';
+/* KOROSHI Preparación en Lecturas v3.0.1 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.0.1: foto del producto (la misma imagen que enseña la app de código de barras) y flechas ◀ ▶ para ver la línea
+ * de antes o la siguiente; tocar una línea de la lista la pone en grande. Al completar una línea salta sola a la
+ * siguiente pendiente.
+ *
+ * La abre Lecturas (koroshi_operarios) en lugar de la app de código de barras cuando el operario está activado
+ * (parámetro koroshi_preparacion.empleados) y la OUT no es de una agrupación de zona Z-.
+ *   leer EAN -> +1 ud en su línea | «Caja» -> «Escanea la caja» -> CJ -> put_in_pack | «Validar» -> button_validate
+ * Al validar vuelve a Lecturas, que enseña «¡Hecho!» y abre la siguiente. «←» vuelve a Lecturas sin validar
+ * (Continuar / Faltante / Saltar, como al volver de la app).
+ * Las lecturas van en cola: si se leen varias seguidas no se pierde ninguna, y cada una lleva un id para que un
+ * reintento no cuente dos veces.
+ */
+var AbstractAction = require('web.AbstractAction');
+var core = require('web.core');
+var session = require('web.session');
+
+var REPETIDA_MS = 400;          // la misma lectura por el bus y por el campo: cuenta una
+var REINTENTO_MS = 5000;        // sin conexión: reintento
+var AVISO_OK_MS = 3000;
+var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
+var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
+var CLAVE_PDA = 'koroshi_preparacion_pda';
+var RE_CJ = /^CJ\d{9}$/i;
+var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
+
+var Pantalla = AbstractAction.extend({
+    contentTemplate: 'koroshi_preparacion.Pantalla',
+    events: {
+        'keydown .o_kp_codigo': '_onKeydown',
+        'focus .o_kp_codigo': '_estadoLector',
+        'blur .o_kp_codigo': '_onBlur',
+        'click .o_kp_lector': '_onTocar',
+        'click .o_kp_volver': '_onVolver',
+        'click .o_kp_caja': '_onCaja',
+        'click .o_kp_cancelar_caja': '_salirDeCaja',
+        'click .o_kp_hoja_fondo': '_onFondoHoja',
+        'click .o_kp_validar': '_onValidar',
+        'click .o_kp_pendiente_si': '_onPendienteSi',
+        'click .o_kp_pendiente_no': '_onPendienteNo',
+        'click .o_kp_pendiente_cancelar': '_cerrarHoja',
+        'click .o_kp_faltante': '_onFaltante',
+        'click .o_kp_deshacer': '_onDeshacer',
+        'click .o_kp_ver_lineas': '_onVerLineas',
+        // v3.0.1: flechas, tocar una línea de la lista y volver a la que toca
+        'click .o_kp_anterior': '_onAnterior',
+        'click .o_kp_posterior': '_onPosterior',
+        'click .o_kp_ir_pendiente': '_onIrPendiente',
+        'click .o_kp_lineas li': '_onTocarLinea',
+    },
+
+    init: function (parent, action) {
+        this._super.apply(this, arguments);
+        var ctx = (action && action.context) || {};
+        this.pickingName = ctx.preparacion_out || false;
+        this.operario = ctx.preparacion_operario || null;   // {id, nombre}
+        this.estado = null;
+        this.verId = null;             // v3.0.1: línea que se ve en grande (null = la que toca)
+        this.modo = 'leer';            // 'leer' | 'caja' (esperando la etiqueta) | 'pregunta' | 'validando'
+        this.cola = [];                // lecturas pendientes de mandar
+        this.enviando = false;
+        this.sinRed = false;
+        this.ultima = {codigo: '', t: 0};
+        this.contador = 0;
+        this.sonido = this._leerSonido();
+        this.pda = this._idPda();
+        this._enLinea = this._onEnLinea.bind(this);
+        this._fueraDeLinea = this._sinConexion.bind(this);
+    },
+
+    willStart: function () {
+        var self = this;
+        var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: this.pickingName}})
+            .then(function (r) {
+                if (r && r.ok) { self.estado = r.estado; } else { self.errorCarga = (r && r.msg) || 'Error'; }
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                self.errorCarga = 'No se ha podido cargar ' + (self.pickingName || 'la OUT') + '.';
+            });
+        return Promise.all([this._super.apply(this, arguments), carga]);
+    },
+
+    start: function () {
+        var self = this;
+        core.bus.on('barcode_scanned', this, this._onBarcodeScanned);
+        window.addEventListener('online', this._enLinea);
+        window.addEventListener('offline', this._fueraDeLinea);
+        return this._super.apply(this, arguments).then(function () {
+            // v3.0.1: producto sin foto -> no se ve el hueco
+            self.$('.o_kp_foto').on('error', function () { $(this).hide(); }).on('load', function () { $(this).show(); });
+            self._pintar();
+            if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
+            self._foco();
+        });
+    },
+
+    on_attach_callback: function () {
+        // vuelve de la pantalla de Faltante: se recarga la OUT (si ya está validada, vuelta a Lecturas)
+        this._super.apply(this, arguments);
+        if (this.yaMostrada) { this._recargar(); }
+        this.yaMostrada = true;
+        this._foco();
+    },
+
+    destroy: function () {
+        core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
+        window.removeEventListener('online', this._enLinea);
+        window.removeEventListener('offline', this._fueraDeLinea);
+        clearTimeout(this.timerAviso);
+        clearTimeout(this.timerReintento);
+        clearTimeout(this.timerVolver);
+        if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
+        this._super.apply(this, arguments);
+    },
+
+    // ------------------------------------------------------------ utilidades
+    _idPda: function () {
+        try {
+            var v = window.localStorage.getItem(CLAVE_PDA);
+            if (!v) {
+                v = 'PDA' + Math.floor(Math.random() * 1e9).toString(36);
+                window.localStorage.setItem(CLAVE_PDA, v);
+            }
+            return v;
+        } catch (e) { return 'PDA'; }
+    },
+
+    _nuevoId: function () {
+        this.contador += 1;
+        return this.pda + '-' + Date.now().toString(36) + '-' + this.contador;
+    },
+
+    _visible: function () {
+        return !!this.el && $.contains(document, this.el);
+    },
+
+    _out: function () {
+        return this.estado && this.estado.out;
+    },
+
+    // ------------------------------------------------------------ lecturas
+    _onBarcodeScanned: function (barcode) {
+        if (!this._visible()) { return; }
+        this._leer(barcode);
+    },
+
+    _onKeydown: function (ev) {
+        if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            var $i = this.$('.o_kp_codigo');
+            var c = ($i.val() || '').trim();
+            $i.val('');
+            if (c) { this._leer(c); }
+        }
+    },
+
+    _leer: function (codigo) {
+        codigo = (codigo || '').trim();
+        var ahora = Date.now();
+        if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
+        this.ultima = {codigo: codigo, t: ahora};
+        if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
+        if (this.sinRed) {
+            this._aviso('Sin conexión: no se ha leído ' + codigo + '. Espera a que vuelva.', 'mal');
+            return this._pitido(false);
+        }
+        if (this.modo === 'pregunta' || this.modo === 'validando') { return; }
+        var tipo = this.modo === 'caja' ? 'caja' : 'leer';
+        this.cola.push({tipo: tipo, codigo: codigo, id: this._nuevoId()});
+        this._enviar();
+    },
+
+    _enviar: function () {
+        var self = this;
+        if (this.enviando || this.sinRed || !this.cola.length) { return; }
+        var item = this.cola[0];
+        this.enviando = true;
+        var ruta = item.tipo === 'caja' ? '/koroshi/preparacion/caja' : '/koroshi/preparacion/leer';
+        return this._rpc({route: ruta, params: {
+            picking_id: this._out().id, codigo: item.codigo, id_lectura: item.id,
+            employee_id: this.operario ? this.operario.id : false,
+        }}, {shadow: true}).then(function (r) {
+            self.cola.shift();
+            self.enviando = false;
+            if (r && r.estado) { self.estado = r.estado; }
+            if (item.tipo === 'caja') { self._trasCaja(r); } else { self._trasLeer(r); }
+            self._pintar();
+            self._enviar();
+        }).guardedCatch(function (e) {
+            self.enviando = false;
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            if (self._esSinConexion(e)) { return self._sinConexion(); }   // la lectura se queda y se reintenta
+            self.cola.shift();
+            self._aviso(self._mensajeError(e), 'mal');
+            self._pitido(false);
+            self._enviar();
+        });
+    },
+
+    _trasLeer: function (r) {
+        if (r && r.ok) {
+            // v3.0.1: si la línea leída aún no está completa se queda a la vista; si ya lo está, salta sola a la siguiente
+            var l = this.estado && _.findWhere(this.estado.lineas, {id: r.linea_id});
+            this.verId = l && !l.completa ? l.id : null;
+            this._aviso(r.msg, 'ok');
+            this._pitido(true);
+            if (this.estado && this.estado.todo_leido) {
+                this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
+            }
+            return;
+        }
+        this._aviso((r && r.msg) || 'Error', 'mal');
+        this._pitido(false);
+    },
+
+    // ------------------------------------------------------------ caja
+    _onCaja: function () {
+        if (!this._out() || this.sinRed) { return; }
+        if (!this.estado.sin_caja) {
+            this._aviso('No hay nada leído fuera de caja.', 'info');
+            return this._foco();
+        }
+        this.modo = 'caja';
+        this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
+                                        ' a esta caja. Lee la etiqueta CJ de la caja.');
+        this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
+        this.$('.o_kp_hoja_pregunta').hide();
+        this.$('.o_kp_hoja_caja').show();
+        this.$('.o_kp_hoja').show();
+        this._foco();
+    },
+
+    _trasCaja: function (r) {
+        if (r && r.ok) {
+            this._cerrarHoja();
+            this._aviso(r.msg, 'ok');
+            this._pitido(true);
+            return;
+        }
+        // sigue esperando la etiqueta
+        var msg = (r && r.msg) || 'Error';
+        this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal').text('✖ ' + msg);
+        this._pitido(false);
+        if (this.estado && !this.estado.sin_caja) { this._cerrarHoja(); this._aviso(msg, 'mal'); }
+    },
+
+    _salirDeCaja: function () {
+        this._cerrarHoja();
+        this._aviso('Caja sin cerrar. Puedes seguir leyendo.', 'info');
+    },
+
+    _onFondoHoja: function () {
+        if (this.modo === 'caja') { this._salirDeCaja(); } else if (this.modo === 'pregunta') { this._cerrarHoja(); }
+    },
+
+    _cerrarHoja: function () {
+        this.modo = 'leer';
+        this.$('.o_kp_hoja').hide();
+        this._pintar();
+        this._foco();
+    },
+
+    // ------------------------------------------------------------ validar
+    _onValidar: function () {
+        if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
+        return this._validar(false);
+    },
+
+    _onPendienteSi: function () { return this._validar('si'); },
+    _onPendienteNo: function () { return this._validar('no'); },
+
+    _validar: function (pedidoPendiente) {
+        var self = this;
+        var out = this._out();
+        this.$('.o_kp_hoja').hide();
+        this.modo = 'validando';
+        this._capa('Validando ' + out.name + '…', false);
+        return this._rpc({route: '/koroshi/preparacion/validar', params: {
+            picking_id: out.id, employee_id: this.operario ? this.operario.id : false,
+            pedido_pendiente: pedidoPendiente || false,
+        }}).then(function (r) {
+            if (r && r.estado) { self.estado = r.estado; }
+            if (r && r.ok && r.que === 'validada') {
+                self._capa('✓ ' + out.name + ' validada', true);
+                self._pitido(true);
+                self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
+                return;
+            }
+            self._ocultarCapa();
+            if (r && r.que === 'preguntar') {
+                self.modo = 'pregunta';
+                self.$('.o_kp_hoja_caja').hide();
+                self.$('.o_kp_hoja_pregunta').show();
+                self.$('.o_kp_hoja').show();
+                return;
+            }
+            self.modo = 'leer';
+            self._pintar();
+            self._aviso((r && r.msg) || 'No se ha podido validar.', r && r.que === 'quedan' ? 'warn' : 'mal');
+            self._pitido(false);
+        }).guardedCatch(function (e) {
+            self._ocultarCapa();
+            self.modo = 'leer';
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            if (self._esSinConexion(e)) { return self._sinConexion(); }
+            self._aviso(self._mensajeError(e), 'mal');
+            self._pitido(false);
+        });
+    },
+
+    // ------------------------------------------------------------ deshacer / faltante / volver
+    _onDeshacer: function () {
+        var self = this;
+        if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
+        this.enviando = true;
+        return this._rpc({route: '/koroshi/preparacion/deshacer', params: {
+            picking_id: this._out().id, employee_id: this.operario ? this.operario.id : false,
+        }}).then(function (r) {
+            self.enviando = false;
+            if (r && r.estado) { self.estado = r.estado; }
+            if (r && r.ok && r.linea_id) { self.verId = r.linea_id; }   // v3.0.1: se ve la línea deshecha
+            self._pintar();
+            self._aviso((r && r.msg) || 'Error', r && r.ok ? 'info' : 'mal');
+            self._pitido(!!(r && r.ok));
+            self._foco();
+        }).guardedCatch(function (e) {
+            self.enviando = false;
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            if (self._esSinConexion(e)) { return self._sinConexion(); }
+            self._aviso(self._mensajeError(e), 'mal');
+        });
+    },
+
+    _onFaltante: function () {
+        var out = this._out();
+        if (!out || this.sinRed || this.modo !== 'leer') { return; }
+        return this.do_action('koroshi_faltantes.action_koroshi_faltantes_pantalla', {
+            additional_context: {
+                desde_operarios: true,       // al validar o salir, koroshi_faltantes vuelve atrás (a esta pantalla)
+                desde_preparacion: true,     // «Volver a la OUT» también vuelve aquí (ver include de abajo)
+                faltante_out: out.name,
+                faltante_operario: this.operario ? {id: this.operario.id, nombre: this.operario.nombre} : false,
+            },
+        });
+    },
+
+    _onVolver: function () {
+        if (this.modo === 'validando') { return; }
+        this.trigger_up('history_back');
+    },
+
+    _recargar: function () {
+        var self = this;
+        if (!this._out()) { return; }
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id}}, {shadow: true})
+            .then(function (r) {
+                if (!r || !r.ok) { return; }
+                self.estado = r.estado;
+                if (self.estado.out.estado === 'done' || self.estado.out.estado === 'cancel') {
+                    // validada desde Faltante: vuelta a Lecturas («¡Hecho!» y la siguiente)
+                    self._capa('✓ ' + self.estado.out.name + (self.estado.out.estado === 'done' ? ' validada' : ' cancelada'), true);
+                    self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
+                    return;
+                }
+                self._pintar();
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                if (self._esSinConexion(e)) { self._sinConexion(); }
+            });
+    },
+
+    // ------------------------------------------------------------ v3.0.1: flechas
+    _idVisto: function () {
+        var e = this.estado;
+        if (!e) { return null; }
+        if (this.verId && _.findWhere(e.lineas, {id: this.verId})) { return this.verId; }
+        this.verId = null;
+        return e.siguiente_id || null;
+    },
+
+    _mover: function (paso) {
+        var e = this.estado;
+        if (!e || !e.lineas.length || this.modo !== 'leer') { return; }
+        var ids = _.pluck(e.lineas, 'id');
+        var actual = this._idVisto();
+        var i = actual ? ids.indexOf(actual) : (paso > 0 ? -1 : ids.length);
+        var j = Math.max(0, Math.min(ids.length - 1, i + paso));
+        this.verId = ids[j] === e.siguiente_id ? null : ids[j];
+        this._pintar();
+        this._foco();
+    },
+
+    _onAnterior: function () { this._mover(-1); },
+    _onPosterior: function () { this._mover(1); },
+
+    _onIrPendiente: function () {
+        this.verId = null;
+        this._pintar();
+        this._foco();
+    },
+
+    _onTocarLinea: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (!id || this.modo !== 'leer') { return; }
+        this.verId = id === (this.estado && this.estado.siguiente_id) ? null : id;
+        this._pintar();
+        var el = this.$('.o_kp_siguiente')[0];
+        if (el && el.scrollIntoView) { el.scrollIntoView({block: 'start'}); }
+        this._foco();
+    },
+
+    _onVerLineas: function () {
+        var $l = this.$('.o_kp_lineas');
+        var abrir = !$l.is(':visible');
+        $l.toggle(abrir);
+        this.$('.o_kp_ver_lineas').attr('aria-expanded', abrir ? 'true' : 'false');
+        this._pintarBotonLineas();
+    },
+
+    // ------------------------------------------------------------ sin conexión
+    _esSinConexion: function (e) {
+        if (!navigator.onLine) { return true; }
+        var err = e && (e.message || e);
+        if (!err) { return false; }
+        if (err.code === -32098) { return true; }
+        var tipo = err.data && err.data.type;
+        return !!(tipo && String(tipo).indexOf('xhr') === 0);
+    },
+
+    _mensajeError: function (e) {
+        var err = e && (e.message || e);
+        return (err && err.data && err.data.message) || (err && err.message) || 'Error de Odoo';
+    },
+
+    _sinConexion: function () {
+        var self = this;
+        if (!this.sinRed) {
+            this.sinRed = true;
+            this.$('.o_kp_offline').show();
+            this._estadoLector();
+            this.$el.addClass('o_kp_sin_red');
+            this._pitido(false);
+        }
+        clearTimeout(this.timerReintento);
+        this.timerReintento = setTimeout(function () { self._probarConexion(); }, REINTENTO_MS);
+    },
+
+    _probarConexion: function () {
+        var self = this;
+        if (!this.sinRed || !this._out()) { return; }
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id}}, {shadow: true})
+            .then(function (r) {
+                if (!r || !r.ok) { return self._sinConexion(); }
+                clearTimeout(self.timerReintento);
+                self.sinRed = false;
+                self.$('.o_kp_offline').hide();
+                self._estadoLector();
+                self.$el.removeClass('o_kp_sin_red');
+                self.estado = r.estado;
+                self._pintar();
+                self._aviso('Conexión recuperada.' + (self.cola.length ? ' Guardando lo leído…' : ' Ya puedes leer.'), 'ok');
+                self._pitido(true);
+                self._enviar();   // la lectura que se quedó a medias (mismo id: no cuenta dos veces)
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                self._sinConexion();
+            });
+    },
+
+    _onEnLinea: function () {
+        if (this.sinRed) { this._probarConexion(); }
+    },
+
+    // ------------------------------------------------------------ pintar
+    _pintar: function () {
+        var e = this.estado;
+        if (!e) {
+            this.$('.o_kp_ref').text(this.pickingName || '');
+            this.$('.o_kp_siguiente, .o_kp_progreso').hide();
+            this.$('.o_kp_caja, .o_kp_validar, .o_kp_deshacer, .o_kp_faltante').prop('disabled', true);
+            return;
+        }
+        var out = e.out;
+        this.$('.o_kp_ref').text(out.name);
+        this.$('.o_kp_tienda').text(out.tienda || out.origen || '');
+        this.$('.o_kp_operario').text(this.operario ? this.operario.nombre : 'Sin tarjeta');
+        // progreso
+        var pct = e.pedidas ? Math.round(100 * Math.min(e.leidas, e.pedidas) / e.pedidas) : 0;
+        this.$('.o_kp_barra_lleno').css('width', pct + '%');
+        this.$('.o_kp_progreso_texto').text(e.leidas + ' de ' + e.pedidas + ' uds');
+        this.$('.o_kp_sin_caja').text(e.sin_caja ? 'Sin caja: ' + e.sin_caja + ' uds' : 'Todo en caja')
+            .toggleClass('o_kp_hay', !!e.sin_caja);
+        this.$('.o_kp_progreso').show();
+        // la línea en grande: la que toca o la elegida con las flechas (v3.0.1)
+        var idVisto = this._idVisto();
+        var sig = idVisto && _.findWhere(e.lineas, {id: idVisto});
+        if (sig && (!e.todo_leido || this.verId)) {
+            var pos = e.lineas.indexOf(sig);
+            var esLaQueToca = sig.id === e.siguiente_id;
+            this.$('.o_kp_etiqueta').text(esLaQueToca ? 'Ve a' : (sig.completa ? 'Ya cogida' : 'Pendiente'));
+            this.$('.o_kp_posicion').text('Línea ' + (pos + 1) + ' de ' + e.lineas.length);
+            this.$('.o_kp_anterior').prop('disabled', pos <= 0);
+            this.$('.o_kp_posterior').prop('disabled', pos >= e.lineas.length - 1);
+            this.$('.o_kp_ubicacion').text(sig.ubicacion);
+            this.$('.o_kp_producto_ref').text(sig.ref || '');
+            this.$('.o_kp_producto').text(sig.producto);
+            this.$('.o_kp_cuantas').text((sig.completa ? '✓ ' : '') + 'Cogidas ' + sig.leidas + ' de ' + sig.pedidas +
+                                         (sig.caja ? ' · 📦 ' + sig.caja : ''));
+            var src = sig.producto_id ? '/web/image/product.product/' + sig.producto_id + '/image_256' : '';
+            var $f = this.$('.o_kp_foto');
+            if ($f.attr('src') !== src) {
+                $f.hide();
+                if (src) { $f.attr('src', src); } else { $f.removeAttr('src'); }
+            }
+            this.$('.o_kp_siguiente').toggleClass('o_kp_vista_hecha', !!sig.completa)
+                .toggleClass('o_kp_vista_otra', !esLaQueToca).show();
+            this.$('.o_kp_ir_pendiente').text(e.todo_leido ? 'Volver al resumen ▸' : 'Ir a la que toca ▸')
+                .toggle(!esLaQueToca);
+            this.$('.o_kp_completa').hide();
+        } else {
+            this.$('.o_kp_siguiente').hide();
+            this.$('.o_kp_completa_texto').text(e.todo_leido
+                ? (e.sin_caja ? 'Pulsa «Caja» y lee la etiqueta. Después, Validar.' : 'Pulsa «Validar».')
+                : 'Lo que queda ya está en caja o se marca con «Faltante».');
+            this.$('.o_kp_completa').show();
+        }
+        // botones
+        var libre = this.modo === 'leer' && !this.sinRed;
+        this.$('.o_kp_caja').prop('disabled', !libre || !e.sin_caja)
+            .toggleClass('o_kp_destacado', !!e.sin_caja && e.todo_leido);
+        this.$('.o_kp_validar').prop('disabled', !libre || !!e.sin_caja || !e.leidas)
+            .toggleClass('o_kp_destacado', !e.sin_caja && e.todo_leido);
+        this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas);
+        this.$('.o_kp_faltante').prop('disabled', !libre);
+        this._pintarLineas();
+    },
+
+    _pintarLineas: function () {
+        var e = this.estado;
+        var $l = this.$('.o_kp_lineas').empty();
+        e.lineas.forEach(function (l) {
+            var $li = $('<li/>').attr('data-id', l.id).toggleClass('o_kp_hecha', l.completa)
+                .toggleClass('o_kp_ahora', l.id === e.siguiente_id);
+            $('<span class="o_kp_l_marca" aria-hidden="true"/>').text(l.completa ? '✓' : '').appendTo($li);
+            if (l.producto_id) {
+                // v3.0.1: miniatura (solo se descarga al abrir la lista)
+                $('<img class="o_kp_l_foto" alt="" loading="lazy"/>')
+                    .attr('src', '/web/image/product.product/' + l.producto_id + '/image_128')
+                    .on('error', function () { $(this).css('visibility', 'hidden'); }).appendTo($li);
+            }
+            var $t = $('<span class="o_kp_l_texto"/>').appendTo($li);
+            $('<span class="o_kp_l_ubi"/>').text(l.ubicacion).appendTo($t);
+            $('<span class="o_kp_l_prod"/>').text((l.ref ? l.ref + ' · ' : '') + l.producto).appendTo($t);
+            if (l.caja) { $('<span class="o_kp_l_caja"/>').text('📦 ' + l.caja).appendTo($t); }
+            $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
+            $l.append($li);
+        });
+        var $c = this.$('.o_kp_cajas').empty();
+        if (e.cajas.length) {
+            $c.text('Cajas cerradas: ' + e.cajas.map(function (c) { return c.nombre + ' (' + c.uds + ')'; }).join(', '));
+        }
+        this._pintarBotonLineas();
+    },
+
+    _pintarBotonLineas: function () {
+        var n = this.estado ? this.estado.lineas.length : 0;
+        var abierto = this.$('.o_kp_lineas').is(':visible');
+        this.$('.o_kp_ver_lineas').text((abierto ? '▾ Ocultar líneas' : '▸ Ver líneas') + ' (' + n + ')');
+    },
+
+    _capa: function (texto, hecho) {
+        this.$('.o_kp_capa_texto').text(texto);
+        this.$('.o_kp_capa').toggleClass('o_kp_capa_hecho', !!hecho).show();
+    },
+
+    _ocultarCapa: function () {
+        this.$('.o_kp_capa').hide().removeClass('o_kp_capa_hecho');
+    },
+
+    _aviso: function (texto, clase) {
+        var self = this;
+        clearTimeout(this.timerAviso);
+        var $a = this.$('.o_kp_aviso').empty();
+        var tipo = clase || 'info';
+        $a.attr('class', 'o_kp_aviso' + (texto ? ' o_kp_' + tipo : ''));
+        if (!texto) { return; }
+        $('<span class="o_kp_aviso_icono" aria-hidden="true"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
+        $('<span/>').text(texto).appendTo($a);
+        if (tipo === 'ok') {
+            this.timerAviso = setTimeout(function () { self._aviso('', ''); }, AVISO_OK_MS);
+        }
+    },
+
+    _foco: function () {
+        var $i = this.$('.o_kp_codigo');
+        if ($i.length && !('ontouchstart' in window)) { $i.focus(); }
+        this._estadoLector();
+    },
+
+    _onTocar: function () {
+        this.$('.o_kp_codigo').focus();
+        this._estadoLector();
+    },
+
+    _onBlur: function () {
+        var self = this;
+        setTimeout(function () { self._estadoLector(); }, 50);
+    },
+
+    _estadoLector: function () {
+        // v3.0.2: el lector va por el bus de Odoo (como la app de código de barras): no hace falta tocar el campo.
+        // El punto solo se pone gris sin conexión.
+        var listo = !!this.el && !this.sinRed;
+        this.$('.o_kp_lector').toggleClass('o_kp_listo', listo);
+        this.$('.o_kp_lector_texto').text(listo ? 'Lector preparado' : 'Sin conexión');
+    },
+
+    // ------------------------------------------------------------ sonido y vibración (mismo interruptor que Lecturas)
+    _leerSonido: function () {
+        try { return window.localStorage.getItem(CLAVE_SONIDO) !== '0'; } catch (e) { return true; }
+    },
+
+    _vibrar: function (patron) {
+        try {
+            var activo = !navigator.userActivation || navigator.userActivation.hasBeenActive;
+            if (this.sonido && activo && navigator.vibrate) { navigator.vibrate(patron); }
+        } catch (e) { /* nada */ }
+    },
+
+    _pitido: function (bien) {
+        this._vibrar(bien ? 60 : [120, 80, 120]);
+        if (!this.sonido) { return; }
+        try {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) { return; }
+            if (!this.audio) { this.audio = new Ctx(); }
+            var ctx = this.audio;
+            if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
+            var o = ctx.createOscillator();
+            var g = ctx.createGain();
+            o.type = bien ? 'sine' : 'square';
+            o.frequency.value = bien ? 880 : 220;
+            g.gain.value = 0.2;
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.start();
+            o.stop(ctx.currentTime + (bien ? 0.1 : 0.4));
+        } catch (e) { /* sin sonido */ }
+    },
+});
+
+core.action_registry.add('koroshi_preparacion_pantalla', Pantalla);
+return Pantalla;
+});
+
+
+odoo.define('koroshi_preparacion.Lecturas', function (require) {
+'use strict';
+/* En Lecturas (koroshi_operarios): si el operario está activado y la OUT es suelta, se abre la pantalla de
+ * preparación en lugar de la app de código de barras. En cualquier otro caso, lo de siempre. */
+var Operarios = require('koroshi_operarios.Pantalla');
+
+Operarios.include({
+    _abrir: function (obj) {
+        var self = this;
+        var deSiempre = this._super.bind(this);
+        if (!obj || obj.tipo !== 'out' || !this.operario || this.sinRed) {
+            return deSiempre(obj);
+        }
+        var ref = obj.picking_name || obj.ref;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/preparacion/modo',
+                          params: {employee_id: this.operario.id, picking_name: ref}}, {shadow: true})
+            .then(function (r) {
+                if (!r || !r.propia) {
+                    self.ocupado = false;
+                    return deSiempre(obj);
+                }
+                self._mostrarAbriendo(ref, self.operario.nombre);
+                return self.do_action('koroshi_preparacion.action_koroshi_preparacion_pantalla', {
+                    additional_context: {
+                        preparacion_out: ref,
+                        preparacion_operario: {id: self.operario.id, nombre: self.operario.nombre},
+                    },
+                }).then(function () { self.ocupado = false; });
+            }).guardedCatch(function (e) {
+                self.ocupado = false;
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                if (self._esSinConexion(e)) { self._ocultarCapa(); return self._sinConexion(); }
+                return deSiempre(obj);   // si falla la pregunta, la app de siempre
+            });
+    },
+});
+return Operarios;
+});
+
+
+odoo.define('koroshi_preparacion.Faltantes', function (require) {
+'use strict';
+/* En la pantalla de Faltante (koroshi_faltantes): «Volver a la OUT» vuelve a la pantalla de preparación en lugar
+ * de abrir la app de código de barras (si venía de ella, o si el operario está activado y la OUT es suelta). */
+var Faltantes = require('koroshi_faltantes.Pantalla');
+
+Faltantes.include({
+    init: function (parent, action) {
+        this._super.apply(this, arguments);
+        var ctx = (action && action.context) || {};
+        this.desdePreparacion = !!ctx.desde_preparacion;
+    },
+
+    _onVolver: function () {
+        var self = this;
+        var deSiempre = this._super.bind(this);
+        if (!this.out || this.ocupado || this.paso === 'validada' || this.out.batch_id || this.out.lote_id) {
+            return deSiempre();
+        }
+        if (this.desdePreparacion) {
+            return this.trigger_up('history_back');
+        }
+        var emp = this._empleadoId ? this._empleadoId() : false;
+        if (!emp) { return deSiempre(); }
+        return this._rpc({route: '/koroshi/preparacion/modo', params: {employee_id: emp, picking_name: this.out.name}},
+                         {shadow: true})
+            .then(function (r) {
+                if (!r || !r.propia) { return deSiempre(); }
+                return self.do_action('koroshi_preparacion.action_koroshi_preparacion_pantalla', {
+                    additional_context: {
+                        preparacion_out: self.out.name,
+                        preparacion_operario: self.operario ? {id: self.operario.id, nombre: self.operario.nombre} : false,
+                    },
+                    replace_last_action: true,
+                });
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                return deSiempre();
+            });
+    },
+});
+return Faltantes;
+});
+</script>
+<script>
+var EMP = {OP9990001: {id: 1, name: 'Isaac'}, OP9980001: {id: 2, name: 'Isaac2'}, OP0000005: {id: 5, name: 'Marta'}};
+MOCK.activos = [1, 2];
+var MOT = [{id: 1, nombre: 'No hay stock / en espera', destino: 'oficina', pide_nota: false},
+           {id: 2, nombre: 'Fin de turno', destino: 'suya', pide_nota: false}];
+function A(id, ref, tienda, zona, lineas, uds, tipo, batch) {
+    return {id: id, ref: ref, tipo: tipo || 'out', picking_name: tipo ? '' : ref, batch_id: batch || false,
+            tienda: tienda, estado: 'asignada', zona: zona, lineas: lineas, uds: uds, hechas: 0};
+}
+// OUT simuladas: lineas (move.line) con producto, EAN, ubicacion, pedidas, leidas, caja
+function L(id, ubi, ref, nombre, ean, n) { return {id: id, producto_id: id, ubicacion: ubi, ref: ref, producto: nombre, ean: ean, pedidas: n, leidas: 0, caja: ''}; }
+var OUTS = {
+    'KO/OUT/04512': {id: 512, tienda: 'Tienda Centro', estado: 'assigned', lineas: [
+        L(1, 'KO_A01-02', 'KJ-2201-M', 'Camiseta básica M negro', '8435000000017', 1),
+        L(2, 'KO_A03-01', 'KJ-2201-L', 'Camiseta básica L negro', '8435000000024', 2),
+        L(3, 'KO_B07-04', 'KP-4410-38', 'Pantalón chino 38 beige', '8435000000031', 1)]},
+    'KO/OUT/04513': {id: 513, tienda: 'Tienda Norte', estado: 'assigned', lineas: [
+        L(11, 'KO_C02-01', 'KS-1000-U', 'Calcetín pack 3', '8435000000048', 1)]},
+    'KO/OUT/04600': {id: 600, tienda: 'Tienda Sur', estado: 'assigned', lineas: [
+        L(21, 'KO_D01-01', 'KJ-2201-S', 'Camiseta básica S negro', '8435000000055', 1)]},
+};
+function outPorId(id) { return Object.keys(OUTS).map(function (k) { var o = OUTS[k]; o.name = k; return o; }).filter(function (o) { return o.id === id; })[0]; }
+function estado(o) {
+    var sig = false, cajas = {}, sin = 0, ped = 0, lei = 0;
+    o.lineas.forEach(function (l) {
+        l.completa = l.leidas >= l.pedidas;
+        if (!sig && !l.completa && !l.caja) { sig = l.id; }
+        if (l.caja) { cajas[l.caja] = (cajas[l.caja] || 0) + l.leidas; } else { sin += l.leidas; }
+        ped += l.pedidas; lei += l.leidas;
+    });
+    return {out: {id: o.id, name: o.name, tienda: o.tienda, origen: '', estado: o.estado, agrupacion: '', propia: true},
+            lineas: JSON.parse(JSON.stringify(o.lineas)), siguiente_id: sig, sin_caja: sin,
+            cajas: Object.keys(cajas).map(function (k) { return {nombre: k, uds: cajas[k]}; }),
+            pedidas: ped, leidas: lei, todo_leido: o.lineas.every(function (l) { return l.completa; })};
+}
+var VISTOS = {}, ULTIMAS = [];
+MOCK.validarOut = function (name) {
+    OUTS[name].estado = 'done';
+    Object.keys(S.actual).forEach(function (k) { if (S.actual[k] && S.actual[k].ref === name) { S.actual[k] = null; } });
+};
+function prep(q) {
+    var p = q.params || {};
+    if (q.route === '/koroshi/preparacion/modo') {
+        var activo = MOCK.activos.indexOf(p.employee_id) >= 0;
+        return {ok: true, propia: activo && !!OUTS[p.picking_name] && OUTS[p.picking_name].estado !== 'done'};
+    }
+    if (q.route === '/koroshi/preparacion/cargar') {
+        var o = p.picking_id ? outPorId(p.picking_id) : OUTS[p.picking_name];
+        if (!o) { return {ok: false, msg: 'No se encuentra la OUT ' + p.picking_name + '.'}; }
+        if (!o.name) { o.name = p.picking_name; }
+        return {ok: true, estado: estado(o)};
+    }
+    var o2 = outPorId(p.picking_id);
+    var r;
+    if (q.route === '/koroshi/preparacion/leer') {
+        if (VISTOS[p.id_lectura]) { r = VISTOS[p.id_lectura]; r.que = 'repetida'; }
+        else if (/^CJ\d{9}$/.test(p.codigo)) { r = {ok: false, que: 'es_caja', msg: 'Es una caja: pulsa «Caja» antes de leerla.'}; }
+        else if (EMP[p.codigo]) { r = {ok: false, que: 'es_tarjeta', msg: 'Es la tarjeta de ' + EMP[p.codigo].name + '. Para cambiar de operario vuelve a Lecturas (←).'}; }
+        else {
+            var dela = o2.lineas.filter(function (l) { return l.ean === p.codigo || l.ref === p.codigo; });
+            if (!dela.length) { r = {ok: false, que: 'no_es_del_pedido', msg: /^\d{13}$/.test(p.codigo) ? 'Producto ' + p.codigo + ' no es de este pedido. No cuenta.' : 'Código ' + p.codigo + ' desconocido. No cuenta.'}; }
+            else {
+                var libre = dela.filter(function (l) { return !l.caja && l.leidas < l.pedidas; })[0];
+                if (!libre) { r = {ok: false, que: 'completo', msg: 'Ya tienes todas las uds de ' + dela[0].producto + '. No cuenta.'}; }
+                else { libre.leidas += 1; ULTIMAS.push(libre.id);
+                       r = {ok: true, que: 'producto', linea_id: libre.id, msg: libre.ref + '  ' + libre.leidas + ' de ' + libre.pedidas}; }
+            }
+            VISTOS[p.id_lectura] = r;
+        }
+    } else if (q.route === '/koroshi/preparacion/caja') {
+        var sinc = o2.lineas.filter(function (l) { return !l.caja && l.leidas > 0; });
+        if (!/^CJ\d{9}$/.test(p.codigo)) { r = {ok: false, msg: p.codigo + ' no es una etiqueta de caja (CJ + 9 cifras). Lee la etiqueta de la caja.'}; }
+        else if (!sinc.length) { r = {ok: false, msg: 'No hay nada leído fuera de caja.'}; }
+        else {
+            var uds = 0;
+            sinc.forEach(function (l) {
+                uds += l.leidas;
+                if (l.leidas < l.pedidas) {   // put_in_pack parte la linea
+                    var resto = L(l.id * 100 + 1, l.ubicacion, l.ref, l.producto, l.ean, l.pedidas - l.leidas);
+                    o2.lineas.splice(o2.lineas.indexOf(l) + 1, 0, resto); l.pedidas = l.leidas;
+                }
+                l.caja = p.codigo;
+            });
+            r = {ok: true, msg: 'Caja ' + p.codigo + ' cerrada con ' + uds + ' uds.'};
+        }
+    } else if (q.route === '/koroshi/preparacion/deshacer') {
+        var id = ULTIMAS.pop(), lin = o2.lineas.filter(function (l) { return l.id === id; })[0];
+        if (!lin) { r = {ok: false, msg: 'No hay ninguna lectura tuya que deshacer.'}; }
+        else if (lin.caja) { ULTIMAS.push(id); r = {ok: false, msg: lin.ref + ' ya está en la caja ' + lin.caja + ': no se puede deshacer.'}; }
+        else { lin.leidas -= 1; r = {ok: true, msg: 'Deshecha: ' + lin.ref + ' (−1)'}; }
+    } else if (q.route === '/koroshi/preparacion/validar') {
+        var e = estado(o2);
+        if (e.sin_caja) { r = {ok: false, que: 'sin_caja', msg: 'Hay ' + e.sin_caja + ' uds sin caja: pulsa «Caja» y lee la etiqueta antes de validar.'}; }
+        else if (!e.todo_leido && !p.pedido_pendiente) {
+            var n = o2.lineas.filter(function (l) { return !l.completa && !l.caja; }).length;
+            r = MOCK.faltaConPregunta ? {ok: true, que: 'preguntar', msg: 'Faltan uds.'} : {ok: false, que: 'quedan', n: n, msg: 'Quedan ' + n + ' líneas por coger: léelas o pulsa «Faltante».'};
+        } else { MOCK.validarOut(o2.name); r = {ok: true, que: 'validada', msg: o2.name + ' validada.'}; }
+    }
+    r = JSON.parse(JSON.stringify(r)); r.estado = estado(o2); return r;
+}
+var S = {
+    cola: {1: [A(11, 'KO/OUT/04512', 'Tienda Centro', 'Z1', 3, 4), A(12, 'KO/OUT/04513', 'Tienda Norte', 'Z1', 1, 1),
+               A(13, 'Z-1011-Z2', '', 'Z2', 31, 140, 'agrupacion', 77)],
+           2: [A(21, 'KO/OUT/04600', 'Tienda Sur', 'Z2', 1, 1)], 5: [A(31, 'KO/OUT/04513', 'Tienda Norte', 'Z1', 1, 1)]},
+    actual: {}, ultima: {}
+};
+function tarea(emp, a) { return {id: 900 + a.id, operario: emp.name, ref: a.ref, tipo: a.tipo, picking_name: a.picking_name,
+    batch_id: a.batch_id, tienda: a.tienda, inicio: '10:42', estado: 'curso', uds_total: a.uds, minutos: 7, zona: a.zona}; }
+function empById(id) { return Object.values(EMP).filter(function (e) { return e.id === id; })[0]; }
+function siguiente(emp) {
+    var c = S.cola[emp.id];
+    var a = S.actual[emp.id] || c.shift() || null;
+    S.actual[emp.id] = a;
+    var nueva = !!a && S.ultima[emp.id] !== a.ref;
+    if (a) { S.ultima[emp.id] = a.ref; }
+    var r = {ok: true, que: 'siguiente', nueva: nueva, asignacion: a, tarea: a ? tarea(emp, a) : false,
+             cola: c.slice(0, 10), operario: emp.name, employee_id: emp.id};
+    if (!a) { r.msg = 'No tienes más pedidos. Pide a tu responsable.'; }
+    return r;
+}
+MOCK.server = function (q) {
+    var p = q.params || {};
+    if (q.route && q.route.indexOf('/koroshi/preparacion/') === 0) { return prep(q); }
+    if (q.route === '/koroshi/operarios/leer') {
+        var e = EMP[p.codigo];
+        if (e) { return {ok: true, que: 'tarjeta', employee_id: e.id, operario: e.name}; }
+        return {ok: false, msg: 'Lee primero tu tarjeta'};
+    }
+    if (q.route === '/koroshi/operarios/operario') { var o = empById(p.employee_id); return o ? {ok: true, employee_id: o.id, operario: o.name} : {ok: false, msg: 'Lee primero tu tarjeta'}; }
+    if (q.route === '/koroshi/operarios/siguiente') { return siguiente(empById(p.employee_id)); }
+    if (q.route === '/koroshi/operarios/motivos') { return {ok: true, motivos: MOT}; }
+    if (q.route === '/koroshi/operarios/estado') { return {ok: true, ahora: '10:49', abiertas: [], n_operarios: 0, minutos_inactividad: 0, dia: p.employee_id ? {pedidos: 3, uds: 41} : null}; }
+    if (q.route === '/stock_barcode/scan_from_main_menu') { return {action: {tipo: 'barcode', ref: p.barcode}}; }
+    if (q.model === 'stock.picking.batch' && q.method === 'start_batch_processing') { return {tipo: 'batch', ref: 'lote ' + q.args[0][0]}; }
+    throw new Error('ruta no simulada ' + JSON.stringify(q));
+};
+MOCK.rpc = function (q) {
+    MOCK.log.push(['rpc', q.route || (q.model + '.' + q.method), q.params || q.args]);
+    return new Promise(function (ok, ko) {
+        setTimeout(function () {
+            if (MOCK.offline) { return ko({message: {code: -32098, message: 'XmlHttpRequestError'}, event: {preventDefault: function () {}}}); }
+            try { ok(MOCK.server(q)); } catch (e) { console.error(e); ko({message: {message: String(e)}, event: {preventDefault: function () {}}}); }
+        }, MOCK.lento ? 3000 : 120);
+    });
+};
+// pila de acciones como el action manager de Odoo
+var ACC = {'koroshi_preparacion.action_koroshi_preparacion_pantalla': 'koroshi_preparacion_pantalla',
+           'koroshi_faltantes.action_koroshi_faltantes_pantalla': 'faltantes'};
+MOCK.accion = function (desde, a, opts) {
+    var arriba = MOCK.pila[MOCK.pila.length - 1];
+    if (typeof a === 'object' && (a.tipo === 'barcode' || a.tipo === 'batch')) {
+        arriba.on_detach_callback(); arriba.$el.detach();
+        MOCK.abierta = a.ref; $('#barcode').show().find('.ref').text(a.ref);
+        return Promise.resolve();
+    }
+    var Cls = ACC[a] === 'faltantes' ? _mods['koroshi_faltantes.Pantalla'] : window.CLASES[ACC[a]];
+    if (!Cls) { throw new Error('accion desconocida ' + a); }
+    if (opts.replace_last_action) { var q = MOCK.pila.pop(); q.on_detach_callback(); q.destroy(); q.$el.remove(); arriba = MOCK.pila[MOCK.pila.length - 1]; }
+    else { arriba.on_detach_callback(); arriba.$el.detach(); }
+    var w = new Cls(null, {context: opts.additional_context || {}});
+    MOCK.pila.push(w);
+    return w.appendTo('#accion');
+};
+MOCK.atras = function () {
+    var w = MOCK.pila.pop(); w.on_detach_callback(); w.destroy(); w.$el.remove();
+    var prev = MOCK.pila[MOCK.pila.length - 1];
+    prev.$el.appendTo('#accion'); prev.on_attach_callback();
+};
+MOCK.volverApp = function (validada) {
+    if (validada) { MOCK.validarOut(MOCK.abierta); }
+    $('#barcode').hide();
+    var prev = MOCK.pila[MOCK.pila.length - 1]; prev.$el.appendTo('#accion'); prev.on_attach_callback();
+};
+MOCK.w = function () { return MOCK.pila[MOCK.pila.length - 1]; };
+MOCK.leer = function (c) {
+    var w = MOCK.w(), $i = w.$('.o_kp_codigo').length ? w.$('.o_kp_codigo') : w.$('.o_ko_codigo');
+    $i.val(c); var e = $.Event('keydown'); e.key = 'Enter'; e.which = e.keyCode = 13; $i.trigger(e);
+};
+MOCK.arrancar = function () {
+    try { localStorage.removeItem('koroshi_operarios_pda_2'); } catch (e) {}
+    MOCK.pila.forEach(function (w) { w.destroy(); w.$el.remove(); }); MOCK.pila = [];
+    $('#barcode').hide();
+    var w = new window.CLASES.koroshi_operarios_pantalla(null, {});
+    MOCK.pila.push(w);
+    return w.appendTo('#accion');
+};
+</script>
+<script>MOCK.arrancar();</script>
+</body></html>
