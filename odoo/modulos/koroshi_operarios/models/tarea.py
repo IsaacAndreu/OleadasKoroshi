@@ -66,6 +66,9 @@ class KoroshiOperarioTarea(models.Model):
     uds_hora = fields.Float('Uds/hora', compute='_compute_resultado', store=True, digits=(16, 1),
                             group_operator='avg')
     nota = fields.Char('Nota')
+    # v2.5: preparar a dos (lo rellena koroshi_preparacion al cerrar la tarea)
+    a_dos = fields.Boolean('A dos', index=True, help='La OUT la ha preparado con otro operario a la vez')
+    companero_id = fields.Many2one('hr.employee', 'Compañero', ondelete='set null')
 
     # ------------------------------------------------------------------ computes
     @api.depends('employee_id', 'picking_id', 'batch_id', 'tipo', 'referencia')
@@ -120,6 +123,11 @@ class KoroshiOperarioTarea(models.Model):
             if m.state != 'cancel':
                 total += m.product_uom_qty
         return total
+
+    def _uds_hasta_ahora(self):
+        """v2.5: uds de una tarea en curso hasta ahora (el monitor). koroshi_preparacion la cambia al preparar a dos."""
+        self.ensure_one()
+        return max(self._uds_leidas(self._pickings()) - (self.uds_inicio or 0.0), 0.0)
 
     @api.model
     def _validado(self, pickings):

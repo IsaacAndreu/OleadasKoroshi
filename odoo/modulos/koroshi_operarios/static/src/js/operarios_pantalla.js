@@ -222,7 +222,7 @@ var Pantalla = AbstractAction.extend({
         }
     },
 
-    _leer: function (codigo) {
+    _leer: function (codigo, ayudar) {
         var self = this;
         codigo = (codigo || '').trim();
         var ahora = Date.now();
@@ -243,8 +243,18 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = true;
         return this._rpc({
             route: '/koroshi/operarios/leer',
-            params: {codigo: codigo, employee_id: this.operario ? this.operario.id : false},
+            params: {codigo: codigo, employee_id: this.operario ? this.operario.id : false, ayudar: !!ayudar},
         }).then(function (r) {
+            if (r && r.ok && r.que === 'ayudar') {
+                // v2.5: la OUT ya la hace otro -> se pregunta antes de entrar de ayudante
+                self.ocupado = false;
+                self._pitido(true);
+                return self._confirmar('¿Ayudar a ' + r.titular + '?', r.msg + ' Tú harías la segunda mitad.',
+                    'Sí, ayudarle', 'No', function () {
+                        self.ultima = {codigo: '', t: 0};
+                        self._leer(r.codigo, true);
+                    });
+            }
             if (r && r.ok && r.que === 'tarjeta') {
                 self.ocupado = false;
                 if (self.operario && self.operario.id !== r.employee_id) {
@@ -278,6 +288,7 @@ var Pantalla = AbstractAction.extend({
             self.cola = r.cola || [];
             self._pintarActual();
             self._pitido(true);
+            if (r.ayudante && r.msg) { self._aviso(r.msg, 'info'); }   // v2.4: preparar a dos
             return self._abrir(r.tarea || r.asignacion);
         }).guardedCatch(function (e) {
             self.ocupado = false;
@@ -328,6 +339,7 @@ var Pantalla = AbstractAction.extend({
         this.tarea = r.tarea;
         this.cola = r.cola || [];
         this._pintarActual();
+        if (r.msg_ayudante) { this._aviso(r.msg_ayudante, 'info'); }   // v2.5: ayudante puesto desde el reparto
         var nueva = abrir === 'abrir' || (abrir === 'si_nueva' && r.nueva);
         if (abrir === 'si_nueva' && hecho && (r.nueva || !r.asignacion) && (!r.asignacion || r.asignacion.ref !== hecho)) {
             // v2.3: vuelve con la OUT validada -> "¡Hecho!" y la siguiente en cuenta atras

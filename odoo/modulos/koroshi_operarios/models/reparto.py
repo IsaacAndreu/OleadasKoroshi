@@ -30,6 +30,7 @@ from .tarea import PREFIJOS_ZONA, ZONA_HORARIA
 _logger = logging.getLogger(__name__)
 
 VIVAS = ('cola', 'curso', 'oficina')
+MAX_POR_OUT = 2         # v2.5: preparar a dos -> titular + un ayudante como mucho
 RE_LINEAL = re.compile(r'\bL(\d+)\b')
 CANDIDATOS = 400        # OUT libres mas antiguas que se miran cada vez (modo automatico / pasillos)
 # v2.1: las etiquetas son las de siempre (vista y accion creadas a mano en Odoo el 21/10, no son de un modulo)
@@ -278,12 +279,45 @@ class KoroshiOperarioAsignacion(models.Model):
     saltos = fields.Integer('Veces saltada')
     fecha_salto = fields.Datetime('Ultimo salto')
     tarea_id = fields.Many2one('koroshi.operario.tarea', 'Tarea actual', ondelete='set null')
+    # v2.5: preparar a dos desde el reparto
+    ayudante_id = fields.Many2one('hr.employee', 'Ayudante', index=True, ondelete='set null',
+                                  help='Operario que entra de ayudante cuando el titular empieza esta OUT')
+    uds = fields.Integer('Uds', compute='_compute_a_dos', help='Uds que pide la OUT (o la agrupacion)')
+    a_dos = fields.Boolean('Para hacer a dos', compute='_compute_a_dos', search='_buscar_a_dos',
+                           help='OUT suelta con al menos koroshi_operarios.uds_a_dos uds (150 por defecto)')
     etiqueta_impresa = fields.Datetime('Etiqueta impresa', copy=False,
                                        help='Cuando se imprimio su etiqueta desde Reparto de hoy o Colas')
     tienda = fields.Char('Tienda', related='picking_id.partner_id.name')
     estado_out = fields.Selection(related='picking_id.state', string='Estado OUT')
     company_id = fields.Many2one('res.company', 'Empresa', required=True, default=lambda self: self.env.company,
                                  index=True)
+
+    @api.model
+    def _uds_a_dos(self):
+        try:
+            return int(self.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.uds_a_dos', '150') or 150)
+        except ValueError:
+            return 150
+
+    def _compute_a_dos(self):
+        minimo = self._uds_a_dos()
+        Tarea = self.env['koroshi.operario.tarea']
+        for a in self:
+            a.uds = int(Tarea._uds_pedidas(a._pickings()))
+            a.a_dos = a.tipo == 'out' and minimo > 0 and a.uds >= minimo
+
+    def _buscar_a_dos(self, operador, valor):
+        minimo = self._uds_a_dos()
+        self.env.cr.execute("""
+            SELECT m.picking_id FROM stock_move m
+             WHERE m.state NOT IN ('cancel', 'done') AND m.picking_id IN (
+                   SELECT picking_id FROM koroshi_operario_asignacion WHERE tipo = 'out' AND picking_id IS NOT NULL
+                      AND estado IN ('cola', 'curso', 'oficina'))
+             GROUP BY m.picking_id HAVING SUM(m.product_uom_qty) >= %s""", (minimo,))
+        grandes = [r[0] for r in self.env.cr.fetchall()]
+        positivo = (operador == '=' and valor) or (operador == '!=' and not valor)
+        dom = [('tipo', '=', 'out'), ('picking_id', 'in', grandes)]
+        return dom if positivo else ['!'] + ['&'] + dom
 
     @api.depends('tipo', 'picking_id', 'batch_id')
     def _compute_name(self):
@@ -532,6 +566,24 @@ class KoroshiOperarioAsignacion(models.Model):
             else:
                 actual._asegurar_tarea(employee)
                 return actual, False
+        # v2.5: el responsable le ha puesto de ayudante en una OUT que su titular ya esta haciendo
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        for ayuda in self.sudo().search([('ayudante_id', '=', employee.id), ('estado', '=', 'curso'),
+                                         ('tipo', '=', 'out')], order='write_date asc'):
+            if ayuda._terminada():
+                continue
+            if Tarea.search_count([('employee_id', '=', employee.id), ('picking_id', '=', ayuda.picking_id.id),
+                                   ('estado', '=', 'dejada')]):
+                continue   # ya ayudo y lo dejo: no se le vuelve a meter
+            mia = Tarea.search([('employee_id', '=', employee.id), ('picking_id', '=', ayuda.picking_id.id),
+                                ('estado', '=', 'curso')], limit=1)
+            if not mia:
+                try:
+                    self.ayudante_de(employee, 'out', ayuda.picking_id)   # comprueba el maximo de dos
+                except UserError:
+                    continue
+                self.unirse(employee, ayuda)
+            return ayuda, not mia
         for asig in self.cola_de(employee):
             if asig._terminada():
                 asig._cerrar_hecha()
@@ -619,6 +671,34 @@ class KoroshiOperarioAsignacion(models.Model):
             if not viva:
                 raise UserError(_('Otra PDA acaba de coger este pedido. Lee otro.'))
         return viva
+
+    @api.model
+    def ayudante_de(self, employee, tipo, picking):
+        """v2.4: asignacion de una OUT suelta que ya esta haciendo OTRO operario (en curso). Si la hay, quien la lee
+        entra de ayudante (preparar a dos) en vez de dar el error «esta asignada a X»."""
+        if tipo != 'out' or not picking:
+            return self.browse()
+        viva = self._viva_de(picking=picking)
+        if viva and viva.estado == 'curso' and viva.employee_id and viva.employee_id != employee:
+            # v2.5: como mucho dos por OUT (titular + un ayudante)
+            Tarea = self.env['koroshi.operario.tarea'].sudo()
+            otros = Tarea.search([('picking_id', '=', picking.id), ('tipo', '=', 'out'), ('estado', '=', 'curso'),
+                                  ('employee_id', '!=', employee.id)]).mapped('employee_id')
+            if len(otros) >= MAX_POR_OUT:
+                raise UserError(_('Ya hay %s operarios con %s (%s). Lee otro pedido.')
+                                % (len(otros), picking.name, ', '.join(otros.mapped('name'))))
+            return viva
+        return self.browse()
+
+    @api.model
+    def unirse(self, employee, viva):
+        """v2.4: el operario entra de ayudante en la OUT de otro. La asignacion sigue siendo del titular; el ayudante
+        solo tiene su tarea. Lo que estaba haciendo vuelve el primero de su cola (igual que al leer una OUT a mano)."""
+        actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')])
+        if actual:
+            actual.write({'estado': 'cola', 'secuencia': self._primera_secuencia(employee), 'tarea_id': False})
+        tarea, _msg = self.env['koroshi.operario.tarea'].sudo().empezar(employee, viva.picking_id.name)
+        return tarea
 
     # ------------------------------------------------------------------ responsable
     def action_liberar(self):

@@ -1,7 +1,45 @@
-# KOROSHI Preparación en Lecturas (v3.2.1, 10/11/2026)
+# KOROSHI Preparación en Lecturas (v3.4.0, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.4.0: preparar a dos, segunda parte (11/11/2026)
+
+Necesita **koroshi_operarios v2.5.0**.
+
+- **Por la mitad:** al entrar el ayudante, las líneas pendientes se parten en dos en el orden de la ruta
+  (`koroshi.preparacion.equipo` guarda la primera línea de la segunda mitad). Titular: su mitad hacia delante y luego
+  lo que quede de la otra desde el final. Ayudante: la segunda mitad hacia delante y luego lo que quede de la primera
+  desde el corte hacia atrás. Cabecera: «Nombre · 1ª mitad / 2ª mitad · con X».
+- **¿Ayudarle?** (koroshi_operarios): leer la OUT de otro pregunta antes de entrar. Como mucho dos por OUT.
+- **Aviso al titular** (una vez): «X se ha unido: hace la segunda mitad (desde L.. P.. C..)».
+- **Faltantes del compañero:** si manda algo a faltantes o lo cambia de ubicación, al otro le sale «X ha mandado a
+  faltantes Y: no lo busques» / «X ha cambiado Y a Z» (en el refresco de 10 s).
+- **Reparto** (koroshi_operarios): en Colas, «A dos» para las OUT grandes (≥ `koroshi_operarios.uds_a_dos`, 150) y
+  columna Ayudante: cuando el titular empieza, al ayudante le sale sola.
+- **Informes:** la tarea queda «A dos» con el compañero; en Productividad, agrupar por «A dos / solo» compara uds/hora.
+- **Monitor:** las uds en curso de cada operario a dos son solo las suyas (`_uds_hasta_ahora`; el cambio del monitor
+  va con su próxima versión).
+
+## v3.3.0: preparar a dos (11/11/2026)
+
+Necesita **koroshi_operarios v2.4.0**.
+
+- **Unirse:** un segundo operario lee con su tarjeta una OUT suelta que ya está haciendo otro. Antes salía «está asignada
+  a X»; ahora entra de **ayudante**. La asignación sigue siendo del titular.
+- **Orden:** el titular (el primero que empezó) ve las líneas en el orden de la ruta; el ayudante, **al revés**, y la
+  pantalla le lleva a la última pendiente. Se encuentran en medio. Cabecera: «Nombre · ayudante (desde el final) · con X».
+- **Cajas:** «Caja» mete **solo lo que ha leído ese operario**. Lo del compañero se aparta un momento (qty_done sin lo
+  suyo), se hace el mismo `put_in_pack(package_name=CJ)` de siempre y se devuelve a su línea sin caja. Si Odoo no deja la
+  línea como se espera, no se cierra nada y avisa. Cada lectura guarda en `en_caja` la caja donde ha ido.
+  Titular: lo leído en la app de código de barras o sin tarjeta cuenta como suyo (como antes).
+- **Validar:** cualquiera de los dos, cuando todo está leído y en caja. Si no: «Falta que tu compañero cierre su caja
+  (N uds)» o «Faltan N uds por leer entre los dos».
+- **Refresco:** cada 10 s se recarga la OUT para ver lo del compañero; si él valida, se vuelve a Lecturas.
+- **Productividad:** si en el tiempo de la tarea otro operario ha leído la misma OUT en esta pantalla, la tarea cuenta
+  solo sus lecturas (`models/tarea.py`). En la app de código de barras de siempre no hay lecturas por operario: allí,
+  a dos, cada uno se sigue contando todo.
+- Solo, sin compañero, todo funciona igual que la v3.2.1.
 
 ## v3.2.1
 

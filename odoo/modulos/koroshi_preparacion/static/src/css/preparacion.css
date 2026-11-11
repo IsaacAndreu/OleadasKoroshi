@@ -270,3 +270,6 @@
     display: block; margin: 4px auto 0; border: 0; background: none; color: var(--kp-azul); font-size: 16px;
     text-decoration: underline; padding: 8px; cursor: pointer;
 }
+
+/* v3.3: preparar a dos -> el ayudante se distingue en la cabecera */
+.o_kp_ayudante .o_kp_operario { color: #b45309; font-weight: 700; }

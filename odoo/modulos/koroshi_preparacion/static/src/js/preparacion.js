@@ -21,6 +21,7 @@ var session = require('web.session');
 
 var REPETIDA_MS = 400;          // la misma lectura por el bus y por el campo: cuenta una
 var REINTENTO_MS = 5000;        // sin conexión: reintento
+var A_DOS_MS = 10000;          // v3.3: preparar a dos -> se refresca lo del compañero cada 10 s
 var AVISO_OK_MS = 3000;
 var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
@@ -82,7 +83,8 @@ var Pantalla = AbstractAction.extend({
 
     willStart: function () {
         var self = this;
-        var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: this.pickingName}})
+        var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: this.pickingName,
+            employee_id: this.operario ? this.operario.id : false}})
             .then(function (r) {
                 if (r && r.ok) { self.estado = r.estado; } else { self.errorCarga = (r && r.msg) || 'Error'; }
             }).guardedCatch(function (e) {
@@ -103,6 +105,13 @@ var Pantalla = AbstractAction.extend({
             self.$('.o_kp_f_foto').on('error', function () { $(this).hide(); });   // v3.2
             self._pintar();
             if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
+            // v3.3: preparar a dos -> se ve lo que lee el compañero (y si valida, se vuelve a Lecturas)
+            self.timerDos = setInterval(function () {
+                if (self.estado && self.estado.a_dos && self.modo === 'leer' && !self.enviando && !self.cola.length &&
+                        !self.sinRed) {
+                    self._recargar();
+                }
+            }, A_DOS_MS);
             self._foco();
         });
     },
@@ -123,6 +132,7 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerReintento);
         clearTimeout(this.timerVolver);
         clearTimeout(this.timerConfirmar);
+        clearInterval(this.timerDos);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -374,7 +384,8 @@ var Pantalla = AbstractAction.extend({
     _recargar: function (despues) {
         var self = this;
         if (!this._out()) { return; }
-        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id}}, {shadow: true})
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id,
+            employee_id: this.operario ? this.operario.id : false}}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.ok) { return; }
                 self.estado = r.estado;
@@ -657,7 +668,8 @@ var Pantalla = AbstractAction.extend({
     _probarConexion: function () {
         var self = this;
         if (!this.sinRed || !this._out()) { return; }
-        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id}}, {shadow: true})
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id,
+            employee_id: this.operario ? this.operario.id : false}}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.ok) { return self._sinConexion(); }
                 clearTimeout(self.timerReintento);
@@ -692,7 +704,15 @@ var Pantalla = AbstractAction.extend({
         var out = e.out;
         this.$('.o_kp_ref').text(out.name);
         this.$('.o_kp_tienda').text(out.tienda || out.origen || '');
-        this.$('.o_kp_operario').text(this.operario ? this.operario.nombre : 'Sin tarjeta');
+        // v3.3: preparar a dos -> quién va con quién y por dónde empieza cada uno
+        var quien = this.operario ? this.operario.nombre : 'Sin tarjeta';
+        if (e.a_dos) {
+            quien += e.rol === 'ayudante' ? ' · 2ª mitad' : ' · 1ª mitad';   // v3.4: la OUT partida por la mitad
+            if (e.companeros && e.companeros.length) { quien += ' · con ' + e.companeros.join(', '); }
+        }
+        this.$('.o_kp_operario').text(quien);
+        this.$el.toggleClass('o_kp_a_dos', !!e.a_dos).toggleClass('o_kp_ayudante', e.rol === 'ayudante');
+        this._avisosEquipo(e);
         // progreso
         var pct = e.pedidas ? Math.round(100 * Math.min(e.leidas, e.pedidas) / e.pedidas) : 0;
         this.$('.o_kp_barra_lleno').css('width', pct + '%');
@@ -700,6 +720,10 @@ var Pantalla = AbstractAction.extend({
         // v3.1: con 0 leídas no se dice nada de cajas («Todo en caja» confundía)
         var txtCaja = e.sin_caja ? 'Sin caja: ' + e.sin_caja + (e.sin_caja === 1 ? ' ud' : ' uds')
             : (e.leidas ? '✓ Todo en caja' : '');
+        if (e.a_dos && e.sin_caja) {
+            // v3.3: cada uno cierra su caja solo con lo que ha leído él
+            txtCaja = 'Tuyas sin caja: ' + e.mias_sin_caja + (e.otros_sin_caja ? ' · compañero: ' + e.otros_sin_caja : '');
+        }
         this.$('.o_kp_sin_caja').text(txtCaja).toggleClass('o_kp_hay', !!e.sin_caja).toggle(!!txtCaja);
         this.$('.o_kp_cajas_resumen').text(e.cajas.length ? '📦 ' + e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
         this.$('.o_kp_progreso').show();
@@ -738,19 +762,40 @@ var Pantalla = AbstractAction.extend({
         } else {
             this.$('.o_kp_siguiente').hide();
             this.$('.o_kp_completa_texto').text(e.todo_leido
-                ? (e.sin_caja ? 'Pulsa «Caja» y lee la etiqueta. Después, Validar.' : 'Pulsa «Validar».')
+                ? (e.a_dos && e.sin_caja && !e.mias_sin_caja ? 'Falta que tu compañero cierre su caja.'
+                    : (e.sin_caja ? 'Pulsa «Caja» y lee la etiqueta. Después, Validar.' : 'Pulsa «Validar».'))
                 : 'Lo que queda ya está en caja o se marca con «Faltante».');
             this.$('.o_kp_completa').show();
         }
         // botones
         var libre = this.modo === 'leer' && !this.sinRed;
-        this.$('.o_kp_caja').prop('disabled', !libre || !e.sin_caja)
-            .toggleClass('o_kp_destacado', !!e.sin_caja && e.todo_leido);
+        var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
+        this.$('.o_kp_caja').prop('disabled', !libre || !mias)
+            .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
         this.$('.o_kp_validar').prop('disabled', !libre || !!e.sin_caja || !e.leidas)
             .toggleClass('o_kp_destacado', !e.sin_caja && e.todo_leido);
         this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas);
         this.$('.o_kp_faltante').prop('disabled', !libre || e.todo_leido || !e.siguiente_id);
         this._pintarLineas();
+    },
+
+    // v3.4: avisos de trabajar a dos: «X se ha unido» (al titular, una vez) y los faltantes del compañero
+    _avisosEquipo: function (e) {
+        var self = this;
+        this.faltantesVistos = this.faltantesVistos || {};
+        var nuevos = [];
+        (e.faltantes_companero || []).forEach(function (f) {
+            if (!self.faltantesVistos[f.id]) {
+                self.faltantesVistos[f.id] = true;
+                if (self.faltantesListos) { nuevos.push(f.texto); }
+            }
+        });
+        this.faltantesListos = true;   // los de antes de abrir la pantalla no se avisan
+        if (e.aviso_equipo) { nuevos.unshift(e.aviso_equipo); e.aviso_equipo = ''; }
+        if (nuevos.length) {
+            this._aviso(nuevos.join(' · '), 'warn');
+            this._pitido(true);
+        }
     },
 
     _pintarLineas: function () {

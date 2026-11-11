@@ -16,6 +16,8 @@
                 <field name="fin"/>
                 <field name="estado"/>
                 <field name="motivo_fin"/>
+                <field name="a_dos"/>
+                <field name="companero_id"/>
                 <field name="uds" sum="Uds"/>
                 <field name="minutos" sum="Minutos"/>
                 <field name="uds_hora"/>
@@ -111,11 +113,16 @@
                 <filter name="acabada" string="Acabadas" domain="[('estado', '=', 'acabada')]"/>
                 <filter name="dejada" string="Dejadas" domain="[('estado', '=', 'dejada')]"/>
                 <filter name="sin_cerrar" string="Sin cerrar" domain="[('estado', '=', 'sin_cerrar')]"/>
+                <separator/>
+                <!-- v2.5: preparar a dos (en la tabla dinamica, agrupar por «A dos» compara uds/hora con hacerlas solo) -->
+                <filter name="a_dos" string="Preparadas a dos" domain="[('a_dos', '=', True)]"/>
+                <filter name="solo" string="Preparadas solo" domain="[('a_dos', '=', False)]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
                     <filter name="g_dia" string="Dia" context="{'group_by': 'dia:day'}"/>
                     <filter name="g_zona" string="Zona" context="{'group_by': 'zona'}"/>
                     <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="g_a_dos" string="A dos / solo" context="{'group_by': 'a_dos'}"/>
                 </group>
             </search>
         </field>
