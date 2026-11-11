@@ -37,8 +37,13 @@ v1.3 (09/11/2026): los faltantes se marcan al final de la OUT sin leer el EAN: l
 v1.3.1 (10/11/2026): la ubicacion se llama FALTANTE (antes FALTANT; misma ubicacion). Al validar despues de los
   faltantes, sin pedido pendiente y sin preguntar (parametro pedido_pendiente = no). Cada faltante deja una nota en
   el historial de la OUT (que, de donde, a donde, operario).
+v1.4.0 (11/11/2026): mismo aspecto que Preparacion en Lecturas. La UBICACION va en grande y en negro (hueco y KO en la
+  misma linea); la referencia del articulo, debajo y mas pequena. «Prueba en» = etiqueta negra; donde no esta, tachada.
+  En PDA sin la barra de menus de Odoo.
+v1.4.1 (11/11/2026): «Prueba en» se veia gris sobre negro (regla antigua); ahora en blanco. Debajo de la ubicacion,
+  el nombre del articulo una sola vez (no el EAN ni el codigo repetido).
 """,
-    'version': '13.0.1.3.1',
+    'version': '13.0.1.4.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -271,3 +271,110 @@
 /* v2.2.2: grupo "tarjeta obligatoria" sin tarjeta: sin barra de Odoo (menu de aplicaciones y de usuario).
    La clase solo se pone en body mientras se ve Lecturas sin operario. */
 body.o_ko_bloqueado .o_main_navbar { display: none !important; }
+
+/* ================================================================ v2.6: mismo aspecto que Preparación en Lecturas v3.11
+   («etiqueta de estantería»): plano, negro sobre blanco, sin sombras; cabecera negra; botones planos. */
+.o_koroshi_operarios {
+    --ko-fondo: #f2f2f0; --ko-negro: #111111; --ko-linea: #c9c9c6;
+    --ko-verde: #16a34a; --ko-naranja: #c2410c;
+    font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+/* en la PDA (pantalla estrecha) sin la barra de menús de Odoo, como en Preparación */
+@media (max-width: 600px) {
+    body.o_ko_en_lecturas .o_main_navbar { display: none; }
+}
+.o_koroshi_operarios .o_ko_app { padding-top: 0; }
+
+/* cabecera negra a todo el ancho */
+.o_koroshi_operarios .o_ko_cabecera {
+    background: var(--ko-negro); color: #fff; border: 0; border-radius: 0; margin: 0 -12px 10px; padding: 8px 12px;
+}
+.o_koroshi_operarios .o_ko_avatar {
+    flex: 0 0 44px; width: 44px; height: 44px; border-radius: 4px; font-size: 18px; border: 2px solid #fff;
+}
+.o_koroshi_operarios .o_ko_quien { font-size: 22px; color: #fff; }
+.o_koroshi_operarios .o_ko_quien.o_ko_vacio { font-size: 16px; color: #d4d4d4; }
+.o_koroshi_operarios .o_ko_dia { color: #a3a3a3; }
+.o_koroshi_operarios .o_ko_dia b { color: #fff; }
+.o_koroshi_operarios .o_ko_salir {
+    min-height: 42px; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff; font-size: 16px;
+}
+
+/* avisos: banda plana con franja */
+.o_koroshi_operarios .o_ko_aviso.o_ko_ok,
+.o_koroshi_operarios .o_ko_aviso.o_ko_info,
+.o_koroshi_operarios .o_ko_aviso.o_ko_warn,
+.o_koroshi_operarios .o_ko_aviso.o_ko_mal { border-radius: 0; font-size: 18px; padding: 10px 12px; }
+.o_koroshi_operarios .o_ko_aviso.o_ko_ok { background: #dcfce7; color: #14532d; border-left-color: var(--ko-verde); }
+.o_koroshi_operarios .o_ko_aviso.o_ko_mal { background: #fee2e2; color: #7f1d1d; border-left-color: #b91c1c; }
+.o_koroshi_operarios .o_ko_aviso_accion { border-radius: 4px; }
+
+/* botones planos */
+.o_koroshi_operarios .o_ko_boton { border-radius: 4px; min-height: 54px; font-size: 21px; }
+.o_koroshi_operarios .o_ko_boton:disabled { background: #e4e4e0; color: #8a8a86; }
+.o_koroshi_operarios .o_ko_gris { background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); }
+.o_koroshi_operarios .o_ko_naranja { background: var(--ko-naranja); }
+
+/* pedido que está haciendo: tarjeta con borde negro */
+.o_koroshi_operarios .o_ko_caja { border-radius: 4px; padding: 10px 12px 12px; }
+.o_koroshi_operarios .o_ko_actual { background: #fff; border: 2px solid var(--ko-negro); }
+.o_koroshi_operarios .o_ko_sub { font-size: 13px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+.o_koroshi_operarios .o_ko_actual_ref {
+    font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 26px; letter-spacing: 0;
+    background: var(--ko-negro); color: #fff; margin: 4px -12px 6px; padding: 6px 12px;
+}
+.o_koroshi_operarios .o_ko_actual_tienda { font-size: 18px; color: var(--ko-negro); margin-bottom: 6px; }
+.o_koroshi_operarios .o_ko_dato {
+    border-radius: 3px; background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); font-size: 15px;
+    padding: 2px 8px;
+}
+.o_koroshi_operarios .o_ko_dato.o_ko_zona { background: var(--ko-negro); color: #fff; }
+.o_koroshi_operarios .o_ko_barra { height: 12px; border-radius: 0; background: #deded9; border: 0; }
+.o_koroshi_operarios .o_ko_barra_lleno { background: var(--ko-verde); }
+.o_koroshi_operarios .o_ko_progreso_texto { font-size: 14px; }
+.o_koroshi_operarios .o_ko_continuar { background: var(--ko-verde); font-size: 22px; min-height: 58px; }
+.o_koroshi_operarios .o_ko_saltar { background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); }
+.o_koroshi_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante {
+    border-radius: 4px; background: var(--ko-naranja); min-height: 54px; font-size: 21px;
+}
+
+/* campo del código */
+.o_koroshi_operarios .o_ko_codigo { border-radius: 4px; border: 2px solid #8a8a86; min-height: 48px; }
+.o_koroshi_operarios .o_ko_codigo:focus { border-color: var(--ko-negro); box-shadow: none; }
+
+/* cola «Después te tocan» y «Cogiendo ahora»: lista con separadores */
+.o_koroshi_operarios .o_ko_titulo { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+.o_koroshi_operarios .o_ko_cola { border: 1px solid var(--ko-linea); background: #fff; }
+.o_koroshi_operarios .o_ko_cola > li {
+    border: 0; border-bottom: 1px solid #e6e6e3; border-radius: 0; margin: 0; padding: 8px 10px; background: #fff;
+}
+.o_koroshi_operarios .o_ko_cola > li:last-child { border-bottom: 0; }
+.o_koroshi_operarios .o_ko_cola > li::before { border-radius: 3px; background: var(--ko-negro); flex-basis: 28px; height: 28px; }
+.o_koroshi_operarios .o_ko_cola_ref { font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 17px; }
+.o_koroshi_operarios .o_ko_cola_extra .o_ko_dato { border-width: 1px; }
+.o_koroshi_operarios .o_ko_n_operarios { border-radius: 3px; background: var(--ko-negro); }
+.o_koroshi_operarios .o_ko_fila { border-radius: 0; border-bottom: 1px solid #e6e6e3; margin: 0; }
+
+/* pie */
+.o_koroshi_operarios .o_ko_menu,
+.o_koroshi_operarios .o_ko_sonido { border-radius: 4px; border: 2px solid var(--ko-negro); color: var(--ko-negro); }
+
+/* «Lee tu tarjeta», «Abriendo» y «¡Hecho!»: fondo negro / verde planos */
+.o_koroshi_operarios .o_ko_bloqueo { background: var(--ko-negro); }
+.o_koroshi_operarios .o_ko_bloqueo_tarjeta { border-radius: 6px; box-shadow: none; border: 3px solid #fff; }
+.o_koroshi_operarios .o_ko_bloqueo_aviso { border-radius: 4px; }
+.o_koroshi_operarios .o_ko_capa { background: var(--ko-negro); }
+.o_koroshi_operarios .o_ko_capa.o_ko_capa_hecho { background: var(--ko-verde); }
+.o_koroshi_operarios .o_ko_capa_ref { font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 32px; }
+.o_koroshi_operarios .o_ko_hecho_check { border-radius: 6px; }
+.o_koroshi_operarios .o_ko_hecho_siguiente { border-radius: 4px; background: rgba(0, 0, 0, 0.25); }
+.o_koroshi_operarios .o_ko_capa .o_ko_parar { background: #fff; color: var(--ko-negro); border: 0; }
+
+/* hoja inferior (saltar / confirmar) */
+.o_koroshi_operarios .o_ko_hoja_panel { border-radius: 6px 6px 0 0; border-top: 4px solid var(--ko-negro); }
+.o_koroshi_operarios .o_ko_hoja_asa { display: none; }
+.o_koroshi_operarios .o_ko_motivo { border-radius: 4px; border: 2px solid var(--ko-linea); min-height: 58px; font-size: 19px; }
+.o_koroshi_operarios .o_ko_motivo .o_ko_marca { border-radius: 3px; }
+.o_koroshi_operarios .o_ko_motivo.o_ko_elegido { border-color: var(--ko-naranja); }
+.o_koroshi_operarios .o_ko_nota { border-radius: 4px; }
+.o_koroshi_operarios .o_ko_confirmar_texto .o_ko_warn_txt { border-radius: 0; border-left: 6px solid #e0a800; }

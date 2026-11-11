@@ -1,4 +1,4 @@
-# KOROSHI Faltantes (v1.3.1, 10/11/2026)
+# KOROSHI Faltantes (v1.4.1, 11/11/2026)
 
 Qué hacer en la PDA cuando una pieza de una OUT no está donde dice Odoo. Hasta ahora se ponía a 0 la ubicación desde la PDA:
 el stock se iba a pérdidas sin saber quién, de qué OUT ni por qué. Del 27/10 al 09/11 se hizo 111 veces (159 uds), y el 44 % de
@@ -8,6 +8,18 @@ Con este módulo:
 - la línea de la OUT pasa a otra ubicación con stock libre;
 - la pieza que no está va a **EFFEC/FALTANTE**;
 - queda un registro que se revisa cada día.
+
+## v1.4.1: corrección (11/11/2026)
+
+- «Prueba en» salía gris oscuro sobre negro (la regla antigua `.o_kf_reco span`): ahora en blanco y la letra se ajusta.
+- Debajo de la ubicación sale el nombre del artículo una vez (antes el EAN en algunas líneas, o el código repetido).
+
+## v1.4.0: mismo aspecto que Preparación (11/11/2026)
+
+- Lo grande y en negro es la **ubicación** (hueco y KO en la misma línea y del mismo tamaño, la letra baja sola si no
+  cabe); la referencia del artículo va debajo, más pequeña.
+- «Prueba en»: etiqueta negra con franja de código de barras. Dónde no está: tachada en rojo.
+- Botones planos; en la PDA sin la barra de menús de Odoo (`body.o_kf_en_faltante`).
 
 ## En la PDA (v1.3): al final de la OUT, sin leer el EAN
 

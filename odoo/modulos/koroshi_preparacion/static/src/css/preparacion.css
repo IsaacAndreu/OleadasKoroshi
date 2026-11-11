@@ -544,3 +544,45 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
     background: #fff; color: var(--kp-negro); font-size: 19px; font-weight: bold; text-align: left; padding: 8px 14px;
 }
 .o_koroshi_preparacion .o_kp_codigo { margin-top: 2px; }
+
+/* ================================================================ v3.12: Faltante con el mismo aspecto (etiqueta de
+   estantería). «Prueba en» = etiqueta negra grande; los pasos numerados: primero la UBICACIÓN, después la prenda. */
+.o_koroshi_preparacion .o_kp_f_foto { border-radius: 2px; }
+.o_koroshi_preparacion .o_kp_f_no_esta { font-size: 17px; text-decoration: line-through; text-decoration-thickness: 2px; }
+.o_koroshi_preparacion .o_kp_f_etq { font-weight: bold; letter-spacing: 1px; color: #555; }
+.o_koroshi_preparacion .o_kp_f_alternativas li {
+    border: 0; border-bottom: 1px solid #e6e6e3; border-radius: 0; margin: 0; padding: 6px 2px; background: transparent;
+    width: 100%;
+}
+.o_koroshi_preparacion .o_kp_f_alt_ubi {
+    display: block; width: 100%; white-space: nowrap; overflow: hidden; overflow-wrap: normal; font-size: 20px;
+    font-family: "Roboto Mono", Consolas, "Courier New", monospace; color: var(--kp-negro); line-height: 1.2;
+}
+.o_koroshi_preparacion .o_kp_f_alt_ubi .o_kp_hueco + .o_kp_ko { margin-left: 0.5em; }
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child {
+    position: relative; background: var(--kp-negro); color: #fff; padding: 10px 12px 22px; margin: 2px 0 6px;
+    border: 0;
+}
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 6px; height: 8px; opacity: 0.55;
+    background: repeating-linear-gradient(90deg, #fff 0 2px, transparent 2px 4px, #fff 4px 5px, transparent 5px 8px);
+}
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child .o_kp_f_alt_ubi { color: #fff; font-size: 30px; }
+.o_koroshi_preparacion .o_kp_f_alternativas li:first-child .o_kp_f_alt_libre { color: #d4d4d4; }
+.o_koroshi_preparacion .o_kp_f_pasos { margin: 0 0 8px; padding: 0 0 0 22px; font-size: 16px; line-height: 1.35; }
+.o_koroshi_preparacion .o_kp_f_pasos li { margin-bottom: 2px; }
+.o_koroshi_preparacion .o_kp_f_codigo { border: 2px solid #8a8a86; border-radius: 4px; }
+.o_koroshi_preparacion .o_kp_f_codigo:focus { border-color: var(--kp-negro); box-shadow: none; outline: 0; }
+.o_koroshi_preparacion .o_kp_f_sin_alt { border-radius: 0; border: 0; border-left: 6px solid var(--kp-ambar); }
+.o_koroshi_preparacion .o_kp_f_lista { color: var(--kp-negro); }
+
+/* ================================================================ v3.13: «AQUÍ MISMO» (más líneas en la misma parada) */
+.o_koroshi_preparacion .o_kp_ubi_detalle { display: flex; align-items: center; gap: 8px; }
+.o_koroshi_preparacion .o_kp_aqui {
+    margin-left: auto; background: #facc15; color: var(--kp-negro); font-weight: bold; font-size: 13px;
+    letter-spacing: 0.5px; padding: 1px 8px; border-radius: 2px; white-space: nowrap;
+}
+
+/* ================================================================ v3.14: INT sin caja: Validar ocupa toda la fila */
+.o_koroshi_preparacion .o_kp_fila_principal .o_kp_validar:only-child,
+.o_koroshi_preparacion .o_kp_fila_principal .o_kp_caja[style*="display: none"] + .o_kp_validar { flex: 1 1 100%; }

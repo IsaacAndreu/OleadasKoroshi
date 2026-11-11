@@ -47,9 +47,9 @@
                 <field name="name"/>
                 <field name="picking_id"/>
                 <field name="batch_id"/>
-                <filter name="vivas" string="En cola, haciéndose u oficina"
+                <filter name="vivas" string="En cola, haciéndose o en expediciones"
                         domain="[('estado', 'in', ('cola', 'curso', 'oficina'))]"/>
-                <filter name="oficina" string="En oficina" domain="[('estado', '=', 'oficina')]"/>
+                <filter name="oficina" string="En expediciones" domain="[('estado', '=', 'oficina')]"/>
                 <filter name="curso" string="Haciéndose" domain="[('estado', '=', 'curso')]"/>
                 <separator/>
                 <filter name="saltadas" string="Saltadas alguna vez" domain="[('saltos', '>', 0)]"/>
@@ -143,7 +143,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="En oficina" name="oficina">
+                        <page string="En expediciones" name="oficina">
                             <field name="oficina_ids" readonly="1">
                                 <tree decoration-warning="True">
                                     <field name="name"/>
@@ -154,7 +154,7 @@
                                 </tree>
                             </field>
                             <p class="text-muted">Para liberarlas o pasarlas a otro operario: menú Colas, filtro
-                                «En oficina».</p>
+                                «En expediciones».</p>
                         </page>
                     </notebook>
                 </sheet>

@@ -34,7 +34,7 @@ var MENU_LARGO_MS = 2000;    // pulsacion larga del menu en tarjeta obligatoria
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';
 var PLACEHOLDER = 'Escribir tarjeta o pedido y Enter';
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
-var DESTINOS = {oficina: 'Queda en oficina', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno'};
+var DESTINOS = {oficina: 'Queda en expediciones', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno'};
 
 var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_operarios.Pantalla',
@@ -106,6 +106,7 @@ var Pantalla = AbstractAction.extend({
         window.addEventListener('online', this._enLinea);
         window.addEventListener('offline', this._fueraDeLinea);
         return this._super.apply(this, arguments).then(function () {
+            $('body').addClass('o_ko_en_lecturas');   // v2.6: en PDA (pantalla estrecha) sin la barra de Odoo
             self._pintarSonido();
             self._pintarOperario();
             self._pintarAbiertas();
@@ -136,6 +137,7 @@ var Pantalla = AbstractAction.extend({
     on_attach_callback: function () {
         // vuelve de la app de codigo de barras (validada o flecha atras) o de la pantalla de Faltante
         this._super.apply(this, arguments);
+        $('body').addClass('o_ko_en_lecturas');   // v2.6
         this.ocupado = false;
         this._ocultarCapa();
         this._marcarActividad();
@@ -152,12 +154,14 @@ var Pantalla = AbstractAction.extend({
     },
 
     on_detach_callback: function () {
+        $('body').removeClass('o_ko_en_lecturas');   // v2.6
         this._bloquear(false);
         this._pararCuenta();
         this._super.apply(this, arguments);
     },
 
     destroy: function () {
+        $('body').removeClass('o_ko_en_lecturas');   // v2.6
         this._bloquear(false);
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         window.removeEventListener('online', this._enLinea);
@@ -532,7 +536,7 @@ var Pantalla = AbstractAction.extend({
         this.motivoElegido = null;
         this.motivos.forEach(function (m) {
             var $b = $('<button type="button" class="o_ko_motivo"/>').attr('data-id', m.id);
-            $('<span class="o_ko_marca" aria-hidden="true"/>').appendTo($b);
+            $('<span class="o_ko_marca" role="presentation"/>').appendTo($b);
             $('<span class="o_ko_motivo_txt"/>').text(m.nombre)
                 .append($('<span class="o_ko_motivo_destino"/>').text(DESTINOS[m.destino] || ''))
                 .appendTo($b);
@@ -665,7 +669,11 @@ var Pantalla = AbstractAction.extend({
         var nombre = this.operario.nombre;
         var aviso = this.actual ? 'Dejas ' + this.actual.ref + ' a medias: sigue siendo tuyo y será el primero al volver.' : '';
         this._confirmar('¿Salir, ' + nombre + '?', 'La PDA queda libre para otro operario.', 'Sí, salir', 'No, seguir',
-                        function () { self._salirYa(); }, aviso);
+                        function () {
+                            self._salirYa();
+                            // v2.7: a la pantalla de inicio de Odoo (todas las apps); se vuelve con «Lecturas (PDA)»
+                            self.trigger_up('show_home_menu');
+                        }, aviso);
     },
 
     _salirYa: function (porque) {
@@ -848,7 +856,7 @@ var Pantalla = AbstractAction.extend({
             $b.attr('class', 'o_ko_bloqueo_aviso').text('');
             return;
         }
-        $('<span class="o_ko_aviso_icono" aria-hidden="true"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
+        $('<span class="o_ko_aviso_icono" role="presentation"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
         $('<span class="o_ko_aviso_texto"/>').text(texto).appendTo($a);
         if (accion) {
             this.avisoAccion = accion.fn;

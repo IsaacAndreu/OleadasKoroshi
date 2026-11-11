@@ -114,7 +114,12 @@
                         <div class="o_kp_f_prueba">
                             <div class="o_kp_f_etq">Prueba en</div>
                             <ol class="o_kp_f_alternativas"/>
-                            <p class="o_kp_f_instruccion">Ve, coge la pieza y <b>lee la ubicación</b> de donde la coges.</p>
+                            <!-- v3.12: los pasos, claros: primero la UBICACIÓN, después la prenda -->
+                            <ol class="o_kp_f_pasos">
+                                <li>Ve a la ubicación y coge la pieza.</li>
+                                <li>Lee la etiqueta de la <b>UBICACIÓN</b> (no la prenda).</li>
+                                <li>Después lee la <b>prenda</b>, como siempre.</li>
+                            </ol>
                             <input class="o_kp_f_codigo" type="text" autocomplete="off" autocapitalize="off"
                                    spellcheck="false" placeholder="Leer ubicación y Enter"/>
                         </div>

@@ -95,6 +95,7 @@ var Pantalla = AbstractAction.extend({
         var ctx = (action && action.context) || {};
         this.pickingName = ctx.preparacion_out || false;
         this.operario = ctx.preparacion_operario || null;   // {id, nombre}
+        this.precargada = ctx.preparacion_estado || null;   // v3.14: el estado que ya tenía Lecturas
         this.estado = null;
         this.verId = null;             // v3.0.1: línea que se ve en grande (null = la que toca)
         this.modo = 'leer';            // 'leer' | 'caja' (esperando la etiqueta) | 'faltante' | 'pregunta' | 'validando'
@@ -115,6 +116,13 @@ var Pantalla = AbstractAction.extend({
 
     willStart: function () {
         var self = this;
+        var pre = this.precargada;
+        if (pre && pre.out && pre.out.name === this.pickingName) {
+            // v3.14: Lecturas ya la tenía cargada: se pinta al momento y se refresca justo después (start)
+            this.estado = pre;
+            this.refrescarAlEmpezar = true;
+            return this._super.apply(this, arguments);
+        }
         var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: this.pickingName,
             employee_id: this.operario ? this.operario.id : false}})
             .then(function (r) {
@@ -139,6 +147,7 @@ var Pantalla = AbstractAction.extend({
             self._pintar();
             if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
             self._recuperarCola();   // v3.6: lo que quedó sin guardar (app cerrada, PDA reiniciada)
+            if (self.refrescarAlEmpezar) { self.refrescarAlEmpezar = false; self._recargar(); }   // v3.14
             // v3.3: preparar a dos -> se ve lo que lee el compañero (y si valida, se vuelve a Lecturas)
             self.timerDos = setInterval(function () {
                 if (self.estado && self.estado.a_dos && self.modo === 'leer' && !self.enviando && !self.cola.length &&
@@ -291,8 +300,10 @@ var Pantalla = AbstractAction.extend({
         l.leidas += n;
         l.completa = l.leidas >= l.pedidas;
         e.leidas += n;
-        e.sin_caja += n;
-        e.mias_sin_caja = (e.mias_sin_caja || 0) + n;
+        if (!e.out || e.out.con_caja !== false) {   // v3.14: las INT no van en caja
+            e.sin_caja += n;
+            e.mias_sin_caja = (e.mias_sin_caja || 0) + n;
+        }
         this._recalcular(e);
     },
 
@@ -504,7 +515,8 @@ var Pantalla = AbstractAction.extend({
                 this._sumarLocal(this.estado, l);
                 this.verId = l.completa ? null : l.id;
                 this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas, 'ok');
-                this._pitido(true);
+                this._sonar(l.completa ? 'linea' : 'ok');   // v3.13: otro sonido si la línea queda completa
+                if (l.completa) { this._avisoAquiMismo(l); }
                 if (this.estado.todo_leido) {
                     this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'),
                                 'ok');
@@ -594,14 +606,39 @@ var Pantalla = AbstractAction.extend({
             var l = this.estado && _.findWhere(this.estado.lineas, {id: r.linea_id});
             this.verId = l && !l.completa ? l.id : null;
             this._aviso(r.msg, 'ok');
-            this._pitido(true);
+            this._sonar(l && l.completa ? 'linea' : 'ok');   // v3.13
+            if (l && l.completa) { this._avisoAquiMismo(l); }
             if (this.estado && this.estado.todo_leido) {
                 this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
             }
             return;
         }
+        if (r && r.que === 'talla_hermana' && r.linea_id && this.estado) {
+            // v3.13: se ve la línea de la talla que toca
+            this.verId = r.linea_id === this.estado.siguiente_id ? null : r.linea_id;
+        }
         this._aviso((r && r.msg) || 'Error', 'mal');
         this._pitido(false);
+    },
+
+    /** v3.13: la línea se ha completado y la siguiente está en la misma parada: que no se mueva. */
+    _avisoAquiMismo: function (hecha) {
+        var e = this.estado;
+        if (!e || !hecha || !hecha.parada || e.todo_leido) { return; }
+        var sig = _.findWhere(e.lineas, {id: e.siguiente_id});
+        if (!sig || sig.parada !== hecha.parada) { return; }
+        var mas = this._aquiMismo(sig);
+        this._aviso('AQUÍ MISMO: ahora ' + (sig.nombre || sig.producto) + (sig.talla ? ' · ' + sig.talla : '') +
+                    (mas ? ' (y ' + mas + ' más)' : ''), 'ok');
+    },
+
+    /** v3.13: cuántas líneas más (sin la que se ve) quedan por coger en la misma parada. */
+    _aquiMismo: function (l) {
+        var e = this.estado;
+        if (!e || !l || !l.parada) { return 0; }
+        return _.filter(e.lineas, function (x) {
+            return x.id !== l.id && x.parada === l.parada && !x.completa && !x.caja;
+        }).length;
     },
 
     // ------------------------------------------------------------ caja
@@ -629,7 +666,7 @@ var Pantalla = AbstractAction.extend({
         if (r && r.ok) {
             this._cerrarHoja();
             this._aviso(r.msg, 'ok');
-            this._pitido(true);
+            this._sonar('caja');   // v3.13
             return;
         }
         // sigue esperando la etiqueta
@@ -873,13 +910,18 @@ var Pantalla = AbstractAction.extend({
         var $ol = this.$('.o_kp_f_alternativas').empty();
         alt.forEach(function (a, i) {
             var $li = $('<li/>');
-            $('<span class="o_kp_f_alt_ubi"/>').text(a.nombre).appendTo($li);
+            // v3.12: hueco y KO en la misma línea y del mismo tamaño, como en la tarjeta
+            var partes = (a.nombre || '').split(' · ');
+            var $u = $('<span class="o_kp_f_alt_ubi"/>').appendTo($li);
+            $('<span class="o_kp_hueco"/>').text(partes[0] || '').appendTo($u);
+            if (partes.length > 1) { $('<span class="o_kp_ko"/>').text(partes.slice(1).join(' · ')).appendTo($u); }
             $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' : '') + a.libre +
                 (a.libre === 1 ? ' ud' : ' uds')).appendTo($li);
             $ol.append($li);
         });
         this.$('.o_kp_f_prueba').toggle(!!alt.length);
         this.$('.o_kp_f_sin_alt').toggle(!alt.length);
+        this._ajustarFaltante();   // v3.12
         this.$('.o_kp_f_nada').show();
         if (!this.confirmarNada) { this._sinConfirmar(); }
         this._foco();
@@ -1308,6 +1350,7 @@ var Pantalla = AbstractAction.extend({
             // v3.3: cada uno cierra su caja solo con lo que ha leído él
             txtCaja = 'Tuyas sin caja: ' + e.mias_sin_caja + (e.otros_sin_caja ? ' · compañero: ' + e.otros_sin_caja : '');
         }
+        if (out.con_caja === false) { txtCaja = ''; }   // v3.14: INT, sin caja
         this.$('.o_kp_sin_caja').text(txtCaja).toggleClass('o_kp_hay', !!e.sin_caja).toggle(!!txtCaja);
         this.$('.o_kp_cajas_resumen').text(e.cajas.length ? e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
         this.$('.o_kp_progreso').show();
@@ -1327,6 +1370,10 @@ var Pantalla = AbstractAction.extend({
             if (ubi.hueco) { $('<span class="o_kp_hueco"/>').text(ubi.hueco).appendTo($u); }
             $('<span class="o_kp_ko"/>').text(sig.ubicacion).appendTo($u);
             this.$('.o_kp_ubi_detalle').text(ubi.detalle);
+            var aqui = esLaQueToca && !sig.completa ? this._aquiMismo(sig) : 0;   // v3.13
+            if (aqui) {
+                $('<span class="o_kp_aqui"/>').text('AQUÍ MISMO: ' + aqui + ' más').appendTo(this.$('.o_kp_ubi_detalle'));
+            }
             // v3.1: nombre una sola vez y en grande, talla destacada, referencia solo si es distinta
             this.$('.o_kp_producto_ref').text(sig.nombre || sig.producto);
             this.$('.o_kp_talla').text(sig.talla || '');
@@ -1383,7 +1430,8 @@ var Pantalla = AbstractAction.extend({
         var conRed = !this.sinRed;
         var guardando = this.cola.length > 0 || this.enviando;
         var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
-        this.$('.o_kp_caja').prop('disabled', !libre || !conRed || !mias)
+        this.$('.o_kp_caja').toggle(out.con_caja !== false)   // v3.14: en las INT no hay botón Caja
+            .prop('disabled', !libre || !conRed || !mias)
             .text(conRed ? 'Caja' : 'Esperando conexión…')
             .toggleClass('o_kp_destacado', conRed && !!mias && e.todo_leido);
         this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
@@ -1421,6 +1469,19 @@ var Pantalla = AbstractAction.extend({
     },
 
     // v3.9.2: la ubicación siempre en una línea: baja la letra hasta que quepa (PDA de 360 a 480 px de ancho)
+    /** v3.12: las ubicaciones de «Prueba en» en una línea: baja la letra hasta que caben. */
+    _ajustarFaltante: function () {
+        this.$('.o_kp_f_alt_ubi').each(function (i) {
+            if (!this.offsetWidth) { return; }
+            var fs = i === 0 ? 30 : 20;
+            this.style.fontSize = fs + 'px';
+            while (this.scrollWidth > this.clientWidth && fs > 14) {
+                fs -= 1;
+                this.style.fontSize = fs + 'px';
+            }
+        });
+    },
+
     _ajustarUbicacion: function () {
         var el = this.$('.o_kp_ubicacion')[0];
         if (!el || !el.offsetWidth) { return; }
@@ -1551,7 +1612,23 @@ var Pantalla = AbstractAction.extend({
     },
 
     _pitido: function (bien) {
-        this._vibrar(bien ? 60 : [120, 80, 120]);
+        this._sonar(bien ? 'ok' : 'error');
+    },
+
+    // v3.13: un sonido distinto para cada caso (se distingue sin mirar la pantalla):
+    //   ok     = pip corto (una ud bien leída)
+    //   linea  = dos notas que suben (línea completa: ve a la siguiente)
+    //   caja   = tres notas que suben (caja cerrada)
+    //   error  = zumbido grave largo (no cuenta)
+    _sonar: function (tipo) {
+        var SONIDOS = {
+            ok: {vibrar: 60, notas: [[880, 0, 0.09]]},
+            linea: {vibrar: [60, 50, 60], notas: [[880, 0, 0.09], [1320, 0.11, 0.14]]},
+            caja: {vibrar: [60, 40, 60, 40, 60], notas: [[660, 0, 0.1], [880, 0.12, 0.1], [1320, 0.24, 0.2]]},
+            error: {vibrar: [120, 80, 120], tipo: 'square', notas: [[220, 0, 0.4]]},
+        };
+        var s = SONIDOS[tipo] || SONIDOS.ok;
+        this._vibrar(s.vibrar);
         if (!this.sonido) { return; }
         try {
             var Ctx = window.AudioContext || window.webkitAudioContext;
@@ -1559,15 +1636,17 @@ var Pantalla = AbstractAction.extend({
             if (!this.audio) { this.audio = new Ctx(); }
             var ctx = this.audio;
             if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
-            var o = ctx.createOscillator();
-            var g = ctx.createGain();
-            o.type = bien ? 'sine' : 'square';
-            o.frequency.value = bien ? 880 : 220;
-            g.gain.value = 0.2;
-            o.connect(g);
-            g.connect(ctx.destination);
-            o.start();
-            o.stop(ctx.currentTime + (bien ? 0.1 : 0.4));
+            s.notas.forEach(function (n) {
+                var o = ctx.createOscillator();
+                var g = ctx.createGain();
+                o.type = s.tipo || 'sine';
+                o.frequency.value = n[0];
+                g.gain.value = 0.2;
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(ctx.currentTime + n[1]);
+                o.stop(ctx.currentTime + n[1] + n[2]);
+            });
         } catch (e) { /* sin sonido */ }
     },
 });
@@ -1583,7 +1662,51 @@ odoo.define('koroshi_preparacion.Lecturas', function (require) {
  * preparación en lugar de la app de código de barras. En cualquier otro caso, lo de siempre. */
 var Operarios = require('koroshi_operarios.Pantalla');
 
+// v3.14: lo que Lecturas tiene precargado para abrir al momento (la pantalla y la OUT que toca)
+var PRECARGA_MS = 90000;
+var accionPreparar = null;
+
 Operarios.include({
+    /** v3.14: con la OUT que toca a la vista, se carga ya en segundo plano (pantalla y OUT): Continuar abre al momento. */
+    _precargar: function (obj) {
+        var self = this;
+        if (!obj || obj.tipo !== 'out' || !this.operario || this.sinRed) { return; }
+        var ref = obj.picking_name || obj.ref;
+        var emp = this.operario.id;
+        var p = this.precarga;
+        if (p && p.ref === ref && p.emp === emp && (p.cargando || Date.now() - p.t < PRECARGA_MS / 2)) { return; }
+        var nueva = {ref: ref, emp: emp, t: Date.now(), cargando: true};
+        this.precarga = nueva;
+        var accion = accionPreparar ? Promise.resolve(accionPreparar) :
+            this._rpc({route: '/web/action/load', params: {action_id: 'koroshi_preparacion.action_koroshi_preparacion_pantalla'}},
+                      {shadow: true}).then(function (a) { accionPreparar = a; return a; });
+        return accion.then(function () {
+            return self._rpc({route: '/koroshi/preparacion/modo', params: {employee_id: emp, picking_name: ref}}, {shadow: true});
+        }).then(function (r) {
+            if (!r || !r.propia) { nueva.propia = false; return; }
+            nueva.propia = true;
+            return self._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: ref, employee_id: emp}},
+                             {shadow: true}).then(function (c) { if (c && c.ok) { nueva.estado = c.estado; } });
+        }).then(function () {
+            nueva.cargando = false;
+            nueva.t = Date.now();
+        }, function () {
+            if (self.precarga === nueva) { self.precarga = null; }
+        });
+    },
+
+    _pintarActual: function () {
+        var res = this._super.apply(this, arguments);
+        if (this.actual && !this.ocupado) { this._precargar(this.actual); }   // v3.14
+        return res;
+    },
+
+    _mostrarHecho: function (ref, siguiente) {
+        var res = this._super.apply(this, arguments);
+        if (siguiente) { this._precargar(siguiente); }   // v3.14: la siguiente, mientras cuenta 3 s
+        return res;
+    },
+
     _abrir: function (obj) {
         var self = this;
         var deSiempre = this._super.bind(this);
@@ -1591,6 +1714,25 @@ Operarios.include({
             return deSiempre(obj);
         }
         var ref = obj.picking_name || obj.ref;
+        var p = this.precarga;
+        if (p && p.ref === ref && p.emp === this.operario.id && !p.cargando && Date.now() - p.t < PRECARGA_MS) {
+            // v3.14: ya precargada: sin preguntar ni esperar a Odoo
+            this.precarga = null;
+            if (!p.propia) { return deSiempre(obj); }
+            this.ocupado = true;
+            this._mostrarAbriendo(ref, this.operario.nombre);
+            return this.do_action(accionPreparar ? _.extend({}, accionPreparar) :
+                                  'koroshi_preparacion.action_koroshi_preparacion_pantalla', {
+                additional_context: {
+                    preparacion_out: ref,
+                    preparacion_operario: {id: this.operario.id, nombre: this.operario.nombre},
+                    preparacion_estado: p.estado || false,
+                },
+            }).then(function () { self.ocupado = false; }).guardedCatch(function () {
+                self.ocupado = false;
+                return deSiempre(obj);
+            });
+        }
         this.ocupado = true;
         return this._rpc({route: '/koroshi/preparacion/modo',
                           params: {employee_id: this.operario.id, picking_name: ref}}, {shadow: true})

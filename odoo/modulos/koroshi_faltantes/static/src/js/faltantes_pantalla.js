@@ -65,6 +65,7 @@ var Pantalla = AbstractAction.extend({
             if (self.operarioInicial && self.operarioInicial.id) {
                 self.operario = {id: self.operarioInicial.id, nombre: self.operarioInicial.nombre, tarjeta: true};
             }
+            $('body').addClass('o_kf_en_faltante');   // v1.4: en PDA (pantalla estrecha) sin la barra de Odoo
             self._pintar();
             if (self.outInicial) {
                 self._aviso('Cargando ' + self.outInicial + '...', 'info');
@@ -77,6 +78,7 @@ var Pantalla = AbstractAction.extend({
 
     on_attach_callback: function () {
         this._super.apply(this, arguments);
+        $('body').addClass('o_kf_en_faltante');   // v1.4
         this.ocupado = false;
         if (this.abrioOut) {
             // vuelve de la OUT (validada o con la flecha atras)
@@ -93,7 +95,13 @@ var Pantalla = AbstractAction.extend({
         this._foco();
     },
 
+    on_detach_callback: function () {
+        $('body').removeClass('o_kf_en_faltante');   // v1.4
+        this._super.apply(this, arguments);
+    },
+
     destroy: function () {
+        $('body').removeClass('o_kf_en_faltante');   // v1.4
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearTimeout(this.timerConfirmar);
         clearTimeout(this.timerVolver);
@@ -478,8 +486,9 @@ var Pantalla = AbstractAction.extend({
                     .toggleClass('o_kf_marcada', marcada).toggleClass('o_kf_bloqueada', !!p.motivo);
                 $b.append($('<span class="o_kf_check"/>').text(marcada ? '✔' : ''));
                 var $t = $('<span class="o_kf_pend_txt"/>');
-                $t.append($('<span class="o_kf_ref"/>').text(p.ref || p.producto));
-                $t.append($('<span class="o_kf_sub"/>').text([p.variante, p.ubicacion].filter(Boolean).join(' · ')));
+                if (p.ubicacion) { $t.append(self._ubi(p.ubicacion, 'o_kf_ubi o_kf_ubi_lista', 22)); }   // v1.4
+                $t.append($('<span class="o_kf_ref"/>').text(self._nombre(p.producto || p.ref)));   // v1.4.1: no el EAN
+                if (p.variante) { $t.append($('<span class="o_kf_sub"/>').text(p.variante)); }
                 if (self.out && self.out.lote_id) {
                     $t.append($('<span class="o_kf_sub"/>').text(p.out + ' · ' + p.tienda));
                 }
@@ -503,10 +512,11 @@ var Pantalla = AbstractAction.extend({
         var $lin = this.$('.o_kf_linea').empty();
         var l = this.linea;
         if (l && this.paso === 'ubic') {
-            $lin.append($('<div class="o_kf_ref"/>').text(l.ref || l.producto));
-            $lin.append($('<div class="o_kf_producto"/>').text(l.producto + (l.variante ? ' · ' + l.variante : '')));
-            $lin.append($('<div class="o_kf_sub"/>').text('No está en'));
-            $lin.append($('<div class="o_kf_vieja"/>').text(l.ubicacion + ' · ' + this._uds(l.pendiente)));
+            $lin.append($('<div class="o_kf_sub o_kf_etq"/>').text('No está en'));
+            $lin.append($('<div class="o_kf_vieja"/>').append(this._ubi(l.ubicacion, 'o_kf_vieja_ubi', 20))
+                .append($('<span class="o_kf_vieja_uds"/>').text(this._uds(l.pendiente))));
+            $lin.append($('<div class="o_kf_ref"/>').text(this._nombre(l.ref || l.producto)));   // v1.4.1: una vez
+            if (l.variante) { $lin.append($('<div class="o_kf_producto"/>').text(l.variante)); }
             if (this.cola.length) {
                 $lin.append($('<div class="o_kf_sub"/>').text('Después: ' + this.cola.length + ' más'));
             }
@@ -522,15 +532,15 @@ var Pantalla = AbstractAction.extend({
             } else {
                 $alt.append($('<div class="o_kf_titulo"/>').text('Prueba en'));
                 $alt.append($('<div class="o_kf_reco"/>')
-                    .append($('<b/>').text(alts[0].nombre))
-                    .append($('<span/>').text(this._uds(alts[0].libre) + ' libres')));
+                    .append(this._ubi(alts[0].nombre, 'o_kf_reco_ubi', 32))
+                    .append($('<span class="o_kf_reco_uds"/>').text(this._uds(alts[0].libre) + ' libres')));
                 if (alts.length > 1) {
                     $alt.append($('<a href="#" class="o_kf_vermas"/>').text(this.verMas ? 'Ocultar las demás' :
                         'Ver más ubicaciones (' + (l.alternativas_total || alts.length) + ')'));
                 }
                 if (this.verMas) {
                     alts.slice(1).forEach(function (a) {
-                        $alt.append($('<div class="o_kf_fila"/>').append($('<b/>').text(a.nombre))
+                        $alt.append($('<div class="o_kf_fila"/>').append(self._ubi(a.nombre, 'o_kf_fila_ubi', 20))
                             .append($('<span/>').text(self._uds(a.libre))));
                     });
                 }
@@ -570,6 +580,34 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kf_codigo').attr('placeholder', {
             out: 'Escribir OUT y Enter', lista: 'Leer ubicación o EAN (opcional)', ubic: 'Leer ubicación y Enter',
             fin: 'Escribir OUT y Enter', preguntar: '', validada: ''}[this.paso] || '');
+        this._ajustarUbis();
+    },
+
+    // ------------------------------------------------------------ v1.4: ubicación como en Preparación
+    /** v1.4.1: '[2412PT25-000039-36] 2412PT25-000039-36' -> '2412PT25-000039-36' (sin el código repetido). */
+    _nombre: function (texto) {
+        return (texto || '').replace(/^\[[^\]]*\]\s*/, '');
+    },
+
+    /** 'L44 P17 C2 · KO_110626_032' -> hueco y KO en la misma línea y del mismo tamaño. */
+    _ubi: function (texto, clase, max) {
+        var $u = $('<span/>').addClass(clase).addClass('o_kf_ajustar').attr('data-max', max || 24);
+        var partes = (texto || '').split(' · ');
+        $u.append($('<span class="o_kf_hueco"/>').text(partes[0] || ''));
+        if (partes.length > 1) { $u.append($('<span class="o_kf_ko"/>').text(partes.slice(1).join(' · '))); }
+        return $u;
+    },
+
+    /** Baja la letra hasta que la ubicación cabe en una línea (mínimo 14 px). */
+    _ajustarUbis: function () {
+        this.$('.o_kf_ajustar').each(function () {
+            var t = parseInt(this.getAttribute('data-max'), 10) || 24;
+            this.style.fontSize = t + 'px';
+            while (this.clientWidth && this.scrollWidth > this.clientWidth && t > 14) {
+                t -= 1;
+                this.style.fontSize = t + 'px';
+            }
+        });
     },
 });
 

@@ -1,8 +1,25 @@
-# KOROSHI Operarios (v2.3.1, 10/11/2026)
+# KOROSHI Operarios (v2.7.0, 11/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.7.0: Salir lleva al inicio de Odoo; icono «Lecturas (PDA)» (11/11/2026)
+
+- **Salir** (y «Sí, salir»): la PDA queda libre para otro operario, como antes, y se abre la pantalla de inicio de
+  Odoo con todas las apps (`show_home_menu`). La salida automática por inactividad se queda en Lecturas.
+- Icono **Lecturas (PDA)** en la pantalla de inicio (menú raíz `menu_koroshi_lecturas_app`, sin grupos: lo ven todos
+  los usuarios). Abre Lecturas. El menú de siempre (Inventario → KOROSHI Operarios → Lecturas (PDA)) sigue.
+
+## v2.6.0: mismo aspecto que Preparación (11/11/2026)
+
+- Pantalla de Lecturas plana, negro sobre blanco, como Preparación en Lecturas v3.11: cabecera negra con el operario,
+  la OUT que está haciendo en banda negra, Continuar en verde, Faltante en naranja, Saltar con borde negro, la cola
+  como lista.
+- En la PDA (pantalla de 600 px o menos) no sale la barra de menús de Odoo (`body.o_ko_en_lecturas`).
+- Odoo 13 esconde todo lo que lleva `aria-hidden="true"`: avatar, iconos, spinner y marcas usan `role="presentation"`.
+- «Oficina» se llama **Expediciones** (motivo de saltar «Queda en expediciones», pestaña y filtro «En expediciones»).
+  Solo cambia el texto: la clave `oficina` y los datos guardados siguen igual.
 
 ## En la PDA (v2.0)
 
