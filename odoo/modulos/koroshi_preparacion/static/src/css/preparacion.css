@@ -586,3 +586,16 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 /* ================================================================ v3.14: INT sin caja: Validar ocupa toda la fila */
 .o_koroshi_preparacion .o_kp_fila_principal .o_kp_validar:only-child,
 .o_koroshi_preparacion .o_kp_fila_principal .o_kp_caja[style*="display: none"] + .o_kp_validar { flex: 1 1 100%; }
+
+/* ================================================================ v3.15: agrupación Z- entera
+   Cada pieza dice a qué caja de tienda va: banda amarilla «CAJA 05 · K34 ...» encima de la ubicación. */
+.o_koroshi_preparacion .o_kp_destino {
+    margin: 8px -12px 0; padding: 4px 12px; background: #facc15; color: var(--kp-negro);
+    font-size: 22px; font-weight: bold; line-height: 1.2; overflow-wrap: anywhere;
+}
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_destino { background: #bbf7d0; }
+.o_koroshi_preparacion .o_kp_l_destino { display: block; font-weight: bold; font-size: 13px; }
+.o_koroshi_preparacion .o_kp_hoja_tiendas { margin: 0 0 8px; padding: 0; list-style: none; font-size: 16px; }
+.o_koroshi_preparacion .o_kp_hoja_tiendas li {
+    padding: 4px 8px; border-left: 6px solid #facc15; background: #fffbe6; margin-bottom: 4px;
+}

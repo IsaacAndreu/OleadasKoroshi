@@ -1,7 +1,34 @@
-# KOROSHI Preparación en Lecturas (v3.14.0, 11/11/2026)
+# KOROSHI Preparación en Lecturas (v3.15.0, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.15.0: agrupaciones de zona (Z-) en la pantalla nueva (11/11/2026)
+
+Para los operarios de `koroshi_preparacion.empleados`, una agrupación Z- (la tarea de Lecturas es de toda la
+agrupación) ya no abre la app de código de barras: se abre la pantalla nueva con la agrupación **entera**.
+
+- **Un solo recorrido** (`models/agrupacion.py`): las líneas de todas sus OUT por hacer, en el orden de la ruta óptima.
+  Cada línea lleva su OUT, su tienda y su **caja de tienda** (el «CAJA nn» de la nota de la OUT, el mismo de la
+  etiqueta de zona). En la tarjeta, banda amarilla «→ CAJA 05 · K34 ...»; en la lista de líneas también.
+- **Leer un EAN**: +1 ud en la línea que se ve si es de ese artículo; si no, en la primera pendiente de la ruta (la PDA
+  y Odoo eligen la misma: la PDA manda `linea_id`). El aviso dice a qué caja va y no se borra solo.
+- **Leer una CJ** (sin pulsar «Caja»): cierra la caja de la tienda de esa etiqueta (`zebra.label` con nota
+  «ETQ ZONA <OUT>», la que reserva «Etiquetas de zona»). Si la CJ es de una OUT de otra agrupación: no se cierra. Si la
+  CJ no es de ninguna OUT: la caja que ya tenga ese nombre en la agrupación, la OUT de la línea que se ve o, si solo
+  hay una con algo leído, esa. `put_in_pack` solo en esa OUT (igual que en una OUT suelta).
+- **Validar**: todo leído (o en faltantes) y en caja → cada OUT con la validación de siempre (`button_validate` de
+  koroshi_faltantes, todo o nada por OUT), una detrás de otra. La agrupación se queda «En curso», como hoy
+  (comprobado: las Z- del 11/11 tienen todas sus OUT hechas y siguen «En curso»; `batch.operation.line` vacía).
+  Si alguna no se puede validar, se dice cuál y por qué; las demás quedan validadas.
+- Faltante, Deshacer, Poner cantidad e Imprimir (etiquetas de caja y albaranes de todas las tiendas) igual que en una
+  OUT. «Volver» de la pantalla de Faltante vuelve a la agrupación en la pantalla nueva.
+- Sin preparar a dos en las agrupaciones (la tarea es de un operario).
+- Parámetro nuevo `koroshi_preparacion.agrupaciones` (`1` al instalar; `0` = las Z- vuelven a la app de siempre).
+- Las OUT sueltas no cambian (refactor sin cambio de resultado: `_ordenar`, `_linea_json`, `_fotos`, `_sumar`,
+  `_producto_entre`, `_hermanas_en`).
+- Rutas: todas aceptan `lote_id` en vez de `picking_id` (`leer` además `linea_id`, `caja` además `out_id`). La cola
+  de la memoria de la PDA usa la clave `L<id>` para las agrupaciones.
 
 ## v3.14.0: INT y abrir más rápido (11/11/2026)
 
@@ -265,7 +292,8 @@ Necesita **koroshi_operarios v2.4.0**.
 - Solo si el **operario** está activado: parámetro `koroshi_preparacion.empleados` con los códigos de tarjeta
   (ID de credencial) separados por comas. Al instalar: `OP9990001,OP9980001` (Isaac e Isaac2). `*` = todos.
   Se activa por empleado, no por usuario, porque todas las PDA entran con el mismo usuario de Odoo.
-- Solo **OUT sueltas** de la company 8. Las OUT de una agrupación de zona **Z-** siguen en la app de siempre.
+- OUT sueltas de la company 8 y, desde la v3.15, agrupaciones de zona **Z-** enteras (parámetro
+  `koroshi_preparacion.agrupaciones`).
 - `koroshi_preparacion.activa` = `0` apaga todo y Lecturas vuelve a abrir la app de código de barras (vuelta atrás
   sin desinstalar).
 - Sin tarjeta, o con un operario que no está en la lista: todo igual que antes.
@@ -324,13 +352,13 @@ en `koroshi_operarios.Pantalla._abrir` y en `koroshi_faltantes.Pantalla._onVolve
 ## Ficheros
 
 - `models/lectura.py`: tabla de lecturas y toda la lógica (leer, deshacer, caja, validar, estado).
+- `models/agrupacion.py` (v3.15): la agrupación Z- entera (estado, leer, caja por tienda, validar cada OUT).
 - `controllers/main.py`: rutas.
 - `static/src/js/preparacion.js`: pantalla + includes en Lecturas y Faltante.
 - `static/src/xml/preparacion.xml`, `static/src/css/preparacion.css`.
-- `data/parametros.xml` (noupdate), `views/lectura_views.xml`, `views/assets.xml`, `security/ir.model.access.csv`.
+- `data/parametros.xml` y `data/parametros_v315.xml` (noupdate), `views/lectura_views.xml`, `views/assets.xml`, `security/ir.model.access.csv`.
 
 ## Pendiente (siguientes versiones)
 
-- Lotes Z- recorriendo OUT a OUT (v3.4a del plan).
-- Cerrar caja leyendo directamente la CJ sin pulsar el botón (si se quiere).
+- Cerrar caja leyendo directamente la CJ sin pulsar el botón también en las OUT sueltas (en las Z- ya, v3.15).
 - Cantidad de golpe para líneas de muchas uds (hoy el 96 % son de 1 ud).
