@@ -55,8 +55,9 @@ class KoroshiZonasEjecucionOut(models.Model):
     diferencia = fields.Integer('Reales - previstas', compute='_compute_diferencia', store=True)
     causa = fields.Selection(CAUSAS, 'Causa de la diferencia', compute='_compute_diferencia', store=True)
 
-    _sql_constraints = [('ejecucion_picking_uniq', 'unique(ejecucion_id, picking_id)',
-                         'La OUT ya está en esta ejecución.')]
+    # En DIAGNOSTICO y SIMULAR una OUT original sale una vez por zona (aun no se ha partido)
+    _sql_constraints = [('ejecucion_picking_uniq', 'unique(ejecucion_id, picking_id, zona)',
+                         'La OUT ya está en esta ejecución con esa zona.')]
 
     @api.depends('medida', 'prevision_conocida', 'cajas_previstas', 'cajas_estimadas', 'cajas_reales',
                  'cajas_compartidas', 'cajas_ajenas')
