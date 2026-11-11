@@ -2,31 +2,16 @@
 # =============================================================================
 # Lector: lee de Odoo y construye los datos planos que recibe el motor. Solo lee.
 # =============================================================================
-import re
-
+from ..motor import nombres
 from ..motor import volumen
 
 COMPANY_ID = 8                  # EFFECTIVE LOGISTICS, S.L.
-RE_CAJAS_NOTA = re.compile(r'\|\s*CAJAS\s+(\d+)')
-# Agrupacion de zonas: Z-ddmm-<zona> o Z-ddmm-R2-<zona> (segunda tanda del dia)
-RE_LOTE = re.compile(r'^(Z-\d{4}-(?:R\d+-)?)(.+)$')
-
 CAMPOS_LINEA = ['id', 'picking_id', 'result_package_id', 'qty_done', 'product_id']
 
-
-def partir_nombre_lote(nombre):
-    """'Z-1011-R2-MU1' -> ('Z-1011-R2-', 'MU1'). None si no es una agrupacion de zonas."""
-    m = RE_LOTE.match(nombre or '')
-    return m and (m.group(1), m.group(2)) or None
-
-
-def cajas_de_nota(nota):
-    """'Z-1011-D1 | CAJA 01 | K1 - ... | PEDIDO S-... | CAJAS 3' -> 3. None si la nota ya no lo lleva
-    (otro proceso la pisa con 'Envio junto: ...')."""
-    m = RE_CAJAS_NOTA.search(nota or '')
-    if not m:
-        return None
-    return int(m.group(1))
+# v1.1.2: los nombres se leen con motor/nombres.py (con tests)
+partir_nombre_lote = nombres.partir_nombre_lote
+cajas_de_nota = nombres.cajas_de_nota
+zona_de_nota = nombres.zona_de_nota
 
 
 def contexto_compania(env):

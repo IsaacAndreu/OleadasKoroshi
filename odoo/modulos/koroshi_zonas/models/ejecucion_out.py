@@ -3,7 +3,14 @@
 # Una fila por OUT de una ejecucion: zona, cajas previstas, cajas reales y si salio en caja cerrada.
 # Lo que haga falta guardar por OUT va aqui (con many2one a la OUT), nunca en stock.picking.
 # =============================================================================
+# v1.1.1: fecha, company_id, diferencia y causa ya no son campos calculados guardados: se escriben al crear
+# y al escribir (create/write). En la v1.1.0 el primer cron, lanzado justo al instalar, los dejo vacios.
 from odoo import api, fields, models
+
+from ..motor import medir as motor_medir
+
+CAMPOS_CAUSA = ('medida', 'prevision_conocida', 'cajas_previstas', 'cajas_estimadas', 'cajas_reales',
+                'cajas_compartidas', 'cajas_ajenas')
 
 CAUSAS = [
     ('ok', 'Coincide'),
@@ -23,8 +30,8 @@ class KoroshiZonasEjecucionOut(models.Model):
 
     ejecucion_id = fields.Many2one('koroshi.zonas.ejecucion', 'Ejecución', required=True, ondelete='cascade',
                                    index=True)
-    fecha = fields.Date('Día', related='ejecucion_id.fecha', store=True, index=True)
-    company_id = fields.Many2one('res.company', related='ejecucion_id.company_id', store=True)
+    fecha = fields.Date('Día', index=True, readonly=True, help='El de la ejecución')
+    company_id = fields.Many2one('res.company', 'Compañía', readonly=True)
     picking_id = fields.Many2one('stock.picking', 'OUT', required=True, ondelete='cascade', index=True)
     lote_id = fields.Many2one('stock.picking.batch', 'Agrupación', ondelete='set null')
     zona = fields.Char('Zona', index=True, help='D1, D2... de lineal; MU1, MU2 de muelle')
@@ -52,27 +59,35 @@ class KoroshiZonasEjecucionOut(models.Model):
     uds_sin_caja = fields.Float('Uds sin caja')
     cerrada = fields.Boolean('OUT en caja cerrada',
                              help='Todas sus cajas propias cerradas, nada en cajas ajenas y nada sin caja')
-    diferencia = fields.Integer('Reales - previstas', compute='_compute_diferencia', store=True)
-    causa = fields.Selection(CAUSAS, 'Causa de la diferencia', compute='_compute_diferencia', store=True)
+    diferencia = fields.Integer('Reales - previstas', readonly=True)
+    causa = fields.Selection(CAUSAS, 'Causa de la diferencia', readonly=True)
 
     # En DIAGNOSTICO y SIMULAR una OUT original sale una vez por zona (aun no se ha partido)
     _sql_constraints = [('ejecucion_picking_uniq', 'unique(ejecucion_id, picking_id, zona)',
                          'La OUT ya está en esta ejecución con esa zona.')]
 
-    @api.depends('medida', 'prevision_conocida', 'cajas_previstas', 'cajas_estimadas', 'cajas_reales',
-                 'cajas_compartidas', 'cajas_ajenas')
-    def _compute_diferencia(self):
+    @api.model_create_multi
+    def create(self, vals_list):
+        Ejec = self.env['koroshi.zonas.ejecucion']
+        for vals in vals_list:
+            ej = Ejec.browse(vals.get('ejecucion_id'))
+            if ej:
+                vals.setdefault('fecha', ej.fecha)
+                vals.setdefault('company_id', ej.company_id.id)
+        filas = super(KoroshiZonasEjecucionOut, self).create(vals_list)
+        filas._escribir_causa()
+        return filas
+
+    def write(self, vals):
+        res = super(KoroshiZonasEjecucionOut, self).write(vals)
+        if not self.env.context.get('koroshi_causa') and any(k in vals for k in CAMPOS_CAUSA):
+            self._escribir_causa()
+        return res
+
+    def _escribir_causa(self):
         for r in self:
-            r.diferencia = r.prevision_conocida and r.medida and (r.cajas_reales - r.cajas_previstas) or 0
-            if not r.medida:
-                r.causa = 'sin_medir'
-            elif not r.prevision_conocida:
-                r.causa = 'sin_prevision'
-            elif r.cajas_reales == r.cajas_previstas:
-                r.causa = 'ok'
-            elif r.cajas_compartidas or r.cajas_ajenas:
-                r.causa = 'caja_compartida'
-            elif r.cajas_estimadas != r.cajas_previstas:
-                r.causa = 'cogido'
-            else:
-                r.causa = 'litros'
+            diferencia, causa = motor_medir.causa_de(r.medida, r.prevision_conocida, r.cajas_previstas,
+                                                      r.cajas_estimadas, r.cajas_reales, r.cajas_compartidas,
+                                                      r.cajas_ajenas)
+            if r.diferencia != diferencia or r.causa != causa:
+                r.with_context(koroshi_causa=True).write({'diferencia': diferencia, 'causa': causa})
