@@ -32,6 +32,17 @@ Fase 2 - La v12f dentro del modulo (motor/v12f.py, copia literal de la accion 18
 Solo escribe fuera de sus tablas al partir en SIMULAR (deshecho) y REAL: lo mismo que la accion 1883
 (partir movimientos, crear agrupaciones, nota). Nunca cancela una OUT ni fuerza disponibilidad.
 
+Fase 3 - Configuracion y sustitucion:
+- Inventario > KOROSHI Zonas > Configuracion: personas, horario, minimos, litros por caja (un solo valor),
+  tiendas de 48 h, canal y destinatarios del correo. Valores iniciales = los de la v12f.
+- Litros por tipo de prenda: una sola tabla, la de koroshi_kpi, con los valores de la v12f (decision del 11/11).
+- Cron "partir OUT" a las 03:50 UTC. Modo sombra (por defecto): calcula sin partir y a las 04:30 compara con lo
+  que ha partido el cron 202. Modo real: parte (si el cron 202 sigue activo, no hace nada y avisa).
+- Etiquetas de zona (antes la 1843) con las cajas del reparto, y correo del dia (antes la 1868, desactivado).
+- "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
+- Las acciones 1880-1883, 1843 y 1868 no se tocan.
+
+v1.2.0 (11/11/2026): fase 3, configuracion, cron en sombra, etiquetas y correo dentro del modulo.
 v1.1.2 (11/11/2026): las agrupaciones que almacen crea a mano para imprimir lo del transportista ('Z-2210-SALIO
   22-10', 'Z-2710- SALE 28-10'...) ya no cuentan como zonas: cada OUT suya va al dia y la zona de su nota. Al
   actualizar se borran las filas con esas zonas y se vuelve a registrar (despues: Medir desde el 22/10).
@@ -41,7 +52,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.1.2',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -51,7 +62,9 @@ v1.0 (11/11/2026): fase 1, medir las cajas reales.
         'data/parametros.xml',
         'data/cron.xml',
         'data/rellenar.xml',
+        'data/config.xml',
         'views/ejecucion_views.xml',
+        'views/config_views.xml',
         'views/kpi_dia_views.xml',
     ],
     'installable': True,

@@ -75,6 +75,65 @@ def parametros(cambios=None, contexto=None):
     return p
 
 
+# Fase 3: lo que se configura en koroshi.zonas.config (campo de Odoo -> parametro del motor). Lo que no esta
+# aqui (muelle fijo, prefijos, tipo de pedido...) es estructura del reparto y cambia en la fase 4, no se configura.
+CAMPOS_CONFIG = {
+    'personas': 'PERSONAS',
+    'zonas': 'ZONAS',
+    'hora_inicio': 'HORA_INICIO',
+    'hora_fin': 'HORA_FIN',
+    'min_uds_pedido': 'MIN_UDS_PEDIDO',
+    'min_uds_zonas': 'MIN_UDS_ZONAS',
+    'rendimiento': 'RENDIMIENTO',
+    'seg_lectura': 'SEG_LECTURA',
+    'seg_lineal': 'SEG_LINEAL',
+    'litros_caja': 'LITROS_CAJA',
+    'cierre_min': 'CIERRE_MIN',
+    'peso_carga': 'PESO_CARGA',
+    'iter_equilibrio': 'ITER_EQUILIBRIO',
+    'una_ronda': 'UNA_RONDA',
+    'ver_out': 'VER_OUT',
+}
+
+
+def lista_tiendas(texto):
+    """'7, 24,29' -> [7, 24, 29]."""
+    res = []
+    for t in (texto or '').replace(';', ',').split(','):
+        t = t.strip()
+        if t.isdigit():
+            res.append(int(t))
+    return res
+
+
+def cambios_desde_config(cfg, litros_tipo=None, litros_defecto=None):
+    """cfg: dict con los campos de koroshi.zonas.config (CAMPOS_CONFIG y 'tiendas_48h' como texto).
+    litros_tipo: {tipo: litros} de koroshi.kpi.peso.tipo. Devuelve los cambios para parametros()."""
+    cambios = {}
+    for campo, clave in CAMPOS_CONFIG.items():
+        if campo in cfg and cfg[campo] is not None:
+            v = cfg[campo]
+            if isinstance(POR_DEFECTO[clave], float):
+                v = float(v)
+            cambios[clave] = v
+    if 'tiendas_48h' in cfg:
+        cambios['TIENDAS_48H'] = lista_tiendas(cfg['tiendas_48h'])
+    if litros_tipo is not None:
+        cambios['LITROS_TIPO'] = dict(litros_tipo)
+    if litros_defecto is not None:
+        cambios['LITROS_DEFECTO'] = float(litros_defecto)
+    return cambios
+
+
+def config_por_defecto():
+    """Los valores de la v12f como campos de koroshi.zonas.config (para crear el registro)."""
+    cfg = {}
+    for campo, clave in CAMPOS_CONFIG.items():
+        cfg[campo] = POR_DEFECTO[clave]
+    cfg['tiendas_48h'] = ', '.join([str(x) for x in POR_DEFECTO['TIENDAS_48H']])
+    return cfg
+
+
 class Reparto(object):
     """Resultado de un reparto. Lo que necesita el escritor para partir y lo que se guarda."""
 

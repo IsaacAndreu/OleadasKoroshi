@@ -11,6 +11,7 @@
                 <field name="prefijo"/>
                 <field name="modo"/>
                 <field name="estado"/>
+                <field name="comparacion" optional="show"/>
                 <field name="medicion"/>
                 <field name="n_out" sum="OUT"/>
                 <field name="n_out_medidas" sum="OUT medidas" optional="hide"/>
@@ -49,6 +50,8 @@
                             <field name="motor"/>
                             <field name="lanzado_el"/>
                             <field name="n_out_nuevas"/>
+                            <field name="sombra"/>
+                            <field name="comparacion" attrs="{'invisible': [('sombra', '=', False)]}"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="medido_el"/>
                         </group>
@@ -72,6 +75,10 @@
                     <notebook>
                         <page string="Informe del reparto" attrs="{'invisible': [('informe', '=', False)]}">
                             <field name="informe" nolabel="1"
+                                   style="font-family: monospace; white-space: pre; font-size: 12px;"/>
+                        </page>
+                        <page string="Comparación con el cron 202" attrs="{'invisible': [('sombra', '=', False)]}">
+                            <field name="informe_comparacion" nolabel="1"
                                    style="font-family: monospace; white-space: pre; font-size: 12px;"/>
                         </page>
                         <page string="Informe de la medición">
