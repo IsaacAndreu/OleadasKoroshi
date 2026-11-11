@@ -35,8 +35,19 @@ v3.2.0 (10/11/2026): «Faltante» sin lista: trabaja con la línea que se ve, en
 (la más cercana primero), se lee la ubicación de donde se coge y la línea pasa allí; «Tampoco está aquí» (dos
 toques) la manda a faltantes. Sin cambios en el servidor.
 v3.2.1 (10/11/2026): en la hoja de Faltante las uds van debajo de la ubicación (las reales son largas).
+v3.3.0 (11/11/2026): preparar a dos (necesita koroshi_operarios v2.4). El primero que empieza la OUT va por delante (orden
+de la ruta) y el ayudante desde el final (líneas al revés). Cada uno cierra su caja solo con lo que ha leído él: lo del
+compañero se aparta un momento y vuelve a su línea, sin caja. Valida cualquiera de los dos cuando todo está leído y en
+caja; si no, «Falta que tu compañero cierre su caja» / «Faltan N uds por leer entre los dos». Cada 10 s se refresca lo
+del compañero. Productividad: si otro ha leído la misma OUT, la tarea cuenta solo las lecturas propias. Campo nuevo
+en_caja en koroshi.preparacion.lectura (tabla propia).
+v3.4.0 (11/11/2026): preparar a dos, segunda parte (necesita koroshi_operarios v2.5). Cuando entra el ayudante, las líneas
+pendientes se parten por la mitad en el orden de la ruta: el titular hace la primera y el ayudante la segunda; quien
+acaba sigue con lo que quede de la del otro desde el extremo más lejano. Tabla nueva koroshi.preparacion.equipo (dónde
+se partió y avisos). Al titular le sale una vez «X se ha unido: hace la segunda mitad (desde L..)». Si el compañero
+manda algo a faltantes o lo cambia de ubicación, al otro le sale un aviso. La tarea se marca «a dos» con el compañero.
 """,
-    'version': '13.0.3.2.1',
+    'version': '13.0.3.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

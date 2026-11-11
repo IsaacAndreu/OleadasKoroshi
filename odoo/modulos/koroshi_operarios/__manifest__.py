@@ -57,8 +57,18 @@ Productividad). Menu como icono abajo (con tarjeta obligatoria, pulsacion larga 
 koroshi_operarios.minutos_inactividad (0 = desactivado): sale solo el operario tras esos minutos sin usar la PDA.
 v2.3.1 (10/11/2026): en la PDA no sale nada de productividad: fuera el contador del dia (pedidos / uds), los
 minutos del pedido y el texto "no cuenta en productividad" al abrir sin tarjeta.
+v2.4.0 (11/11/2026): preparar a dos. Leer una OUT suelta que ya esta haciendo otro operario ya no da "esta asignada a
+X": entra de AYUDANTE. La asignacion sigue siendo del titular; el ayudante tiene su propia tarea y lo que estaba haciendo
+vuelve el primero de su cola. Aviso en la PDA "Te unes a X con OUT. Empieza por el final." Las agrupaciones (Z-) y las
+OUT asignadas que aun no ha empezado nadie siguen igual.
+v2.5.0 (11/11/2026): preparar a dos, segunda parte. Antes de entrar de ayudante se pregunta "¿Ayudar a X?" (Si / No).
+Como mucho dos por OUT. En Colas: columnas Uds, "A dos" (OUT suelta con al menos koroshi_operarios.uds_a_dos uds,
+150 por defecto; filtro "Grandes: para hacer a dos") y Ayudante: si se pone, cuando el titular empieza la OUT al
+ayudante le sale sola en su PDA (sin preguntar; si ya la dejo una vez no se le vuelve a dar). Productividad: campos
+"A dos" y "Compañero", filtros Preparadas a dos / solo y agrupar por "A dos / solo" (uds/hora a dos contra solo).
+Metodo _uds_hasta_ahora para el monitor.
 """,
-    'version': '13.0.2.3.1',
+    'version': '13.0.2.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

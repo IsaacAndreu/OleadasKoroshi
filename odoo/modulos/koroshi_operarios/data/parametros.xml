@@ -7,5 +7,10 @@
             <field name="key">koroshi_operarios.minutos_inactividad</field>
             <field name="value">0</field>
         </record>
+        <!-- v2.5: OUT sueltas con al menos estas uds salen como «para hacer a dos» en Colas. 0 = nunca. -->
+        <record id="parametro_uds_a_dos" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.uds_a_dos</field>
+            <field name="value">150</field>
+        </record>
     </data>
 </odoo>

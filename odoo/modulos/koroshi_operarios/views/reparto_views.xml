@@ -15,6 +15,11 @@
                 <field name="name" readonly="1"/>
                 <field name="tipo" readonly="1"/>
                 <field name="tienda" readonly="1"/>
+                <!-- v2.5: preparar a dos -->
+                <field name="uds" readonly="1"/>
+                <field name="a_dos" readonly="1" string="A dos"/>
+                <field name="ayudante_id" options="{'no_create': True}"
+                       attrs="{'readonly': ['|', ('tipo', '!=', 'out'), ('estado', 'not in', ('cola', 'curso'))]}"/>
                 <field name="estado_out" readonly="1"/>
                 <field name="estado" readonly="1"/>
                 <field name="origen" readonly="1"/>
@@ -49,6 +54,8 @@
                 <separator/>
                 <filter name="saltadas" string="Saltadas alguna vez" domain="[('saltos', '>', 0)]"/>
                 <filter name="sin_etiqueta" string="Sin etiqueta impresa" domain="[('etiqueta_impresa', '=', False)]"/>
+                <filter name="a_dos" string="Grandes: para hacer a dos" domain="[('a_dos', '=', True)]"/>
+                <filter name="con_ayudante" string="Con ayudante" domain="[('ayudante_id', '!=', False)]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
                     <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>

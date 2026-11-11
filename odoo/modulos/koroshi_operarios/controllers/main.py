@@ -109,15 +109,23 @@ class KoroshiOperarios(http.Controller):
     def _siguiente(self, emp):
         Asig = request.env['koroshi.operario.asignacion'].sudo()
         asig, nueva = Asig.siguiente(emp)
+        tarea = asig.tarea_id if asig else False
+        ayudante = bool(asig) and asig.employee_id != emp
+        if ayudante:
+            # v2.5: de ayudante (puesto desde el reparto): su tarea, no la del titular
+            tarea = request.env['koroshi.operario.tarea'].sudo().abierta_de(emp)
         res = {'ok': True, 'que': 'siguiente', 'nueva': nueva, 'asignacion': _asig_json(asig) if asig else False,
-               'tarea': _tarea_json(asig.tarea_id) if asig else False, 'cola': self._cola_json(emp),
+               'tarea': _tarea_json(tarea) if tarea else False, 'cola': self._cola_json(emp),
                'operario': emp.name, 'employee_id': emp.id}
+        if ayudante and nueva:
+            res['msg_ayudante'] = 'Ayudas a %s con %s. Tú haces la segunda mitad.' % (
+                asig.employee_id.name, asig.picking_id.name)
         if not asig:
             res['msg'] = 'No tienes más pedidos. Pide a tu responsable.'
         return res
 
     @http.route('/koroshi/operarios/leer', type='json', auth='user')
-    def leer(self, codigo='', employee_id=False, **kw):
+    def leer(self, codigo='', employee_id=False, ayudar=False, **kw):
         codigo = (codigo or '').strip()
         if not codigo:
             return {'ok': False, 'msg': 'Codigo vacio'}
@@ -137,6 +145,17 @@ class KoroshiOperarios(http.Controller):
             tipo, picking, lote = Tarea.buscar_objetivo(codigo)
             if not tipo:
                 raise UserError('No encuentro ningun pedido ni agrupacion con el codigo %s' % codigo)
+            ayuda = Asig.ayudante_de(emp, tipo, picking)
+            if ayuda and not ayudar:
+                # v2.5: antes de entrar se pregunta (por si la ha leido sin querer)
+                return {'ok': True, 'que': 'ayudar', 'codigo': codigo, 'titular': ayuda.employee_id.name,
+                        'msg': '%s está haciendo %s.' % (ayuda.employee_id.name, picking.name)}
+            if ayuda:
+                # v2.4: la OUT ya la esta haciendo otro -> entra de ayudante (preparar a dos)
+                tarea = Asig.unirse(emp, ayuda)
+                return {'ok': True, 'que': 'empezada', 'ayudante': True, 'tarea': _tarea_json(tarea),
+                        'asignacion': _asig_json(ayuda), 'cola': self._cola_json(emp),
+                        'msg': 'Te unes a %s con %s. Tú haces la segunda mitad.' % (ayuda.employee_id.name, picking.name)}
             asig = Asig.leida_a_mano(emp, tipo, picking, lote)
             if asig._terminada():
                 asig._cerrar_hecha()
