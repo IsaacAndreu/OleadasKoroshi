@@ -1,0 +1,384 @@
+<title>Guía PDA Lecturas</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=Inter:wght@400;500;600&family=Roboto+Mono:wght@500;700&display=swap">
+<style>
+/* Layout: guía de almacén; cada apartado = texto a la izquierda y la pantalla de la PDA a la derecha (una columna en móvil).
+   Estética de etiqueta de estantería, como la propia PDA: negro sobre papel, códigos en mono, amarillo «Aquí mismo». */
+:root {
+  --papel: #f4f4f1; --hoja: #ffffff; --tinta: #121212; --suave: #57574f; --linea: #d6d6cf;
+  --amarillo: #facc15; --verde: #16a34a; --naranja: #c2410c; --rojo: #b91c1c;
+  --f-titulo: "Archivo", "Arial Narrow", Arial, sans-serif;
+  --f-texto: "Inter", "Segoe UI", Arial, sans-serif;
+  --f-codigo: "Roboto Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --papel: #161614; --hoja: #1f1f1c; --tinta: #f1f1ec; --suave: #b0b0a6; --linea: #3a3a35;
+    --amarillo: #facc15; --verde: #22c55e; --naranja: #f97316; --rojo: #f87171; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --papel: #161614; --hoja: #1f1f1c; --tinta: #f1f1ec; --suave: #b0b0a6; --linea: #3a3a35;
+  --amarillo: #facc15; --verde: #22c55e; --naranja: #f97316; --rojo: #f87171; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--papel); color: var(--tinta); font-family: var(--f-texto); font-size: 16px; line-height: 1.55;
+}
+.envoltura {
+  max-width: 1040px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 0 64px;
+}
+header.portada { border-bottom: 3px solid var(--tinta); padding-block: 40px 28px; display: grid; gap: 14px; }
+.etiqueta-portada {
+  display: inline-flex; align-self: start; justify-self: start; gap: 14px; align-items: baseline;
+  background: var(--tinta); color: var(--papel); font-family: var(--f-codigo); font-weight: 700; font-size: 15px;
+  padding: 6px 12px 14px; position: relative;
+}
+.etiqueta-portada::after {
+  content: ""; position: absolute; left: 12px; right: 12px; bottom: 5px; height: 5px; opacity: .6;
+  background: repeating-linear-gradient(90deg, var(--papel) 0 2px, transparent 2px 4px, var(--papel) 4px 5px, transparent 5px 8px);
+}
+h1 { font-family: var(--f-titulo); font-weight: 800; font-size: clamp(34px, 6vw, 58px); line-height: 1.02; margin: 0; letter-spacing: -0.5px; text-wrap: balance; }
+.entradilla { max-width: 64ch; color: var(--suave); font-size: 18px; margin: 0; }
+.datos { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 14px; color: var(--suave); }
+.datos b { color: var(--tinta); font-weight: 600; }
+
+nav.indice { padding-block: 22px; border-bottom: 1px solid var(--linea); }
+nav.indice ol { margin: 0; padding: 0; list-style: none; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 6px 24px; }
+nav.indice a { color: var(--tinta); text-decoration: none; display: flex; gap: 10px; align-items: baseline; padding: 4px 0; }
+nav.indice a:hover, nav.indice a:focus-visible { text-decoration: underline; }
+nav.indice .n { font-family: var(--f-codigo); font-size: 13px; color: var(--suave); min-width: 2ch; }
+
+section.parte { padding-block: 44px 8px; border-bottom: 1px solid var(--linea); }
+.cabeza { display: flex; gap: 14px; align-items: baseline; margin-bottom: 18px; }
+.cabeza .n { font-family: var(--f-codigo); font-weight: 700; font-size: 14px; background: var(--tinta); color: var(--papel); padding: 2px 8px; }
+h2 { font-family: var(--f-titulo); font-weight: 800; font-size: clamp(26px, 3.6vw, 34px); line-height: 1.1; margin: 0; text-wrap: balance; }
+h3 { font-family: var(--f-titulo); font-weight: 700; font-size: 20px; margin: 0 0 6px; }
+
+.bloque { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 28px 40px; align-items: start; margin-bottom: 36px; }
+.bloque.sin-foto { grid-template-columns: minmax(0, 1fr); }
+.texto { min-width: 0; max-width: 64ch; display: grid; gap: 12px; }
+.texto p { margin: 0; }
+.texto ul, .texto ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+
+figure.pda { margin: 0; display: grid; gap: 8px; justify-items: center; }
+figure.pda .marco {
+  background: var(--tinta); padding: 10px 8px 14px; border-radius: 22px; width: 100%; max-width: 300px;
+}
+figure.pda img { display: block; width: 100%; height: auto; border-radius: 12px; background: #fff; }
+figure.pda figcaption { font-size: 13px; color: var(--suave); text-align: center; max-width: 280px; }
+.par-fotos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+
+code, .cod { font-family: var(--f-codigo); font-size: 0.92em; }
+.ubi {
+  display: inline-block; font-family: var(--f-codigo); font-weight: 700; background: var(--tinta); color: var(--papel);
+  padding: 1px 7px; font-size: 0.9em; white-space: nowrap;
+}
+.aqui { background: var(--amarillo); color: #121212; font-weight: 700; font-size: 13px; padding: 1px 8px; letter-spacing: .4px; white-space: nowrap; }
+.nota { border-left: 5px solid var(--amarillo); background: var(--hoja); padding: 10px 14px; }
+.aviso-mal { border-left: 5px solid var(--rojo); background: var(--hoja); padding: 10px 14px; }
+
+.tabla { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 15px; background: var(--hoja); }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--linea); vertical-align: top; }
+th { font-family: var(--f-titulo); font-weight: 700; font-size: 13px; letter-spacing: .6px; text-transform: uppercase; color: var(--suave); }
+td.num { font-variant-numeric: tabular-nums; font-family: var(--f-codigo); white-space: nowrap; }
+.barra-ahorro { display: grid; gap: 10px; }
+.fila-ahorro { display: grid; grid-template-columns: 92px minmax(0, 1fr) 70px; gap: 10px; align-items: center; font-size: 14px; }
+.fila-ahorro .pistas { display: grid; gap: 3px; }
+.fila-ahorro .p { height: 9px; background: var(--linea); }
+.fila-ahorro .p.nuevo { background: var(--tinta); }
+.fila-ahorro .pct { font-family: var(--f-codigo); font-weight: 700; text-align: right; }
+.leyenda { display: flex; gap: 18px; font-size: 13px; color: var(--suave); }
+.leyenda i { display: inline-block; width: 14px; height: 9px; margin-right: 6px; vertical-align: middle; }
+
+.pasos { counter-reset: paso; list-style: none; padding: 0 !important; }
+.pasos li { counter-increment: paso; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.pasos li::before {
+  content: counter(paso); font-family: var(--f-codigo); font-weight: 700; background: var(--tinta); color: var(--papel);
+  width: 26px; height: 26px; display: grid; place-items: center; font-size: 14px;
+}
+.sonidos { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; }
+.sonido { background: var(--hoja); border-top: 4px solid var(--tinta); padding: 12px 14px; display: grid; gap: 4px; }
+.sonido.err { border-top-color: var(--rojo); }
+.sonido .que { font-family: var(--f-titulo); font-weight: 700; font-size: 17px; }
+.sonido .como { font-size: 14px; color: var(--suave); }
+.notas-onda { display: flex; gap: 4px; align-items: flex-end; height: 26px; }
+.notas-onda span { width: 12px; background: var(--tinta); }
+.sonido.err .notas-onda span { background: var(--rojo); }
+
+footer { padding-top: 28px; font-size: 14px; color: var(--suave); display: grid; gap: 6px; }
+
+@media (max-width: 760px) {
+  .bloque { grid-template-columns: minmax(0, 1fr); }
+  figure.pda { justify-self: center; width: 100%; max-width: 300px; }
+  .fila-ahorro { grid-template-columns: 74px minmax(0, 1fr) 54px; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+html { scroll-behavior: smooth; }
+a { color: var(--tinta); }
+a:focus-visible { outline: 3px solid var(--amarillo); outline-offset: 2px; }
+</style>
+
+<div class="envoltura">
+  <header class="portada">
+    <span class="etiqueta-portada">NAU-2 <span>LECTURAS (PDA)</span></span>
+    <h1>Guía de la PDA: Lecturas, Preparar y Faltante</h1>
+    <p class="entradilla">Cómo se prepara una OUT suelta en la PDA sin salir de Lecturas: leer la tarjeta, ir por la ruta que menos se anda, leer las prendas, cerrar caja y validar. Y qué hacer cuando una prenda no está donde dice Odoo.</p>
+    <div class="datos">
+      <span>Versiones: <b>Operarios 2.6 / 2.7</b> · <b>Preparación 3.13</b> · <b>Faltantes 1.4.1</b></span>
+      <span>Fecha: <b>11/11/2026</b></span>
+      <span>Capturas: <b>Odoo real, pantalla de PDA 360×640</b>, con una OUT de prueba</span>
+    </div>
+  </header>
+
+  <nav class="indice" aria-label="Índice">
+    <ol>
+      <li><a href="#entrar"><span class="n">1</span>Entrar y salir</a></li>
+      <li><a href="#lecturas"><span class="n">2</span>Pantalla de Lecturas</a></li>
+      <li><a href="#saltar"><span class="n">3</span>Saltar un pedido</a></li>
+      <li><a href="#preparar"><span class="n">4</span>Preparar: la tarjeta</a></li>
+      <li><a href="#ruta"><span class="n">5</span>Ruta óptima</a></li>
+      <li><a href="#aqui-mismo"><span class="n">6</span>Aquí mismo</a></li>
+      <li><a href="#talla"><span class="n">7</span>Talla hermana</a></li>
+      <li><a href="#sonidos"><span class="n">8</span>Sonidos</a></li>
+      <li><a href="#menu"><span class="n">9</span>Menú ☰, caja y validar</a></li>
+      <li><a href="#faltante-picking"><span class="n">10</span>Faltante dentro del picking</a></li>
+      <li><a href="#faltante-pantalla"><span class="n">11</span>Pantalla Faltante</a></li>
+    </ol>
+  </nav>
+
+  <section class="parte" id="entrar">
+    <div class="cabeza"><span class="n">1</span><h2>Entrar y salir</h2></div>
+    <div class="bloque sin-foto">
+      <div class="texto">
+        <ol class="pasos">
+          <li><p>En la pantalla de inicio de Odoo, pulsar el icono <b>Lecturas (PDA)</b> (una «L» blanca con código de barras sobre fondo azul oscuro). Lo ven todos los usuarios.</p></li>
+          <li><p>Leer <b>la tarjeta</b> del operario. La PDA se queda con él hasta que pulse <b>Salir</b>, aunque se recargue la página.</p></li>
+          <li><p>Se abre sola la primera OUT de su cola.</p></li>
+          <li><p><b>Salir</b> (arriba a la derecha) → «Sí, salir»: la PDA queda libre para otro operario y vuelve a la pantalla de inicio de Odoo. Para volver a entrar, el icono <b>Lecturas (PDA)</b>.</p></li>
+        </ol>
+        <p class="nota">El icono en la pantalla de inicio y que «Salir» lleve allí llegan con <b>Operarios 2.7</b>. Si no ha salido todo esto, falta instalar esa versión. Si la PDA no hace nada un rato, sale sola del operario pero se queda en Lecturas.</p>
+        <p>En la PDA (pantalla estrecha) no sale la barra de menús de Odoo en Lecturas, Preparar ni Faltante: más sitio para lo importante.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="lecturas">
+    <div class="cabeza"><span class="n">2</span><h2>Pantalla de Lecturas</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Es la pantalla de antes de entrar en la OUT y de después de salir con <b>←</b>.</p>
+        <ul>
+          <li><b>Cabecera negra</b>: quién está leyendo y el botón <b>Salir</b>.</li>
+          <li><b>Estás haciendo</b>: la OUT en curso en banda negra, la tienda, líneas y uds, y cuánto lleva leído.</li>
+          <li><b>Continuar</b> (verde): vuelve a la OUT.</li>
+          <li><b>Faltante</b> (naranja): abre la pantalla Faltante con esta OUT (apartado 11).</li>
+          <li><b>Saltar</b>: deja la OUT y pasa a la siguiente (apartado 3).</li>
+          <li>Debajo, el campo para escribir tarjeta o pedido, y la cola: <b>Cogiendo ahora</b> y lo que le toca después.</li>
+        </ul>
+      </div>
+      <figure class="pda"><div class="marco"><img src="img/01_lecturas.jpg" alt="Pantalla de Lecturas con la OUT que está haciendo, Continuar, Faltante y Saltar" width="360" height="640"></div><figcaption>Lecturas: OUT en curso y botones</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="parte" id="saltar">
+    <div class="cabeza"><span class="n">3</span><h2>Saltar un pedido</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Al pulsar <b>Saltar</b> hay que elegir por qué:</p>
+        <ul>
+          <li><b>No hay stock / en espera</b> → <b>queda en expediciones</b>: no se da a nadie hasta que lo revisen. Antes se llamaba «oficina»; solo ha cambiado el nombre.</li>
+          <li><b>Fin de turno (la sigo mañana)</b> → sigue siendo suyo.</li>
+        </ul>
+        <p>Después, <b>Saltar pedido</b> para confirmar o <b>No, volver</b>.</p>
+        <p>En Odoo, la pestaña y el filtro se llaman ahora <b>En expediciones</b> (Inventario → KOROSHI Operarios → Colas).</p>
+      </div>
+      <figure class="pda"><div class="marco"><img src="img/02_saltar.jpg" alt="Hoja de Saltar con el motivo No hay stock que queda en expediciones" width="360" height="640"></div><figcaption>«Queda en expediciones»</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="parte" id="preparar">
+    <div class="cabeza"><span class="n">4</span><h2>Preparar: la tarjeta</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Todo cabe en una pantalla de PDA sin mover arriba y abajo. De arriba abajo:</p>
+        <ul>
+          <li><b>Cabecera</b>: <b>←</b> vuelve a Lecturas; la OUT y la tienda; el operario; el menú <b>☰</b>.</li>
+          <li><b>Barra de progreso</b>: uds leídas de las pedidas, y en amarillo las que están <b>sin caja</b>.</li>
+          <li><b>Ve a</b>: la línea que toca y «Línea 1 de 7». Las flechas ◀ ▶ dejan mirar otras líneas.</li>
+          <li><b>La ubicación</b> en la etiqueta negra, como en la estantería: <span class="ubi">L18 P22 C2</span> (lineal, palet y columna) y la caja <span class="ubi">KO_170826_871</span>, en la misma línea y del mismo tamaño. Encima, en pequeño, la nave y el número de hueco.</li>
+          <li><b>La prenda</b>: foto, referencia, <b>talla</b> en recuadro y la cantidad grande («0 de 1»).</li>
+          <li><b>Caja</b>, <b>Validar</b>, <b>Faltante</b>, <b>Deshacer</b> y el campo para escribir el EAN si la pistola no lee.</li>
+        </ul>
+        <p>Leer la <b>ubicación</b> (la caja KO o el hueco) salta a la línea de esa ubicación. Leer la <b>prenda</b> suma 1 ud al momento, aunque Odoo vaya lento.</p>
+      </div>
+      <figure class="pda"><div class="marco"><img src="img/03_picking.jpg" alt="Tarjeta de preparar con la ubicación L18 P22 C2 y la prenda" width="360" height="640"></div><figcaption>La tarjeta de la línea que toca</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="parte" id="ruta">
+    <div class="cabeza"><span class="n">5</span><h2>Ruta óptima</h2></div>
+    <div class="bloque sin-foto">
+      <div class="texto">
+        <p>Las líneas de la OUT ya no van por el nombre de la ubicación sino <b>por el camino más corto andando</b>, saliendo de los muelles y volviendo a ellos. La PDA lleva al operario por ese orden con «Ve a».</p>
+        <p>Cómo calcula los metros, con el plano de la NAU-2:</p>
+        <ul>
+          <li>Los lineales van en parejas espalda con espalda (L01-02, L03-04…). El pasillo de picking está entre <span class="cod">L02|L03</span>, <span class="cod">L04|L05</span>…, a 2 m uno de otro. Dos lineales que dan al mismo pasillo están «aquí mismo».</li>
+          <li>Cada posición P mide 1,2 m. Para cambiar de pasillo se va por el transversal más corto: delante de P01, después de P03, el <b>central</b> (P17 | P18), después de P24 o al final.</li>
+          <li>La altura (C1 a C4) es la misma parada: se coge de abajo arriba.</li>
+          <li>Las ubicaciones <span class="cod">MU-</span> cuentan como zona de muelles. La zona <span class="cod">N1-L…</span> y lo que no es un lineal van al final, como antes.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bloque sin-foto">
+      <div class="texto" style="max-width:none">
+        <h3>Metros por OUT: orden de antes contra ruta nueva</h3>
+        <p>OUT reales ya validadas, misma fórmula de metros para las dos.</p>
+        <div class="leyenda"><span><i style="background:var(--linea)"></i>Antes</span><span><i style="background:var(--tinta)"></i>Ruta nueva</span></div>
+        <div class="barra-ahorro" id="ahorro"></div>
+        <div class="tabla">
+          <table>
+            <thead><tr><th>OUT</th><th>Líneas</th><th>Antes</th><th>Ruta nueva</th><th>Menos</th></tr></thead>
+            <tbody id="tabla-ahorro"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="aqui-mismo">
+    <div class="cabeza"><span class="n">6</span><h2>Aquí mismo</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Si en la misma parada (mismo pasillo y misma posición) quedan más líneas por coger, la etiqueta de la ubicación lo dice en amarillo: <span class="aqui">AQUÍ MISMO: 2 más</span>. Así no se va de la ubicación con algo pendiente.</p>
+        <p>Y al completar una línea, si la siguiente está en el mismo sitio, el aviso verde dice qué coger ahora: «AQUÍ MISMO: ahora 2122ZB01-000029-UNI · UNI (y 1 más)».</p>
+      </div>
+      <div class="par-fotos">
+        <figure class="pda"><div class="marco"><img src="img/04_aqui_mismo_tarjeta.jpg" alt="Etiqueta amarilla AQUÍ MISMO: 2 más sobre la ubicación" width="360" height="640"></div><figcaption>En la etiqueta</figcaption></figure>
+        <figure class="pda"><div class="marco"><img src="img/05_aqui_mismo_aviso.jpg" alt="Aviso verde AQUÍ MISMO con la siguiente prenda" width="360" height="640"></div><figcaption>Al completar la línea</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="talla">
+    <div class="cabeza"><span class="n">7</span><h2>Talla hermana</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>El error más típico: coger la talla de al lado. Si se lee una talla del mismo modelo que no es la del pedido (o una talla que ya está completa) y del modelo falta otra, la PDA lo dice claro en rojo:</p>
+        <p class="aviso-mal">✖ Has leído la talla 34. Toca la 32 de 2621PT26-000306. No cuenta.</p>
+        <p>No cuenta, suena el zumbido de error y la tarjeta enseña la línea de la talla que toca, con su foto y su ubicación.</p>
+        <p>El modelo se saca del nombre <span class="cod">MODELO-COLOR-TALLA</span>. Si la prenda no es de ningún modelo de la OUT, sigue saliendo «no es de este pedido».</p>
+      </div>
+      <figure class="pda"><div class="marco"><img src="img/06_talla_hermana.jpg" alt="Aviso rojo Has leído la talla 34, toca la 32" width="360" height="640"></div><figcaption>Talla equivocada</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="parte" id="sonidos">
+    <div class="cabeza"><span class="n">8</span><h2>Sonidos</h2></div>
+    <div class="bloque sin-foto">
+      <div class="texto" style="max-width:none">
+        <p>Cada caso suena distinto, para saber qué ha pasado sin mirar la pantalla. La vibración también cambia. Se apagan con el altavoz de abajo a la derecha en Lecturas.</p>
+        <div class="sonidos">
+          <div class="sonido"><div class="notas-onda"><span style="height:40%"></span></div><span class="que">Ud bien leída</span><span class="como">Un pip corto.</span></div>
+          <div class="sonido"><div class="notas-onda"><span style="height:40%"></span><span style="height:70%"></span></div><span class="que">Línea completa</span><span class="como">Dos notas que suben: ve a la siguiente.</span></div>
+          <div class="sonido"><div class="notas-onda"><span style="height:30%"></span><span style="height:55%"></span><span style="height:90%"></span></div><span class="que">Caja cerrada</span><span class="como">Tres notas que suben.</span></div>
+          <div class="sonido err"><div class="notas-onda"><span style="height:25%;width:44px"></span></div><span class="que">Error: no cuenta</span><span class="como">Zumbido grave y largo.</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="menu">
+    <div class="cabeza"><span class="n">9</span><h2>Menú ☰, caja y validar</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <h3>Menú ☰ (arriba a la derecha)</h3>
+        <ul>
+          <li><b>Ver líneas</b>: la lista de todas las líneas de la OUT.</li>
+          <li><b>Imprimir etiqueta o albarán</b>: por si falta una etiqueta de caja, del transportista o el albarán.</li>
+        </ul>
+        <p>Si se lee algo con el menú abierto, se cierra y la lectura cuenta.</p>
+        <h3>Caja</h3>
+        <p>Pulsar <b>Caja</b> y leer la etiqueta <span class="cod">CJ</span> de la caja: lo leído sin caja entra en ella. El botón se pone amarillo cuando hay uds leídas sin caja.</p>
+        <h3>Poner cantidad</h3>
+        <p>En líneas de 2 o más uds sale <b>✎ Poner cantidad</b>: primero se lee 1 ud con la pistola y después se escribe el resto.</p>
+        <h3>Validar</h3>
+        <p>Con todo leído y en caja, <b>✓ Validar</b>. Mientras queden lecturas guardándose, espera.</p>
+      </div>
+      <div class="par-fotos">
+        <figure class="pda"><div class="marco"><img src="img/07_menu.jpg" alt="Menú Más con Ver líneas e Imprimir etiqueta o albarán" width="360" height="640"></div><figcaption>Menú ☰</figcaption></figure>
+        <figure class="pda"><div class="marco"><img src="img/08_caja.jpg" alt="Hoja Escanea la caja, lee la etiqueta CJ" width="360" height="640"></div><figcaption>Cerrar caja</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="faltante-picking">
+    <div class="cabeza"><span class="n">10</span><h2>Faltante dentro del picking</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Cuando la prenda no está en la ubicación de la tarjeta, botón <b>Faltante</b> (naranja). Sale dónde hay más, la más cercana en la etiqueta negra:</p>
+        <ol class="pasos">
+          <li><p>Ve a la ubicación y coge la pieza.</p></li>
+          <li><p>Lee la etiqueta de la <b>UBICACIÓN</b> (no la prenda). Así Odoo cambia la línea a esa ubicación y la pieza que faltaba va a FALTANTE.</p></li>
+          <li><p>Después lee la <b>prenda</b>, como siempre, en la tarjeta normal («Cambiada a… Ahora lee el producto»).</p></li>
+        </ol>
+        <p>Si tampoco está, <b>Tampoco está aquí</b> (dos pulsaciones): va a faltantes y la línea se queda sin reservar. <b>Marcar varias a la vez</b> abre la pantalla Faltante.</p>
+      </div>
+      <figure class="pda"><div class="marco"><img src="img/09_faltante_picking.jpg" alt="Faltante con Prueba en L56 P41 C2 y los tres pasos" width="360" height="640"></div><figcaption>«Prueba en» y los 3 pasos</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="parte" id="faltante-pantalla">
+    <div class="cabeza"><span class="n">11</span><h2>Pantalla Faltante</h2></div>
+    <div class="bloque">
+      <div class="texto">
+        <p>Se abre con <b>Faltante</b> desde Lecturas, o con «Marcar varias a la vez». Sirve para marcar varias líneas de golpe al final de la OUT.</p>
+        <ol class="pasos">
+          <li><p><b>¿Qué falta?</b> Cada línea enseña <b>la ubicación en grande y en negro</b> y debajo la prenda. Marcar las que no se encuentran y <b>Continuar</b>.</p></li>
+          <li><p>Para cada una: <b>NO ESTÁ EN</b> (tachada) y <b>PRUEBA EN</b>, la ubicación más cercana con stock libre. «Ver más ubicaciones» enseña el resto.</p></li>
+          <li><p>Ir allí, leer la <b>ubicación</b> de donde se coge. Si no está, <b>Tampoco está aquí</b>.</p></li>
+          <li><p>Al acabar, <b>Volver a la OUT</b> y leer las prendas.</p></li>
+        </ol>
+      </div>
+      <div class="par-fotos">
+        <figure class="pda"><div class="marco"><img src="img/10_faltante_lista.jpg" alt="Lista Qué falta con las ubicaciones en negro" width="360" height="640"></div><figcaption>¿Qué falta?</figcaption></figure>
+        <figure class="pda"><div class="marco"><img src="img/11_faltante_prueba_en.jpg" alt="No está en, tachada, y Prueba en L56 P41 C2" width="360" height="640"></div><figcaption>Prueba en</figcaption></figure>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <span>Módulos: <span class="cod">koroshi_operarios</span> (Lecturas), <span class="cod">koroshi_preparacion</span> (Preparar), <span class="cod">koroshi_faltantes</span> (Faltante). Ruta: <span class="cod">koroshi_preparacion/models/ruta.py</span>.</span>
+    <span>Capturas hechas el 11/11/2026 en Odoo con una OUT de prueba (cancelada después).</span>
+  </footer>
+</div>
+
+<script>
+(function () {
+  var datos = [
+    ['OUT/23924', 212, 1905, 1474], ['OUT/23917', 209, 1976, 1562], ['OUT/23204-1', 195, 1933, 1542],
+    ['OUT/23462', 171, 1016, 870], ['OUT/23301', 124, 798, 705], ['OUT/24638', 83, 514, 440]
+  ];
+  var max = 0;
+  datos.forEach(function (d) { if (d[2] > max) { max = d[2]; } });
+  var barras = document.getElementById('ahorro');
+  var tabla = document.getElementById('tabla-ahorro');
+  datos.forEach(function (d) {
+    var menos = Math.round(100 * (d[2] - d[3]) / d[2]);
+    var fila = document.createElement('div');
+    fila.className = 'fila-ahorro';
+    fila.innerHTML = '<span class="cod">' + d[1] + ' lín.</span>' +
+      '<span class="pistas"><span class="p" style="width:' + (100 * d[2] / max) + '%"></span>' +
+      '<span class="p nuevo" style="width:' + (100 * d[3] / max) + '%"></span></span>' +
+      '<span class="pct">−' + menos + ' %</span>';
+    barras.appendChild(fila);
+    var tr = document.createElement('tr');
+    tr.innerHTML = '<td class="cod">' + d[0] + '</td><td class="num">' + d[1] + '</td><td class="num">' + d[2] +
+      ' m</td><td class="num">' + d[3] + ' m</td><td class="num">−' + (d[2] - d[3]) + ' m (' + menos + ' %)</td>';
+    tabla.appendChild(tr);
+  });
+})();
+</script>

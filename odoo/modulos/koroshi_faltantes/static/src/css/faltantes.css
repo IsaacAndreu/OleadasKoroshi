@@ -50,3 +50,92 @@
 .o_koroshi_faltantes .o_kf_si { background: #e67700; }
 .o_koroshi_faltantes .o_kf_no { background: #495057; }
 .o_koroshi_faltantes .o_kf_saltar_linea { display: block; width: 100%; font-size: 16px; }
+
+/* ================================================================ v1.4: mismo aspecto que Preparación en Lecturas
+   («etiqueta de estantería»): plano, negro sobre blanco. La UBICACIÓN va en grande y en negro; la referencia, debajo. */
+.o_koroshi_faltantes {
+    --kf-negro: #111111; --kf-linea: #c9c9c6; --kf-verde: #16a34a; --kf-naranja: #c2410c; --kf-rojo: #b91c1c;
+    background: #f2f2f0; color: var(--kf-negro); font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+@media (max-width: 600px) {
+    body.o_kf_en_faltante .o_main_navbar { display: none; }
+}
+.o_koroshi_faltantes .o_kf_app { padding: 0 12px 12px; }
+.o_koroshi_faltantes .o_kf_cabecera {
+    background: var(--kf-negro); color: #fff; margin: 0 -12px 10px; padding: 10px 12px; font-size: 20px;
+    font-weight: bold; align-items: center;
+}
+.o_koroshi_faltantes .o_kf_cabecera > span:first-child { text-transform: uppercase; letter-spacing: 1px; color: #fdba74; }
+.o_koroshi_faltantes .o_kf_quien { color: #fff; font-size: 17px; }
+.o_koroshi_faltantes .o_kf_caja { border-radius: 4px; }
+.o_koroshi_faltantes .o_kf_paso {
+    background: #fff; border: 0; border-left: 6px solid var(--kf-naranja); border-radius: 0; font-size: 19px;
+    text-align: left; padding: 8px 12px;
+}
+.o_koroshi_faltantes .o_kf_out { border: 0; border-radius: 0; background: transparent; padding: 0 2px; font-size: 17px; }
+.o_koroshi_faltantes .o_kf_out b { font-family: "Roboto Mono", Consolas, "Courier New", monospace; }
+.o_koroshi_faltantes .o_kf_sub { color: #555; }
+
+/* la ubicación: hueco y KO en la misma línea y del mismo tamaño */
+.o_koroshi_faltantes .o_kf_ajustar {
+    display: block; white-space: nowrap; overflow: hidden; font-weight: bold;
+    font-family: "Roboto Mono", Consolas, "Courier New", monospace; letter-spacing: 0; line-height: 1.2;
+}
+.o_koroshi_faltantes .o_kf_hueco + .o_kf_ko { margin-left: 0.5em; }
+
+/* lista «¿Qué falta?» */
+.o_koroshi_faltantes .o_kf_pend { border-radius: 4px; border: 2px solid var(--kf-linea); padding: 8px 10px; align-items: flex-start; }
+.o_koroshi_faltantes .o_kf_pend.o_kf_marcada { border-color: var(--kf-rojo); background: #fff; box-shadow: inset 6px 0 0 var(--kf-rojo); }
+.o_koroshi_faltantes .o_kf_check { border-radius: 3px; border-width: 2px; margin-top: 4px; color: #fff; }
+.o_koroshi_faltantes .o_kf_marcada .o_kf_check { background: var(--kf-rojo); border-color: var(--kf-rojo); }
+.o_koroshi_faltantes .o_kf_ubi_lista { background: var(--kf-negro); color: #fff; padding: 3px 8px; border-radius: 2px; margin-bottom: 4px; }
+.o_koroshi_faltantes .o_kf_pend .o_kf_ref { font-size: 16px; font-family: "Roboto Mono", Consolas, "Courier New", monospace; color: #333; }
+.o_koroshi_faltantes .o_kf_cant { font-size: 22px; margin-top: 4px; }
+
+/* la línea que se resuelve: dónde NO está (tachada) */
+.o_koroshi_faltantes .o_kf_linea { border: 2px solid var(--kf-negro); background: #fff; padding: 10px 12px; }
+.o_koroshi_faltantes .o_kf_etq { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; }
+.o_koroshi_faltantes .o_kf_vieja { display: flex; align-items: center; gap: 10px; color: var(--kf-rojo); margin: 2px 0 8px; }
+.o_koroshi_faltantes .o_kf_vieja_ubi { flex: 1 1 auto; min-width: 0; text-decoration: line-through; }
+.o_koroshi_faltantes .o_kf_vieja_uds { flex: 0 0 auto; font-size: 18px; font-weight: bold; color: var(--kf-negro); }
+.o_koroshi_faltantes .o_kf_linea .o_kf_ref { font-size: 17px; font-weight: bold; font-family: "Roboto Mono", Consolas, "Courier New", monospace; }
+.o_koroshi_faltantes .o_kf_producto { font-size: 15px; font-weight: normal; color: #333; margin: 2px 0 0; }
+
+/* «Prueba en»: etiqueta negra grande con franja de código de barras */
+.o_koroshi_faltantes .o_kf_titulo { font-size: 13px; font-weight: bold; text-transform: uppercase; letter-spacing: 1px; color: #555; }
+.o_koroshi_faltantes .o_kf_reco {
+    position: relative; display: block; background: var(--kf-negro); color: #fff; border: 0; border-radius: 0;
+    margin: 0 -12px 6px; padding: 10px 12px 22px;
+}
+.o_koroshi_faltantes .o_kf_reco::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 6px; height: 8px; opacity: 0.55;
+    background: repeating-linear-gradient(90deg, #fff 0 2px, transparent 2px 4px, #fff 4px 5px, transparent 5px 8px);
+}
+.o_koroshi_faltantes .o_kf_reco .o_kf_reco_uds { display: block; font-size: 16px; color: #d4d4d4; margin-top: 2px; }
+.o_koroshi_faltantes .o_kf_fila { border-radius: 0; border-left: 0; border-bottom: 1px solid #e6e6e3; margin: 0; font-size: 18px; align-items: center; gap: 8px; }
+.o_koroshi_faltantes .o_kf_fila_ubi { flex: 1 1 auto; min-width: 0; }
+.o_koroshi_faltantes .o_kf_fila.o_kf_nadie { border: 2px solid var(--kf-rojo); border-radius: 4px; color: var(--kf-rojo); font-weight: bold; }
+.o_koroshi_faltantes .o_kf_vermas { color: var(--kf-negro); text-decoration: underline; font-weight: bold; }
+
+/* botones planos */
+.o_koroshi_faltantes .o_kf_boton { border-radius: 4px; min-height: 54px; font-size: 21px; padding: 10px; background: var(--kf-negro); }
+.o_koroshi_faltantes .o_kf_continuar, .o_koroshi_faltantes .o_kf_si { background: var(--kf-naranja); }
+.o_koroshi_faltantes .o_kf_continuar:disabled { background: #e4e4e0; color: #8a8a86; }
+.o_koroshi_faltantes .o_kf_nada { background: var(--kf-rojo); }
+.o_koroshi_faltantes .o_kf_nada.o_kf_confirmar { background: #7f1d1d; }
+.o_koroshi_faltantes .o_kf_volver, .o_koroshi_faltantes .o_kf_validar { background: var(--kf-verde); }
+.o_koroshi_faltantes .o_kf_otro, .o_koroshi_faltantes .o_kf_no, .o_koroshi_faltantes .o_kf_elegir {
+    background: #fff; color: var(--kf-negro); border: 2px solid var(--kf-negro);
+}
+.o_koroshi_faltantes .o_kf_saltar_linea, .o_koroshi_faltantes .o_kf_pie .btn-link { color: var(--kf-negro); text-decoration: underline; }
+.o_koroshi_faltantes .o_kf_codigo { border-radius: 4px; border: 2px solid #8a8a86; min-height: 48px; }
+.o_koroshi_faltantes .o_kf_codigo:focus { border-color: var(--kf-negro); outline: 0; }
+.o_koroshi_faltantes .o_kf_aviso { border-radius: 0; font-size: 18px; }
+.o_koroshi_faltantes .o_kf_aviso.o_kf_ok { background: #dcfce7; color: #14532d; border-left: 6px solid var(--kf-verde); }
+.o_koroshi_faltantes .o_kf_aviso.o_kf_mal { background: #fee2e2; color: #7f1d1d; border-left: 6px solid var(--kf-rojo); }
+.o_koroshi_faltantes .o_kf_aviso.o_kf_info { background: #fff; color: var(--kf-negro); border-left: 6px solid var(--kf-negro); }
+.o_koroshi_faltantes .o_kf_resumen, .o_koroshi_faltantes .o_kf_explica { border: 2px solid var(--kf-linea); }
+
+/* v1.4.1: la regla antigua «.o_kf_reco span» (18 px, gris) pintaba la ubicación gris sobre negro */
+.o_koroshi_faltantes .o_kf_ajustar span { font-size: inherit; color: inherit; }
+.o_koroshi_faltantes .o_kf_reco .o_kf_reco_ubi { color: #fff; }

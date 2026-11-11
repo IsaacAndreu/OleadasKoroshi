@@ -200,7 +200,7 @@ class KoroshiOperarios(http.Controller):
             asig, destino = Asig.saltar(emp, motivo, nota)
         except UserError as e:
             return _error(e)
-        texto = {'oficina': '%s queda en oficina' % asig.name,
+        texto = {'oficina': '%s queda en expediciones' % asig.name,
                  'final': '%s va al final de tu cola' % asig.name,
                  'suya': '%s sigue siendo tuya: la primera al volver' % asig.name}[destino]
         if destino == 'suya':

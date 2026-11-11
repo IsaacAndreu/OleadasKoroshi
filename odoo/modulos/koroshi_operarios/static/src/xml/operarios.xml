@@ -6,14 +6,14 @@
         <div class="o_koroshi_operarios">
             <!-- sin conexion: banda roja fija arriba -->
             <div class="o_ko_offline" role="alert" style="display: none;">
-                <span class="o_ko_icono" aria-hidden="true">⚠</span>
+                <span class="o_ko_icono" role="presentation">⚠</span>
                 <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
             </div>
 
             <!-- tarjeta obligatoria sin operario: pantalla completa -->
             <div class="o_ko_bloqueo" style="display: none;">
                 <div class="o_ko_bloqueo_centro">
-                    <div class="o_ko_bloqueo_tarjeta" aria-hidden="true">
+                    <div class="o_ko_bloqueo_tarjeta" role="presentation">
                         <span class="o_ko_bloqueo_banda"/>
                         <span class="o_ko_bloqueo_linea"/>
                         <span class="o_ko_bloqueo_linea o_ko_corta"/>
@@ -32,14 +32,14 @@
             <!-- capa: abriendo / hecho -->
             <div class="o_ko_capa" style="display: none;">
                 <div class="o_ko_abriendo" style="display: none;">
-                    <div class="o_ko_spinner" aria-hidden="true"/>
+                    <div class="o_ko_spinner" role="presentation"/>
                     <div class="o_ko_capa_sub">Abriendo</div>
                     <div class="o_ko_capa_ref o_ko_abriendo_ref"/>
                     <div class="o_ko_capa_sub o_ko_abriendo_para"/>
                     <div class="o_ko_capa_nota">No leas nada mientras se abre</div>
                 </div>
                 <div class="o_ko_hecho" style="display: none;">
-                    <div class="o_ko_hecho_check" aria-hidden="true">✓</div>
+                    <div class="o_ko_hecho_check" role="presentation">✓</div>
                     <div class="o_ko_hecho_titulo">¡Hecho!</div>
                     <div class="o_ko_capa_sub o_ko_hecho_ref"/>
                     <div class="o_ko_hecho_siguiente">
@@ -50,7 +50,7 @@
                     </div>
                     <div class="o_ko_hecho_fin o_ko_capa_sub" style="display: none;"/>
                     <button class="o_ko_parar o_ko_boton o_ko_gris" type="button">
-                        <span class="o_ko_icono" aria-hidden="true">✋</span> <span class="o_ko_parar_texto">Parar aquí</span>
+                        <span class="o_ko_icono" role="presentation">✋</span> <span class="o_ko_parar_texto">Parar aquí</span>
                     </button>
                 </div>
             </div>
@@ -58,13 +58,13 @@
             <div class="o_ko_app">
                 <!-- quien soy -->
                 <div class="o_ko_cabecera">
-                    <div class="o_ko_avatar" aria-hidden="true">?</div>
+                    <div class="o_ko_avatar" role="presentation">?</div>
                     <div class="o_ko_cabecera_texto">
                         <div class="o_ko_quien o_ko_vacio">Lee tu tarjeta (o directamente la OUT)</div>
                         <div class="o_ko_dia"/>
                     </div>
                     <button class="o_ko_salir" type="button" style="display: none;">
-                        <span class="o_ko_icono" aria-hidden="true">⎋</span> Salir
+                        <span class="o_ko_icono" role="presentation">⎋</span> Salir
                     </button>
                 </div>
 
@@ -81,13 +81,13 @@
                         <div class="o_ko_progreso_texto"/>
                     </div>
                     <button class="o_ko_continuar o_ko_boton" type="button">
-                        <span class="o_ko_icono" aria-hidden="true">▶</span> Continuar
+                        <span class="o_ko_icono" role="presentation">▶</span> Continuar
                     </button>
                     <div class="o_ko_botonera">
                         <!-- o_ko_dejar: el boton "Faltante" de koroshi_faltantes se pone detras de este; con CSS sale
                              naranja y delante (order) en esta misma fila -->
                         <button class="o_ko_saltar o_ko_dejar o_ko_boton" type="button">
-                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar
+                            <span class="o_ko_icono" role="presentation">⤼</span> Saltar
                         </button>
                     </div>
                 </div>
@@ -119,7 +119,7 @@
             <div class="o_ko_hoja" style="display: none;">
                 <div class="o_ko_hoja_fondo"/>
                 <div class="o_ko_hoja_panel" role="dialog" aria-modal="true">
-                    <div class="o_ko_hoja_asa" aria-hidden="true"/>
+                    <div class="o_ko_hoja_asa" role="presentation"/>
                     <div class="o_ko_salto" style="display: none;">
                         <div class="o_ko_hoja_titulo o_ko_salto_titulo"/>
                         <div class="o_ko_salto_motivos"/>
@@ -128,7 +128,7 @@
                             <input class="o_ko_nota" type="text" autocomplete="off"/>
                         </div>
                         <button class="o_ko_confirmar_salto o_ko_boton o_ko_naranja" type="button" disabled="disabled">
-                            <span class="o_ko_icono" aria-hidden="true">⤼</span> Saltar pedido
+                            <span class="o_ko_icono" role="presentation">⤼</span> Saltar pedido
                         </button>
                         <button class="o_ko_cancelar_salto o_ko_boton o_ko_gris" type="button">No, volver</button>
                     </div>

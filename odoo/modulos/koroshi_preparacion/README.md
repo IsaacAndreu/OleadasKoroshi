@@ -1,7 +1,58 @@
-# KOROSHI Preparación en Lecturas (v3.11.0, 11/11/2026)
+# KOROSHI Preparación en Lecturas (v3.14.0, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.14.0: INT y abrir más rápido (11/11/2026)
+
+**INT.** `picking_propio` acepta también las transferencias internas de la company 8 que salen del stock del tipo
+(`default_location_src_id`, EFFEC/Stock): las de web (`WEB_…`, de EFFEC/Stock a SORTER, 33–153 líneas, sin cajas).
+Se preparan igual (ruta óptima, talla hermana, «Aquí mismo», Faltante) pero **sin caja**: `_con_caja` = solo OUT; en
+las INT no hay botón Caja ni «Sin caja», y Validar no pide caja. Las INT que salen de otro sitio (la ronda de
+faltantes, desde FALTANTE) siguen abriéndose en la app de código de barras. En Lecturas la tarea se sigue apuntando
+como «Pedido (OUT)» (el modelo de tareas solo tiene OUT y agrupación).
+
+**Abrir más rápido.** Medido antes (Odoo real): abrir una OUT eran 4 llamadas seguidas (Lecturas apunta la tarea,
+`/modo` ~0,09 s, cargar la acción ~0,09 s, `/cargar` 0,2 s con 2 líneas y 0,68 s con 189 líneas).
+- Lecturas precarga en segundo plano, con la OUT que toca a la vista («Estás haciendo») y con la siguiente mientras
+  cuenta «¡Hecho!»: la acción de la pantalla (una vez), `/modo` y `/cargar` (válido 90 s). Al abrir, sin preguntar ni
+  esperar: la pantalla se pinta con lo precargado y se refresca justo después.
+- `estado()`: si cada artículo tiene foto se mira de una vez (`bin_size`), no una consulta por artículo.
+
+## v3.13.0: ruta óptima, talla hermana, «Aquí mismo» y sonidos (11/11/2026)
+
+**Ruta óptima** (`models/ruta.py`). Las líneas ya no van por el nombre de la ubicación sino por el camino más corto
+andando, con la geometría del plano de `koroshi_warehouse_map`:
+- lineales L01–L136 en parejas espalda con espalda; el pasillo de picking está entre L02|L03, L04|L05… (2 m entre
+  pasillos); posiciones P01–P36 de 1,2 m; pasillos transversales delante de P01, después de P03, el central (P17|P18),
+  después de P24 y al final;
+- se sale de los muelles (lado de L01) y se vuelve; la altura (C1–C4) es la misma parada (se coge de abajo arriba);
+- vecino más cercano + 2-opt; se guarda en memoria por OUT (0,06 s con 200 paradas).
+- `MU-…` = encima de los muelles 15–18. `N1-L…` (zona N1, sitio desconocido) y lo que no es un lineal: al final,
+  por nombre.
+
+Comparado con el orden de antes en OUT validadas: 212 líneas 1905 → 1474 m; 209 líneas 1976 → 1562 m;
+195 líneas 1933 → 1542 m; 171 líneas 1016 → 870 m; 124 líneas 798 → 705 m; 83 líneas 514 → 440 m.
+
+Preparar a dos: la mitad se corta por el puesto en la ruta (la línea del corte o la primera de su ubicación).
+
+**Talla hermana.** Si lee una talla del mismo modelo (`MODELO-COLOR-TALLA`) que no es la del pedido, o una talla ya
+completa, y hay otra talla del modelo pendiente: «Has leído la talla L. Toca la M de 2621PT26-000306. No cuenta.» y se
+ve la línea de la talla que toca.
+
+**Aquí mismo.** Cada línea lleva su `parada` (pasillo y posición). Si quedan más líneas en la misma parada, la tarjeta
+lo dice en amarillo («AQUÍ MISMO: 2 más») y al completar una línea, si la siguiente está en la misma parada, el aviso
+dice «AQUÍ MISMO: ahora X · talla».
+
+**Sonidos** (`_sonar`): ud bien leída = pip corto; línea completa = dos notas que suben; caja cerrada = tres notas que
+suben; error = zumbido grave. La vibración también cambia.
+
+## v3.12.0: Faltante más claro (11/11/2026)
+
+- «Prueba en»: la ubicación más cercana en etiqueta negra grande (hueco y KO en la misma línea); las demás debajo.
+- Pasos numerados: 1. Ve a la ubicación y coge la pieza. 2. Lee la etiqueta de la **UBICACIÓN** (no la prenda).
+  3. Después lee la **prenda**, como siempre. (Leer la ubicación mueve la línea a esa ubicación; la prenda se lee
+  después en la tarjeta normal.)
 
 ## v3.11.0: menú ☰ en la cabecera (11/11/2026)
 

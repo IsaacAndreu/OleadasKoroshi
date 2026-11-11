@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
+    <!-- v2.7: Lecturas (PDA) como app en la pantalla de inicio de Odoo, para todos (sin grupos). «Salir» lleva a la
+         pantalla de inicio y desde aquí se vuelve a entrar. -->
+    <menuitem id="menu_koroshi_lecturas_app" name="Lecturas (PDA)" action="action_koroshi_operarios_pantalla"
+              web_icon="koroshi_operarios,static/description/icon.png" sequence="1"/>
     <menuitem id="menu_koroshi_operarios_root" name="KOROSHI Operarios" parent="stock.menu_stock_root"
               sequence="91" groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_operarios_pagina" name="Lecturas (PDA)" parent="menu_koroshi_operarios_root"

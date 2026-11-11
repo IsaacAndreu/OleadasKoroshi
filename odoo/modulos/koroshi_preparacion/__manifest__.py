@@ -85,8 +85,19 @@ esta pantalla, cabecera y barra más bajas, «Sin caja» dentro de la barra, not
 de la foto, Caja y Validar en la misma fila.
 v3.11.0 (11/11/2026): abajo solo queda el campo «Leer producto o escribir EAN». Ver líneas e Imprimir etiqueta o
 albarán pasan al menú ☰ de la cabecera. Leer con el menú abierto lo cierra y la lectura cuenta.
+v3.12.0 (11/11/2026): Faltante con el mismo aspecto: «Prueba en» es una etiqueta negra grande (hueco y KO en la misma
+línea) y los pasos van numerados: 1 coger la pieza, 2 leer la UBICACIÓN (no la prenda), 3 leer la prenda.
+v3.13.0 (11/11/2026): RUTA ÓPTIMA por la nave (models/ruta.py: menos metros, saliendo de muelles y volviendo; en OUT
+reales de 83 a 212 líneas, entre un 10 y un 22 % menos). TALLA HERMANA: si lee otra talla del mismo modelo, «Has leído
+la talla L. Toca la M». AQUÍ MISMO: si la siguiente está en la misma parada lo dice. Sonido distinto para ud bien
+leída, línea completa, caja cerrada y error.
+v3.14.0 (11/11/2026): INT en la pantalla nueva (las que salen de EFFEC/Stock, p. ej. las de web a SORTER): mismo
+picking y ruta, sin caja (sin botón Caja; se lee y se valida). La ronda de faltantes (desde FALTANTE) sigue en la app
+de código de barras. Abrir más rápido: Lecturas precarga en segundo plano la pantalla y la OUT que toca (Continuar y
+la siguiente tras «¡Hecho!» abren al momento y se refrescan justo después); el servidor mira las fotos de todos los
+artículos de una vez.
 """,
-    'version': '13.0.3.11.0',
+    'version': '13.0.3.14.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

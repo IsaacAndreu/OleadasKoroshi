@@ -18,6 +18,8 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_is_zero, html2plaintext
 
+from . import ruta   # v3.13: ruta óptima por la nave
+
 _logger = logging.getLogger(__name__)
 
 COMPANY_ID = 8                      # EFFECTIVE LOGISTICS, S.L.
@@ -71,8 +73,16 @@ class Lectura(models.Model):
 
     @api.model
     def picking_propio(self, picking):
-        """OUT que se puede preparar aquí: salida de la company 8, sin agrupación de zona, ni hecha ni cancelada."""
-        if not picking or picking.picking_type_code != 'outgoing' or picking.company_id.id != COMPANY_ID:
+        """OUT que se puede preparar aquí: salida de la company 8, sin agrupación de zona, ni hecha ni cancelada.
+        v3.14: también las INT que salen del stock (las de web, de EFFEC/Stock a SORTER). Las que salen de otro sitio
+        (p. ej. la ronda de faltantes, desde FALTANTE) siguen en la app de código de barras."""
+        if not picking or picking.company_id.id != COMPANY_ID:
+            return False
+        if picking.picking_type_code == 'internal':
+            origen = picking.picking_type_id.default_location_src_id
+            if not origen or not (picking.location_id.parent_path or '').startswith(origen.parent_path or '-'):
+                return False
+        elif picking.picking_type_code != 'outgoing':
             return False
         if picking.state in ('done', 'cancel', 'draft'):
             return False
@@ -83,8 +93,56 @@ class Lectura(models.Model):
     # ------------------------------------------------------------------ estado de la OUT
     @api.model
     def _lineas(self, picking):
-        return picking.move_line_ids.sorted(
-            lambda l: (l.location_id.complete_name or '', l.product_id.default_code or '', l.id))
+        """v3.13: en el orden de la RUTA ÓPTIMA (models/ruta.py: menos metros, saliendo de los muelles y volviendo).
+        En la misma parada: de abajo arriba (C1, C2...) y por referencia. Lo que no es un lineal (L.. P..), al final."""
+        mls = picking.move_line_ids
+        paradas = dict((ml.id, ruta.parada(ml.location_id.complete_name)) for ml in mls)
+        puesto = dict((p, i) for i, p in enumerate(ruta.ordenar(paradas.values())))
+
+        def clave(ml):
+            p = paradas[ml.id]
+            nombre = ml.location_id.complete_name or ''
+            if p:
+                t = ruta.lpc(nombre)   # None en las MU-
+                return (0, puesto[p], t[2] if t else 0, nombre, ml.product_id.default_code or '', ml.id)
+            return (1, 0, 0, nombre, ml.product_id.default_code or '', ml.id)
+        return mls.sorted(clave)
+
+    @api.model
+    def _parada(self, ml):
+        """v3.13: 'pasillo:x' de la parada (mismo valor = se coge sin moverse: «Aquí mismo»); '' si no es un lineal."""
+        p = ruta.parada(ml.location_id.complete_name)
+        return '%s:%s' % p if p else ''
+
+    @api.model
+    def _modelo(self, product):
+        """v3.13: el modelo sin la talla (2621PT26-000306-32 -> 2621PT26-000306); '' si no se sabe."""
+        partes = (product.name or '').split('-')
+        talla = self._talla(product)
+        if len(partes) >= 3 and talla and partes[-1] == talla:
+            return '-'.join(partes[:-1])
+        return ''
+
+    @api.model
+    def _hermanas(self, picking, producto):
+        """v3.13: líneas pendientes de la OUT del MISMO modelo y otra talla (la talla «hermana»)."""
+        modelo = self._modelo(producto)
+        if not modelo:
+            return self.env['stock.move.line']
+        return self._lineas(picking).filtered(
+            lambda l: l.product_id != producto and not l.result_package_id
+            and float_compare(l.qty_done, l.product_uom_qty, precision_digits=3) < 0
+            and self._modelo(l.product_id) == modelo)
+
+    @api.model
+    def _tallas_texto(self, lineas):
+        """['M', 'XL'] -> 'la M o la XL'."""
+        tallas = []
+        for l in lineas:
+            t = self._talla(l.product_id)
+            if t and t not in tallas:
+                tallas.append(t)
+        return _(' o ').join(['la ' + t for t in tallas])
 
     @api.model
     def _nombre(self, product):
@@ -105,6 +163,11 @@ class Lectura(models.Model):
     @api.model
     def _corto(self, product):
         return self._nombre(product)
+
+    @api.model
+    def _con_caja(self, picking):
+        """v3.14: las OUT van en cajas CJ; las INT (web, a SORTER) no: se lee y se valida."""
+        return picking.picking_type_code == 'outgoing'
 
     @api.model
     def _sin_caja(self, picking):
@@ -228,18 +291,32 @@ class Lectura(models.Model):
         ordenadas = self._lineas(picking)
         aviso = ''
         if grupo:
-            corte = grupo._clave_corte()
-            primera = ordenadas.filtered(lambda l: self._clave(l) < corte)
-            segunda = ordenadas - primera
+            # v3.13: la mitad se corta por el puesto en la ruta: la línea del corte o, si ya no existe (la caja parte
+            # líneas), la primera de su ubicación; si tampoco, por la mitad
+            lista = list(ordenadas)
+            idx = next((i for i, l in enumerate(lista) if l.id == grupo.corte_id), None)
+            if idx is None:
+                idx = next((i for i, l in enumerate(lista)
+                            if (l.location_id.complete_name or '') == grupo.corte_ubicacion), None)
+            if idx is None:
+                idx = len(lista) if (grupo.corte_ubicacion or '').startswith(u'\uffff') else len(lista) // 2
+            primera = self.env['stock.move.line'].browse([l.id for l in lista[:idx]])
+            segunda = self.env['stock.move.line'].browse([l.id for l in lista[idx:]])
+            vuelta = lambda rs: self.env['stock.move.line'].browse(list(reversed(rs.ids)))
             if ayudante:
-                ordenadas = segunda + primera.sorted(self._clave, reverse=True)
+                ordenadas = segunda + vuelta(primera)
             else:
-                ordenadas = primera + segunda.sorted(self._clave, reverse=True)
+                ordenadas = primera + vuelta(segunda)
             if employee and employee == grupo.titular_id and not grupo.avisado_titular:
                 aviso = _('%s se ha unido: hace la segunda mitad (desde %s).') % (
                     grupo.ayudante_id.name, grupo.corte_nombre())
                 grupo.avisado_titular = True
         alternativos = {} if ligero else self._codigos_alternativos(ordenadas.mapped('product_id'))   # v3.7
+        if not ligero:
+            # v3.14: si tiene foto, de todos los artículos de una vez (antes una consulta por artículo: en una OUT de
+            # 189 líneas era lo que más tardaba). bin_size: solo el tamaño, sin bajar la imagen
+            for p in ordenadas.mapped('product_id').with_context(bin_size=True):
+                fotos[p.id] = bool(p.image_128)
         for ml in ordenadas:
             pedidas = ml.product_uom_qty
             leidas = ml.qty_done
@@ -250,9 +327,6 @@ class Lectura(models.Model):
                     siguiente = ml.id
                 continue
             p = ml.product_id
-            if p.id not in fotos:
-                # v3.1: solo el tamaño (bin_size), sin bajar la imagen; False = sin foto (no se pinta el icono de Odoo)
-                fotos[p.id] = bool(p.with_context(bin_size=True).image_128)
             lineas.append({
                 'id': ml.id,
                 'producto_id': p.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
@@ -267,6 +341,7 @@ class Lectura(models.Model):
                 'ubicacion_completa': ml.location_id.complete_name or '',
                 # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
                 'ubicacion_codigos': [c for c in (ml.location_id.barcode, ml.location_id.location_id.barcode) if c],
+                'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
                 'pedidas': round(pedidas),
                 'leidas': round(leidas),
                 'caja': ml.result_package_id.name or '',
@@ -278,11 +353,12 @@ class Lectura(models.Model):
         for ml in picking.move_line_ids.filtered('result_package_id'):
             cajas.setdefault(ml.result_package_id.name, 0)
             cajas[ml.result_package_id.name] += ml.qty_done
-        sin_caja = sum(self._sin_caja(picking).mapped('qty_done'))
+        con_caja = self._con_caja(picking)   # v3.14: INT sin caja
+        sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if con_caja else 0
         pedidas = sum(picking.move_line_ids.mapped('product_uom_qty'))
         leidas = sum(picking.move_line_ids.mapped('qty_done'))
         # v3.3: preparar a dos -> cada uno ve lo suyo fuera de caja y lo que le falta al compañero
-        reparto = self._reparto_sin_caja(picking, employee)
+        reparto = self._reparto_sin_caja(picking, employee) if con_caja else {}
         mias_sin_caja = sum(v[0] for v in reparto.values())
         otros_sin_caja = sum(v[1] for v in reparto.values())
         companeros = [e.name for e in equipo if not employee or e != employee]
@@ -295,6 +371,8 @@ class Lectura(models.Model):
             'out': {
                 'id': picking.id,
                 'name': picking.name,
+                'con_caja': con_caja,   # v3.14: False en las INT (sin botón Caja)
+                'tipo': 'INT' if picking.picking_type_code == 'internal' else 'OUT',
                 'tienda': picking.partner_id.name or '',
                 'origen': picking.origin or '',
                 'estado': picking.state,
@@ -445,6 +523,13 @@ class Lectura(models.Model):
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
             return {'ok': False, 'que': 'desconocido', 'msg': msg}
         if not en_la_out:
+            hermanas = self._hermanas(picking, producto)   # v3.13: ¿se ha equivocado de talla?
+            if hermanas:
+                msg = _('Has leído la talla %s. Toca %s de %s. No cuenta.') % (
+                    self._talla(producto), self._tallas_texto(hermanas), self._modelo(producto))
+                self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
+                              producto=producto.display_name)
+                return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
             msg = _('%s no es de este pedido. No cuenta.') % self._corto(producto)
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
                           producto=producto.display_name)
@@ -456,8 +541,14 @@ class Lectura(models.Model):
         if not lineas:
             total = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('product_uom_qty'))
             msg = _('Ya tienes todas las uds de %s (%s). No cuenta.') % (self._corto(producto), round(total))
+            hermanas = self._hermanas(picking, producto)   # v3.13
+            if hermanas:
+                msg = _('Ya tienes todas las de la talla %s. Falta %s de %s. No cuenta.') % (
+                    self._talla(producto), self._tallas_texto(hermanas), self._modelo(producto))
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
                           producto=producto.display_name)
+            if hermanas:
+                return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
             return {'ok': False, 'que': 'completo', 'msg': msg}
         ml = lineas[0]
         primera = float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3)
@@ -626,7 +717,7 @@ class Lectura(models.Model):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
         {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}."""
         self._comprobar(picking)
-        sin_caja = sum(self._sin_caja(picking).mapped('qty_done'))
+        sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if self._con_caja(picking) else 0   # v3.14
         if float_compare(sin_caja, 0, precision_digits=3) > 0:
             reparto = self._reparto_sin_caja(picking, employee)
             mias = sum(v[0] for v in reparto.values())

@@ -62,7 +62,7 @@ class KoroshiOperarioMotivo(models.Model):
     name = fields.Char('Motivo', required=True, translate=False)
     sequence = fields.Integer('Orden', default=10)
     destino = fields.Selection([
-        ('oficina', 'Oficina (no se da a nadie hasta revisarla)'),
+        ('oficina', 'Expediciones (no se da a nadie hasta revisarla)'),
         ('final', 'Final de su cola'),
         ('suya', 'Sigue suya y la primera (fin de turno)'),
     ], 'Adonde va', required=True, default='oficina')
@@ -105,7 +105,7 @@ class KoroshiOperarioDia(models.Model):
     asignacion_ids = fields.One2many('koroshi.operario.asignacion', compute='_compute_asignaciones',
                                      string='Colas')
     oficina_ids = fields.One2many('koroshi.operario.asignacion', compute='_compute_asignaciones',
-                                  string='En oficina')
+                                  string='En expediciones')
 
     _sql_constraints = [('fecha_empresa_unica', 'unique(fecha, company_id)', 'Ya hay un reparto para ese dia.')]
 
@@ -264,7 +264,7 @@ class KoroshiOperarioAsignacion(models.Model):
     estado = fields.Selection([
         ('cola', 'En cola'),
         ('curso', 'Haciendose'),
-        ('oficina', 'En oficina'),
+        ('oficina', 'En expediciones'),
         ('hecha', 'Hecha'),
         ('quitada', 'Quitada'),
     ], 'Estado', required=True, default='cola', index=True)

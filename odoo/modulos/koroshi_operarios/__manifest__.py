@@ -67,8 +67,15 @@ Como mucho dos por OUT. En Colas: columnas Uds, "A dos" (OUT suelta con al menos
 ayudante le sale sola en su PDA (sin preguntar; si ya la dejo una vez no se le vuelve a dar). Productividad: campos
 "A dos" y "Compañero", filtros Preparadas a dos / solo y agrupar por "A dos / solo" (uds/hora a dos contra solo).
 Metodo _uds_hasta_ahora para el monitor.
+v2.6.0 (11/11/2026): la pantalla de Lecturas con el mismo aspecto que Preparacion en Lecturas («etiqueta de
+estanteria»: plano, negro sobre blanco, cabecera negra, OUT en banda negra). En PDA (pantalla estrecha) sin la barra
+de menus de Odoo. Iconos, avatar y spinner vuelven a verse (aria-hidden -> role="presentation"). «Oficina» pasa a
+llamarse «Expediciones» en la PDA y en los menus (la clave interna sigue siendo 'oficina').
+v2.7.0 (11/11/2026): «Salir» deja la PDA libre y lleva a la pantalla de inicio de Odoo (todas las apps). Icono nuevo
+«Lecturas (PDA)» en la pantalla de inicio, para todos los usuarios, para volver a entrar. La salida automatica por
+inactividad se queda en Lecturas.
 """,
-    'version': '13.0.2.5.0',
+    'version': '13.0.2.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
