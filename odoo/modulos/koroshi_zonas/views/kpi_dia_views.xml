@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- % real de cajas cerradas de las zonas en la ficha diaria de koroshi_kpi -->
+    <record id="view_koroshi_kpi_dia_tree_zonas" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.tree.zonas</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="inherit_id" ref="koroshi_kpi.view_koroshi_kpi_dia_tree"/>
+        <field name="arch" type="xml">
+            <field name="cajas" position="after">
+                <field name="zonas_pct_cajas_cerradas" optional="show"/>
+            </field>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_dia_form_zonas" model="ir.ui.view">
+        <field name="name">koroshi.kpi.dia.form.zonas</field>
+        <field name="model">koroshi.kpi.dia</field>
+        <field name="inherit_id" ref="koroshi_kpi.view_koroshi_kpi_dia_form"/>
+        <field name="arch" type="xml">
+            <field name="cajas" position="after">
+                <field name="zonas_cajas_reales" attrs="{'invisible': [('metodo', 'not in', ('zonas', 'mixto'))]}"/>
+                <field name="zonas_cajas_cerradas" attrs="{'invisible': [('metodo', 'not in', ('zonas', 'mixto'))]}"/>
+                <field name="zonas_pct_cajas_cerradas" attrs="{'invisible': [('metodo', 'not in', ('zonas', 'mixto'))]}"/>
+            </field>
+        </field>
+    </record>
+</odoo>

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada hora: registra las OUT de las agrupaciones Z- de hoy y lee el "CAJAS n" de la nota antes de que
+         otro proceso la pise. Solo escribe en koroshi.zonas.ejecucion y koroshi.zonas.ejecucion.out -->
+    <record id="cron_koroshi_zonas_capturar" model="ir.cron">
+        <field name="name">KOROSHI Zonas: registrar las OUT de hoy</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_capturar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Cada noche: mide las cajas reales de los ultimos 7 dias. Solo escribe en sus propias tablas -->
+    <record id="cron_koroshi_zonas_medir" model="ir.cron">
+        <field name="name">KOROSHI Zonas: medir cajas reales</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_medir()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=22, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
