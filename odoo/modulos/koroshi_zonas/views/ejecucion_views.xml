@@ -10,6 +10,7 @@
                 <field name="fecha"/>
                 <field name="prefijo"/>
                 <field name="modo"/>
+                <field name="estado"/>
                 <field name="medicion"/>
                 <field name="n_out" sum="OUT"/>
                 <field name="n_out_medidas" sum="OUT medidas" optional="hide"/>
@@ -44,6 +45,10 @@
                             <field name="fecha"/>
                             <field name="prefijo"/>
                             <field name="modo"/>
+                            <field name="estado"/>
+                            <field name="motor"/>
+                            <field name="lanzado_el"/>
+                            <field name="n_out_nuevas"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="medido_el"/>
                         </group>
@@ -65,6 +70,10 @@
                         </group>
                     </group>
                     <notebook>
+                        <page string="Informe del reparto" attrs="{'invisible': [('informe', '=', False)]}">
+                            <field name="informe" nolabel="1"
+                                   style="font-family: monospace; white-space: pre; font-size: 12px;"/>
+                        </page>
                         <page string="Informe de la medición">
                             <field name="informe_medicion" nolabel="1"
                                    style="font-family: monospace; white-space: pre; font-size: 12px;"/>
@@ -73,7 +82,13 @@
                             <field name="out_ids" nolabel="1"/>
                         </page>
                         <page string="Parámetros">
-                            <field name="parametros_medicion" nolabel="1" style="font-family: monospace;"/>
+                            <group>
+                                <field name="contexto" style="font-family: monospace;"/>
+                                <field name="parametros" style="font-family: monospace;"/>
+                                <field name="parametros_medicion" style="font-family: monospace;"/>
+                                <field name="datos_entrada_nombre" invisible="1"/>
+                                <field name="datos_entrada" filename="datos_entrada_nombre"/>
+                            </group>
                         </page>
                     </notebook>
                 </sheet>
@@ -205,12 +220,40 @@
         <field name="code">action = model.medir_historico()</field>
     </record>
 
+    <!-- ======================= Lanzar el reparto (fase 2) ======================= -->
+    <record id="action_koroshi_zonas_diagnostico_hoy" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: diagnóstico de hoy</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">action = model.accion_lanzar_hoy('DIAGNOSTICO')</field>
+    </record>
+
+    <record id="action_koroshi_zonas_simular_hoy" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: simular hoy (se deshace)</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">action = model.accion_lanzar_hoy('SIMULAR')</field>
+    </record>
+
+    <!-- En la lista de albaranes: seleccionar OUT > Accion. Como la 1881 con prueba_ids: no escribe nada -->
+    <record id="action_koroshi_zonas_diagnostico_seleccion" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: diagnóstico de las OUT seleccionadas</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="state">code</field>
+        <field name="code">action = env['koroshi.zonas.ejecucion'].accion_diagnostico_ids(records.ids)</field>
+    </record>
+
     <menuitem id="menu_koroshi_zonas_root" name="KOROSHI Zonas" parent="stock.menu_stock_root" sequence="91"
               groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_zonas_ejecucion" name="Ejecuciones" parent="menu_koroshi_zonas_root"
               action="action_koroshi_zonas_ejecucion" sequence="10"/>
     <menuitem id="menu_koroshi_zonas_ejecucion_out" name="Cajas cerradas por día y zona" parent="menu_koroshi_zonas_root"
               action="action_koroshi_zonas_ejecucion_out" sequence="20"/>
+    <menuitem id="menu_koroshi_zonas_diagnostico_hoy" name="Diagnóstico de hoy" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_diagnostico_hoy" sequence="30"/>
+    <menuitem id="menu_koroshi_zonas_simular_hoy" name="Simular hoy (se deshace)" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_simular_hoy" sequence="40" groups="stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_zonas_medir_historico" name="Medir desde el 22/10" parent="menu_koroshi_zonas_root"
               action="action_koroshi_zonas_medir_historico" sequence="90" groups="stock.group_stock_manager"/>
 </odoo>

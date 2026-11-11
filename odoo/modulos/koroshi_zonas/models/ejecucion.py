@@ -1,9 +1,14 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
 # Una ejecucion = un lanzamiento del reparto por zonas (un prefijo de agrupaciones Z-ddmm- o Z-ddmm-R2-).
-# Fase 1: solo MEDIR. Las agrupaciones Z- que ya hay (las hace la accion 1883) se registran como
-# ejecuciones de modo 'historico' y se miden sus cajas reales. No escribe nada fuera de sus tablas.
+# Fase 1: MEDIR. Las agrupaciones Z- que ya hay (las hace la accion 1883) se registran como
+# ejecuciones de modo 'historico' y se miden sus cajas reales.
+# Fase 2: LANZAR el reparto de la v12f (motor/v12f.py) en DIAGNOSTICO, SIMULAR o REAL. Un solo codigo;
+# el modo es un campo. SIMULAR y REAL parten dentro de un savepoint: SIMULAR siempre lo deshace y REAL
+# lo deshace si falla una comprobacion (todo o nada). La ejecucion queda guardada siempre, con los
+# parametros, el contexto, los datos de entrada y el informe.
 # =============================================================================
+import base64
 import datetime
 import json
 import logging
@@ -13,8 +18,19 @@ import pytz
 from odoo import api, fields, models
 
 from ..motor import medir as motor_medir
+from ..motor import modelo
+from ..motor import v12f
 from ..motor import volumen
+from . import escritor
 from . import lector
+
+CLAVES_CONTEXTO = ('personas', 'hora_inicio', 'hora_fin', 'una_ronda', 'zonas', 'zonas_muelle', 'prueba_ids',
+                   'prueba_agrupacion')
+CANAL_INFORME = 'KOROSHI Partir OUT zonas'     # el canal donde publica hoy la 1881
+
+
+class _Deshacer(Exception):
+    """Para salir del savepoint deshaciendo lo escrito (SIMULAR o comprobaciones que fallan)."""
 
 _logger = logging.getLogger(__name__)
 
@@ -38,6 +54,22 @@ class KoroshiZonasEjecucion(models.Model):
                             'Modo', required=True, default='historico')
     company_id = fields.Many2one('res.company', 'Compañía', required=True, default=COMPANY_ID)
     out_ids = fields.One2many('koroshi.zonas.ejecucion.out', 'ejecucion_id', 'OUT')
+
+    # Lanzamiento (fase 2)
+    estado = fields.Selection([('historico', 'Histórico'), ('diagnostico', 'Diagnóstico (no escribe)'),
+                               ('vacio', 'No entra ninguna OUT'), ('pocas_uds', 'Pocas uds: no se parte'),
+                               ('simulado', 'Simulado (deshecho)'), ('fallos', 'Fallos: deshecho'),
+                               ('error', 'Error: deshecho'), ('hecho', 'Hecho')],
+                              'Resultado', default='historico', readonly=True)
+    lanzado_el = fields.Datetime('Lanzado el', readonly=True)
+    motor = fields.Char('Motor', readonly=True, help='Versión del cálculo: v12f = la de la acción 1883')
+    contexto = fields.Text('Contexto', readonly=True, help='personas, horas, zonas, prueba_ids... con los que se lanzó')
+    parametros = fields.Text('Parámetros del reparto', readonly=True)
+    informe = fields.Text('Informe del reparto', readonly=True)
+    datos_entrada = fields.Binary('Datos de entrada', attachment=True, readonly=True,
+                                  help='JSON con las OUT y líneas que recibió el motor: reproduce el reparto sin Odoo')
+    datos_entrada_nombre = fields.Char('Nombre del fichero de entrada', readonly=True)
+    n_out_nuevas = fields.Integer('OUT nuevas', readonly=True)
 
     # Medicion (fase 1)
     medicion = fields.Selection([('sin_medir', 'Sin medir'), ('parcial', 'En parte (hay OUT sin validar)'),
@@ -98,7 +130,7 @@ class KoroshiZonasEjecucion(models.Model):
             primero = lista[0][0]
             fecha = pytz.utc.localize(primero.create_date).astimezone(tz).date()
             ej = self.search([('prefijo', '=', prefijo), ('company_id', '=', COMPANY_ID),
-                              ('modo', 'in', ('historico', 'real'))], limit=1)
+                              ('estado', 'in', ('historico', 'hecho'))], limit=1)
             if not ej:
                 ej = self.create({'prefijo': prefijo, 'fecha': fecha, 'modo': 'historico'})
             ej._registrar_outs(lista)
@@ -134,8 +166,9 @@ class KoroshiZonasEjecucion(models.Model):
 
     # ------------------------------------------------------------------ medir
     def action_medir(self):
-        # Cada ejecucion en su savepoint: si una falla no queda a medias y las demas se miden igual
-        for ej in self:
+        # Cada ejecucion en su savepoint: si una falla no queda a medias y las demas se miden igual.
+        # Solo se miden las que han partido OUT de verdad (historico y REAL hecho).
+        for ej in self.filtered(lambda e: e.modo == 'historico' or (e.modo == 'real' and e.estado == 'hecho')):
             try:
                 with self.env.cr.savepoint():
                     ej._medir()
@@ -278,3 +311,121 @@ class KoroshiZonasEjecucion(models.Model):
             'view_mode': 'tree,form',
             'domain': [('id', 'in', ejecuciones.ids)],
         }
+
+    # ------------------------------------------------------------------ lanzar el reparto (fase 2)
+    @api.model
+    def lanzar(self, modo, contexto=None):
+        """Reparto de la v12f. modo: 'DIAGNOSTICO', 'SIMULAR' o 'REAL'. contexto: personas, hora_inicio,
+        hora_fin, una_ronda, zonas, zonas_muelle, prueba_ids, prueba_agrupacion (como la accion 1883;
+        con prueba_ids o prueba_agrupacion siempre es DIAGNOSTICO). Devuelve la ejecucion."""
+        modo = (modo or '').upper()
+        if modo not in ('DIAGNOSTICO', 'SIMULAR', 'REAL'):
+            raise ValueError('Modo desconocido: %s' % modo)
+        contexto = dict((k, v) for k, v in (contexto or {}).items() if k in CLAVES_CONTEXTO)
+        cambios = {'MODO': modo}
+        p = modelo.parametros(cambios, contexto)
+        ahora = datetime.datetime.now(pytz.timezone(p['ZONA_HORARIA']))
+        datos = lector.datos_reparto(self.env, contexto, ahora, p)
+        datos['contexto'] = contexto
+        rep = v12f.repartir(datos, cambios, contexto)
+        ej = self.create({
+            'modo': rep.modo.lower(),
+            'fecha': ahora.date(),
+            'prefijo': rep.prefijo,
+            'motor': 'v12f',
+            'lanzado_el': fields.Datetime.now(),
+            'contexto': json.dumps(contexto, sort_keys=True),
+            'parametros': json.dumps(rep.parametros, sort_keys=True, default=list),
+            'datos_entrada': base64.b64encode(json.dumps(datos).encode('utf-8')),
+            'datos_entrada_nombre': 'koroshi_zonas_%s_%s.json' % (ahora.strftime('%Y%m%d_%H%M'), rep.modo.lower()),
+        })
+        lineas = list(rep.lineas)
+        out_de = None
+        n_nuevas = 0
+        if rep.estado != 'listo':
+            estado = rep.estado
+        elif rep.modo == 'DIAGNOSTICO':
+            estado = 'diagnostico'
+        else:
+            estado = 'error'
+            fallos = []
+            try:
+                with self.env.cr.savepoint():
+                    extra, fallos, todas_out, out_de = escritor.aplicar(self.env, rep)
+                    lineas += extra
+                    n_nuevas = len(todas_out) - len(rep.plan)
+                    self.env['base'].flush()
+                    if fallos:
+                        lineas.insert(0, 'NO SE HA HECHO NADA (se ha deshecho todo)')
+                        raise _Deshacer()
+                    if rep.modo != 'REAL':
+                        lineas.append('')
+                        lineas.append('SIMULACION: se ha deshecho todo. Para hacerlo de verdad: modo REAL.')
+                        raise _Deshacer()
+                    lineas[0] = 'KOROSHI PARTIR OUT ZONAS v12 CAJA CERRADA - HECHO'
+                    estado = 'hecho'
+            except _Deshacer:
+                estado = fallos and 'fallos' or 'simulado'
+            except Exception as e:
+                _logger.exception('KOROSHI Zonas: error al partir (%s)', rep.modo)
+                lineas.insert(0, 'NO SE HA HECHO NADA (error: %s; se ha deshecho todo)' % e)
+            if estado != 'hecho':
+                out_de = None
+                n_nuevas = 0
+                self.env.cache.invalidate()
+        ej._filas_plan(rep, out_de)
+        ej.write({'informe': '\n'.join(lineas), 'estado': estado, 'n_out_nuevas': n_nuevas})
+        _logger.info('\n'.join(lineas))
+        ej._publicar()
+        return ej
+
+    def _filas_plan(self, rep, out_de):
+        """Una fila por OUT y zona del plan. Sin partir (DIAGNOSTICO, SIMULAR, deshecho): la OUT original.
+        Hecho: la OUT que ha quedado en cada zona, con su agrupacion."""
+        self.ensure_one()
+        Fila = self.env['koroshi.zonas.ejecucion.out'].sudo()
+        for pid, por_z, principal, sin_res, caja in rep.plan:
+            out = rep.calc.out_rec[pid]
+            for zn in rep.orden_zonas:
+                if zn not in por_z:
+                    continue
+                pick = out_de and out_de.get((pid, zn)) or None
+                Fila.create({
+                    'ejecucion_id': self.id,
+                    'picking_id': pick and pick.id or pid,
+                    'lote_id': pick and pick.batch_id.id or False,
+                    'zona': zn,
+                    'pedido': out['origin'] or '',
+                    'tienda': out['partner_name'] or '',
+                    'cajas_previstas': por_z[zn][0],
+                    'prevision_conocida': True,
+                })
+
+    def _publicar(self):
+        """Publica el informe en el canal de Conversaciones de la 1881, si existe. Si falla, sigue."""
+        try:
+            canal = self.env['mail.channel'].sudo().search([('name', '=', CANAL_INFORME)], limit=1)
+            if canal:
+                cuerpo = (self.informe or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                canal.message_post(body='<pre style="font-size:12px">' + cuerpo + '</pre>', message_type='comment',
+                                   subtype='mail.mt_comment')
+        except Exception as e:
+            _logger.warning('KOROSHI Zonas: no se ha podido publicar el informe en el canal: %s', e)
+
+    def accion_abrir(self):
+        self.ensure_one()
+        return {
+            'type': 'ir.actions.act_window',
+            'name': self.name,
+            'res_model': 'koroshi.zonas.ejecucion',
+            'view_mode': 'form',
+            'res_id': self.id,
+        }
+
+    @api.model
+    def accion_lanzar_hoy(self, modo):
+        return self.lanzar(modo, self.env.context).accion_abrir()
+
+    @api.model
+    def accion_diagnostico_ids(self, ids):
+        return self.lanzar('DIAGNOSTICO', dict(self.env.context, prueba_ids=ids)).accion_abrir()

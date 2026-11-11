@@ -19,15 +19,27 @@ Fase 1 - Medir (no toca el reparto de la 1883):
   nota) y cada noche mide los ultimos 7 dias. Menu "Medir desde el 22/10" para el historico.
 - La ficha diaria de koroshi_kpi muestra el % real de cajas cerradas de las zonas.
 
-Solo escribe en sus propias tablas: no cambia albaranes, movimientos, agrupaciones ni stock.
+Fase 2 - La v12f dentro del modulo (motor/v12f.py, copia literal de la accion 1883):
+- Un solo codigo con el modo como campo: DIAGNOSTICO (no escribe), SIMULAR (parte dentro de un savepoint
+  y lo deshace) y REAL (todo o nada: si falla una comprobacion se deshace). prueba_ids y
+  prueba_agrupacion fuerzan DIAGNOSTICO, como en la accion.
+- Menus "Diagnostico de hoy" y "Simular hoy"; en la lista de albaranes, Accion > "KOROSHI Zonas:
+  diagnostico de las OUT seleccionadas" (como la 1881 con prueba_ids).
+- Cada ejecucion guarda contexto, parametros, informe y los datos de entrada (JSON) para reproducirla.
+- El informe se publica en el canal "KOROSHI Partir OUT zonas" (el de la 1881), si existe.
+- El cron 202 y las acciones 1880-1883 NO se tocan todavia (fase 3).
 
+Solo escribe fuera de sus tablas al partir en SIMULAR (deshecho) y REAL: lo mismo que la accion 1883
+(partir movimientos, crear agrupaciones, nota). Nunca cancela una OUT ni fuerza disponibilidad.
+
+v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['stock', 'stock_picking_batch', 'koroshi_kpi'],
+    'depends': ['mail', 'stock', 'stock_picking_batch', 'koroshi_kpi'],
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',
