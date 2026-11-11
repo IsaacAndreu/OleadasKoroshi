@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Preparación en Lecturas (v3.0.0) - rutas JSON de la pantalla de la PDA.
+# KOROSHI Preparación en Lecturas (v3.0.0, v3.5 estado ligero) - rutas JSON de la pantalla de la PDA.
 # Toda la lógica está en models/lectura.py. Las respuestas llevan siempre 'ok' y, si hay OUT, su 'estado'.
 # =============================================================================
 from odoo import http
@@ -28,10 +28,11 @@ class KoroshiPreparacion(http.Controller):
             return Picking.search([('name', '=', picking_name)], limit=1)
         return Picking
 
-    def _con_estado(self, picking, res, employee=None):
+    def _con_estado(self, picking, res, employee=None, ligero=False):
         try:
             picking.invalidate_cache()
-            res['estado'] = self._lectura().estado(picking, employee)   # v3.3: el ayudante ve las líneas al revés
+            # v3.3: el ayudante ve las líneas al revés; v3.5: tras leer / deshacer, estado ligero
+            res['estado'] = self._lectura().estado(picking, employee, ligero=ligero)
         except Exception:  # el estado es para pintar: nunca rompe la respuesta
             pass
         return res
@@ -49,11 +50,12 @@ class KoroshiPreparacion(http.Controller):
         return {'ok': True, 'propia': True}
 
     @http.route('/koroshi/preparacion/cargar', type='json', auth='user')
-    def cargar(self, picking_id=False, picking_name=False, employee_id=False, **kw):
+    def cargar(self, picking_id=False, picking_name=False, employee_id=False, ligero=False, **kw):
         picking = self._picking(picking_id, picking_name)
         if not picking:
             return {'ok': False, 'msg': 'No se encuentra la OUT %s.' % (picking_name or picking_id or '')}
-        return {'ok': True, 'estado': self._lectura().estado(picking, self._empleado(employee_id))}
+        # v3.5: ligero=True para el refresco de cada 10 s al preparar a dos
+        return {'ok': True, 'estado': self._lectura().estado(picking, self._empleado(employee_id), ligero=bool(ligero))}
 
     @http.route('/koroshi/preparacion/leer', type='json', auth='user')
     def leer(self, picking_id=False, codigo='', employee_id=False, id_lectura=False, **kw):
@@ -62,7 +64,7 @@ class KoroshiPreparacion(http.Controller):
             res = self._lectura().leer(picking, self._empleado(employee_id), codigo, id_lectura)
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'msg': _msg(e)}
-        return self._con_estado(picking, res, self._empleado(employee_id))
+        return self._con_estado(picking, res, self._empleado(employee_id), ligero=True)
 
     @http.route('/koroshi/preparacion/deshacer', type='json', auth='user')
     def deshacer(self, picking_id=False, employee_id=False, **kw):
@@ -71,7 +73,7 @@ class KoroshiPreparacion(http.Controller):
             res = self._lectura().deshacer(picking, self._empleado(employee_id))
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'msg': _msg(e)}
-        return self._con_estado(picking, res, self._empleado(employee_id))
+        return self._con_estado(picking, res, self._empleado(employee_id), ligero=True)
 
     @http.route('/koroshi/preparacion/caja', type='json', auth='user')
     def caja(self, picking_id=False, codigo='', employee_id=False, id_lectura=False, **kw):
