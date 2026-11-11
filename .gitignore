@@ -15,3 +15,6 @@ odoo/modulos/_prueba_*
 .android-sdk/
 .android-sdk-commandline.zip
 .dotnet-cli/
+
+# Ficheros temporales de depuracion (assets descargados de Odoo, etc.)
+.tmp_*

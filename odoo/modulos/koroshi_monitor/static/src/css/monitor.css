@@ -10,7 +10,7 @@
 .o_koroshi_monitor h1 { font-size: 26px; margin: 0; font-weight: 700; }
 .o_koroshi_monitor h2 { font-size: 19px; margin: 30px 0 10px; font-weight: 700; }
 .o_koroshi_monitor .km-cab { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; justify-content: space-between; margin-bottom: 4px; }
-.o_koroshi_monitor .km-ctl { display: flex; gap: 8px; align-items: center; }
+.o_koroshi_monitor .km-ctl { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; justify-content: flex-end; }
 .o_koroshi_monitor .km-ctl select { padding: 4px 8px; border: 1px solid var(--km-line); border-radius: 6px; background: var(--km-card); }
 .o_koroshi_monitor .km-ctl input.km-buscar { min-width: 190px; padding: 5px 8px; border: 1px solid var(--km-line); border-radius: 6px; background: var(--km-card); }
 .o_koroshi_monitor .km-ctl .km-filtro { max-width: 150px; }

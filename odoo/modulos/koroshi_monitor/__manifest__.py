@@ -56,9 +56,16 @@ en Tiendas y zonas y tabla Operarios (que coge ahora, uds, minutos, u/h del dia)
 v1.18.2: una caja usada en dos OUT (koroshi_caja_existente) cuenta solo en su OUT duena (K8 10/11: salian 6 bultos).
 v1.18.1: OUT o agrupacion ya validada = operario acabado al momento, sin esperar al cron de cierre (5 min).
 
+v1.19: pantalla "Consulta de envios" para oficina, separada en Tiendas y Web. Busca por pedido, OUT, tienda o
+expedicion; agrupa las OUT, compara bultos declarados con cajas CJ distintas y permite copiar o compartir. Descarga
+Excel por fechas y transportista: Tiendas (XPO SAS / GLS) y Web (GLS / SEUR).
+v1.19.1: en zonas, cada OUT abierta cuenta como una persona en "Personas y horas"; ya no se cuenta una persona
+por zona.
+v1.19.2: boton "Consulta envios / Excel" dentro de la cabecera del Monitor picking.
+
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.18.2',
+    'version': '13.0.1.19.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
