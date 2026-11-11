@@ -73,6 +73,16 @@ class TestMedir(unittest.TestCase):
         self.assertEqual(por_out['A']['uds_sin_caja'], 3)
         self.assertFalse(por_out['A']['cerrada'])
 
+    def test_causa_de(self):
+        # (medida, prevision_conocida, previstas, estimadas, reales, compartidas, ajenas)
+        self.assertEqual(medir.causa_de(False, True, 3, 0, 0, 0, 0), (0, 'sin_medir'))
+        self.assertEqual(medir.causa_de(True, False, 0, 2, 2, 0, 0), (0, 'sin_prevision'))
+        self.assertEqual(medir.causa_de(True, True, 2, 2, 2, 0, 0), (0, 'ok'))
+        self.assertEqual(medir.causa_de(True, True, 2, 2, 1, 1, 0), (-1, 'caja_compartida'))
+        self.assertEqual(medir.causa_de(True, True, 1, 1, 0, 0, 1), (-1, 'caja_compartida'))
+        self.assertEqual(medir.causa_de(True, True, 3, 2, 2, 0, 0), (-1, 'cogido'))
+        self.assertEqual(medir.causa_de(True, True, 3, 3, 2, 0, 0), (-1, 'litros'))
+
     def test_resumen_separa_causas(self):
         lineas = [ln(1, 'A', 'c1', 20, 75), ln(2, 'A', 'c2', 20, 75),
                   ln(3, 'B', 'c3', 15, 70), ln(4, 'D', 'c3', 2, 6)]

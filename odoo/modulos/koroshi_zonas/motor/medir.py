@@ -111,6 +111,22 @@ def medir(lineas, outs_medidas, medidas=None, regla_dueno='primera_linea'):
     return por_out, resultado_cajas
 
 
+def causa_de(medida, prevision_conocida, previstas, estimadas, reales, compartidas, ajenas):
+    """Diferencia (reales - previstas) y causa de una OUT medida. Devuelve (diferencia, causa)."""
+    diferencia = prevision_conocida and medida and (reales - previstas) or 0
+    if not medida:
+        return diferencia, 'sin_medir'
+    if not prevision_conocida:
+        return diferencia, 'sin_prevision'
+    if reales == previstas:
+        return diferencia, 'ok'
+    if compartidas or ajenas:
+        return diferencia, 'caja_compartida'
+    if estimadas != previstas:
+        return diferencia, 'cogido'
+    return diferencia, 'litros'
+
+
 def pct(a, b):
     return b and round(100.0 * a / b, 1) or 0.0
 

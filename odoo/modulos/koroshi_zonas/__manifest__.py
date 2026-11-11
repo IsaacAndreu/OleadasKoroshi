@@ -32,10 +32,16 @@ Fase 2 - La v12f dentro del modulo (motor/v12f.py, copia literal de la accion 18
 Solo escribe fuera de sus tablas al partir en SIMULAR (deshecho) y REAL: lo mismo que la accion 1883
 (partir movimientos, crear agrupaciones, nota). Nunca cancela una OUT ni fuerza disponibilidad.
 
+v1.1.2 (11/11/2026): las agrupaciones que almacen crea a mano para imprimir lo del transportista ('Z-2210-SALIO
+  22-10', 'Z-2710- SALE 28-10'...) ya no cuentan como zonas: cada OUT suya va al dia y la zona de su nota. Al
+  actualizar se borran las filas con esas zonas y se vuelve a registrar (despues: Medir desde el 22/10).
+v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferencia y la causa de cada OUT
+  se escriben al crear y al escribir (antes eran calculados guardados y el primer cron, justo al instalar, los
+  dejo vacios). Al actualizar se rellenan los que estaban vacios.
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.1.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -44,6 +50,7 @@ v1.0 (11/11/2026): fase 1, medir las cajas reales.
         'security/ir.model.access.csv',
         'data/parametros.xml',
         'data/cron.xml',
+        'data/rellenar.xml',
         'views/ejecucion_views.xml',
         'views/kpi_dia_views.xml',
     ],

@@ -46,7 +46,7 @@ class KoroshiZonasEjecucion(models.Model):
     _description = 'KOROSHI Zonas - ejecución del reparto por zonas'
     _order = 'fecha desc, prefijo desc'
 
-    name = fields.Char('Nombre', compute='_compute_name', store=True)
+    name = fields.Char('Nombre', readonly=True)   # v1.1.1: se escribe en create/write (antes calculado)
     fecha = fields.Date('Día', required=True, index=True)
     prefijo = fields.Char('Prefijo de agrupaciones', required=True, index=True, help='Z-ddmm- o Z-ddmm-R2-')
     modo = fields.Selection([('historico', 'Histórico (hecha por la acción 1883)'),
@@ -88,11 +88,48 @@ class KoroshiZonasEjecucion(models.Model):
     pct_cajas_cerradas = fields.Float('% cajas cerradas', readonly=True, digits=(16, 1), group_operator='avg')
     pct_outs_cerradas = fields.Float('% OUT en caja cerrada', readonly=True, digits=(16, 1), group_operator='avg')
 
-    @api.depends('prefijo', 'modo')
-    def _compute_name(self):
+    def _nombre(self, prefijo, modo):
         etiqueta = dict(self._fields['modo'].selection)
-        for r in self:
-            r.name = '%s (%s)' % ((r.prefijo or '').rstrip('-'), etiqueta.get(r.modo, ''))
+        return '%s (%s)' % ((prefijo or '').rstrip('-'), etiqueta.get(modo, ''))
+
+    @api.model_create_multi
+    def create(self, vals_list):
+        for vals in vals_list:
+            vals['name'] = self._nombre(vals.get('prefijo'), vals.get('modo') or 'historico')
+        return super(KoroshiZonasEjecucion, self).create(vals_list)
+
+    def write(self, vals):
+        res = super(KoroshiZonasEjecucion, self).write(vals)
+        if 'prefijo' in vals or 'modo' in vals:
+            for r in self:
+                super(KoroshiZonasEjecucion, r).write({'name': self._nombre(r.prefijo, r.modo)})
+        if 'fecha' in vals:     # la fecha de las filas sigue a la de la ejecucion
+            self.mapped('out_ids').write({'fecha': vals['fecha']})
+        return res
+
+    @api.model
+    def _rellenar_campos(self):
+        """v1.1.1: rellena lo que la v1.1.0 dejo vacio (nombre de la ejecucion; dia, compania, diferencia y
+        causa de las filas). Se llama al actualizar el modulo (data/rellenar.xml); no hace nada si ya esta.
+        v1.1.2: borra las filas que la v1.1.0/v1.1.1 crearon con una agrupacion de almacen como zona ('SALE',
+        'SALIO'...) y vuelve a registrar el historico: esas OUT van al dia y zona de su nota. Despues hay que
+        volver a medir (menu Medir desde el 22/10). Solo toca las tablas del modulo."""
+        Fila = self.env['koroshi.zonas.ejecucion.out'].sudo()
+        malas = Fila.search([('ejecucion_id.modo', '=', 'historico')]).filtered(
+            lambda f: not lector.partir_nombre_lote('Z-0000-' + (f.zona or '')))
+        if malas:
+            _logger.info('KOROSHI Zonas: se borran %d filas con zona de almacen y se vuelve a registrar', len(malas))
+            malas.unlink()
+            self.registrar_rango(HISTORICO_DESDE, self._hoy())
+        for ej in self.sudo().search([]):
+            nombre = self._nombre(ej.prefijo, ej.modo)
+            if ej.name != nombre:
+                super(KoroshiZonasEjecucion, ej).write({'name': nombre})
+            filas = ej.out_ids.filtered(lambda f: f.fecha != ej.fecha or f.company_id != ej.company_id)
+            if filas:
+                filas.write({'fecha': ej.fecha, 'company_id': ej.company_id.id})
+            ej.out_ids.filtered(lambda f: not f.causa)._escribir_causa()
+        return True
 
     # ------------------------------------------------------------------ parametros
     def _medidas(self):
@@ -115,54 +152,85 @@ class KoroshiZonasEjecucion(models.Model):
     def registrar_rango(self, desde, hasta):
         """Crea (o completa) las ejecuciones y sus filas de OUT de las agrupaciones Z- creadas entre
         esas fechas (hora de Espana). Lee la prevision (CAJAS n) de la nota: si ya estaba leida, no la pisa."""
+        # v1.1.2: almacen agrupa a mano OUT de zonas (de ese dia y de dias antes) en agrupaciones que tambien
+        # empiezan por Z- ('Z-2210-SALIO 22-10', 'Z-2710- SALE 28-10') para imprimir lo del transportista.
+        # Esas no son zonas: cada OUT suya va al dia y la zona que dice SU nota ('Z-2210-D3 | CAJA ...').
+        # Si la nota ya no lo dice, no se sabe de que zona era y no se cuenta (sale en el log).
+        # Desde que el cron registra cada hora, cada OUT queda registrada con su zona el mismo dia.
         ini, fin = self._rango_utc(desde, hasta)
-        lotes = self.env['stock.picking.batch'].sudo().search([
-            ('company_id', '=', COMPANY_ID), ('name', '=like', 'Z-%'),
-            ('create_date', '>=', ini), ('create_date', '<', fin)], order='create_date, id')
-        por_prefijo = {}
+        Batch = self.env['stock.picking.batch'].sudo()
+        lotes = Batch.search([('company_id', '=', COMPANY_ID), ('name', '=like', 'Z-%'),
+                              ('create_date', '>=', ini), ('create_date', '<', fin)], order='create_date, id')
+        por_prefijo = {}        # prefijo -> [(OUT, zona, agrupacion de zona o vacia)]
+        fecha_de = {}           # prefijo -> dia (hora de Espana) de su primera agrupacion de zona
+        tz = pytz.timezone(TZ)
+        sin_zona = []
         for lote in lotes:
             partes = lector.partir_nombre_lote(lote.name)
             if partes:
-                por_prefijo.setdefault(partes[0], []).append((lote, partes[1]))
-        tz = pytz.timezone(TZ)
+                if partes[0] not in fecha_de:
+                    fecha_de[partes[0]] = pytz.utc.localize(lote.create_date).astimezone(tz).date()
+                for p in lote.picking_ids:
+                    por_prefijo.setdefault(partes[0], []).append((p, partes[1], lote))
+                continue
+            for p in lote.picking_ids:              # agrupacion de almacen: la zona de la nota
+                de_nota = lector.zona_de_nota(p.note)
+                if de_nota:
+                    por_prefijo.setdefault(de_nota[0], []).append((p, de_nota[1], Batch))
+                elif p.picking_type_code == 'outgoing' and p.state != 'cancel':
+                    sin_zona.append(p.name)
+        if sin_zona:
+            _logger.info('KOROSHI Zonas: %d OUT en agrupaciones de almacen sin zona en la nota: %s',
+                         len(sin_zona), ', '.join(sin_zona[:50]))
         ejecuciones = self.browse()
         for prefijo, lista in por_prefijo.items():
-            primero = lista[0][0]
-            fecha = pytz.utc.localize(primero.create_date).astimezone(tz).date()
             ej = self.search([('prefijo', '=', prefijo), ('company_id', '=', COMPANY_ID),
                               ('estado', 'in', ('historico', 'hecho'))], limit=1)
             if not ej:
-                ej = self.create({'prefijo': prefijo, 'fecha': fecha, 'modo': 'historico'})
+                ej = self.create({'prefijo': prefijo, 'fecha': fecha_de.get(prefijo) or self._fecha_prefijo(prefijo),
+                                  'modo': 'historico'})
             ej._registrar_outs(lista)
             ejecuciones |= ej
         return ejecuciones
 
+    @api.model
+    def _fecha_prefijo(self, prefijo):
+        """Dia de un prefijo que solo se conoce por la nota: su primera agrupacion de zona y, si ya no hay,
+        el ddmm del nombre con el ano de hoy."""
+        tz = pytz.timezone(TZ)
+        for lote in self.env['stock.picking.batch'].sudo().search(
+                [('company_id', '=', COMPANY_ID), ('name', '=like', prefijo + '%')], order='create_date, id'):
+            if lector.partir_nombre_lote(lote.name):
+                return pytz.utc.localize(lote.create_date).astimezone(tz).date()
+        hoy = self._hoy()
+        return datetime.date(hoy.year, int(prefijo[4:6]), int(prefijo[2:4]))
+
     def _registrar_outs(self, lista):
+        """lista: [(OUT, zona, agrupacion)]. Una fila por OUT; si ya estaba, solo completa la prevision."""
         self.ensure_one()
         Fila = self.env['koroshi.zonas.ejecucion.out'].sudo()
         ya = {}
         for f in self.out_ids:
             ya[f.picking_id.id] = f
-        for lote, zona in lista:
-            for p in lote.picking_ids:
-                if p.state == 'cancel' or p.picking_type_code != 'outgoing' or p.company_id.id != COMPANY_ID:
-                    continue
-                previstas = lector.cajas_de_nota(p.note)
-                fila = ya.get(p.id)
-                if fila:
-                    if not fila.prevision_conocida and previstas is not None:
-                        fila.write({'cajas_previstas': previstas, 'prevision_conocida': True})
-                    continue
-                ya[p.id] = Fila.create({
-                    'ejecucion_id': self.id,
-                    'picking_id': p.id,
-                    'lote_id': lote.id,
-                    'zona': zona,
-                    'pedido': p.origin or '',
-                    'tienda': p.partner_id.name or '',
-                    'cajas_previstas': previstas or 0,
-                    'prevision_conocida': previstas is not None,
-                })
+        for p, zona, lote in lista:
+            if p.state == 'cancel' or p.picking_type_code != 'outgoing' or p.company_id.id != COMPANY_ID:
+                continue
+            previstas = lector.cajas_de_nota(p.note)
+            fila = ya.get(p.id)
+            if fila:
+                if not fila.prevision_conocida and previstas is not None:
+                    fila.write({'cajas_previstas': previstas, 'prevision_conocida': True})
+                continue
+            ya[p.id] = Fila.create({
+                'ejecucion_id': self.id,
+                'picking_id': p.id,
+                'lote_id': lote.id or False,
+                'zona': zona,
+                'pedido': p.origin or '',
+                'tienda': p.partner_id.name or '',
+                'cajas_previstas': previstas or 0,
+                'prevision_conocida': previstas is not None,
+            })
 
     # ------------------------------------------------------------------ medir
     def action_medir(self):
