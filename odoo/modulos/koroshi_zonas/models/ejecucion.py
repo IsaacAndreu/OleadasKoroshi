@@ -20,13 +20,11 @@ from odoo import api, fields, models
 from ..motor import medir as motor_medir
 from ..motor import modelo
 from ..motor import v12f
-from ..motor import volumen
 from . import escritor
 from . import lector
 
 CLAVES_CONTEXTO = ('personas', 'hora_inicio', 'hora_fin', 'una_ronda', 'zonas', 'zonas_muelle', 'prueba_ids',
                    'prueba_agrupacion')
-CANAL_INFORME = 'KOROSHI Partir OUT zonas'     # el canal donde publica hoy la 1881
 
 
 class _Deshacer(Exception):
@@ -70,6 +68,14 @@ class KoroshiZonasEjecucion(models.Model):
                                   help='JSON con las OUT y líneas que recibió el motor: reproduce el reparto sin Odoo')
     datos_entrada_nombre = fields.Char('Nombre del fichero de entrada', readonly=True)
     n_out_nuevas = fields.Integer('OUT nuevas', readonly=True)
+    reparto_lineas = fields.Text('Zona de cada línea', readonly=True,
+                                 help='JSON {id de stock.move.line: zona} del reparto calculado')
+
+    # Fase 3: modo sombra (el cron calcula antes que el cron 202 y despues compara)
+    sombra = fields.Boolean('Sombra', readonly=True, help='Cálculo del cron en modo sombra: no parte nada')
+    comparacion = fields.Selection([('igual', 'Igual que el cron 202'), ('distinta', 'Distinta del cron 202'),
+                                    ('sin_202', 'El cron 202 no ha partido')], 'Comparación', readonly=True)
+    informe_comparacion = fields.Text('Informe de la comparación', readonly=True)
 
     # Medicion (fase 1)
     medicion = fields.Selection([('sin_medir', 'Sin medir'), ('parcial', 'En parte (hay OUT sin validar)'),
@@ -133,7 +139,7 @@ class KoroshiZonasEjecucion(models.Model):
 
     # ------------------------------------------------------------------ parametros
     def _medidas(self):
-        return volumen.Medidas()
+        return self.env['koroshi.zonas.config'].obtener().medidas()     # fase 3: el litros_caja de la config
 
     def _regla_dueno(self):
         regla = self.env['ir.config_parameter'].sudo().get_param(PARAM_REGLA_DUENO, 'primera_linea')
@@ -382,15 +388,34 @@ class KoroshiZonasEjecucion(models.Model):
 
     # ------------------------------------------------------------------ lanzar el reparto (fase 2)
     @api.model
-    def lanzar(self, modo, contexto=None):
+    def probar(self, modo, contexto=None):
+        """Fase 3: lanza el reparto y lo DESHACE todo (la ejecucion tambien) y no publica nada en el canal.
+        Para probar sin dejar rastro. Devuelve {'informe', 'estado', 'prefijo', 'zona_fin'}."""
+        res = {}
+        try:
+            with self.env.cr.savepoint():
+                ej = self.with_context(koroshi_sin_publicar=True).lanzar(modo, contexto)
+                res = {'informe': ej.informe, 'estado': ej.estado, 'prefijo': ej.prefijo,
+                       'zona_fin': ej.reparto_lineas and json.loads(ej.reparto_lineas) or {}}
+                self.env['base'].flush()
+                raise _Deshacer()
+        except _Deshacer:
+            pass
+        self.env.cache.invalidate()
+        return res
+
+    @api.model
+    def lanzar(self, modo, contexto=None, sombra=False):
         """Reparto de la v12f. modo: 'DIAGNOSTICO', 'SIMULAR' o 'REAL'. contexto: personas, hora_inicio,
         hora_fin, una_ronda, zonas, zonas_muelle, prueba_ids, prueba_agrupacion (como la accion 1883;
-        con prueba_ids o prueba_agrupacion siempre es DIAGNOSTICO). Devuelve la ejecucion."""
+        con prueba_ids o prueba_agrupacion siempre es DIAGNOSTICO). Fase 3: los parametros salen de
+        koroshi.zonas.config (el contexto manda sobre ellos). Devuelve la ejecucion."""
         modo = (modo or '').upper()
         if modo not in ('DIAGNOSTICO', 'SIMULAR', 'REAL'):
             raise ValueError('Modo desconocido: %s' % modo)
         contexto = dict((k, v) for k, v in (contexto or {}).items() if k in CLAVES_CONTEXTO)
-        cambios = {'MODO': modo}
+        cambios = self.env['koroshi.zonas.config'].obtener().cambios_motor()
+        cambios['MODO'] = modo
         p = modelo.parametros(cambios, contexto)
         ahora = datetime.datetime.now(pytz.timezone(p['ZONA_HORARIA']))
         datos = lector.datos_reparto(self.env, contexto, ahora, p)
@@ -406,6 +431,8 @@ class KoroshiZonasEjecucion(models.Model):
             'parametros': json.dumps(rep.parametros, sort_keys=True, default=list),
             'datos_entrada': base64.b64encode(json.dumps(datos).encode('utf-8')),
             'datos_entrada_nombre': 'koroshi_zonas_%s_%s.json' % (ahora.strftime('%Y%m%d_%H%M'), rep.modo.lower()),
+            'reparto_lineas': json.dumps(dict((str(k), v) for k, v in rep.zona_fin.items()), sort_keys=True),
+            'sombra': sombra,
         })
         lineas = list(rep.lineas)
         out_de = None
@@ -469,12 +496,16 @@ class KoroshiZonasEjecucion(models.Model):
                     'prevision_conocida': True,
                 })
 
-    def _publicar(self):
-        """Publica el informe en el canal de Conversaciones de la 1881, si existe. Si falla, sigue."""
+    def _publicar(self, texto=None):
+        """Publica el informe en el canal de la configuracion (el de la 1881), si existe. Si falla, sigue.
+        Con el contexto koroshi_sin_publicar (probar) no publica nada."""
+        if self.env.context.get('koroshi_sin_publicar'):
+            return
         try:
-            canal = self.env['mail.channel'].sudo().search([('name', '=', CANAL_INFORME)], limit=1)
+            nombre = self.env['koroshi.zonas.config'].obtener().canal
+            canal = nombre and self.env['mail.channel'].sudo().search([('name', '=', nombre)], limit=1)
             if canal:
-                cuerpo = (self.informe or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                cuerpo = (texto or self.informe or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
                 canal.message_post(body='<pre style="font-size:12px">' + cuerpo + '</pre>', message_type='comment',
                                    subtype='mail.mt_comment')
         except Exception as e:
@@ -497,3 +528,60 @@ class KoroshiZonasEjecucion(models.Model):
     @api.model
     def accion_diagnostico_ids(self, ids):
         return self.lanzar('DIAGNOSTICO', dict(self.env.context, prueba_ids=ids)).accion_abrir()
+
+    @api.model
+    def accion_probar_ids(self, ids):
+        """Diagnostico sin rastro de las OUT seleccionadas: lo enseña y no guarda ni publica nada."""
+        from odoo.exceptions import UserError
+        res = self.probar('DIAGNOSTICO', dict(self.env.context, prueba_ids=ids))
+        raise UserError(res.get('informe') or 'Sin informe')
+
+    # ------------------------------------------------------------------ cron del reparto (fase 3)
+    @api.model
+    def cron_partir(self):
+        """Cron 'KOROSHI Zonas: partir OUT'. Modo sombra: DIAGNOSTICO que se guarda para compararlo despues
+        con lo que haga el cron 202. Modo real: parte (el cron 202 tiene que estar desactivado)."""
+        cfg = self.env['koroshi.zonas.config'].obtener()
+        if cfg.modo_cron == 'real':
+            cron202 = self.env['ir.cron'].sudo().search([('id', '=', 202), ('active', '=', True)])
+            if cron202:
+                texto = ('KOROSHI ZONAS: NO SE HA PARTIDO NADA. El cron 202 (accion 1883) sigue activo y el modulo '
+                         'esta en modo real: partirian los dos. Desactiva el cron 202 o vuelve al modo sombra.')
+                _logger.error(texto)
+                self.browse()._publicar(texto)
+                return False
+            return self.lanzar('REAL')
+        return self.lanzar('DIAGNOSTICO', sombra=True)
+
+    @api.model
+    def cron_comparar(self):
+        """Modo sombra, despues del cron 202: compara el calculo del modulo de hoy con lo que ha partido el 202."""
+        from ..motor import comparar as motor_comparar
+        hoy = self._hoy()
+        for ej in self.search([('sombra', '=', True), ('fecha', '=', hoy), ('comparacion', '=', False)]):
+            modulo = dict((int(k), v) for k, v in json.loads(ej.reparto_lineas or '{}').items())
+            lotes = self.env['stock.picking.batch'].sudo().search([
+                ('company_id', '=', COMPANY_ID), ('name', '=like', 'Z-%s-%%' % hoy.strftime('%d%m')),
+                ('create_date', '>', ej.lanzado_el)])
+            real = {}
+            prefijos = []
+            for lote in lotes:
+                partes = lector.partir_nombre_lote(lote.name)
+                if not partes:
+                    continue
+                if partes[0] not in prefijos:
+                    prefijos.append(partes[0])
+                for ml in lote.picking_ids.mapped('move_line_ids'):
+                    if ml.product_uom_qty > 0 or ml.qty_done > 0:     # las mismas que reparte el motor
+                        real[ml.id] = partes[1]
+            if not real:
+                ej.write({'comparacion': 'sin_202',
+                          'informe_comparacion': 'El cron 202 no ha creado agrupaciones de zona despues del calculo '
+                                                 'del modulo (%s).' % ej.lanzado_el})
+                continue
+            res = motor_comparar.comparar(modulo, real)
+            texto = motor_comparar.texto(res, ej.prefijo, prefijos)
+            ej.write({'comparacion': motor_comparar.es_igual(res) and 'igual' or 'distinta',
+                      'informe_comparacion': texto})
+            ej._publicar(texto)
+        return True
