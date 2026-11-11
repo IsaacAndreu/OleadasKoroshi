@@ -11,8 +11,10 @@
     font-size: 15px;
 }
 .o_koroshi_envios main { width: 100%; max-width: 1180px; margin: 0 auto; padding: 28px 20px 60px; box-sizing: border-box; }
+.o_koroshi_envios .ke-cab { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
 .o_koroshi_envios .ke-cab h1 { margin: 0; font-size: 30px; font-weight: 750; }
 .o_koroshi_envios .ke-cab p { margin: 4px 0 22px; color: var(--ke-muted); }
+.o_koroshi_envios .ke-monitor { flex: 0 0 auto; margin-top: 2px; font-weight: 700; }
 .o_koroshi_envios .ke-tabs { display: flex; gap: 4px; margin: 0 0 14px; border-bottom: 1px solid var(--ke-line); }
 .o_koroshi_envios .ke-tab { min-width: 120px; padding: 11px 20px; border: 0; border-bottom: 3px solid transparent; background: transparent; color: var(--ke-muted); font-size: 17px; font-weight: 700; cursor: pointer; }
 .o_koroshi_envios .ke-tab.active { border-bottom-color: #315b85; color: #315b85; }
@@ -65,6 +67,8 @@
 
 @media (max-width: 760px) {
     .o_koroshi_envios main { padding: 18px 10px 40px; }
+    .o_koroshi_envios .ke-cab { align-items: stretch; flex-direction: column; }
+    .o_koroshi_envios .ke-monitor { width: 100%; margin: 0 0 12px; }
     .o_koroshi_envios .ke-export { align-items: stretch; flex-direction: column; }
     .o_koroshi_envios .ke-export-camps { align-items: stretch; flex-direction: column; }
     .o_koroshi_envios .ke-export-camps select, .o_koroshi_envios .ke-export-camps input, .o_koroshi_envios .ke-export-camps button { width: 100%; }

@@ -76,8 +76,10 @@ function tablaOperarios(ops, tv) {
 // Personas y horas estimadas por las cajas cerradas (v1.3): sale para cualquier dia, no solo hoy
 function personas(p, quien) {
     if (!p || !p.hp) { return ''; }
-    return '<h2>Personas y horas</h2><p class="km-nota">Estimado por las cajas cerradas: cada cuarto de hora, cuántas ' + quien +
-        ' cierran caja a la vez (huecos de hasta 30 min cuentan como trabajo). Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios (los que leen su tarjeta).</p>' +
+    var inactividad = p.inactividad_min || 5;
+    return '<h2>Personas y horas</h2><p class="km-nota">Estimado por las cajas cerradas: cada ' + quien +
+        ' cuenta como una persona mientras tenga actividad en los últimos ' + inactividad +
+        ' min. Si pasa más tiempo sin lectura deja de contar (puede ser un pico o un faltante). Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios.</p>' +
         '<div class="km-grid">' + [
             [p.personas_max + (p.personas_media ? ' <small>(media ' + String(p.personas_media).replace('.', ',') + ')</small>' : ''), 'personas (máximo a la vez)'],
             [hm(p.hp), 'horas-persona'],
@@ -323,7 +325,7 @@ var Monitor = AbstractAction.extend({
             [T.c, 'OUT cogiéndose ahora'],
             [T.p, 'OUT sin empezar'],
         ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
-        h += personas(r.personas, 'OUT (cada OUT abierta cuenta como una persona)');
+        h += personas(r.personas, 'OUT');
         h += tablaOperarios(r.operarios, false);
 
         // Totales

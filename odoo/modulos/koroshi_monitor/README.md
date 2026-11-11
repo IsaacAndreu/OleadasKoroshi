@@ -87,12 +87,27 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   de expedición; reúne todas las OUT del pedido; muestra transportista, **número de expedición XPO/GLS** y estado; y compara los
   **bultos declarados en Odoo** con las **cajas CJ distintas realmente preparadas**. Los botones *Copiar resumen* y
   *Compartir* dejan el texto listo para enviarlo por correo, Teams o WhatsApp. Tiene dos apartados:
-  - **Tendas:** Excel por fecha de **XPO SAS** o **GLS**, una línea por pedido.
-  - **Web:** Excel por fecha de **GLS** o **SEUR**, conservando las columnas de las hojas de Betty y añadiendo
-    bultos, cajas, número de expedición y comprobación. Según las muestras actuales, `W-000…` es SEUR y el resto
-    de `W-…` es GLS.
+  - **Tendas:** Excel por fecha de **XPO SAS** o **GLS**, una línea por pedido. En GLS solo salen expediciones
+    con etiqueta ya generada y se cuentan como máximo **5 etiquetas por pedido**; si hay más cajas, viajan juntadas.
+  - **Web:** Excel por fecha de **GLS** o **SEUR** con solo estas columnas: **Fecha de transferencia**,
+    **Documento origen**, **Referencia**, **Marca**, **Transportista** y **Done Quantity**. Según las muestras
+    actuales, `W-000…` es SEUR y el resto de `W-…` es GLS.
   Es solo lectura: no cambia pedidos ni expediciones en Odoo.
 - **v1.19.1:** en la vista de zonas, **cada OUT abierta cuenta como una persona** en «Personas y horas». Varias OUT
   abiertas dentro de la misma zona ya no se agrupan como si fueran una sola persona.
 - **v1.19.2:** el botón **«Consulta envíos / Excel»** aparece dentro de la cabecera del **Monitor picking**, tanto en
   Tiendas como en Zonas, para entrar directamente a la consulta y descarga de Excel.
+- **v1.19.3:** corrección del Kanban móvil de Odoo 13: carga TouchSwipe antes de abrir Inventario y evita que
+  el error **«this.$el.swipe is not a function»** tape o bloquee la pantalla en una PDA. Si el plugin no está
+  disponible, solo se desactiva el gesto lateral; las pestañas y el resto de Inventario continúan funcionando.
+- **v1.19.4:** una OUT solo cuenta como persona mientras tenga actividad en los últimos **5 minutos**. Cada
+  lectura/caja abre una ventana de cinco minutos y las ventanas consecutivas de la misma OUT se unen; los huecos
+  mayores por picos o faltantes no cuentan como persona ni como horas-persona.
+- **v1.19.5:** la descarga Excel de **Web** queda reducida exactamente a las seis columnas solicitadas por Betty,
+  sin bultos, cajas, número de expedición ni comprobación. En el Excel de **Tendas GLS** solo se incluyen
+  expediciones con etiqueta generada y se cuentan como máximo **5 etiquetas**; las cajas adicionales se consideran
+  juntadas. **XPO** mantiene el cálculo anterior.
+- **v1.19.6:** botón **«← Tornar al Monitor picking»** en la cabecera de Consulta de envíos, también adaptado para PDA.
+- **v1.19.7:** tabla **Operarios**: cuando dos operarios preparan la misma OUT a la vez (koroshi_operarios v2.5 /
+  koroshi_preparacion v3.4), las uds en curso de cada uno son solo las que ha leído él, no las del compañero. Sin
+  esas versiones, se cuentan como antes.

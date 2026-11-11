@@ -2,10 +2,14 @@
 <odoo>
     <template id="assets_backend" name="KOROSHI Monitor zonas assets" inherit_id="web.assets_backend">
         <xpath expr="." position="inside">
+            <!-- Odoo 13 carrega TouchSwipe de forma diferida al Kanban mobil. En algunes PDA el
+                 renderer arriba abans que el plugin i Inventari mostra "this.$el.swipe is not a function". -->
+            <script type="text/javascript" src="/web/static/lib/jquery.touchSwipe/jquery.touchSwipe.js"/>
             <link rel="stylesheet" type="text/css" href="/koroshi_monitor/static/src/css/monitor.css"/>
             <link rel="stylesheet" type="text/css" href="/koroshi_monitor/static/src/css/envios.css"/>
             <script type="text/javascript" src="/koroshi_monitor/static/src/js/monitor.js"/>
             <script type="text/javascript" src="/koroshi_monitor/static/src/js/envios.js"/>
+            <script type="text/javascript" src="/koroshi_monitor/static/src/js/mobile_swipe_guard.js"/>
         </xpath>
     </template>
 </odoo>
