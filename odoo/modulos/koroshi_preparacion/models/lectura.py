@@ -198,7 +198,17 @@ class Lectura(models.Model):
         return res
 
     @api.model
-    def estado(self, picking, employee=None):
+    def _completa(self, ml):
+        return float_compare(ml.qty_done, ml.product_uom_qty, precision_digits=3) >= 0 and not float_is_zero(
+            ml.product_uom_qty + ml.qty_done, precision_digits=3)
+
+    @api.model
+    def estado(self, picking, employee=None, ligero=False):
+        """El estado de la OUT para pintar la pantalla.
+        v3.5 ligero=True (tras leer / deshacer / refresco a dos): sin lo fijo de cada línea (nombre, talla, foto, EAN,
+        ubicación), solo [id, pedidas, leídas, caja, completa] en el orden de la ruta y los totales. En una OUT de 141
+        líneas pasa de ~46 KB a ~4 KB y el servidor no lee productos ni fotos. Si el cliente ve una línea que no
+        conoce (put_in_pack del compañero parte líneas), pide /cargar entero."""
         lineas = []
         siguiente = False
         fotos = {}
@@ -225,8 +235,12 @@ class Lectura(models.Model):
         for ml in ordenadas:
             pedidas = ml.product_uom_qty
             leidas = ml.qty_done
-            completa = float_compare(leidas, pedidas, precision_digits=3) >= 0 and not float_is_zero(
-                pedidas + leidas, precision_digits=3)
+            completa = self._completa(ml)
+            if ligero:
+                lineas.append([ml.id, round(pedidas), round(leidas), ml.result_package_id.name or '', completa])
+                if not siguiente and not completa and not ml.result_package_id:
+                    siguiente = ml.id
+                continue
             p = ml.product_id
             if p.id not in fotos:
                 # v3.1: solo el tamaño (bin_size), sin bajar la imagen; False = sin foto (no se pinta el icono de Odoo)
@@ -264,7 +278,9 @@ class Lectura(models.Model):
         zona = ''
         if picking.batch_id and not (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
             zona = picking.batch_id.name or ''
+        todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
         return {
+            'ligero': ligero,
             'out': {
                 'id': picking.id,
                 'name': picking.name,
@@ -280,7 +296,7 @@ class Lectura(models.Model):
             'cajas': [{'nombre': k, 'uds': round(v)} for k, v in sorted(cajas.items())],
             'pedidas': round(pedidas),
             'leidas': round(leidas),
-            'todo_leido': bool(lineas) and all(l['completa'] for l in lineas),
+            'todo_leido': todo_leido,
             # v3.3: preparar a dos
             'a_dos': len(equipo) > 1,
             'rol': 'ayudante' if ayudante else ('titular' if len(equipo) > 1 else 'solo'),

@@ -46,8 +46,12 @@ pendientes se parten por la mitad en el orden de la ruta: el titular hace la pri
 acaba sigue con lo que quede de la del otro desde el extremo más lejano. Tabla nueva koroshi.preparacion.equipo (dónde
 se partió y avisos). Al titular le sale una vez «X se ha unido: hace la segunda mitad (desde L..)». Si el compañero
 manda algo a faltantes o lo cambia de ubicación, al otro le sale un aviso. La tarea se marca «a dos» con el compañero.
+v3.5.0 (11/11/2026): más rápida en OUT grandes. Leer y Deshacer devuelven el estado ligero (solo cantidades y totales,
+~4 KB en vez de ~46 KB en 141 líneas, sin leer productos ni fotos) y la PDA parchea el suyo; el refresco a dos también.
+La lista de líneas se pinta solo si está abierta. La foto de la próxima línea pendiente se baja antes. Si el operario se
+queda 3 s en una línea, se buscan ya las alternativas de Faltante y al pulsarlo salen al momento.
 """,
-    'version': '13.0.3.4.0',
+    'version': '13.0.3.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

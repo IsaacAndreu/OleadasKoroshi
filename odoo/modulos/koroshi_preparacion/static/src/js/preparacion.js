@@ -1,6 +1,9 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.5: más rápida en OUT grandes. Leer y Deshacer reciben el estado ligero (solo cantidades y totales) y se
+ * parchea el que hay; la lista se pinta solo si está abierta; la foto de la línea siguiente se baja antes; las
+ * alternativas de Faltante se buscan solas si el operario se queda unos segundos en la misma línea.
  * v3.2: «Faltante» trabaja con la línea que se ve: dice dónde probar (la ubicación con stock más cercana) y se lee
  * la ubicación de donde se coge, o «Tampoco está aquí». Sin lista ni pantalla aparte (rutas de koroshi_faltantes).
  * v3.0.1: foto del producto (la misma imagen que enseña la app de código de barras) y flechas ◀ ▶ para ver la línea
@@ -28,6 +31,8 @@ var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lec
 var CLAVE_PDA = 'koroshi_preparacion_pda';
 var RE_CJ = /^CJ\d{9}$/i;
 var CONFIRMAR_MS = 4000;       // v3.2: «Tampoco está aquí» se pulsa dos veces
+var PRECARGA_ALT_MS = 3000;     // v3.5: parado en la misma línea 3 s -> se buscan ya las alternativas de Faltante
+var ALT_VALIDO_MS = 120000;     // v3.5: alternativas guardadas: se enseñan al momento durante 2 min
 var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 
@@ -79,6 +84,9 @@ var Pantalla = AbstractAction.extend({
         this.pda = this._idPda();
         this._enLinea = this._onEnLinea.bind(this);
         this._fueraDeLinea = this._sinConexion.bind(this);
+        this.altCache = {};            // v3.5: {move_line_id: {t, leidas, r}} alternativas de Faltante ya buscadas
+        this.fotosBajadas = {};        // v3.5: fotos ya pedidas al navegador
+        this.listaSucia = true;        // v3.5: la lista de líneas se pinta al abrirla
     },
 
     willStart: function () {
@@ -109,7 +117,7 @@ var Pantalla = AbstractAction.extend({
             self.timerDos = setInterval(function () {
                 if (self.estado && self.estado.a_dos && self.modo === 'leer' && !self.enviando && !self.cola.length &&
                         !self.sinRed) {
-                    self._recargar();
+                    self._recargar(null, true);   // v3.5: ligero
                 }
             }, A_DOS_MS);
             self._foco();
@@ -133,6 +141,7 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerVolver);
         clearTimeout(this.timerConfirmar);
         clearInterval(this.timerDos);
+        clearTimeout(this.timerAlt);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -160,6 +169,32 @@ var Pantalla = AbstractAction.extend({
 
     _out: function () {
         return this.estado && this.estado.out;
+    },
+
+    // v3.5: estado ligero -> se parchea el que hay. Devuelve false si no cuadra (líneas nuevas, partidas o en otro
+    // orden): entonces hay que cargar la OUT entera.
+    _aplicar: function (nuevo) {
+        if (!nuevo) { return true; }
+        if (!nuevo.ligero) { this.estado = nuevo; return true; }
+        var viejo = this.estado;
+        var din = nuevo.lineas || [];
+        if (!viejo || !viejo.lineas || viejo.lineas.length !== din.length) { return false; }
+        for (var i = 0; i < din.length; i++) {
+            if (viejo.lineas[i].id !== din[i][0]) { return false; }
+        }
+        var lineas = viejo.lineas;
+        din.forEach(function (d, j) {
+            var l = lineas[j];
+            l.pedidas = d[1];
+            l.leidas = d[2];
+            l.caja = d[3];
+            l.completa = d[4];
+        });
+        var e = _.extend({}, nuevo);
+        e.lineas = lineas;
+        e.ligero = false;
+        this.estado = e;
+        return true;
     },
 
     // ------------------------------------------------------------ lecturas
@@ -207,7 +242,8 @@ var Pantalla = AbstractAction.extend({
         }}, {shadow: true}).then(function (r) {
             self.cola.shift();
             self.enviando = false;
-            if (r && r.estado) { self.estado = r.estado; }
+            var cuadra = !(r && r.estado) || self._aplicar(r.estado);
+            if (!cuadra) { self._recargar(); }   // v3.5: algo ha cambiado de forma (p. ej. la caja del compañero)
             if (item.tipo === 'caja') { self._trasCaja(r); } else { self._trasLeer(r); }
             self._pintar();
             self._enviar();
@@ -343,7 +379,7 @@ var Pantalla = AbstractAction.extend({
             picking_id: this._out().id, employee_id: this.operario ? this.operario.id : false,
         }}).then(function (r) {
             self.enviando = false;
-            if (r && r.estado) { self.estado = r.estado; }
+            if (r && r.estado && !self._aplicar(r.estado)) { self._recargar(); }   // v3.5: ligero
             if (r && r.ok && r.linea_id) { self.verId = r.linea_id; }   // v3.0.1: se ve la línea deshecha
             self._pintar();
             self._aviso((r && r.msg) || 'Error', r && r.ok ? 'info' : 'mal');
@@ -381,14 +417,14 @@ var Pantalla = AbstractAction.extend({
         this.trigger_up('history_back');
     },
 
-    _recargar: function (despues) {
+    _recargar: function (despues, ligero) {
         var self = this;
         if (!this._out()) { return; }
         return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id,
-            employee_id: this.operario ? this.operario.id : false}}, {shadow: true})
+            employee_id: this.operario ? this.operario.id : false, ligero: !!ligero}}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.ok) { return; }
-                self.estado = r.estado;
+                if (!self._aplicar(r.estado)) { return self._recargar(despues); }   // v3.5: no cuadra -> entera
                 if (self.estado.out.estado === 'done' || self.estado.out.estado === 'cancel') {
                     // validada desde Faltante: vuelta a Lecturas («¡Hecho!» y la siguiente)
                     self._capa('✓ ' + self.estado.out.name + (self.estado.out.estado === 'done' ? ' validada' : ' cancelada'), true);
@@ -434,36 +470,84 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja_faltante').show();
         this.$('.o_kp_hoja').show();
         this._pintar();
-        return this._rpc({route: '/koroshi/faltantes/buscar', params: {move_line_id: l.id}}).then(function (r) {
-            if (self.modo !== 'faltante') { return; }
-            self.$('.o_kp_f_cargando').hide();
-            if (!r || !r.ok || !r.linea) { return self._avisoFaltante((r && r.msg) || 'No se ha podido buscar.', 'mal'); }
-            var lin = r.linea;
-            if (lin.motivo) { return self._avisoFaltante(lin.motivo, 'mal'); }
-            self.faltante.listo = true;
-            self.$('.o_kp_f_no_esta').text('No está en ' + lin.ubicacion + ' · ' + lin.pendiente +
-                                           (lin.pendiente === 1 ? ' ud' : ' uds'));
-            var alt = (lin.alternativas || []).slice(0, MAX_ALTERNATIVAS);
-            var $ol = self.$('.o_kp_f_alternativas').empty();
-            alt.forEach(function (a, i) {
-                var $li = $('<li/>');
-                $('<span class="o_kp_f_alt_ubi"/>').text(a.nombre).appendTo($li);
-                $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' : '') + a.libre +
-                    (a.libre === 1 ? ' ud' : ' uds')).appendTo($li);
-                $ol.append($li);
+        // v3.5: si ya se habían buscado (el operario estaba parado en esta línea), se ven al momento; igualmente se
+        // vuelven a pedir por si ha cambiado el stock libre
+        var guardada = this.altCache[l.id];
+        var fresca = !!guardada && guardada.leidas === l.leidas && Date.now() - guardada.t < ALT_VALIDO_MS;
+        if (fresca) { this._mostrarAlternativas(guardada.r, l.id); }
+        return this._rpc({route: '/koroshi/faltantes/buscar', params: {move_line_id: l.id}}, {shadow: fresca})
+            .then(function (r) {
+                if (r && r.ok) { self.altCache[l.id] = {t: Date.now(), leidas: l.leidas, r: r}; }
+                self._mostrarAlternativas(r, l.id);
+            }).guardedCatch(function (err) {
+                if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+                if (self.modo !== 'faltante' || fresca) { return; }
+                self.$('.o_kp_f_cargando').hide();
+                if (self._esSinConexion(err)) { self._cerrarFaltante(); return self._sinConexion(); }
+                self._avisoFaltante(self._mensajeError(err), 'mal');
             });
-            self.$('.o_kp_f_prueba').toggle(!!alt.length);
-            self.$('.o_kp_f_sin_alt').toggle(!alt.length);
-            self.$('.o_kp_f_nada').show();
-            self._sinConfirmar();
-            self._foco();
-        }).guardedCatch(function (err) {
-            if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
-            if (self.modo !== 'faltante') { return; }
-            self.$('.o_kp_f_cargando').hide();
-            if (self._esSinConexion(err)) { self._cerrarFaltante(); return self._sinConexion(); }
-            self._avisoFaltante(self._mensajeError(err), 'mal');
+    },
+
+    // v3.5: pinta las alternativas de Faltante (de la búsqueda o de las ya guardadas)
+    _mostrarAlternativas: function (r, lineaId) {
+        var f = this.faltante;
+        if (this.modo !== 'faltante' || !f || f.linea.id !== lineaId || f.ocupado) { return; }
+        this.$('.o_kp_f_cargando').hide();
+        if (!r || !r.ok || !r.linea) { return this._avisoFaltante((r && r.msg) || 'No se ha podido buscar.', 'mal'); }
+        var lin = r.linea;
+        if (lin.motivo) { return this._avisoFaltante(lin.motivo, 'mal'); }
+        f.listo = true;
+        this.$('.o_kp_f_no_esta').text('No está en ' + lin.ubicacion + ' · ' + lin.pendiente +
+                                       (lin.pendiente === 1 ? ' ud' : ' uds'));
+        var alt = (lin.alternativas || []).slice(0, MAX_ALTERNATIVAS);
+        var $ol = this.$('.o_kp_f_alternativas').empty();
+        alt.forEach(function (a, i) {
+            var $li = $('<li/>');
+            $('<span class="o_kp_f_alt_ubi"/>').text(a.nombre).appendTo($li);
+            $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' : '') + a.libre +
+                (a.libre === 1 ? ' ud' : ' uds')).appendTo($li);
+            $ol.append($li);
         });
+        this.$('.o_kp_f_prueba').toggle(!!alt.length);
+        this.$('.o_kp_f_sin_alt').toggle(!alt.length);
+        this.$('.o_kp_f_nada').show();
+        if (!this.confirmarNada) { this._sinConfirmar(); }
+        this._foco();
+    },
+
+    // v3.5: el operario lleva unos segundos en la misma línea sin leer -> puede que no la encuentre: se buscan ya
+    // las alternativas, para que «Faltante» las enseñe al momento
+    _precargarAlternativas: function (l) {
+        var self = this;
+        clearTimeout(this.timerAlt);
+        if (!l || l.completa || l.caja) { return; }
+        var guardada = this.altCache[l.id];
+        if (guardada && guardada.leidas === l.leidas && Date.now() - guardada.t < ALT_VALIDO_MS) { return; }
+        this.timerAlt = setTimeout(function () {
+            if (self.modo !== 'leer' || self.sinRed || self.enviando || self.cola.length || self._idVisto() !== l.id) {
+                return;
+            }
+            self._rpc({route: '/koroshi/faltantes/buscar', params: {move_line_id: l.id}}, {shadow: true})
+                .then(function (r) {
+                    if (r && r.ok) { self.altCache[l.id] = {t: Date.now(), leidas: l.leidas, r: r}; }
+                }).guardedCatch(function (err) {
+                    if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+                });
+        }, PRECARGA_ALT_MS);
+    },
+
+    // v3.5: baja ya la foto de la próxima línea pendiente (al llegar a ella sale sin hueco en blanco)
+    _precargarFoto: function (e, sig) {
+        var pos = e.lineas.indexOf(sig);
+        for (var i = pos + 1; i < e.lineas.length; i++) {
+            var l = e.lineas[i];
+            if (l.completa || l.caja) { continue; }
+            if (l.producto_id && l.tiene_foto !== false && !this.fotosBajadas[l.producto_id]) {
+                this.fotosBajadas[l.producto_id] = true;
+                (new Image()).src = '/web/image/product.product/' + l.producto_id + '/image_256';
+            }
+            return;
+        }
     },
 
     _onKeydownFaltante: function (ev) {
@@ -633,6 +717,7 @@ var Pantalla = AbstractAction.extend({
         var $l = this.$('.o_kp_lineas');
         var abrir = !$l.is(':visible');
         $l.toggle(abrir);
+        if (abrir && this.listaSucia) { this._pintarLineas(true); }   // v3.5: se pinta al abrirla
         this.$('.o_kp_ver_lineas').attr('aria-expanded', abrir ? 'true' : 'false');
         this._pintarBotonLineas();
     },
@@ -759,6 +844,12 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_ir_pendiente').text(e.todo_leido ? 'Volver al resumen ▸' : 'Ir a la que toca ▸')
                 .toggle(!esLaQueToca);
             this.$('.o_kp_completa').hide();
+            if (sig.producto_id) { this.fotosBajadas[sig.producto_id] = true; }
+            this._precargarFoto(e, sig);           // v3.5
+            if (this.modo === 'leer' && this.altVista !== sig.id + ':' + sig.leidas) {
+                this.altVista = sig.id + ':' + sig.leidas;
+                this._precargarAlternativas(sig);  // v3.5
+            }
         } else {
             this.$('.o_kp_siguiente').hide();
             this.$('.o_kp_completa_texto').text(e.todo_leido
@@ -798,9 +889,20 @@ var Pantalla = AbstractAction.extend({
         }
     },
 
-    _pintarLineas: function () {
+    _pintarLineas: function (forzar) {
         var e = this.estado;
-        var $l = this.$('.o_kp_lineas').empty();
+        var $l = this.$('.o_kp_lineas');
+        // v3.5: cerrada no se pinta (con 100+ líneas cada lectura repintaba todo); se pinta al abrirla
+        this.listaSucia = !forzar && !$l.is(':visible');
+        if (!this.listaSucia) { this._llenarLineas($l.empty(), e); }
+        var $c = this.$('.o_kp_cajas').empty();
+        if (e.cajas.length) {
+            $c.text('Cajas cerradas: ' + e.cajas.map(function (c) { return c.nombre + ' (' + c.uds + ')'; }).join(', '));
+        }
+        this._pintarBotonLineas();
+    },
+
+    _llenarLineas: function ($l, e) {
         e.lineas.forEach(function (l) {
             var $li = $('<li/>').attr('data-id', l.id).toggleClass('o_kp_hecha', l.completa)
                 .toggleClass('o_kp_ahora', l.id === e.siguiente_id);
@@ -818,11 +920,6 @@ var Pantalla = AbstractAction.extend({
             $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
             $l.append($li);
         });
-        var $c = this.$('.o_kp_cajas').empty();
-        if (e.cajas.length) {
-            $c.text('Cajas cerradas: ' + e.cajas.map(function (c) { return c.nombre + ' (' + c.uds + ')'; }).join(', '));
-        }
-        this._pintarBotonLineas();
     },
 
     _pintarBotonLineas: function () {

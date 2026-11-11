@@ -1,7 +1,23 @@
-# KOROSHI Preparación en Lecturas (v3.4.0, 11/11/2026)
+# KOROSHI Preparación en Lecturas (v3.5.0, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.5.0: más rápida en OUT grandes (11/11/2026)
+
+Sale del plan de rendimiento del 10/11 (`bin/versiones/20261110_PLAN_preparacion_v3.3_rendimiento.md`).
+
+- **Lectura ligera.** `leer` y `deshacer` (y el refresco de cada 10 s a dos) devuelven solo
+  `[id, pedidas, leídas, caja, completa]` de cada línea, en el orden de la ruta, y los totales. Nada de nombre, talla,
+  foto, EAN ni ubicación: el servidor no lee productos ni fotos. En una OUT de 141 líneas, ~4 KB en vez de ~46 KB.
+  La PDA parchea su estado; si ve una línea que no conoce (la caja del compañero parte líneas), carga la OUT entera.
+  `cargar`, `caja` y `validar` siguen devolviendo el estado entero.
+- **Lista de líneas** («Ver líneas»): se pinta solo si está abierta, y al abrirla.
+- **Foto**: se baja antes la de la próxima línea pendiente; al llegar a ella ya no hay hueco en blanco.
+- **Faltante**: si el operario se queda 3 s en una línea sin leer, se buscan ya las alternativas (en segundo plano).
+  Al pulsar «Faltante» salen al momento y se vuelven a pedir por si ha cambiado el stock. Valen 2 minutos.
+
+Nada cambia en lo que se escribe en Odoo.
 
 ## v3.4.0: preparar a dos, segunda parte (11/11/2026)
 
