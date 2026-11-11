@@ -65,11 +65,22 @@
 .o_koroshi_envios .ke-mono { font-family: Consolas, monospace; }
 .o_koroshi_envios .ke-nota { margin: 18px 4px; color: var(--ke-muted); font-size: 12px; }
 
+.o_koroshi_envios .ke-extra { margin-bottom: 14px; padding: 16px 18px; border: 1px solid #c9d6e8; border-radius: 12px; background: #f3f7fc; }
+.o_koroshi_envios .ke-extra-form { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.o_koroshi_envios .ke-extra h2 { margin: 0; font-size: 18px; }
+.o_koroshi_envios .ke-extra-form p { margin: 3px 0 0; color: var(--ke-muted); font-size: 13px; }
+.o_koroshi_envios .ke-extra-texto { min-width: 210px !important; }
+.o_koroshi_envios .ke-extra-lista { margin-top: 12px; }
+.o_koroshi_envios .ke-extra-lista .ke-tabla { padding: 0; background: #fff; border: 1px solid var(--ke-line); border-radius: 8px; }
+.o_koroshi_envios .ke-extra-lista small { color: var(--ke-muted); }
+.o_koroshi_envios .ke-extra-titulo { margin: 0 0 6px; font-weight: 700; }
+.o_koroshi_envios .ke-extra-vacio { margin: 0; color: var(--ke-muted); font-size: 13px; }
+
 @media (max-width: 760px) {
     .o_koroshi_envios main { padding: 18px 10px 40px; }
     .o_koroshi_envios .ke-cab { align-items: stretch; flex-direction: column; }
     .o_koroshi_envios .ke-monitor { width: 100%; margin: 0 0 12px; }
-    .o_koroshi_envios .ke-export { align-items: stretch; flex-direction: column; }
+    .o_koroshi_envios .ke-export, .o_koroshi_envios .ke-extra-form { align-items: stretch; flex-direction: column; }
     .o_koroshi_envios .ke-export-camps { align-items: stretch; flex-direction: column; }
     .o_koroshi_envios .ke-export-camps select, .o_koroshi_envios .ke-export-camps input, .o_koroshi_envios .ke-export-camps button { width: 100%; }
     .o_koroshi_envios .ke-search, .o_koroshi_envios .ke-pedido-cab { flex-direction: column; }

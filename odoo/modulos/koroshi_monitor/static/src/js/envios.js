@@ -24,6 +24,8 @@ var ConsultaEnvios = AbstractAction.extend({
         'click .ke-copiar': '_onCopiar',
         'click .ke-compartir': '_onCompartir',
         'click a.ke-out': '_onOut',
+        'submit .ke-extra-form': '_onAnadir',
+        'click .ke-extra-quitar': '_onQuitar',
     },
 
     init: function () {
@@ -33,6 +35,7 @@ var ConsultaEnvios = AbstractAction.extend({
         this.transportistas = {tiendas: 'xpo', web: 'gls'};
         this.desde = this._hoy();
         this.hasta = this.desde;
+        this.extras = [];
     },
 
     _hoy: function () {
@@ -46,6 +49,7 @@ var ConsultaEnvios = AbstractAction.extend({
         return this._super.apply(this, arguments).then(function () {
             self._pintarInicio();
             self.$('.ke-buscar').focus();
+            self._cargarExtras();
         });
     },
 
@@ -61,19 +65,123 @@ var ConsultaEnvios = AbstractAction.extend({
             '<option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option><option value="seur"' + (transportista === 'seur' ? ' selected' : '') + '>SEUR</option>';
         return '<main><div class="ke-cab"><div><h1>Consulta de envíos</h1>' +
             '<p>Pedido, bultos y número de expedición, en pantalla o en Excel.</p></div>' +
-            '<button type="button" class="btn btn-secondary ke-monitor">← Tornar al Monitor picking</button></div>' +
-            '<nav class="ke-tabs"><button type="button" class="ke-tab' + (tiendas ? ' active' : '') + '" data-apartado="tiendas">Tendas</button>' +
+            '<button type="button" class="btn btn-secondary ke-monitor">← Volver al Monitor picking</button></div>' +
+            '<nav class="ke-tabs"><button type="button" class="ke-tab' + (tiendas ? ' active' : '') + '" data-apartado="tiendas">Tiendas</button>' +
             '<button type="button" class="ke-tab' + (!tiendas ? ' active' : '') + '" data-apartado="web">Web</button></nav>' +
-            '<section class="ke-export"><div><h2>Descargar Excel de ' + (tiendas ? 'tendas' : 'pedidos web') + '</h2>' +
-            '<p>' + (tiendas ? 'Tria XPO SAS o GLS.' : 'Tria GLS o SEUR.') + ' Pots descarregar un dia o un rang de dates.</p></div>' +
+            '<section class="ke-export"><div><h2>Descargar Excel de ' + (tiendas ? 'tiendas' : 'pedidos web') + '</h2>' +
+            '<p>' + (tiendas ? 'Elige XPO SAS o GLS. Salen los pedidos con la etiqueta del transportista creada en esas fechas.' : 'Elige GLS o SEUR.') + ' Puedes descargar un día o un rango de fechas.</p></div>' +
             '<div class="ke-export-camps"><label>Transportista<select class="ke-export-control ke-export-transport">' + opciones + '</select></label>' +
             '<label>Desde<input class="ke-export-control ke-export-desde" type="date" value="' + e(this.desde) + '"></label>' +
             '<label>Hasta<input class="ke-export-control ke-export-hasta" type="date" value="' + e(this.hasta) + '"></label>' +
             '<button class="btn btn-success ke-excel" type="button">Descargar Excel</button></div></section>' +
+            '<section class="ke-extra"><form class="ke-extra-form"><div><h2>Añadir un pedido u OUT al Excel de un día</h2>' +
+            '<p>Si al Excel le falta algo (por ejemplo, de un día anterior), escríbelo aquí y saldrá junto al resto de ese día.</p></div>' +
+            '<div class="ke-export-camps"><label>Pedido u OUT<input class="ke-extra-texto" type="text" autocomplete="off" placeholder="' +
+            (tiendas ? 'S-6665004126 u OUT/24601' : 'W-… u OUT/…') + '"></label>' +
+            '<label>Día<input class="ke-extra-dia" type="date" value="' + e(this.desde) + '"></label>' +
+            '<button class="btn btn-primary ke-extra-anadir" type="submit">Añadir</button></div></form>' +
+            '<div class="ke-extra-lista">' + this._htmlExtras() + '</div></section>' +
             '<form class="ke-form"><label for="ke-buscar">¿Qué quieres buscar?</label>' +
             '<div class="ke-search"><input id="ke-buscar" class="ke-buscar" type="search" autocomplete="off" ' +
             'placeholder="Pedido, OUT, tienda o nº de expedición" value="' + e(texto || '') + '">' +
             '<button class="btn btn-primary" type="submit">Buscar</button></div></form>';
+    },
+
+    _htmlExtras: function () {
+        var extras = this.extras || [];
+        var rango = this.desde === this.hasta ? 'el ' + this._fechaCorta(this.desde) :
+            'del ' + this._fechaCorta(this.desde) + ' al ' + this._fechaCorta(this.hasta);
+        if (!extras.length) {
+            return '<p class="ke-extra-vacio">No hay nada añadido a mano ' + e(rango) + '.</p>';
+        }
+        var h = '<p class="ke-extra-titulo">Añadido a mano ' + e(rango) + ' (' + extras.length + ')</p>' +
+            '<div class="ke-tabla"><table><thead><tr><th>Día</th><th>Pedido</th><th>OUT</th><th>Excel</th>' +
+            '<th>Estado</th><th>Nº expedición</th><th>Añadido por</th><th></th></tr></thead><tbody>';
+        extras.forEach(function (x) {
+            h += '<tr><td>' + e(x.dia) + '</td><td>' + e(x.pedido || '—') + '</td>' +
+                '<td><a class="ke-out" data-id="' + x.out_id + '" href="/web#id=' + x.out_id + '&model=stock.picking&view_type=form&cids=8">' + e(x.out) + '</a></td>' +
+                '<td>' + e(x.transportista) + '</td><td>' + e(x.estado) + '</td><td class="ke-mono">' + e(x.expedicion || '—') + '</td>' +
+                '<td>' + e(x.usuario) + '<small> ' + e(x.cuando) + '</small></td>' +
+                '<td><button type="button" class="btn btn-sm btn-outline-danger ke-extra-quitar" data-id="' + x.id + '">Quitar</button></td></tr>';
+        });
+        return h + '</tbody></table></div>';
+    },
+
+    _fechaCorta: function (iso) {
+        var partes = String(iso || '').split('-');
+        return partes.length === 3 ? partes[2] + '/' + partes[1] + '/' + partes[0] : iso;
+    },
+
+    _pintarExtras: function () {
+        this.$('.ke-extra-lista').html(this._htmlExtras());
+    },
+
+    _cargarExtras: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi_monitor/envios_extra/lista', params: {
+            apartado: this.apartado, desde: this.desde, hasta: this.hasta,
+        }}).then(function (respuesta) {
+            self.extras = respuesta.extras || [];
+            self._pintarExtras();
+        });
+    },
+
+    _onAnadir: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var texto = String(this.$('.ke-extra-texto').val() || '').trim();
+        var dia = this.$('.ke-extra-dia').val();
+        if (texto.length < 3) {
+            this.do_warn('Falta información', 'Escribe el pedido o la OUT.');
+            return;
+        }
+        if (!dia) {
+            this.do_warn('Falta información', 'Elige el día.');
+            return;
+        }
+        // La lista de abajo enseña el día al que se añade.
+        this.desde = dia;
+        this.hasta = dia;
+        this.$('.ke-export-desde').val(dia);
+        this.$('.ke-export-hasta').val(dia);
+        this.$('.ke-extra-anadir').prop('disabled', true);
+        return this._rpc({route: '/koroshi_monitor/envios_extra/anadir', params: {
+            apartado: this.apartado, transportista: this.transportistas[this.apartado],
+            texto: texto, dia: dia, desde: dia, hasta: dia,
+        }}).then(function (respuesta) {
+            self.$('.ke-extra-anadir').prop('disabled', false);
+            if (respuesta.error) {
+                self.do_warn('No se ha añadido', respuesta.error);
+                return;
+            }
+            self.extras = respuesta.extras || [];
+            self._pintarExtras();
+            self.$('.ke-extra-texto').val('').focus();
+            if ((respuesta.nuevas || []).length) {
+                self.do_notify('Añadido al ' + self._fechaCorta(dia), 'OUT: ' + respuesta.nuevas.join(', '));
+            }
+            if ((respuesta.repetidas || []).length) {
+                self.do_warn('Ya estaba añadido', 'OUT: ' + respuesta.repetidas.join(', '));
+            }
+        }).guardedCatch(function () {
+            self.$('.ke-extra-anadir').prop('disabled', false);
+        });
+    },
+
+    _onQuitar: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var id = parseInt(ev.currentTarget.getAttribute('data-id'), 10);
+        var fila = _.findWhere(this.extras || [], {id: id});
+        if (!fila || !window.confirm('¿Quitar ' + fila.out + ' del Excel del ' + fila.dia + '? (la OUT no se toca)')) {
+            return;
+        }
+        return this._rpc({route: '/koroshi_monitor/envios_extra/quitar', params: {
+            extra_id: id, apartado: this.apartado, desde: this.desde, hasta: this.hasta,
+        }}).then(function (respuesta) {
+            self.extras = respuesta.extras || [];
+            self._pintarExtras();
+        });
     },
 
     _pintarInicio: function () {
@@ -95,8 +203,10 @@ var ConsultaEnvios = AbstractAction.extend({
         ev.preventDefault();
         this.apartado = ev.currentTarget.getAttribute('data-apartado') === 'web' ? 'web' : 'tiendas';
         this.resultados = [];
+        this.extras = [];
         this._pintarInicio();
         this.$('.ke-buscar').focus();
+        this._cargarExtras();
     },
 
     _onExportControl: function (ev) {
@@ -105,8 +215,15 @@ var ConsultaEnvios = AbstractAction.extend({
             this.transportistas[this.apartado] = el.value;
         } else if (el.classList.contains('ke-export-desde')) {
             this.desde = el.value || this._hoy();
+            if (!this.hasta || this.hasta < this.desde) {
+                this.hasta = this.desde;
+                this.$('.ke-export-hasta').val(this.hasta);
+            }
+            this.$('.ke-extra-dia').val(this.desde);
+            this._cargarExtras();
         } else if (el.classList.contains('ke-export-hasta')) {
             this.hasta = el.value || this.desde;
+            this._cargarExtras();
         }
     },
 

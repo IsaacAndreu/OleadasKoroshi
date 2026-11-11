@@ -1,8 +1,8 @@
 odoo.define('koroshi_monitor.mobile_swipe_guard', function (require) {
 'use strict';
 
-// El include mobil del nucli defineix _enableSwipe. Exigir-lo com a dependencia garanteix
-// que aquest guard s'aplica despres del codi original, independentment de l'ordre d'assets.
+// El include movil del nucleo define _enableSwipe. Exigirlo como dependencia garantiza
+// que esta proteccion se aplica despues del codigo original, sea cual sea el orden de los assets.
 require('web.KanbanRendererMobile');
 var config = require('web.config');
 var KanbanRenderer = require('web.KanbanRenderer');
@@ -14,10 +14,10 @@ if (!config.device.isMobile) {
 KanbanRenderer.include({
     _enableSwipe: function () {
         if (!this.$el || typeof this.$el.swipe !== 'function') {
-            // Les pestanyes del Kanban continuen funcionant; nomes s'omet el gest lateral.
-            // No llancem una excepcio que tapi o bloquegi Inventari en una PDA.
+            // Las pestanas del Kanban siguen funcionando; solo se omite el gesto lateral.
+            // No se lanza una excepcion que tape o bloquee Inventario en una PDA.
             if (window.console && window.console.warn) {
-                window.console.warn('KOROSHI: TouchSwipe no disponible; gest lateral desactivat.');
+                window.console.warn('KOROSHI: TouchSwipe no disponible; gesto lateral desactivado.');
             }
             return;
         }

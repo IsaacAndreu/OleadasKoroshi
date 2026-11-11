@@ -66,20 +66,26 @@ v1.19.3: corrige el error movil "this.$el.swipe is not a function" de los Kanban
 TouchSwipe antes y protege Inventario si el plugin no estuviera disponible.
 v1.19.4: una OUT solo cuenta como persona durante los 5 minutos posteriores a su ultima actividad. Los huecos
 largos por picos o faltantes ya no inflan personas ni horas-persona.
-v1.19.5: el Excel Web contiene solo las seis columnas pedidas. En Tendas GLS solo salen expediciones
+v1.19.5: el Excel Web contiene solo las seis columnas pedidas. En Tiendas GLS solo salen expediciones
 con etiqueta generada y se cuentan como maximo cinco etiquetas por pedido; las cajas restantes van juntadas.
 v1.19.6: boton visible para volver de Consulta de envios al Monitor picking.
 v1.19.7: tabla Operarios: con dos operarios en la misma OUT (koroshi_operarios v2.5 / preparacion v3.4) cada uno
 cuenta en curso solo sus uds, no las del compañero. Con versiones anteriores, igual que antes.
+v1.20.0: Consulta de envios. Excel de Tiendas por la fecha de la ETIQUETA del transportista (adjunto
+LabelXPO_... / gls_label_... de la OUT), no por la de validacion: el 11 -> 11 saca todo lo etiquetado el 11 aunque
+el pedido sea del 9 o del 10. Columna "Fecha etiqueta" y "Observacion". Recuadro "Anadir un pedido u OUT al Excel
+de un dia" (Tiendas y Web): se guarda en el modelo nuevo koroshi.envio.extra, sale en el Excel de ese dia junto al
+resto y se puede quitar. Textos que estaban en catalan, en castellano.
 
-Solo lee: no cambia nada en Odoo.
+Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.19.7',
+    'version': '13.0.1.20.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
     'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_warehouse_map'],
     'data': [
+        'security/ir.model.access.csv',
         'views/assets.xml',
         'views/menu.xml',
     ],

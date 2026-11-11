@@ -87,7 +87,7 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   de expedición; reúne todas las OUT del pedido; muestra transportista, **número de expedición XPO/GLS** y estado; y compara los
   **bultos declarados en Odoo** con las **cajas CJ distintas realmente preparadas**. Los botones *Copiar resumen* y
   *Compartir* dejan el texto listo para enviarlo por correo, Teams o WhatsApp. Tiene dos apartados:
-  - **Tendas:** Excel por fecha de **XPO SAS** o **GLS**, una línea por pedido. En GLS solo salen expediciones
+  - **Tiendas:** Excel por fecha de **XPO SAS** o **GLS**, una línea por pedido. En GLS solo salen expediciones
     con etiqueta ya generada y se cuentan como máximo **5 etiquetas por pedido**; si hay más cajas, viajan juntadas.
   - **Web:** Excel por fecha de **GLS** o **SEUR** con solo estas columnas: **Fecha de transferencia**,
     **Documento origen**, **Referencia**, **Marca**, **Transportista** y **Done Quantity**. Según las muestras
@@ -104,10 +104,27 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   lectura/caja abre una ventana de cinco minutos y las ventanas consecutivas de la misma OUT se unen; los huecos
   mayores por picos o faltantes no cuentan como persona ni como horas-persona.
 - **v1.19.5:** la descarga Excel de **Web** queda reducida exactamente a las seis columnas solicitadas por Betty,
-  sin bultos, cajas, número de expedición ni comprobación. En el Excel de **Tendas GLS** solo se incluyen
+  sin bultos, cajas, número de expedición ni comprobación. En el Excel de **Tiendas GLS** solo se incluyen
   expediciones con etiqueta generada y se cuentan como máximo **5 etiquetas**; las cajas adicionales se consideran
   juntadas. **XPO** mantiene el cálculo anterior.
-- **v1.19.6:** botón **«← Tornar al Monitor picking»** en la cabecera de Consulta de envíos, también adaptado para PDA.
+- **v1.19.6:** botón **«← Volver al Monitor picking»** (antes salía en catalán) en la cabecera de Consulta de envíos, también adaptado para PDA.
 - **v1.19.7:** tabla **Operarios**: cuando dos operarios preparan la misma OUT a la vez (koroshi_operarios v2.5 /
   koroshi_preparacion v3.4), las uds en curso de cada uno son solo las que ha leído él, no las del compañero. Sin
   esas versiones, se cuentan como antes.
+- **v1.20.0:** Consulta de envíos:
+  - **Excel de Tiendas por fecha de etiqueta.** Ya no va por la fecha de validación de la OUT sino por el día en
+    que se generó la **etiqueta del transportista**. Al generarla, XPO y GLS dejan el PDF como adjunto de la OUT
+    (`LabelXPO_<expedición>.pdf` / `gls_label_<código>.pdf`) y se usa su fecha de creación. Elegir del 11 al 11 saca
+    todos los pedidos etiquetados el 11, aunque se prepararan el 9 o el 10. Una expedición cuenta el día de su
+    **primera** etiqueta y arrastra todas las OUT con el mismo número (también la `-O` de outlet, que no tiene
+    adjunto propio). Comprobado el 11/11/2026: las 165 expediciones desde el 05/11 tienen ese adjunto; el 11/11 XPO
+    pasa de 8 pedidos (por validación) a 28 (por etiqueta), 20 de ellos preparados días antes. La primera columna se
+    llama «Fecha etiqueta» y hay una columna nueva «Observación». El Excel de Web sigue por fecha de validación.
+  - **Recuadro «Añadir un pedido u OUT al Excel de un día»** (en Tiendas y en Web). Se escribe el pedido
+    (`S-…`, `W-…`) o la OUT (`OUT/24601`, `24601`) y el día; con un pedido se añaden todas sus OUT. Cada OUT va al
+    Excel de su transportista (XPO/GLS según la OUT; en Web, `W-000…` SEUR y el resto GLS) y sale con el resto de
+    ese día, con «Añadido a mano» en «Observación» (solo Tiendas; el Excel Web conserva sus seis columnas). Debajo
+    se ve lo añadido en las fechas elegidas, quién y cuándo, con un botón **Quitar** por si fue un error (solo quita
+    la marca; la OUT no se toca). Se guarda en el modelo nuevo `koroshi.envio.extra` (permisos para Usuario de
+    Inventario).
+  - Textos de la pantalla que estaban en catalán («Tendas», «Tria…», «Tornar…»), ahora en castellano.
