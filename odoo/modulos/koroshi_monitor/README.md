@@ -128,3 +128,8 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
     la marca; la OUT no se toca). Se guarda en el modelo nuevo `koroshi.envio.extra` (permisos para Usuario de
     Inventario).
   - Textos de la pantalla que estaban en catalán («Tendas», «Tria…», «Tornar…»), ahora en castellano.
+- **v1.20.1:** «Personas y horas» en **zonas**: cada OUT es una persona **desde que empieza cada caja hasta que la
+  cierra**. Entre dos cajas de la misma OUT, hasta **20 min** (`PARADA_MIN`) se sigue cogiendo y cuenta; más, es un
+  pico o faltante y no cuenta. La primera caja de cada tramo empieza el tiempo típico entre cajas de ese día (mediana)
+  antes de cerrarse. Con la ventana fija de 5 min (v1.19.4) se perdía el tiempo entre cajas (mediana ~7 min) y las
+  u/h por persona salían infladas: Z-1111-, 167 u/h en lugar de ~114. Tiendas sigue igual.

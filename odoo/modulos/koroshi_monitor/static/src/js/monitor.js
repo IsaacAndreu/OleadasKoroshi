@@ -77,9 +77,15 @@ function tablaOperarios(ops, tv) {
 function personas(p, quien) {
     if (!p || !p.hp) { return ''; }
     var inactividad = p.inactividad_min || 5;
-    return '<h2>Personas y horas</h2><p class="km-nota">Estimado por las cajas cerradas: cada ' + quien +
-        ' cuenta como una persona mientras tenga actividad en los últimos ' + inactividad +
-        ' min. Si pasa más tiempo sin lectura deja de contar (puede ser un pico o un faltante). Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios.</p>' +
+    // v1.20.1: en zonas, una persona por OUT desde que empieza cada caja hasta que la cierra
+    var nota = p.zonas ?
+        'Estimado por las cajas cerradas: cada ' + quien + ' es una persona. Cuenta desde que empieza una caja hasta que la cierra ' +
+        '(la primera, ' + String(p.primera_caja_min || 0).replace('.', ',') + ' min antes: lo típico entre cajas ese día). ' +
+        'Si entre dos cajas pasan más de ' + (p.hueco_max_min || 20) + ' min, ese hueco no cuenta (pico o faltante).' :
+        'Estimado por las cajas cerradas: cada ' + quien + ' cuenta como una persona mientras tenga actividad en los últimos ' +
+        inactividad + ' min. Si pasa más tiempo sin lectura deja de contar (puede ser un pico o un faltante).';
+    return '<h2>Personas y horas</h2><p class="km-nota">' + nota +
+        ' Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios.</p>' +
         '<div class="km-grid">' + [
             [p.personas_max + (p.personas_media ? ' <small>(media ' + String(p.personas_media).replace('.', ',') + ')</small>' : ''), 'personas (máximo a la vez)'],
             [hm(p.hp), 'horas-persona'],
