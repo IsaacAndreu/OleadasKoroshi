@@ -7,6 +7,8 @@ from odoo import http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request
 
+from ..models.lectura import Ocupada
+
 
 def _msg(e):
     return getattr(e, 'name', False) or str(e)
@@ -62,6 +64,9 @@ class KoroshiPreparacion(http.Controller):
         picking = self._picking(picking_id)
         try:
             res = self._lectura().leer(picking, self._empleado(employee_id), codigo, id_lectura)
+        except Ocupada as e:
+            # v3.6: la PDA lo vuelve a mandar en un momento (mismo id_lectura): no se pierde
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'msg': _msg(e)}
         return self._con_estado(picking, res, self._empleado(employee_id), ligero=True)
@@ -71,6 +76,9 @@ class KoroshiPreparacion(http.Controller):
         picking = self._picking(picking_id)
         try:
             res = self._lectura().deshacer(picking, self._empleado(employee_id))
+        except Ocupada as e:
+            # v3.6: la PDA lo vuelve a mandar en un momento (mismo id_lectura): no se pierde
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'msg': _msg(e)}
         return self._con_estado(picking, res, self._empleado(employee_id), ligero=True)
@@ -80,6 +88,9 @@ class KoroshiPreparacion(http.Controller):
         picking = self._picking(picking_id)
         try:
             res = self._lectura().caja(picking, self._empleado(employee_id), codigo, id_lectura)
+        except Ocupada as e:
+            # v3.6: la PDA lo vuelve a mandar en un momento (mismo id_lectura): no se pierde
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'msg': _msg(e)}
         return self._con_estado(picking, res, self._empleado(employee_id))

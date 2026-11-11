@@ -5,7 +5,7 @@
         <div class="o_koroshi_preparacion">
             <div class="o_kp_offline" role="alert" style="display: none;">
                 <span aria-hidden="true">⚠</span>
-                <span>Sin conexión con Odoo. No leas nada: reintentando cada 5 s…</span>
+                <span>Sin conexión con Odoo. Puedes seguir leyendo: se guarda en la PDA y se manda al volver. Caja y Validar esperan.</span>
             </div>
             <div class="o_kp_app">
                 <!-- cabecera: volver, OUT, tienda, operario -->

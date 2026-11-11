@@ -1,7 +1,40 @@
-# KOROSHI Preparación en Lecturas (v3.5.0, 11/11/2026)
+# KOROSHI Preparación en Lecturas (v3.6.1, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.6.1: «Esperando conexión…» al momento (11/11/2026)
+
+Al perder la conexión, Caja y Validar cambian ya el texto (en la v3.6.0 lo hacían a la lectura siguiente).
+
+Pruebas de la v3.6 en Odoo real (11/11, Isaac2, OUT de prueba EFFEC/OUT/24749, 10 uds, cancelada al acabar):
+
+| Prueba | En la PDA | En Odoo |
+|---|---|---|
+| 6 lecturas seguidas | +1 al momento en cada una | 6 uds, 6 lecturas, ningún id repetido |
+| Odoo lento (8 s por lectura) | al momento; a los 5 s «Odoo va lento…»; Validar «Guardando lecturas…» | todo guardado |
+| Deshacer antes de guardar | −1 al momento | la deshecha no llega nunca |
+| App cerrada con 2 pendientes | al abrir, «Guardando 2 lecturas que quedaron…» | las 2, una sola vez |
+| Misma lectura dos veces a la vez | — | una guarda, la otra «ocupada» (se reintenta); reintentos «repetida»; 1 ud |
+| Sin red | cuenta y queda en la memoria; al volver se manda | 1 ud, sin duplicados |
+| Código de otro producto | espera a Odoo: «no es de este pedido» | no cuenta |
+
+## v3.6.0: no se queda colgada si Odoo va lento o se va la red (11/11/2026)
+
+- **La lectura cuenta al momento.** Si el código es de un producto de la OUT con uds pendientes, la PDA pita y suma +1
+  sin esperar a Odoo, y lo manda detrás (en cola, uno a uno, con `id_lectura`). Arriba: «⏳ N guardándose». Si Odoo la
+  rechaza, avisa «No se ha guardado …» y deja de contar (se pinta lo que dice Odoo). Los códigos que la PDA no conoce
+  (códigos alternativos, tarjetas, otros productos) esperan a Odoo como antes.
+- **Memoria de la PDA.** Las lecturas pendientes se guardan en `localStorage` (`koroshi_preparacion_cola`, por OUT).
+  Si se cierra la app o se reinicia la PDA, al abrir otra vez la preparación se mandan: las de esa OUT se ven sumadas;
+  las de otras OUT se mandan solas en segundo plano. Más de 24 h: no se mandan.
+- **Nunca colgada.** Cada petición tiene 20 s como máximo; si Odoo no contesta (o se está reiniciando, 5xx), se vuelve
+  a mandar con el mismo id (no cuenta dos veces). A los 5 s sale «Odoo va lento: lo leído se guarda igual».
+  «Otra PDA está guardando» (`que: 'ocupada'`, excepción `Ocupada`) se vuelve a probar sola en 1,5 s en vez de perder
+  la lectura; el bloqueo de la OUT va en un savepoint.
+- **Sin red** se sigue leyendo (lo que la PDA puede comprobar) y Deshacer quita lo aún no guardado. Caja y Validar
+  esperan a Odoo: «⏳ Esperando conexión…» / «⏳ Guardando lecturas…». Con lecturas por guardar y con red, «←» espera.
+- Sesión caducada: avisa y no pierde nada (queda en la PDA).
 
 ## v3.5.0: más rápida en OUT grandes (11/11/2026)
 

@@ -50,8 +50,16 @@ v3.5.0 (11/11/2026): más rápida en OUT grandes. Leer y Deshacer devuelven el e
 ~4 KB en vez de ~46 KB en 141 líneas, sin leer productos ni fotos) y la PDA parchea el suyo; el refresco a dos también.
 La lista de líneas se pinta solo si está abierta. La foto de la próxima línea pendiente se baja antes. Si el operario se
 queda 3 s en una línea, se buscan ya las alternativas de Faltante y al pulsarlo salen al momento.
+v3.6.0 (11/11/2026): no se queda colgada si Odoo va lento o se va la red. Cada lectura cuenta al momento en la PDA
+(pita y +1) y Odoo la guarda detrás; si la rechaza, avisa y la quita. Lo pendiente se guarda en la memoria de la PDA y
+se manda al volver (también si se cierra la app). Tiempo máximo de 20 s por petición: se vuelve a mandar con el mismo id.
+«Otra PDA está guardando» ya no pierde la lectura: se vuelve a probar sola. Sin red se sigue leyendo y deshaciendo lo
+no guardado; Caja y Validar dicen «Esperando conexión…» / «Guardando lecturas…».
+v3.6.1 (11/11/2026): al perder la conexión, Caja y Validar cambian ya a «Esperando conexión…» (antes, a la lectura
+siguiente). Probado en Odoo real: lectura al momento, Odoo lento, Deshacer sin guardar, app cerrada con pendientes,
+reintento simultáneo (una sola ud) y sin red.
 """,
-    'version': '13.0.3.5.0',
+    'version': '13.0.3.6.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
