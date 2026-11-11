@@ -58,8 +58,35 @@ no guardado; Caja y Validar dicen «Esperando conexión…» / «Guardando lectu
 v3.6.1 (11/11/2026): al perder la conexión, Caja y Validar cambian ya a «Esperando conexión…» (antes, a la lectura
 siguiente). Probado en Odoo real: lectura al momento, Odoo lento, Deshacer sin guardar, app cerrada con pendientes,
 reintento simultáneo (una sola ud) y sin red.
+v3.7.0 (11/11/2026): leer una ubicación lleva a su línea; «Poner cantidad» (varias uds de golpe, solo tras leer una con
+la pistola y sin pasar de lo que falta; Deshacer la quita entera); notas de la OUT arriba; los códigos de barras
+alternativos del artículo cuentan al momento; botón «Imprimir» para volver a sacar la etiqueta de caja (OUT + matrícula,
+sin reservar matrículas nuevas), la del transportista o el albarán.
+v3.7.1 (11/11/2026): corrige la v3.7.0, que no se podía actualizar (el método «cantidad» tapaba el campo «cantidad» de
+las lecturas); ahora se llama poner_cantidad.
+v3.7.2 (11/11/2026): «Imprimir» daba 403 en la etiqueta de caja y el albarán (faltaba la empresa de la OUT en la
+dirección del PDF); la etiqueta del transportista se abre en vez de descargarse.
+v3.8.0 (11/11/2026): aspecto nuevo (solo CSS): cabecera oscura, tarjeta con sombra y franja de color, ubicación en un
+bloque destacado, «Cogidas» en pastilla, flechas redondas, botones con relieve, líneas y avisos con franja de color.
+Mismos tamaños de letra y de botón (guantes). Incluye la v3.7.2.
+v3.9.0 (11/11/2026): sustituye el aspecto de la v3.8 (no instalada) por el estilo «etiqueta de estantería»: plano,
+negro sobre blanco, sin sombras ni emojis. Cabecera negra, barra de progreso a todo el ancho, la ubicación pintada como
+la etiqueta del rack (nave y hueco encima del código), foto de 150 px, talla en recuadro, cantidad en número grande con
+una barrita por ud, botones planos y lista de líneas con separadores.
+v3.9.1 (11/11/2026): las barritas por ud, la rueda de «Validando», la ✓ de las líneas y el icono de los avisos no se
+veían: Odoo esconde todo lo que lleva aria-hidden="true". Ahora llevan role="presentation".
+v3.9.2 (11/11/2026): ubicación con el hueco (lineal, palet, columna) y la caja KO en la misma línea y del mismo
+tamaño («L44 P17 C2 | KO_110626_032»); la letra baja sola hasta que cabe (30 px en 480 de ancho, 22 px en 360).
+Foto nítida (image_512 en vez de 256) y vertical 3:4, de 150 a 200 px de ancho.
+v3.9.3 (11/11/2026): «Poner cantidad» se ve siempre que faltan 2 o más (antes, solo tras leer una). Antes de leer la
+primera ud va en gris y al pulsarlo avisa «Lee primero una ud de X con la pistola».
+v3.10.0 (11/11/2026): todo en una pantalla de PDA (360×640) sin mover arriba y abajo: sin la barra de menús de Odoo en
+esta pantalla, cabecera y barra más bajas, «Sin caja» dentro de la barra, nota en 3 líneas como mucho, cantidad al lado
+de la foto, Caja y Validar en la misma fila.
+v3.11.0 (11/11/2026): abajo solo queda el campo «Leer producto o escribir EAN». Ver líneas e Imprimir etiqueta o
+albarán pasan al menú ☰ de la cabecera. Leer con el menú abierto lo cierra y la lectura cuenta.
 """,
-    'version': '13.0.3.6.1',
+    'version': '13.0.3.11.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

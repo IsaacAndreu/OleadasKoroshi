@@ -95,6 +95,26 @@ class KoroshiPreparacion(http.Controller):
             res = {'ok': False, 'msg': _msg(e)}
         return self._con_estado(picking, res, self._empleado(employee_id))
 
+    @http.route('/koroshi/preparacion/cantidad', type='json', auth='user')
+    def cantidad(self, picking_id=False, linea_id=False, cantidad=0, employee_id=False, id_lectura=False, **kw):
+        """v3.7: n uds de golpe en una línea ya comprobada con la pistola."""
+        picking = self._picking(picking_id)
+        try:
+            res = self._lectura().poner_cantidad(picking, self._empleado(employee_id), linea_id, cantidad, id_lectura)
+        except Ocupada as e:
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
+        except (UserError, ValidationError) as e:
+            res = {'ok': False, 'msg': _msg(e)}
+        return self._con_estado(picking, res, self._empleado(employee_id), ligero=True)
+
+    @http.route('/koroshi/preparacion/impresos', type='json', auth='user')
+    def impresos(self, picking_id=False, **kw):
+        """v3.7: etiqueta de caja, etiquetas del transportista y albarán de la OUT (para volver a imprimirlos)."""
+        picking = self._picking(picking_id)
+        if not picking:
+            return {'ok': False, 'msg': 'No se encuentra la OUT.'}
+        return {'ok': True, 'impresos': self._lectura().impresos(picking)}
+
     @http.route('/koroshi/preparacion/validar', type='json', auth='user')
     def validar(self, picking_id=False, employee_id=False, pedido_pendiente=False, **kw):
         picking = self._picking(picking_id)
