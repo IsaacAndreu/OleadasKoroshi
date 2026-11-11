@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Editable en Ajustes > Tecnico > Parametros del sistema. No se pisa al actualizar el modulo.
+         primera_linea = duena de una caja compartida la OUT de la linea de menor id (como el Monitor);
+         mas_uds = la OUT con mas uds dentro. -->
+    <data noupdate="1">
+        <record id="param_regla_dueno" model="ir.config_parameter">
+            <field name="key">koroshi_zonas.regla_dueno</field>
+            <field name="value">primera_linea</field>
+        </record>
+    </data>
+</odoo>

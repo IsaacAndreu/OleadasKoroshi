@@ -1,0 +1,216 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Ejecuciones ======================= -->
+    <record id="view_koroshi_zonas_ejecucion_tree" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.tree</field>
+        <field name="model">koroshi.zonas.ejecucion</field>
+        <field name="arch" type="xml">
+            <tree string="Ejecuciones de zonas" decoration-muted="medicion == 'sin_medir'"
+                  decoration-info="medicion == 'parcial'">
+                <field name="fecha"/>
+                <field name="prefijo"/>
+                <field name="modo"/>
+                <field name="medicion"/>
+                <field name="n_out" sum="OUT"/>
+                <field name="n_out_medidas" sum="OUT medidas" optional="hide"/>
+                <field name="cajas_previstas" sum="Previstas" optional="show"/>
+                <field name="cajas_estimadas" sum="Estimadas" optional="show"/>
+                <field name="cajas_reales" sum="Reales"/>
+                <field name="cajas_cerradas" sum="Cerradas"/>
+                <field name="cajas_compartidas" sum="Compartidas" optional="show"/>
+                <field name="pct_cajas_cerradas"/>
+                <field name="pct_outs_cerradas" optional="show"/>
+                <field name="medido_el" optional="hide"/>
+                <button name="action_medir" type="object" string="Medir" icon="fa-refresh"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_zonas_ejecucion_form" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.form</field>
+        <field name="model">koroshi.zonas.ejecucion</field>
+        <field name="arch" type="xml">
+            <form string="Ejecución de zonas">
+                <header>
+                    <button name="action_medir" type="object" string="Medir cajas reales" class="oe_highlight"/>
+                    <field name="medicion" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="prefijo"/>
+                            <field name="modo"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                            <field name="medido_el"/>
+                        </group>
+                        <group>
+                            <field name="n_out"/>
+                            <field name="n_out_medidas"/>
+                            <field name="n_out_cerradas"/>
+                            <field name="pct_outs_cerradas"/>
+                        </group>
+                        <group>
+                            <field name="cajas_previstas"/>
+                            <field name="cajas_estimadas"/>
+                            <field name="cajas_reales"/>
+                        </group>
+                        <group>
+                            <field name="cajas_cerradas"/>
+                            <field name="cajas_compartidas"/>
+                            <field name="pct_cajas_cerradas"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Informe de la medición">
+                            <field name="informe_medicion" nolabel="1"
+                                   style="font-family: monospace; white-space: pre; font-size: 12px;"/>
+                        </page>
+                        <page string="OUT">
+                            <field name="out_ids" nolabel="1"/>
+                        </page>
+                        <page string="Parámetros">
+                            <field name="parametros_medicion" nolabel="1" style="font-family: monospace;"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_zonas_ejecucion_search" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.search</field>
+        <field name="model">koroshi.zonas.ejecucion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="prefijo"/>
+                <field name="fecha"/>
+                <filter name="f_historico" string="Histórico" domain="[('modo', '=', 'historico')]"/>
+                <filter name="f_real" string="Real" domain="[('modo', '=', 'real')]"/>
+                <separator/>
+                <filter name="f_parcial" string="Medición en parte" domain="[('medicion', '=', 'parcial')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_dia" string="Día" context="{'group_by': 'fecha:day'}"/>
+                    <filter name="g_modo" string="Modo" context="{'group_by': 'modo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_zonas_ejecucion" model="ir.actions.act_window">
+        <field name="name">Ejecuciones de zonas</field>
+        <field name="res_model">koroshi.zonas.ejecucion</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Todavía no hay ejecuciones.</p>
+            <p>Usa «Medir desde el 22/10» para registrar y medir las agrupaciones Z- que ya hay.</p>
+        </field>
+    </record>
+
+    <!-- ======================= OUT de las ejecuciones ======================= -->
+    <record id="view_koroshi_zonas_ejecucion_out_tree" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.out.tree</field>
+        <field name="model">koroshi.zonas.ejecucion.out</field>
+        <field name="arch" type="xml">
+            <tree string="OUT de zonas" decoration-muted="not medida" decoration-success="cerrada"
+                  decoration-warning="causa == 'caja_compartida'">
+                <field name="fecha"/>
+                <field name="ejecucion_id" optional="hide"/>
+                <field name="zona"/>
+                <field name="picking_id"/>
+                <field name="tienda"/>
+                <field name="pedido" optional="show"/>
+                <field name="medida" invisible="1"/>
+                <field name="uds" sum="Uds"/>
+                <field name="litros" sum="Litros" optional="hide"/>
+                <field name="cajas_previstas" sum="Previstas"/>
+                <field name="prevision_conocida" optional="hide"/>
+                <field name="cajas_estimadas" sum="Estimadas"/>
+                <field name="cajas_reales" sum="Reales"/>
+                <field name="cajas_cerradas" sum="Cerradas"/>
+                <field name="cajas_compartidas" sum="Compartidas" optional="show"/>
+                <field name="cajas_ajenas" sum="Ajenas" optional="show"/>
+                <field name="uds_sin_caja" sum="Sin caja" optional="hide"/>
+                <field name="cerrada_estimada" optional="hide"/>
+                <field name="cerrada"/>
+                <field name="diferencia" sum="Diferencia"/>
+                <field name="causa"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_zonas_ejecucion_out_pivot" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.out.pivot</field>
+        <field name="model">koroshi.zonas.ejecucion.out</field>
+        <field name="arch" type="xml">
+            <pivot string="Cajas por día y zona">
+                <field name="fecha" interval="day" type="row"/>
+                <field name="zona" type="col"/>
+                <field name="cajas_reales" type="measure"/>
+                <field name="cajas_cerradas" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_zonas_ejecucion_out_graph" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.out.graph</field>
+        <field name="model">koroshi.zonas.ejecucion.out</field>
+        <field name="arch" type="xml">
+            <graph string="Causas de la diferencia" type="bar" stacked="True">
+                <field name="fecha" interval="day"/>
+                <field name="causa"/>
+            </graph>
+        </field>
+    </record>
+
+    <record id="view_koroshi_zonas_ejecucion_out_search" model="ir.ui.view">
+        <field name="name">koroshi.zonas.ejecucion.out.search</field>
+        <field name="model">koroshi.zonas.ejecucion.out</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="tienda"/>
+                <field name="pedido"/>
+                <field name="zona"/>
+                <filter name="f_medida" string="Medidas" domain="[('medida', '=', True)]"/>
+                <filter name="f_cerrada" string="En caja cerrada" domain="[('cerrada', '=', True)]"/>
+                <filter name="f_no_cerrada" string="No cerrada" domain="[('medida', '=', True), ('cerrada', '=', False)]"/>
+                <filter name="f_diferencia" string="Reales distintas de previstas" domain="[('diferencia', '!=', 0)]"/>
+                <filter name="f_compartida" string="Con caja compartida"
+                        domain="['|', ('cajas_compartidas', '>', 0), ('cajas_ajenas', '>', 0)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_dia" string="Día" context="{'group_by': 'fecha:day'}"/>
+                    <filter name="g_zona" string="Zona" context="{'group_by': 'zona'}"/>
+                    <filter name="g_causa" string="Causa" context="{'group_by': 'causa'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_zonas_ejecucion_out" model="ir.actions.act_window">
+        <field name="name">OUT de zonas medidas</field>
+        <field name="res_model">koroshi.zonas.ejecucion.out</field>
+        <field name="view_mode">pivot,tree,graph</field>
+        <field name="context">{'search_default_f_medida': 1}</field>
+    </record>
+
+    <!-- ======================= Medir el historico ======================= -->
+    <record id="action_koroshi_zonas_medir_historico" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: medir desde el 22/10</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">action = model.medir_historico()</field>
+    </record>
+
+    <menuitem id="menu_koroshi_zonas_root" name="KOROSHI Zonas" parent="stock.menu_stock_root" sequence="91"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_zonas_ejecucion" name="Ejecuciones" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_ejecucion" sequence="10"/>
+    <menuitem id="menu_koroshi_zonas_ejecucion_out" name="Cajas cerradas por día y zona" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_ejecucion_out" sequence="20"/>
+    <menuitem id="menu_koroshi_zonas_medir_historico" name="Medir desde el 22/10" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_medir_historico" sequence="90" groups="stock.group_stock_manager"/>
+</odoo>
