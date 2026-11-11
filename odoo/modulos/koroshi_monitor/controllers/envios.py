@@ -239,8 +239,9 @@ class KoroshiConsultaEnvios(http.Controller):
         f = self._formatos_excel(libro)
         hoja = libro.add_worksheet('Tiendas')
         grupos = self._agrupar(env, picks)
+        es_gls = etiqueta == 'GLS'
         cab = ['Fecha', 'Pedido', 'Tienda', 'OUT', 'Transportista', 'Nº expedición',
-               'Bultos Odoo', 'Cajas preparadas', 'Coincide']
+               'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide']
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS DE TIENDA · %s · %s' % (
                              etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
@@ -252,11 +253,15 @@ class KoroshiConsultaEnvios(http.Controller):
                 fecha = datetime.datetime.strptime(grupo['fecha'], '%d/%m/%Y %H:%M')
             except (TypeError, ValueError):
                 fecha = None
+            # GLS genera como maximo cinco etiquetas por expedicion. Si hay mas
+            # cajas fisicas, alguna viaja juntada bajo una de esas cinco etiquetas.
+            bultos = min(grupo['bultos'], 5) if es_gls and grupo['expediciones'] else grupo['bultos']
+            coincide = bultos == (min(grupo['cajas'], 5) if es_gls else grupo['cajas'])
             valores = [fecha, grupo['pedido'], grupo['tienda'], ', '.join([o['out'] for o in grupo['outs']]),
                        grupo['transportista'] or etiqueta, ', '.join(grupo['expediciones']),
-                       grupo['bultos'], grupo['cajas'], 'SÍ' if grupo['coincide'] else 'NO']
+                       bultos, grupo['cajas'], 'SÍ' if coincide else 'NO']
             formatos = [f['fecha'], f['txt'], f['wrap'], f['wrap'], f['txt'], f['txt'],
-                        f['num'], f['num'], f['ok'] if grupo['coincide'] else f['mal']]
+                        f['num'], f['num'], f['ok'] if coincide else f['mal']]
             for col, valor in enumerate(valores):
                 if valor is None:
                     hoja.write_blank(fila, col, None, formatos[col])
@@ -267,12 +272,15 @@ class KoroshiConsultaEnvios(http.Controller):
         hoja.write(total, 1, len(grupos), f['total_num'])
         for col in range(2, 6):
             hoja.write_blank(total, col, None, f['total'])
-        hoja.write(total, 6, sum([g['bultos'] for g in grupos]), f['total_num'])
+        hoja.write(total, 6, sum([
+            min(g['bultos'], 5) if es_gls and g['expediciones'] else g['bultos'] for g in grupos
+        ]), f['total_num'])
         hoja.write(total, 7, sum([g['cajas'] for g in grupos]), f['total_num'])
         hoja.write_blank(total, 8, None, f['total'])
-        hoja.write(total + 2, 0,
-                   'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.',
-                   f['nota'])
+        nota = ('Etiquetas GLS = solo expediciones con etiqueta generada, máximo 5 por pedido. '
+                'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
+                'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.')
+        hoja.write(total + 2, 0, nota, f['nota'])
         for col, ancho in enumerate([18, 20, 35, 24, 18, 24, 13, 16, 11]):
             hoja.set_column(col, col, ancho)
         hoja.freeze_panes(3, 0)
@@ -288,53 +296,33 @@ class KoroshiConsultaEnvios(http.Controller):
         f = self._formatos_excel(libro)
         hoja = libro.add_worksheet('Web')
         cab = ['Fecha de transferencia', 'Documento origen', 'Referencia', 'Marca', 'Transportista',
-               'Done Quantity', 'Bultos Odoo', 'Cajas preparadas', 'Nº expedición', 'Coincide']
+               'Done Quantity']
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS WEB · %s · %s' % (
                              etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
                              '%s - %s' % (dia_desde.strftime('%d/%m/%Y'), dia_hasta.strftime('%d/%m/%Y'))),
                          f['titulo'])
-        hoja.write_row(2, 0, cab, f['cab'])
+        hoja.write_row(1, 0, cab, f['cab'])
         unidades = {}
         for dato in env['stock.move.line'].sudo().read_group(
                 [('picking_id', 'in', picks.ids)], ['qty_done'], ['picking_id'], lazy=False):
             unidades[dato['picking_id'][0]] = dato['qty_done']
-        cajas = self._cajas_por_out(env, picks)
         tz = pytz.timezone(request.env.user.tz or 'Europe/Madrid')
-        for fila, p in enumerate(picks.sorted(key=lambda x: (x.date_done or x.create_date, x.name)), start=3):
+        for fila, p in enumerate(picks.sorted(key=lambda x: (x.date_done or x.create_date, x.name)), start=2):
             fecha = p.date_done and pytz.utc.localize(p.date_done).astimezone(tz).replace(tzinfo=None) or None
             marca = getattr(p, 'x_studio_marca', False)
             marca = marca and getattr(marca, 'name', '') or ''
-            n_cajas = len(cajas.get(p.id, set()))
-            bultos = p.number_of_packages or 0
-            coincide = bultos == n_cajas
-            valores = [fecha, p.origin or '', p.name or '', marca, etiqueta, unidades.get(p.id, 0),
-                       bultos, n_cajas, p.carrier_tracking_ref or '', 'SÍ' if coincide else 'NO']
-            formatos = [f['fecha'], f['txt'], f['txt'], f['txt'], f['txt'], f['num'], f['num'], f['num'],
-                        f['txt'], f['ok'] if coincide else f['mal']]
+            valores = [fecha, p.origin or '', p.name or '', marca, etiqueta, unidades.get(p.id, 0)]
+            formatos = [f['fecha'], f['txt'], f['txt'], f['txt'], f['txt'], f['num']]
             for col, valor in enumerate(valores):
                 if valor is None:
                     hoja.write_blank(fila, col, None, formatos[col])
                 else:
                     hoja.write(fila, col, valor, formatos[col])
-        total = 3 + len(picks)
-        hoja.write(total, 0, 'TOTAL', f['total'])
-        hoja.write(total, 1, len(picks), f['total_num'])
-        for col in range(2, 5):
-            hoja.write_blank(total, col, None, f['total'])
-        hoja.write(total, 5, sum(unidades.values()), f['total_num'])
-        hoja.write(total, 6, sum([(p.number_of_packages or 0) for p in picks]), f['total_num'])
-        hoja.write(total, 7, len(set().union(*[cajas.get(p.id, set()) for p in picks])) if picks else 0,
-                   f['total_num'])
-        hoja.write_blank(total, 8, None, f['total'])
-        hoja.write_blank(total, 9, None, f['total'])
-        hoja.write(total + 2, 0,
-                   'Formato basado en las hojas de pedidos web de Betty. Se añaden bultos, cajas y expedición.',
-                   f['nota'])
-        for col, ancho in enumerate([22, 21, 21, 13, 16, 14, 13, 16, 24, 11]):
+        for col, ancho in enumerate([22, 21, 21, 13, 16, 14]):
             hoja.set_column(col, col, ancho)
-        hoja.freeze_panes(3, 0)
-        hoja.autofilter(2, 0, max(2, total - 1), len(cab) - 1)
+        hoja.freeze_panes(2, 0)
+        hoja.autofilter(1, 0, max(1, 1 + len(picks)), len(cab) - 1)
         hoja.set_landscape()
         hoja.fit_to_pages(1, 0)
         libro.close()
@@ -359,6 +347,9 @@ class KoroshiConsultaEnvios(http.Controller):
         if apartado == 'tiendas':
             dominio += [('sale_id.s_order_type_id.name', '=', TIPO_TIENDAS),
                         ('carrier_id.name', 'ilike', 'XPO' if transportista == 'xpo' else 'GLS')]
+            if transportista == 'gls':
+                # Sin numero de seguimiento no se ha generado ninguna etiqueta GLS.
+                dominio.append(('carrier_tracking_ref', '!=', False))
         elif transportista == 'seur':
             # Las dos muestras de Betty separan los pedidos web por su numeracion:
             # W-000... = SEUR; el resto de W-... = GLS.

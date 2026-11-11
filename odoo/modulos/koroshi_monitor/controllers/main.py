@@ -30,6 +30,7 @@ N_PREFIJOS = 15         # agrupaciones que salen en el desplegable
 N_DIAS = 3              # dias de "Tiendas" que salen en el desplegable
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # OUT en curso sin cerrar caja en estos minutos = parada (no cuenta como persona activa)
+PERSONA_INACTIVA_MIN = 5  # una OUT sin lecturas/cajas durante este tiempo deja de contar como persona
 
 RE_LINEAL = re.compile(r' L(\d+) ')
 RE_MU = re.compile(r'^(MU-\d+)')
@@ -199,33 +200,57 @@ class KoroshiMonitor(http.Controller):
         return filas, por_hora, dia, por_hora_out
 
     def _personas(self, dia, leidas):
-        """Horas-persona y personas estimadas por las cajas cerradas: cuarto de hora a cuarto de hora,
-        cuantas OUT cierran caja a la vez; huecos de hasta 30 min cuentan como trabajo.
-        Mismo calculo que el modulo KOROSHI KPI."""
-        cuartos = {}
+        """Horas-persona estimadas por actividad real de cada OUT.
+
+        Cada lectura/caja mantiene su OUT activa durante PERSONA_INACTIVA_MIN minutos. Las ventanas consecutivas
+        de una misma OUT se unen, pero no se rellena ningun hueco mayor: una OUT parada por picos o faltantes deja
+        de contar como persona a los 5 minutos.
+        """
+        marcas_por_out = {}
         for dt, quien in dia['marcas']:
-            k = dt.toordinal() * 96 + (dt.hour * 60 + dt.minute) // 15
-            cuartos.setdefault(k, set()).add(quien)
-        hp = 0.0
+            marcas_por_out.setdefault(quien, set()).add(dt)
+
+        margen = datetime.timedelta(minutes=PERSONA_INACTIVA_MIN)
+        intervalos = []
+        for marcas in marcas_por_out.values():
+            inicio = fin = None
+            for dt in sorted(marcas):
+                nuevo_fin = dt + margen
+                if inicio is None:
+                    inicio, fin = dt, nuevo_fin
+                elif dt <= fin:
+                    fin = max(fin, nuevo_fin)
+                else:
+                    intervalos.append((inicio, fin))
+                    inicio, fin = dt, nuevo_fin
+            if inicio is not None:
+                intervalos.append((inicio, fin))
+
+        hp = sum([(fin - inicio).total_seconds() for inicio, fin in intervalos]) / 3600.0
+        eventos = []
+        for inicio, fin in intervalos:
+            eventos.append((inicio, 1))
+            eventos.append((fin, -1))
         maximo = 0
-        anterior = None
-        for k in sorted(cuartos):
-            n = len(cuartos[k])
-            hp += n * 0.25
-            maximo = max(maximo, n)
-            if anterior is not None and 1 < k - anterior <= 3:
-                hp += min(n, len(cuartos[anterior])) * 0.25 * (k - anterior - 1)
-            anterior = k
+        activas = 0
+        # A la mateixa hora es processa primer el final: [08:00, 08:05) i [08:05, 08:10) no se solapen.
+        for _dt, cambio in sorted(eventos, key=lambda x: (x[0], x[1])):
+            activas += cambio
+            maximo = max(maximo, activas)
         reloj = 0.0
         if dia['primera'] and dia['ultima']:
             reloj = (dia['ultima'] - dia['primera']).total_seconds() / 3600.0
+        media = reloj > 0.05 and hp / reloj or 0
+        if maximo:
+            media = min(media, maximo)
         return {
             'hp': round(hp, 2), 'personas_max': maximo,
-            'personas_media': reloj > 0.05 and round(hp / reloj, 1) or 0,
+            'personas_media': round(media, 1),
             'horas_reloj': round(reloj, 2),
             'uds_hp': hp and int(round(leidas / hp)) or 0,
             'uds_persona': maximo and int(round(leidas / maximo)) or 0,
             's_ud': leidas and round(hp * 3600.0 / leidas, 1) or 0,
+            'inactividad_min': PERSONA_INACTIVA_MIN,
         }
 
     def _fila(self, f):
@@ -307,7 +332,11 @@ class KoroshiMonitor(http.Controller):
                 o['dejadas'] += 1
             if t.estado == 'curso':
                 # uds leidas hasta ahora (OUT suelta o agrupacion entera)
-                o['uds'] += max(t._uds_leidas(t._pickings()) - (t.uds_inicio or 0.0), 0.0)
+                # (operarios v2.5: a dos, cada uno solo lo suyo; con versiones anteriores, como antes)
+                if hasattr(t, '_uds_hasta_ahora'):
+                    o['uds'] += t._uds_hasta_ahora()
+                else:
+                    o['uds'] += max(t._uds_leidas(t._pickings()) - (t.uds_inicio or 0.0), 0.0)
                 hasta = fin_real or ahora
                 o['min'] += max((hasta - t.inicio).total_seconds() / 60.0, 0.0) if t.inicio else 0.0
                 if abierta:

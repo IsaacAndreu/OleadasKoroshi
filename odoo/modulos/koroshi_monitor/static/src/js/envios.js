@@ -16,6 +16,7 @@ var ConsultaEnvios = AbstractAction.extend({
     hasControlPanel: false,
 
     events: {
+        'click .ke-monitor': '_onMonitor',
         'submit .ke-form': '_onBuscar',
         'click .ke-tab': '_onApartado',
         'click .ke-excel': '_onExcel',
@@ -59,7 +60,8 @@ var ConsultaEnvios = AbstractAction.extend({
             '<option value="xpo"' + (transportista === 'xpo' ? ' selected' : '') + '>XPO SAS</option><option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option>' :
             '<option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option><option value="seur"' + (transportista === 'seur' ? ' selected' : '') + '>SEUR</option>';
         return '<main><div class="ke-cab"><div><h1>Consulta de envíos</h1>' +
-            '<p>Pedido, bultos y número de expedición, en pantalla o en Excel.</p></div></div>' +
+            '<p>Pedido, bultos y número de expedición, en pantalla o en Excel.</p></div>' +
+            '<button type="button" class="btn btn-secondary ke-monitor">← Tornar al Monitor picking</button></div>' +
             '<nav class="ke-tabs"><button type="button" class="ke-tab' + (tiendas ? ' active' : '') + '" data-apartado="tiendas">Tendas</button>' +
             '<button type="button" class="ke-tab' + (!tiendas ? ' active' : '') + '" data-apartado="web">Web</button></nav>' +
             '<section class="ke-export"><div><h2>Descargar Excel de ' + (tiendas ? 'tendas' : 'pedidos web') + '</h2>' +
@@ -77,6 +79,16 @@ var ConsultaEnvios = AbstractAction.extend({
     _pintarInicio: function () {
         this.$el.html(this._cabecera('') +
             '<div class="ke-vacio"><b>Escribe cualquier dato que tengas.</b><span>Por ejemplo: el número de pedido, OUT/24181, K75 o el número de expedición.</span></div></main>');
+    },
+
+    _onMonitor: function (ev) {
+        ev.preventDefault();
+        this.do_action({
+            type: 'ir.actions.client',
+            name: 'Monitor picking',
+            tag: 'koroshi_monitor',
+            target: 'current',
+        });
     },
 
     _onApartado: function (ev) {

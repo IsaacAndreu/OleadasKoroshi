@@ -62,10 +62,19 @@ Excel por fechas y transportista: Tiendas (XPO SAS / GLS) y Web (GLS / SEUR).
 v1.19.1: en zonas, cada OUT abierta cuenta como una persona en "Personas y horas"; ya no se cuenta una persona
 por zona.
 v1.19.2: boton "Consulta envios / Excel" dentro de la cabecera del Monitor picking.
+v1.19.3: corrige el error movil "this.$el.swipe is not a function" de los Kanban de Odoo 13: carga
+TouchSwipe antes y protege Inventario si el plugin no estuviera disponible.
+v1.19.4: una OUT solo cuenta como persona durante los 5 minutos posteriores a su ultima actividad. Los huecos
+largos por picos o faltantes ya no inflan personas ni horas-persona.
+v1.19.5: el Excel Web contiene solo las seis columnas pedidas. En Tendas GLS solo salen expediciones
+con etiqueta generada y se cuentan como maximo cinco etiquetas por pedido; las cajas restantes van juntadas.
+v1.19.6: boton visible para volver de Consulta de envios al Monitor picking.
+v1.19.7: tabla Operarios: con dos operarios en la misma OUT (koroshi_operarios v2.5 / preparacion v3.4) cada uno
+cuenta en curso solo sus uds, no las del compañero. Con versiones anteriores, igual que antes.
 
 Solo lee: no cambia nada en Odoo.
 """,
-    'version': '13.0.1.19.2',
+    'version': '13.0.1.19.7',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
