@@ -24,7 +24,7 @@ capa inventada ni ralentice el seguimiento.
   las horas de sus cajas (Odoo solo guarda cuándo se cierra cada caja).
 - **v1.3:** bloque **«Personas y horas»** en cualquier día (también días anteriores y zonas): personas (máximo a la vez
   y media), horas-persona, horas de reloj, uds por hora-persona, uds por persona y segundos por prenda. Se estima con
-  las cajas cerradas cada cuarto de hora (cuántas OUT, o zonas, cierran caja a la vez), igual que KOROSHI KPI.
+  las cajas cerradas cada cuarto de hora (cuántas OUT cierran caja a la vez), igual que KOROSHI KPI.
 - **v1.4:** OUT **«Parcial (falta stock)»** en morado: ya se ha cogido todo lo que hay y solo faltan prendas sin stock
   (al validar van a pedido pendiente). **«Sin stock»**: OUT en espera sin nada que coger. El % y la hora de fin cuentan
   solo lo que hay en stock. Al final de la pantalla, **lista de faltantes** por OUT y artículo.
@@ -83,3 +83,16 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   `koroshi_caja_existente`) cuenta como caja/bulto solo en la OUT que la usó primero. K8 del 10/11: salían 6 y son 5.
 - **v1.18.1:** si la OUT o la agrupación ya está validada, el operario sale como acabado al momento (hora de
   validación), sin esperar al cron de `koroshi_operarios`, que cierra cada 5 min.
+- **v1.19:** menú **«Consulta de envíos»** para oficina. Busca en todo el histórico por pedido, OUT, tienda o número
+  de expedición; reúne todas las OUT del pedido; muestra transportista, **número de expedición XPO/GLS** y estado; y compara los
+  **bultos declarados en Odoo** con las **cajas CJ distintas realmente preparadas**. Los botones *Copiar resumen* y
+  *Compartir* dejan el texto listo para enviarlo por correo, Teams o WhatsApp. Tiene dos apartados:
+  - **Tendas:** Excel por fecha de **XPO SAS** o **GLS**, una línea por pedido.
+  - **Web:** Excel por fecha de **GLS** o **SEUR**, conservando las columnas de las hojas de Betty y añadiendo
+    bultos, cajas, número de expedición y comprobación. Según las muestras actuales, `W-000…` es SEUR y el resto
+    de `W-…` es GLS.
+  Es solo lectura: no cambia pedidos ni expediciones en Odoo.
+- **v1.19.1:** en la vista de zonas, **cada OUT abierta cuenta como una persona** en «Personas y horas». Varias OUT
+  abiertas dentro de la misma zona ya no se agrupan como si fueran una sola persona.
+- **v1.19.2:** el botón **«Consulta envíos / Excel»** aparece dentro de la cabecera del **Monitor picking**, tanto en
+  Tiendas como en Zonas, para entrar directamente a la consulta y descarga de Excel.

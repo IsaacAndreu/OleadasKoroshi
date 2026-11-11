@@ -95,6 +95,8 @@ var Monitor = AbstractAction.extend({
         'change .km-filtro': '_onFiltro',
         'input .km-buscar': '_onFiltro',
         'click .km-refrescar': '_cargar',
+        'click .km-envios': '_abrirEnvios',
+        'click .km-mapa': '_abrirMapa',
         'click .km-limpiar-filtros': '_limpiarFiltros',
         'dblclick th.km-sort': '_onSort',
         'click details > summary': '_onToggle',
@@ -209,6 +211,17 @@ var Monitor = AbstractAction.extend({
         });
     },
 
+    // v1.19.2: acceso visible dentro del Monitor picking, no solo desde el menu superior de Inventario.
+    _abrirEnvios: function (ev) {
+        ev.preventDefault();
+        this.do_action({
+            type: 'ir.actions.client',
+            name: 'Consulta de envíos',
+            tag: 'koroshi_consulta_envios',
+            target: 'current',
+        });
+    },
+
     // v1.12: clic en una OUT: se abre dentro de Odoo (con migas para volver al monitor); funciona tambien en la PDA y
     // donde no se abren pestanas nuevas. Ctrl/Cmd/Mayus o boton central: pestana nueva (el enlace normal)
     _onOut: function (ev) {
@@ -269,7 +282,9 @@ var Monitor = AbstractAction.extend({
                 '</select><input class="km-buscar" type="search" placeholder="Buscar tienda, OUT o etiqueta…" value="' + e(f.texto || '') + '">' +
                 '<button class="btn btn-secondary km-limpiar-filtros" title="Limpiar filtros y orden">Limpiar</button>';
         }
-        return ctl + '<button class="btn btn-secondary km-refrescar">Refrescar</button><button class="btn btn-primary km-mapa">Abrir mapa operativo</button></div>';
+        return ctl + '<button class="btn btn-secondary km-refrescar">Refrescar</button>' +
+            '<button class="btn btn-success km-envios">Consulta envíos / Excel</button>' +
+            '<button class="btn btn-primary km-mapa">Abrir mapa operativo</button></div>';
     },
 
     _pintar: function (r) {
@@ -308,7 +323,7 @@ var Monitor = AbstractAction.extend({
             [T.c, 'OUT cogiéndose ahora'],
             [T.p, 'OUT sin empezar'],
         ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
-        h += personas(r.personas, 'zonas (una persona por zona)');
+        h += personas(r.personas, 'OUT (cada OUT abierta cuenta como una persona)');
         h += tablaOperarios(r.operarios, false);
 
         // Totales

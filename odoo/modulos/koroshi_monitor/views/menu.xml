@@ -5,11 +5,23 @@
         <field name="tag">koroshi_monitor</field>
     </record>
 
+    <record id="action_koroshi_consulta_envios" model="ir.actions.client">
+        <field name="name">Consulta de envíos</field>
+        <field name="tag">koroshi_consulta_envios</field>
+    </record>
+
     <!-- Agrupado dentro de KOROSHI · Operaciones para no saturar Inventario. -->
     <menuitem id="menu_koroshi_monitor"
               name="Monitor picking"
               parent="koroshi_warehouse_map.menu_koroshi_warehouse_root"
               action="action_koroshi_monitor"
               sequence="20"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_koroshi_consulta_envios"
+              name="Consulta de envíos"
+              parent="koroshi_warehouse_map.menu_koroshi_warehouse_root"
+              action="action_koroshi_consulta_envios"
+              sequence="25"
               groups="stock.group_stock_user"/>
 </odoo>

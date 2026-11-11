@@ -190,15 +190,17 @@ class KoroshiMonitor(http.Controller):
                     'id': f['id'], 'out': f['out'], 'tienda': f['tienda'], 'u': 0.0,
                 })
                 out_row['u'] += ml['qty_done']
-                # quien cierra la caja: en zonas, la zona (una persona por zona); en oleada, la U; si no, la OUT
+                # v1.19.1: en la pantalla de zonas cada OUT abierta cuenta como una persona. Antes se usaba el lote
+                # de zona (Z-ddmm-D1...) y todas las OUT de una zona contaban como una sola persona.
+                # Fuera del modo zonas se conserva el criterio anterior de las oleadas B-KOR.
                 lote = f['lote']
-                quien = lote.startswith('Z-') and lote or (lote.startswith('B-KOR') and 'U' or ml['picking_id'][0])
+                quien = ml['picking_id'][0] if prefijo else (lote.startswith('B-KOR') and 'U' or ml['picking_id'][0])
                 dia['marcas'].append((fields.Datetime.context_timestamp(request.env.user, w), quien))
         return filas, por_hora, dia, por_hora_out
 
     def _personas(self, dia, leidas):
         """Horas-persona y personas estimadas por las cajas cerradas: cuarto de hora a cuarto de hora,
-        cuantas OUT (o zonas) cierran caja a la vez; huecos de hasta 30 min cuentan como trabajo.
+        cuantas OUT cierran caja a la vez; huecos de hasta 30 min cuentan como trabajo.
         Mismo calculo que el modulo KOROSHI KPI."""
         cuartos = {}
         for dt, quien in dia['marcas']:
