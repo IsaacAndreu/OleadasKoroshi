@@ -12,9 +12,11 @@
 import logging
 import re
 
+import json
+from werkzeug.urls import url_quote
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_compare, float_is_zero
+from odoo.tools import float_compare, float_is_zero, html2plaintext
 
 _logger = logging.getLogger(__name__)
 
@@ -237,6 +239,7 @@ class Lectura(models.Model):
                 aviso = _('%s se ha unido: hace la segunda mitad (desde %s).') % (
                     grupo.ayudante_id.name, grupo.corte_nombre())
                 grupo.avisado_titular = True
+        alternativos = {} if ligero else self._codigos_alternativos(ordenadas.mapped('product_id'))   # v3.7
         for ml in ordenadas:
             pedidas = ml.product_uom_qty
             leidas = ml.qty_done
@@ -259,8 +262,11 @@ class Lectura(models.Model):
                 'tiene_foto': fotos[p.id],
                 'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
                 'ean': ml.product_id.barcode or '',
+                'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
                 'ubicacion': ml.location_id.name or '',
                 'ubicacion_completa': ml.location_id.complete_name or '',
+                # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
+                'ubicacion_codigos': [c for c in (ml.location_id.barcode, ml.location_id.location_id.barcode) if c],
                 'pedidas': round(pedidas),
                 'leidas': round(leidas),
                 'caja': ml.result_package_id.name or '',
@@ -294,6 +300,7 @@ class Lectura(models.Model):
                 'estado': picking.state,
                 'agrupacion': zona,
                 'propia': self.picking_propio(picking),
+                'nota': self._nota(picking),   # v3.7: las notas de la OUT, arriba
             },
             'lineas': lineas,
             'siguiente_id': siguiente,
@@ -314,6 +321,26 @@ class Lectura(models.Model):
         }
 
     # ------------------------------------------------------------------ ayudas
+    @api.model
+    def _codigos_alternativos(self, productos):
+        """v3.7: {product_id: [códigos]} de product_multi_barcode (otros EAN del mismo artículo), para que la PDA
+        también cuente al momento si se lee uno de esos."""
+        res = {}
+        if not productos or 'product.barcode' not in self.env:
+            return res
+        for b in self.env['product.barcode'].sudo().search([('product_id', 'in', productos.ids)]):
+            if b.name:
+                res.setdefault(b.product_id.id, []).append(b.name)
+        return res
+
+    @api.model
+    def _nota(self, picking):
+        """v3.7: las notas de la OUT en texto (pueden traer avisos de la oficina)."""
+        nota = picking.note or ''
+        if '<' in nota:
+            nota = html2plaintext(nota)
+        return nota.strip()[:500]
+
     @api.model
     def _bloquear(self, picking):
         """Una sola PDA escribe a la vez en la misma OUT."""
@@ -409,6 +436,11 @@ class Lectura(models.Model):
                     'msg': _('Es la tarjeta de %s. Para cambiar de operario vuelve a Lecturas (←).') % tarjeta.name}
         producto, en_la_out = self._producto_de(picking, codigo)
         if not producto:
+            ubicacion = self.env['stock.location'].sudo().search([('barcode', '=', codigo)], limit=1)
+            if ubicacion:
+                # v3.7: es una ubicación (las de la OUT las resuelve la PDA sola): no hay nada del pedido allí
+                return {'ok': False, 'que': 'ubicacion',
+                        'msg': _('En %s no hay nada de este pedido.') % (ubicacion.name or codigo)}
             msg = _('Código %s desconocido. No cuenta.') % codigo
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
             return {'ok': False, 'que': 'desconocido', 'msg': msg}
@@ -462,11 +494,74 @@ class Lectura(models.Model):
         if float_compare(ml.qty_done, 1, precision_digits=3) < 0:
             ultima.deshecha = True
             return {'ok': False, 'msg': _('Esa línea ya no tiene uds leídas.')}
-        ml.write({'qty_done': ml.qty_done - 1})
+        n = min(max(int(round(ultima.cantidad or 1)), 1), int(round(ml.qty_done)))   # v3.7: puesta a mano = n uds
+        ml.write({'qty_done': ml.qty_done - n})
         ultima.deshecha = True
-        msg = _('Deshecha: %s (−1)') % self._corto(ml.product_id)
-        self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-1)
+        msg = _('Deshecha: %s (−%s)') % (self._corto(ml.product_id), n)
+        self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-n)
         return {'ok': True, 'msg': msg, 'linea_id': ml.id}
+
+    # ------------------------------------------------------------------ v3.7: cantidad a mano
+    @api.model
+    def poner_cantidad(self, picking, employee, linea_id, cantidad, id_lectura=False):
+        """Pone n uds de golpe en una línea (como el lápiz de la app de código de barras). Solo si ya se ha leído al
+        menos una ud de esa línea (el producto está comprobado) y sin pasar de lo que falta."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'linea_id': previa.move_line_id.id,
+                    'que': 'repetida'}
+        self._comprobar(picking)
+        try:
+            n = int(cantidad)
+        except (TypeError, ValueError):
+            n = 0
+        if n < 1:
+            return {'ok': False, 'msg': _('Pon una cantidad de 1 o más.')}
+        self._bloquear(picking)
+        ml = picking.move_line_ids.filtered(lambda l: l.id == int(linea_id or 0))
+        if not ml:
+            return {'ok': False, 'msg': _('Esa línea ya no está en %s. Vuelve a cargar la OUT.') % picking.name}
+        if ml.result_package_id:
+            return {'ok': False, 'msg': _('Esa línea ya está en la caja %s.') % ml.result_package_id.name}
+        if float_compare(ml.qty_done, 1, precision_digits=3) < 0:
+            return {'ok': False, 'msg': _('Lee primero una ud de %s con la pistola.') % self._corto(ml.product_id)}
+        falta = int(round(ml.product_uom_qty - ml.qty_done))
+        if n > falta:
+            return {'ok': False, 'msg': _('En esta línea solo faltan %s uds.') % falta}
+        ml.write({'qty_done': ml.qty_done + n})
+        msg = _('%s · %s de %s (+%s a mano)') % (self._corto(ml.product_id), round(ml.qty_done),
+                                                 round(ml.product_uom_qty), n)
+        self._apuntar(picking, employee, 'leer', 'A MANO +%s' % n, 'ok', msg, ml=ml, cantidad=n,
+                      id_lectura=id_lectura)
+        return {'ok': True, 'que': 'cantidad', 'msg': msg, 'linea_id': ml.id}
+
+    # ------------------------------------------------------------------ v3.7: imprimir
+    @api.model
+    def impresos(self, picking):
+        """Lo que se puede volver a imprimir de la OUT, por si falta una etiqueta. Solo lectura: la etiqueta de caja
+        pinta las matrículas que la OUT ya tiene reservadas (no reserva ninguna nueva)."""
+        res = []
+        Informe = self.env['ir.actions.report'].sudo()
+        # v3.7.2: los informes PDF necesitan la empresa de la OUT (si no, Odoo contesta 403 por multiempresa)
+        empresa = '?context=' + url_quote(json.dumps({'allowed_company_ids': [picking.company_id.id or self.env.company.id]}))
+        if Informe.search([('report_name', '=', 'koroshi.report_etiqueta_zona')], limit=1):
+            res.append({'nombre': _('Etiqueta de caja (OUT + matrícula)'),
+                        'detalle': _('Las matrículas que ya tiene la OUT. Si no tiene, sale con la casilla vacía.'),
+                        'url': '/report/pdf/koroshi.report_etiqueta_zona/%d%s' % (picking.id, empresa)})
+        vistos = set()
+        adjuntos = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', 'stock.picking'), ('res_id', '=', picking.id), ('mimetype', '=', 'application/pdf'),
+             '|', ('name', 'ilike', 'label'), ('name', 'ilike', 'etiq')], order='id desc')
+        for a in adjuntos:
+            if a.name in vistos:
+                continue
+            vistos.add(a.name)
+            res.append({'nombre': _('Etiqueta del transportista'), 'detalle': a.name,
+                        'url': '/web/content/%d' % a.id})   # v3.7.2: se abre (no se descarga)
+        if Informe.search([('report_name', '=', 'stock.report_deliveryslip')], limit=1):
+            res.append({'nombre': _('Albarán'), 'detalle': picking.name,
+                        'url': '/report/pdf/stock.report_deliveryslip/%d%s' % (picking.id, empresa)})
+        return res
 
     # ------------------------------------------------------------------ cerrar caja
     @api.model

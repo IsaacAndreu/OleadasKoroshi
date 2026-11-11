@@ -1,6 +1,9 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.7: leer una ubicación lleva a su línea; «Poner cantidad» (varias uds de golpe tras leer una con la pistola);
+ * notas de la OUT arriba; los códigos de barras alternativos también cuentan al momento; «Imprimir» abre otra vez la
+ * etiqueta de caja (OUT + matrícula), la del transportista o el albarán.
  * v3.6: no se queda colgada si Odoo va lento o se va la red. Cada lectura cuenta al momento en la PDA (pita y suma
  * +1) y se guarda en Odoo en segundo plano; si Odoo la rechaza, avisa y la quita. Las lecturas pendientes se guardan
  * en la memoria de la PDA (localStorage) y se mandan al volver, aunque se cierre la app. Cada petición tiene un tiempo
@@ -68,12 +71,23 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_f_lista': '_onFaltanteLista',
         'keydown .o_kp_f_codigo': '_onKeydownFaltante',
         'click .o_kp_deshacer': '_onDeshacer',
-        'click .o_kp_ver_lineas': '_onVerLineas',
+        'click .o_kp_ver_lineas': '_onMenuLineas',   // v3.11: desde el menú ☰
         // v3.0.1: flechas, tocar una línea de la lista y volver a la que toca
         'click .o_kp_anterior': '_onAnterior',
         'click .o_kp_posterior': '_onPosterior',
         'click .o_kp_ir_pendiente': '_onIrPendiente',
         'click .o_kp_lineas li': '_onTocarLinea',
+        // v3.7
+        'click .o_kp_cantidad_btn': '_onCantidad',
+        'click .o_kp_cant_todas': '_onCantidadTodas',
+        'click .o_kp_cant_ok': '_onCantidadOk',
+        'keydown .o_kp_cant_input': '_onKeydownCantidad',
+        'click .o_kp_cant_cancelar': '_cerrarHoja',
+        'click .o_kp_imprimir': '_onMenuImprimir',   // v3.11: desde el menú ☰
+        'click .o_kp_menu_btn': '_onMenu',
+        'click .o_kp_menu_cerrar': '_cerrarHoja',
+        'click .o_kp_imp_item': '_onImprimirItem',
+        'click .o_kp_imp_cerrar': '_cerrarHoja',
     },
 
     init: function (parent, action) {
@@ -114,6 +128,7 @@ var Pantalla = AbstractAction.extend({
 
     start: function () {
         var self = this;
+        $('body').addClass('o_kp_pantalla_pda');   // v3.10: sin la barra de menús de Odoo (más sitio en la PDA)
         core.bus.on('barcode_scanned', this, this._onBarcodeScanned);
         window.addEventListener('online', this._enLinea);
         window.addEventListener('offline', this._fueraDeLinea);
@@ -138,12 +153,20 @@ var Pantalla = AbstractAction.extend({
     on_attach_callback: function () {
         // vuelve de la pantalla de Faltante: se recarga la OUT (si ya está validada, vuelta a Lecturas)
         this._super.apply(this, arguments);
+        $('body').addClass('o_kp_pantalla_pda');   // v3.10
         if (this.yaMostrada) { this._recargar(); }
         this.yaMostrada = true;
         this._foco();
+        this._ajustarUbicacion();
+    },
+
+    on_detach_callback: function () {
+        $('body').removeClass('o_kp_pantalla_pda');   // v3.10: otras pantallas, con su barra
+        this._super.apply(this, arguments);
     },
 
     destroy: function () {
+        $('body').removeClass('o_kp_pantalla_pda');   // v3.10
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         window.removeEventListener('online', this._enLinea);
         window.removeEventListener('offline', this._fueraDeLinea);
@@ -224,8 +247,33 @@ var Pantalla = AbstractAction.extend({
         if (/^\d{12}$/.test(codigo)) { v.push('0' + codigo); }
         if (/^0\d{12}$/.test(codigo)) { v.push(codigo.slice(1)); }
         return e.lineas.filter(function (l) {
-            return (l.ean && v.indexOf(l.ean) >= 0) || (l.ref && l.ref === codigo);
+            if ((l.ean && v.indexOf(l.ean) >= 0) || (l.ref && l.ref === codigo)) { return true; }
+            return _.some(l.eans_alt || [], function (a) { return v.indexOf(a) >= 0; });   // v3.7
         });
+    },
+
+    // v3.7: si el código es la ubicación (caja KO_ o hueco) de alguna línea, se ve esa línea (la primera pendiente)
+    _irAUbicacion: function (codigo) {
+        var e = this.estado;
+        if (!e || !e.lineas) { return false; }
+        var c = codigo.toUpperCase();
+        var deAhi = e.lineas.filter(function (l) {
+            return _.some(l.ubicacion_codigos || [], function (u) { return String(u).toUpperCase() === c; }) ||
+                (l.ubicacion && l.ubicacion.toUpperCase() === c);
+        });
+        if (!deAhi.length) { return false; }
+        var l = _.find(deAhi, function (x) { return !x.completa && !x.caja; });
+        if (l) {
+            this.verId = l.id === e.siguiente_id ? null : l.id;
+            this._aviso(deAhi[0].ubicacion + ': lee ' + (l.nombre || l.producto) +
+                        (l.talla ? ' · Talla ' + l.talla : ''), 'info');
+        } else {
+            this.verId = deAhi[0].id;
+            this._aviso('En ' + deAhi[0].ubicacion + ' ya está todo cogido.', 'info');
+        }
+        this._pitido(true);
+        this._pintar();
+        return true;
     },
 
     _lineaLocal: function (codigo) {
@@ -255,7 +303,12 @@ var Pantalla = AbstractAction.extend({
         if (!e || !e.lineas) { return; }
         this.cola.forEach(function (item) {
             if (!item.optimista) { return; }
+            var n = item.n || 1;
             var l = _.findWhere(e.lineas, {id: item.lineaId});
+            if (item.tipo === 'cantidad') {   // v3.7: va a su línea o a ninguna
+                if (l && !l.caja && l.leidas + n <= l.pedidas) { self._sumarLocal(e, l, n); }
+                return;
+            }
             if (!l || l.caja || l.leidas >= l.pedidas) {
                 l = _.find(e.lineas, function (x) {
                     return x.producto_id === item.productoId && !x.caja && x.leidas < x.pedidas;
@@ -266,7 +319,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _pendientes: function () {
-        return this.cola.filter(function (i) { return i.tipo === 'leer'; }).length;
+        return this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; }).length;
     },
 
     // la cola de lecturas en la memoria de la PDA, por OUT (las cajas no: esas se vuelven a leer)
@@ -282,9 +335,11 @@ var Pantalla = AbstractAction.extend({
         var out = this._out();
         if (!out) { return; }
         var todo = this._leerMemoria();
-        var lecturas = this.cola.filter(function (i) { return i.tipo === 'leer'; }).map(function (i) {
-            return {codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id};
-        });
+        var lecturas = this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; })
+            .map(function (i) {
+                return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
+                        lineaId: i.lineaId, n: i.n};
+            });
         if (lecturas.length) { todo[out.id] = lecturas; } else { delete todo[out.id]; }
         this._escribirMemoria(todo);
     },
@@ -297,7 +352,15 @@ var Pantalla = AbstractAction.extend({
         if (out && todo[out.id]) {
             todo[out.id].forEach(function (i) {
                 if ((i.t || 0) < limite) { return; }
-                var item = {tipo: 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id};
+                var item = {tipo: i.tipo || 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
+                            lineaId: i.lineaId, n: i.n};
+                if (item.tipo === 'cantidad') {   // v3.7
+                    var lc = _.findWhere(self.estado.lineas, {id: i.lineaId});
+                    item.optimista = true;
+                    if (lc && !lc.caja && lc.leidas + (i.n || 1) <= lc.pedidas) { self._sumarLocal(self.estado, lc, i.n); }
+                    self.cola.push(item);
+                    return;
+                }
                 var l = self._lineaLocal(i.codigo);
                 if (l) {
                     item.optimista = true;
@@ -332,8 +395,7 @@ var Pantalla = AbstractAction.extend({
         this._escribirMemoria(todo);
         if (!items.length) { return; }
         var i = items[0];
-        return this._post('/koroshi/preparacion/leer', {picking_id: pickingId, codigo: i.codigo, id_lectura: i.id,
-                                                       employee_id: i.employee_id || false})
+        return this._post(this._ruta(i), this._params(i, pickingId))
             .then(function (r) {
                 if (r && r.que === 'ocupada') {
                     setTimeout(function () { self._vaciarOtra(pickingId, items); }, OCUPADA_MS);
@@ -341,6 +403,23 @@ var Pantalla = AbstractAction.extend({
                 }
                 self._vaciarOtra(pickingId, items.slice(1));
             }, function () { /* sin red / Odoo lento: se queda en la memoria para la próxima vez */ });
+    },
+
+    // v3.7: ruta y parámetros de cada cosa de la cola
+    _ruta: function (item) {
+        if (item.tipo === 'caja') { return '/koroshi/preparacion/caja'; }
+        if (item.tipo === 'cantidad') { return '/koroshi/preparacion/cantidad'; }
+        return '/koroshi/preparacion/leer';
+    },
+
+    _params: function (item, pickingId) {
+        var p = {picking_id: pickingId, codigo: item.codigo, id_lectura: item.id,
+                 employee_id: item.employee_id || (this.operario ? this.operario.id : false)};
+        if (item.tipo === 'cantidad') {
+            p.linea_id = item.lineaId;
+            p.cantidad = item.n;
+        }
+        return p;
     },
 
     // llamada JSON a Odoo con tiempo máximo. Si falla, rechaza con {lento} (no contesta o está reiniciando),
@@ -397,7 +476,9 @@ var Pantalla = AbstractAction.extend({
         if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
         this.ultima = {codigo: codigo, t: ahora};
         if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
-        if (this.modo === 'pregunta' || this.modo === 'validando') { return; }
+        if (this.modo === 'menu') { this._cerrarHoja(); }   // v3.11: leer con el menú abierto lo cierra y cuenta
+        if (this.modo === 'pregunta' || this.modo === 'validando' || this.modo === 'cantidad' ||
+                this.modo === 'imprimir') { return; }
         if (this.modo === 'faltante') {
             if (this.sinRed) {
                 this._avisoFaltante('Sin conexión: espera a que vuelva para cambiar de ubicación.', 'mal');
@@ -428,6 +509,8 @@ var Pantalla = AbstractAction.extend({
                     this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'),
                                 'ok');
                 }
+            } else if (this._irAUbicacion(codigo)) {
+                return;   // v3.7: era una ubicación de la OUT: se ve su línea
             } else if (this.sinRed) {
                 var delProducto = this._delProducto(codigo);
                 this._aviso(delProducto.length ? 'Ya tienes todas las uds de ' + (delProducto[0].nombre ||
@@ -454,11 +537,7 @@ var Pantalla = AbstractAction.extend({
                 self._aviso('Odoo va lento: lo leído se guarda igual (' + self._pendientes() + ' pendientes).', 'warn');
             }
         }, LENTO_MS);
-        var ruta = item.tipo === 'caja' ? '/koroshi/preparacion/caja' : '/koroshi/preparacion/leer';
-        return this._post(ruta, {
-            picking_id: this._out().id, codigo: item.codigo, id_lectura: item.id,
-            employee_id: item.employee_id || (this.operario ? this.operario.id : false),
-        }).then(function (r) {
+        return this._post(this._ruta(item), this._params(item, this._out().id)).then(function (r) {
             clearTimeout(self.timerLento);
             self.enviando = false;
             if (self.isDestroyed && self.isDestroyed()) { return; }
@@ -568,11 +647,13 @@ var Pantalla = AbstractAction.extend({
     _onFondoHoja: function () {
         if (this.modo === 'caja') { this._salirDeCaja(); } else if (this.modo === 'pregunta') { this._cerrarHoja(); }
         else if (this.modo === 'faltante') { this._cerrarFaltante(); }
+        else if (this.modo === 'cantidad' || this.modo === 'imprimir' || this.modo === 'menu') { this._cerrarHoja(); }
     },
 
     _cerrarHoja: function () {
         this.modo = 'leer';
         this.$('.o_kp_hoja').hide();
+        this.$('.o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu').hide();   // v3.7, v3.11
         this._pintar();
         this._foco();
     },
@@ -632,23 +713,25 @@ var Pantalla = AbstractAction.extend({
         // v3.6: la última lectura aún no ha llegado a Odoo -> se quita en la PDA, sin esperar
         var ultimo = this.cola[this.cola.length - 1];
         var enVuelo = this.enviando && this.cola.length === 1;
-        if (ultimo && ultimo.tipo === 'leer' && !enVuelo) {
+        if (ultimo && (ultimo.tipo === 'leer' || ultimo.tipo === 'cantidad') && !enVuelo) {
             this.cola.pop();
             this._guardarCola();
             var l = null;
             if (ultimo.optimista) {
                 var e = this.estado;
+                var n = ultimo.n || 1;
                 l = _.findWhere(e.lineas, {id: ultimo.lineaId});
-                if (!l || l.caja || l.leidas < 1) {
+                if (!l || l.caja || l.leidas < n) {
                     l = _.find(e.lineas, function (x) {
                         return x.producto_id === ultimo.productoId && !x.caja && x.leidas > 0;
                     });
                 }
-                if (l) { this._sumarLocal(e, l, -1); }
+                if (l) { this._sumarLocal(e, l, -n); }
             }
             this.verId = l ? l.id : this.verId;
             this._pintar();
-            this._aviso('Deshecha: ' + (l ? (l.nombre || l.producto) : ultimo.codigo) + ' (−1)', 'info');
+            this._aviso('Deshecha: ' + (l ? (l.nombre || l.producto) : ultimo.codigo) + ' (−' + (ultimo.n || 1) + ')',
+                        'info');
             this._pitido(true);
             return this._foco();
         }
@@ -831,7 +914,7 @@ var Pantalla = AbstractAction.extend({
             if (l.completa || l.caja) { continue; }
             if (l.producto_id && l.tiene_foto !== false && !this.fotosBajadas[l.producto_id]) {
                 this.fotosBajadas[l.producto_id] = true;
-                (new Image()).src = '/web/image/product.product/' + l.producto_id + '/image_256';
+                (new Image()).src = '/web/image/product.product/' + l.producto_id + '/image_512';   // v3.9.2
             }
             return;
         }
@@ -1000,6 +1083,131 @@ var Pantalla = AbstractAction.extend({
         this._foco();
     },
 
+    // ------------------------------------------------------------ v3.7: cantidad a mano
+    _onCantidad: function () {
+        var l = this.estado && _.findWhere(this.estado.lineas, {id: this._idVisto()});
+        if (!l || this.modo !== 'leer' || l.caja) { return; }
+        if (l.leidas < 1) {   // v3.9.3: primero una con la pistola (así se comprueba que es el artículo bueno)
+            this._aviso('Lee primero una ud de ' + (l.nombre || l.producto) + ' con la pistola. Después pon el resto.',
+                        'warn');
+            this._pitido(false);
+            return this._foco();
+        }
+        var falta = l.pedidas - l.leidas;
+        if (falta < 1) { return; }
+        this.modo = 'cantidad';
+        this.cantLinea = l.id;
+        this.$('.o_kp_cant_texto').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : '') + ' en ' +
+                                        l.ubicacion + '. Llevas ' + l.leidas + ' de ' + l.pedidas + '; faltan ' + falta + '.');
+        this.$('.o_kp_cant_input').attr('max', falta).val('');
+        this.$('.o_kp_cant_todas').text('Todas las que faltan (' + falta + ')').data('n', falta);
+        this.$('.o_kp_cant_aviso').attr('class', 'o_kp_hoja_aviso o_kp_cant_aviso').text('');
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_imprimir').hide();
+        this.$('.o_kp_hoja_cantidad').show();
+        this.$('.o_kp_hoja').show();
+        this.$('.o_kp_cant_input').focus();
+    },
+
+    _onKeydownCantidad: function (ev) {
+        ev.stopPropagation();
+        if (ev.key === 'Enter' || ev.keyCode === 13) {
+            ev.preventDefault();
+            this._onCantidadOk();
+        }
+    },
+
+    _onCantidadTodas: function () {
+        this._ponerCantidad(parseInt(this.$('.o_kp_cant_todas').data('n'), 10));
+    },
+
+    _onCantidadOk: function () {
+        this._ponerCantidad(parseInt(this.$('.o_kp_cant_input').val(), 10));
+    },
+
+    _ponerCantidad: function (n) {
+        var e = this.estado;
+        var l = e && _.findWhere(e.lineas, {id: this.cantLinea});
+        if (!l) { return this._cerrarHoja(); }
+        var falta = l.pedidas - l.leidas;
+        if (!n || n < 1 || n > falta) {
+            this.$('.o_kp_cant_aviso').attr('class', 'o_kp_hoja_aviso o_kp_cant_aviso o_kp_mal')
+                .text('✖ Pon un número de 1 a ' + falta + '.');
+            return this._pitido(false);
+        }
+        // va por la misma cola que las lecturas: cuenta al momento y Odoo lo guarda detrás (mismo id si reintenta)
+        var item = {tipo: 'cantidad', codigo: 'A MANO +' + n, id: this._nuevoId(), t: Date.now(), n: n, lineaId: l.id,
+                    productoId: l.producto_id, optimista: true, employee_id: this.operario ? this.operario.id : false};
+        this._sumarLocal(e, l, n);
+        this.verId = l.completa ? null : l.id;
+        this.cola.push(item);
+        this._guardarCola();
+        this._cerrarHoja();
+        this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas + ' (+' + n + ' a mano)', 'ok');
+        this._pitido(true);
+        if (e.todo_leido) {
+            this._aviso('Todo leído. ' + (e.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
+        }
+        this._enviar();
+    },
+
+    // ------------------------------------------------------------ v3.7: imprimir
+    _onImprimir: function () {
+        var self = this;
+        if (!this._out() || this.modo !== 'leer') { return; }
+        this.modo = 'imprimir';
+        this.$('.o_kp_imp_lista').empty().text('Buscando…');
+        this.$('.o_kp_imp_aviso').attr('class', 'o_kp_hoja_aviso o_kp_imp_aviso').text('');
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad').hide();
+        this.$('.o_kp_hoja_imprimir').show();
+        this.$('.o_kp_hoja').show();
+        if (this.sinRed) {
+            this.$('.o_kp_imp_lista').empty();
+            return this.$('.o_kp_imp_aviso').addClass('o_kp_mal').text('✖ Sin conexión: espera a que vuelva.');
+        }
+        return this._post('/koroshi/preparacion/impresos', {picking_id: this._out().id}).then(function (r) {
+            if (self.modo !== 'imprimir') { return; }
+            var $l = self.$('.o_kp_imp_lista').empty();
+            var lista = (r && r.ok && r.impresos) || [];
+            if (!lista.length) { $l.text('No hay nada que imprimir de esta OUT.'); }
+            lista.forEach(function (d) {
+                var $b = $('<button type="button" class="o_kp_imp_item"/>').attr('data-url', d.url).text(d.nombre);
+                if (d.detalle) { $('<span class="o_kp_imp_detalle"/>').text(d.detalle).appendTo($b); }
+                $l.append($b);
+            });
+        }, function () {
+            if (self.modo !== 'imprimir') { return; }
+            self.$('.o_kp_imp_lista').empty();
+            self.$('.o_kp_imp_aviso').addClass('o_kp_mal').text('✖ Odoo no contesta. Prueba otra vez.');
+        });
+    },
+
+    _onImprimirItem: function (ev) {
+        var url = $(ev.currentTarget).attr('data-url');
+        if (url) { window.open(url, '_blank'); }
+    },
+
+    // ------------------------------------------------------------ v3.11: menú ☰ (ver líneas, imprimir)
+    _onMenu: function () {
+        if (!this._out() || this.modo !== 'leer') { return; }
+        this.modo = 'menu';
+        this._pintarBotonLineas();
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad, .o_kp_hoja_imprimir').hide();
+        this.$('.o_kp_hoja_menu').show();
+        this.$('.o_kp_hoja').show();
+    },
+
+    _onMenuLineas: function () {
+        this._cerrarHoja();
+        this._onVerLineas();
+        var $l = this.$('.o_kp_lineas');
+        if ($l.is(':visible') && $l[0].scrollIntoView) { $l[0].scrollIntoView({block: 'start'}); }
+    },
+
+    _onMenuImprimir: function () {
+        this._cerrarHoja();
+        this._onImprimir();
+    },
+
     _onVerLineas: function () {
         var $l = this.$('.o_kp_lineas');
         var abrir = !$l.is(':visible');
@@ -1077,6 +1285,7 @@ var Pantalla = AbstractAction.extend({
         var out = e.out;
         this.$('.o_kp_ref').text(out.name);
         this.$('.o_kp_tienda').text(out.tienda || out.origen || '');
+        this.$('.o_kp_nota').text(out.nota || '').toggle(!!out.nota);   // v3.7 (v3.9: el «NOTA» lo pone el CSS)
         // v3.3: preparar a dos -> quién va con quién y por dónde empieza cada uno
         var quien = this.operario ? this.operario.nombre : 'Sin tarjeta';
         if (e.a_dos) {
@@ -1091,7 +1300,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_barra_lleno').css('width', pct + '%');
         var pendientes = this._pendientes();   // v3.6
         this.$('.o_kp_progreso_texto').text(e.leidas + ' de ' + e.pedidas + ' uds' +
-            (pendientes ? ' · ⏳ ' + pendientes + (pendientes === 1 ? ' guardándose' : ' guardándose') : ''));
+            (pendientes ? ' · ' + pendientes + (pendientes === 1 ? ' guardándose' : ' guardándose') : ''));
         // v3.1: con 0 leídas no se dice nada de cajas («Todo en caja» confundía)
         var txtCaja = e.sin_caja ? 'Sin caja: ' + e.sin_caja + (e.sin_caja === 1 ? ' ud' : ' uds')
             : (e.leidas ? '✓ Todo en caja' : '');
@@ -1100,7 +1309,7 @@ var Pantalla = AbstractAction.extend({
             txtCaja = 'Tuyas sin caja: ' + e.mias_sin_caja + (e.otros_sin_caja ? ' · compañero: ' + e.otros_sin_caja : '');
         }
         this.$('.o_kp_sin_caja').text(txtCaja).toggleClass('o_kp_hay', !!e.sin_caja).toggle(!!txtCaja);
-        this.$('.o_kp_cajas_resumen').text(e.cajas.length ? '📦 ' + e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
+        this.$('.o_kp_cajas_resumen').text(e.cajas.length ? e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
         this.$('.o_kp_progreso').show();
         // la línea en grande: la que toca o la elegida con las flechas (v3.0.1)
         var idVisto = this._idVisto();
@@ -1112,17 +1321,36 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_posicion').text('Línea ' + (pos + 1) + ' de ' + e.lineas.length);
             this.$('.o_kp_anterior').prop('disabled', pos <= 0);
             this.$('.o_kp_posterior').prop('disabled', pos >= e.lineas.length - 1);
-            this.$('.o_kp_ubicacion').text(sig.ubicacion);
+            // v3.9.2: hueco (lineal, palet, columna) y caja KO en la misma línea y del mismo tamaño
+            var ubi = this._partesUbicacion(sig);
+            var $u = this.$('.o_kp_ubicacion').empty();
+            if (ubi.hueco) { $('<span class="o_kp_hueco"/>').text(ubi.hueco).appendTo($u); }
+            $('<span class="o_kp_ko"/>').text(sig.ubicacion).appendTo($u);
+            this.$('.o_kp_ubi_detalle').text(ubi.detalle);
             // v3.1: nombre una sola vez y en grande, talla destacada, referencia solo si es distinta
             this.$('.o_kp_producto_ref').text(sig.nombre || sig.producto);
             this.$('.o_kp_talla').text(sig.talla || '');
             this.$('.o_kp_talla_fila').toggle(!!sig.talla);
             this.$('.o_kp_producto').text(sig.ref ? 'Ref. ' + sig.ref : '').toggle(!!sig.ref);
-            this.$('.o_kp_cuantas').text((sig.completa ? '✓ ' : '') + 'Cogidas ' + sig.leidas + ' de ' + sig.pedidas +
-                                         (sig.caja ? ' · 📦 ' + sig.caja : ''));
+            // v3.9: número grande «1 de 5» y una barrita por ud (hasta 20)
+            var $c = this.$('.o_kp_cuantas').empty();
+            $('<span class="o_kp_n"/>').text(sig.leidas).appendTo($c);
+            $('<span class="o_kp_de"/>').text('de ' + sig.pedidas + (sig.completa ? ' ✓' : '')).appendTo($c);
+            if (sig.caja) { $('<span class="o_kp_cuantas_caja"/>').text('En la caja ' + sig.caja).appendTo($c); }
+            var $s = this.$('.o_kp_segmentos').empty();
+            if (sig.pedidas > 1 && sig.pedidas <= 20) {
+                for (var k = 0; k < sig.pedidas; k++) {
+                    $('<span/>').toggleClass('o_kp_seg_ok', k < sig.leidas).appendTo($s);
+                }
+            }
+            // v3.7: «Poner cantidad» si faltan 2 o más; v3.9.3: se ve siempre (antes, solo tras leer una), pero si aún
+            // no se ha leído ninguna con la pistola avisa en vez de abrir
+            this.$('.o_kp_cantidad_btn').toggle(this.modo === 'leer' && !sig.caja && sig.pedidas - sig.leidas >= 2)
+                .toggleClass('o_kp_cant_bloqueado', sig.leidas < 1);
             // v3.1: sin foto no se pinta nada (ni el icono gris de Odoo): el texto ocupa todo el ancho
             var conFoto = sig.tiene_foto !== false && !!sig.producto_id;
-            var src = conFoto ? '/web/image/product.product/' + sig.producto_id + '/image_256' : '';
+            // v3.9.2: 512 px (con 256 se veía borrosa a 150 px en pantallas de PDA de alta densidad)
+            var src = conFoto ? '/web/image/product.product/' + sig.producto_id + '/image_512' : '';
             var $f = this.$('.o_kp_foto');
             if ($f.attr('src') !== src) {
                 $f.hide();
@@ -1131,6 +1359,7 @@ var Pantalla = AbstractAction.extend({
             if (!conFoto) { $f.hide(); }
             this.$('.o_kp_siguiente').toggleClass('o_kp_vista_hecha', !!sig.completa)
                 .toggleClass('o_kp_vista_otra', !esLaQueToca).show();
+            this._ajustarUbicacion();   // v3.9.2: ya visible, se puede medir
             this.$('.o_kp_ir_pendiente').text(e.todo_leido ? 'Volver al resumen ▸' : 'Ir a la que toca ▸')
                 .toggle(!esLaQueToca);
             this.$('.o_kp_completa').hide();
@@ -1155,14 +1384,52 @@ var Pantalla = AbstractAction.extend({
         var guardando = this.cola.length > 0 || this.enviando;
         var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
         this.$('.o_kp_caja').prop('disabled', !libre || !conRed || !mias)
-            .text(conRed ? '📦 Caja' : '⏳ Esperando conexión…')
+            .text(conRed ? 'Caja' : 'Esperando conexión…')
             .toggleClass('o_kp_destacado', conRed && !!mias && e.todo_leido);
         this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
-            .text(!conRed ? '⏳ Esperando conexión…' : (guardando ? '⏳ Guardando lecturas…' : '✓ Validar'))
+            .text(!conRed ? 'Esperando conexión…' : (guardando ? 'Guardando lecturas…' : '✓ Validar'))
             .toggleClass('o_kp_destacado', conRed && !guardando && !e.sin_caja && e.todo_leido);
         this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas || (!conRed && !this.cola.length));
         this.$('.o_kp_faltante').prop('disabled', !libre || !conRed || e.todo_leido || !e.siguiente_id);
         this._pintarLineas();
+    },
+
+    // v3.9: lo que va encima del código de la ubicación, como en la etiqueta del rack: nave y hueco
+    // («EFFEC/Stock/NAVE2/08981 - L107 P37 C1/KO_260926_001» -> «NAVE2 · 08981 - L107 P37 C1»)
+    _detalleUbicacion: function (l) {
+        return this._partesUbicacion(l).detalle;
+    },
+
+    // v3.9.2: «EFFEC/Stock/NAVE2/08981 - L107 P37 C1/KO_260926_001» ->
+    //   hueco «L107 P37 C1» (va grande al lado del KO) y detalle «NAVE2 · 08981» (va pequeño encima)
+    _partesUbicacion: function (l) {
+        var partes = String(l.ubicacion_completa || '').split('/').filter(function (x) {
+            return x && x !== 'EFFEC' && x !== 'Stock';
+        });
+        partes.pop();                                   // la propia ubicación (el KO): ya se pinta
+        var padre = partes.length ? partes[partes.length - 1] : '';
+        var hueco = '';
+        var m = /^(\d+)\s*-\s*(.+)$/.exec(padre);
+        if (m) {
+            hueco = m[2];
+            partes[partes.length - 1] = m[1];
+        } else if (padre && !/^NAVE/i.test(padre)) {
+            hueco = padre;
+            partes.pop();
+        }
+        return {hueco: hueco, detalle: partes.join(' · ')};
+    },
+
+    // v3.9.2: la ubicación siempre en una línea: baja la letra hasta que quepa (PDA de 360 a 480 px de ancho)
+    _ajustarUbicacion: function () {
+        var el = this.$('.o_kp_ubicacion')[0];
+        if (!el || !el.offsetWidth) { return; }
+        var fs = 30;
+        el.style.fontSize = fs + 'px';
+        while (el.scrollWidth > el.clientWidth && fs > 15) {
+            fs -= 1;
+            el.style.fontSize = fs + 'px';
+        }
     },
 
     // v3.4: avisos de trabajar a dos: «X se ha unido» (al titular, una vez) y los faltantes del compañero
@@ -1201,7 +1468,7 @@ var Pantalla = AbstractAction.extend({
         e.lineas.forEach(function (l) {
             var $li = $('<li/>').attr('data-id', l.id).toggleClass('o_kp_hecha', l.completa)
                 .toggleClass('o_kp_ahora', l.id === e.siguiente_id);
-            $('<span class="o_kp_l_marca" aria-hidden="true"/>').text(l.completa ? '✓' : '').appendTo($li);
+            $('<span class="o_kp_l_marca" role="presentation"/>').text(l.completa ? '✓' : '').appendTo($li);
             if (l.producto_id && l.tiene_foto !== false) {
                 // v3.0.1: miniatura (solo se descarga al abrir la lista)
                 $('<img class="o_kp_l_foto" alt="" loading="lazy"/>')
@@ -1211,7 +1478,7 @@ var Pantalla = AbstractAction.extend({
             var $t = $('<span class="o_kp_l_texto"/>').appendTo($li);
             $('<span class="o_kp_l_ubi"/>').text(l.ubicacion).appendTo($t);
             $('<span class="o_kp_l_prod"/>').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : '')).appendTo($t);
-            if (l.caja) { $('<span class="o_kp_l_caja"/>').text('📦 ' + l.caja).appendTo($t); }
+            if (l.caja) { $('<span class="o_kp_l_caja"/>').text('Caja ' + l.caja).appendTo($t); }
             $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
             $l.append($li);
         });
@@ -1239,7 +1506,7 @@ var Pantalla = AbstractAction.extend({
         var tipo = clase || 'info';
         $a.attr('class', 'o_kp_aviso' + (texto ? ' o_kp_' + tipo : ''));
         if (!texto) { return; }
-        $('<span class="o_kp_aviso_icono" aria-hidden="true"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
+        $('<span class="o_kp_aviso_icono" role="presentation"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
         $('<span/>').text(texto).appendTo($a);
         if (tipo === 'ok') {
             this.timerAviso = setTimeout(function () { self._aviso('', ''); }, AVISO_OK_MS);
@@ -1247,6 +1514,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _foco: function () {
+        if (this.modo === 'cantidad') { return; }   // v3.7: no quitar el foco al número
         var $i = this.$(this.modo === 'faltante' ? '.o_kp_f_codigo' : '.o_kp_codigo');
         if ($i.length && !('ontouchstart' in window)) { $i.focus(); }
         this._estadoLector();

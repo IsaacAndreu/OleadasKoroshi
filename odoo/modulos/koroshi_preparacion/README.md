@@ -1,7 +1,99 @@
-# KOROSHI Preparación en Lecturas (v3.6.1, 11/11/2026)
+# KOROSHI Preparación en Lecturas (v3.11.0, 11/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.11.0: menú ☰ en la cabecera (11/11/2026)
+
+Debajo de los botones solo queda el campo del código. «Ver líneas» e «Imprimir etiqueta o albarán» no se quitan: van
+en el menú ☰ de la cabecera (hoja inferior «Más»). «Ver líneas» abre la lista debajo del campo del código y baja hasta
+ella; «Imprimir» abre la hoja de imprimir de la v3.7. Si se lee un código con el menú abierto, se cierra y la lectura
+cuenta (modo `menu`).
+
+## v3.10.0: todo en una pantalla, sin mover arriba y abajo (11/11/2026)
+
+Medido en Odoo real a 360×640 (PDA pequeña), mirando otra línea (el caso más alto, con «Ir a la que toca»): la fila de
+Faltante/Deshacer acaba en 623 px (antes había que bajar unos 400 px).
+
+- En esta pantalla no sale la barra de menús de Odoo (`body.o_kp_pantalla_pda`, se pone en `start` /
+  `on_attach_callback` y se quita en `on_detach_callback` / `destroy`; las otras pantallas la siguen teniendo).
+- Cabecera y barra de progreso más bajas; «Sin caja» y nº de cajas dentro de la barra.
+- Nota de la OUT: «NOTA» delante y 3 líneas como mucho.
+- Tarjeta: flechas más bajas; la cantidad grande, las barritas y «Poner cantidad» van a la derecha de la foto.
+- Caja y Validar en la misma fila (como Faltante y Deshacer). Botones de 52 px (siguen siendo para guantes).
+- PDA de 700 px de alto o menos: foto de 100 a 140 px de ancho.
+- Lo que queda debajo (Ver líneas, Imprimir, campo de código) sí necesita bajar: se usa poco.
+
+## v3.9.3: «Poner cantidad» siempre a la vista (11/11/2026)
+
+El botón sale en toda línea a la que le faltan 2 o más uds, para que los operarios sepan que existe. Si aún no se ha
+leído ninguna ud con la pistola va en gris (borde discontinuo) y al pulsarlo no abre nada: avisa «Lee primero una ud de
+X con la pistola. Después pon el resto.» (se mantiene la comprobación del artículo; el servidor también la exige).
+
+## v3.9.2: ubicación entera en una línea y foto nítida (11/11/2026)
+
+- **Ubicación:** el hueco (lineal, palet, columna) va al lado del KO, en la misma línea y del mismo tamaño:
+  `L44 P17 C2 | KO_110626_032`. Encima, pequeño, la nave y el número del hueco (`NAVE2 · 28035`). Sale de
+  `ubicacion_completa` (`_partesUbicacion`: quita el «28035 - » del padre). Si el padre es la nave (perchas), solo el código.
+- La letra se ajusta sola (`_ajustarUbicacion`, de 30 px hacia abajo hasta que quepa): 30 px a 480 de ancho,
+  22 px a 360 (19 px con huecos largos como `N1-L12 P08 C2`). La etiqueta negra ocupa todo el ancho de la tarjeta.
+- **Foto:** `image_512` (con `image_256` se veía borrosa en pantallas de alta densidad) y caja vertical 3:4 de 150 a
+  200 px de ancho. Probado con vaqueros y pantalones con foto a 360×740 y 480×854.
+
+## v3.9.1: lo que no se veía por aria-hidden (11/11/2026)
+
+Odoo 13 trae una regla global `[aria-hidden="true"] { display: none }`. Por eso no se veían las barritas por ud (v3.9),
+la rueda de «Validando…», la ✓ de las líneas hechas, el icono de los avisos (✓ ℹ ⚠ ✖) ni el ⚠ del aviso sin conexión.
+Ahora llevan `role="presentation"`. No usar `aria-hidden="true"` en las pantallas de la PDA.
+
+## v3.9.0: aspecto «etiqueta de estantería» (11/11/2026)
+
+La v3.8 (tarjetas redondeadas con sombras y emojis) no convenció y no se instaló: el bloque v3.8 del CSS se ha quitado.
+La v3.9 sigue lo que hacen las apps de picking (Zebra, Microsoft, pick-to-light): plano, alto contraste, una cosa grande.
+
+- Cabecera negra; la barra de progreso va a todo el ancho justo debajo y, después, la nota de la OUT.
+- La ubicación se pinta como la etiqueta física del rack: fondo negro, nave y hueco en pequeño encima
+  (`_detalleUbicacion`, de `ubicacion_completa`), el código grande en letra de ancho fijo y una franja tipo código de
+  barras. Verde cuando la línea ya está cogida.
+- Foto de 150 px (antes 110), referencia y talla en un recuadro negro.
+- Cantidad en número grande («1 de 5») debajo de la foto y una barrita por ud (de 2 a 20 uds).
+- Botones planos sin sombra: Caja amarillo, Validar verde, Faltante naranja, Deshacer blanco con borde.
+- Lista de líneas con separadores (no tarjetas); sin emojis en los textos.
+
+Probado en Odoo real a 480×854 (tamaño PDA) aplicando el estilo en la pestaña antes de instalar.
+
+## v3.8.0: aspecto nuevo (11/11/2026)
+
+Solo CSS (bloque «v3.8» al final de `preparacion.css`), sin tocar la lógica: cabecera oscura (#14243b, el color del
+icono de la app), tarjeta de la línea con sombra y franja a la izquierda (azul = la que toca, a rayas = otra, verde =
+hecha), ubicación en un bloque destacado con 📍, «Cogidas X de Y» en pastilla, flechas redondas, botones con relieve,
+notas, avisos y líneas con franja de color, hoja inferior con asa. Los tamaños de letra y botones no bajan.
+Incluye la v3.7.2.
+
+## v3.7.2: Imprimir sin 403 (11/11/2026)
+
+La etiqueta de caja y el albarán daban 403: la dirección del PDF no llevaba la empresa de la OUT y Odoo (multiempresa)
+no dejaba verla. Ahora va con `?context={"allowed_company_ids": [empresa de la OUT]}`. La etiqueta del transportista se
+abre en vez de descargarse. Probado en Odoo real: los dos informes salen en PDF (200) y las etiquetas XPO también.
+
+## v3.7.1: corrige la actualización de la v3.7.0 (11/11/2026)
+
+La v3.7.0 fallaba al actualizar («El campo `cantidad` no existe»): el método nuevo `cantidad` tenía el mismo nombre que
+el campo `cantidad` de las lecturas y lo tapaba. Ahora el método es `poner_cantidad`. Sin cambios para el operario.
+
+## v3.7.0: más cómoda para almacén (11/11/2026)
+
+Lo que tenía la app de código de barras y faltaba aquí:
+
+| Qué | Cómo funciona |
+|---|---|
+| Leer una ubicación | Si es la de alguna línea (la caja KO_ o el hueco), se ve esa línea (la primera pendiente). Si no hay nada del pedido allí, aviso rojo. No cuenta como lectura. |
+| ✎ Poner cantidad | Sale en la línea que se ve si ya tiene **al menos 1 ud leída con la pistola** (el producto está comprobado) y faltan 2 o más. Se escribe el número o «Todas las que faltan». Nunca pasa de lo que falta. Va por la misma cola que las lecturas (cuenta al momento, se guarda detrás). Deshacer la quita entera (−n). En las lecturas queda como «A MANO +n». |
+| Notas de la OUT | El campo Notas de la OUT sale arriba en ámbar. |
+| Códigos alternativos | Los otros EAN del mismo artículo (product_multi_barcode: EAN antiguo, de proveedor…) cuentan al momento como el principal. |
+| 🖨 Imprimir | Etiqueta de caja (OUT + matrícula: las que la OUT ya tiene; no reserva nuevas), etiquetas del transportista (PDF adjuntos a la OUT) y albarán. Abre el PDF y se imprime desde ahí. |
+
+Servidor: rutas nuevas `/koroshi/preparacion/cantidad` y `/koroshi/preparacion/impresos`.
 
 ## v3.6.1: «Esperando conexión…» al momento (11/11/2026)
 

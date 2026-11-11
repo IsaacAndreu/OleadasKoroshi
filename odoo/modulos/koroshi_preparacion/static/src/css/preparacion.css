@@ -118,6 +118,32 @@
 .o_koroshi_preparacion .o_kp_l_cant { flex: 0 0 auto; font-weight: bold; font-size: 18px; }
 .o_koroshi_preparacion .o_kp_cajas { font-size: 15px; color: var(--kp-suave); margin-bottom: 10px; overflow-wrap: anywhere; }
 
+/* ---------------------------------------------------------------- v3.7: notas, cantidad, imprimir */
+.o_koroshi_preparacion .o_kp_nota {
+    background: var(--kp-ambar-claro); color: var(--kp-ambar); border: 2px solid var(--kp-ambar); border-radius: 10px;
+    padding: 8px 12px; margin-bottom: 8px; font-size: 16px; font-weight: bold; white-space: pre-line; overflow-wrap: anywhere;
+}
+.o_koroshi_preparacion .o_kp_cantidad_btn {
+    margin-top: 8px; min-height: 44px; padding: 6px 14px; border: 2px solid var(--kp-azul); border-radius: 10px;
+    background: #fff; color: var(--kp-azul); font-size: 17px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_cant_input {
+    width: 100%; min-height: 64px; font-size: 34px; font-weight: bold; text-align: center; margin-bottom: 10px;
+    border: 3px solid var(--kp-azul); border-radius: 12px; color: var(--kp-texto); background: #fff;
+}
+.o_koroshi_preparacion .o_kp_cant_todas { background: var(--kp-azul); margin-bottom: 10px; }
+.o_koroshi_preparacion .o_kp_cant_ok { background: var(--kp-verde); }
+.o_koroshi_preparacion .o_kp_imprimir {
+    width: 100%; min-height: 48px; margin: 0 0 10px; border: 2px solid var(--kp-borde); border-radius: 10px;
+    background: #fff; font-size: 17px; font-weight: bold; text-align: left; padding: 8px 12px; cursor: pointer; color: var(--kp-texto);
+}
+.o_koroshi_preparacion .o_kp_imp_item {
+    display: block; width: 100%; text-align: left; margin-bottom: 8px; padding: 10px 12px; min-height: 56px;
+    border: 2px solid var(--kp-azul); border-radius: 10px; background: var(--kp-azul-claro); color: var(--kp-texto);
+    font-size: 18px; font-weight: bold; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_imp_detalle { display: block; font-size: 14px; font-weight: normal; color: var(--kp-suave); overflow-wrap: anywhere; }
+
 /* ---------------------------------------------------------------- lector */
 .o_koroshi_preparacion .o_kp_codigo {
     width: 100%; min-height: 48px; font-size: 18px; padding: 8px 12px; border: 2px solid var(--kp-borde);
@@ -273,3 +299,248 @@
 
 /* v3.3: preparar a dos -> el ayudante se distingue en la cabecera */
 .o_kp_ayudante .o_kp_operario { color: #b45309; font-weight: 700; }
+
+/* ================================================================ v3.9: aspecto «etiqueta de estantería»
+   Plano, sin sombras ni degradados: negro sobre blanco como las etiquetas de la nave. La ubicación se pinta como la
+   etiqueta física del rack, la talla en un recuadro, la cantidad en número grande con una barrita por ud. */
+.o_koroshi_preparacion {
+    --kp-fondo: #f2f2f0;
+    --kp-negro: #111111;
+    --kp-linea: #c9c9c6;
+    font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+.o_koroshi_preparacion .o_kp_app { padding-top: 0; }
+
+/* cabecera negra, pegada arriba */
+.o_koroshi_preparacion .o_kp_cabecera {
+    background: var(--kp-negro); color: #fff; border: 0; border-radius: 0; margin: 0 -12px; padding: 8px 12px;
+}
+.o_koroshi_preparacion .o_kp_volver {
+    flex-basis: 46px; height: 46px; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff;
+    font-size: 24px;
+}
+.o_koroshi_preparacion .o_kp_ref { font-size: 20px; }
+.o_koroshi_preparacion .o_kp_tienda { color: #a3a3a3; font-size: 14px; }
+.o_koroshi_preparacion .o_kp_operario {
+    background: none; border-radius: 0; padding: 0; color: #d4d4d4; font-size: 15px; font-weight: normal;
+}
+.o_kp_ayudante .o_kp_operario { color: #facc15; }
+
+/* progreso: barra plana a todo el ancho, debajo de la cabecera */
+.o_koroshi_preparacion .o_kp_progreso { margin: 0 -12px 10px; }
+.o_koroshi_preparacion .o_kp_barra { height: 26px; border-radius: 0; background: #deded9; }
+.o_koroshi_preparacion .o_kp_barra_lleno { background: #16a34a; border-radius: 0; }
+.o_koroshi_preparacion .o_kp_progreso_texto { font-size: 15px; color: var(--kp-negro); text-shadow: 0 0 3px #fff, 0 0 3px #fff; }
+.o_koroshi_preparacion .o_kp_progreso_fila { padding: 4px 12px 0; font-size: 15px; }
+.o_koroshi_preparacion .o_kp_sin_caja.o_kp_hay {
+    border: 0; border-radius: 0; background: #facc15; color: var(--kp-negro); padding: 0 8px;
+}
+
+/* notas de la OUT */
+.o_koroshi_preparacion .o_kp_nota {
+    border: 0; border-left: 8px solid #e0a800; border-radius: 0; background: #fff4cc; color: #3d2e00; font-weight: normal;
+    margin-bottom: 10px;
+}
+.o_koroshi_preparacion .o_kp_nota::before {
+    content: "NOTA"; display: block; font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #7a5c00;
+}
+
+/* tarjeta de la línea */
+.o_koroshi_preparacion .o_kp_siguiente,
+.o_koroshi_preparacion .o_kp_completa {
+    background: #fff; border: 2px solid var(--kp-negro); border-radius: 4px; padding: 10px 12px 12px;
+}
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_otra { border-style: dashed; }
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_hecha { border-color: #16a34a; background: #f2fbf4; }
+.o_koroshi_preparacion .o_kp_completa { border-color: #16a34a; background: #f2fbf4; }
+.o_koroshi_preparacion .o_kp_anterior,
+.o_koroshi_preparacion .o_kp_posterior {
+    flex-basis: 52px; height: 48px; border: 2px solid var(--kp-negro); border-radius: 4px; background: #fff;
+    color: var(--kp-negro);
+}
+.o_koroshi_preparacion .o_kp_anterior:disabled,
+.o_koroshi_preparacion .o_kp_posterior:disabled { border-color: #dcdcd8; color: #c4c4c0; }
+.o_koroshi_preparacion .o_kp_etiqueta { font-size: 13px; font-weight: bold; letter-spacing: 1px; color: #555; }
+.o_koroshi_preparacion .o_kp_posicion { color: #777; }
+
+/* ubicación = la etiqueta del rack */
+.o_koroshi_preparacion .o_kp_ubi_detalle {
+    margin-top: 10px; background: var(--kp-negro); color: #a3a3a3; font-size: 13px; padding: 6px 12px 0;
+    border-radius: 3px 3px 0 0; overflow-wrap: anywhere;
+}
+.o_koroshi_preparacion .o_kp_ubi_detalle:empty { padding: 4px 0 0; }
+.o_koroshi_preparacion .o_kp_ubicacion {
+    position: relative; background: var(--kp-negro); color: #fff; border-radius: 0 0 3px 3px;
+    padding: 2px 12px 22px; font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 30px;
+    letter-spacing: 0;
+    /* v3.9.2: hueco y KO en una sola línea, mismo tamaño (el JS baja la letra si no cabe) */
+    white-space: nowrap; overflow: hidden; display: flex; align-items: baseline; gap: .55em; line-height: 1.25;
+}
+.o_koroshi_preparacion .o_kp_hueco { padding-right: .55em; border-right: 2px solid #6b6b6b; }
+/* v3.9.2: la etiqueta negra ocupa todo el ancho de la tarjeta (más sitio para la letra) */
+.o_koroshi_preparacion .o_kp_ubi_detalle,
+.o_koroshi_preparacion .o_kp_ubicacion { margin-left: -12px; margin-right: -12px; border-radius: 0; }
+.o_koroshi_preparacion .o_kp_ubicacion::after {
+    content: ""; position: absolute; left: 12px; right: 12px; bottom: 7px; height: 9px;
+    background: repeating-linear-gradient(90deg, #fff 0 2px, transparent 2px 3px, #fff 3px 4px, transparent 4px 7px,
+                                          #fff 7px 10px, transparent 10px 11px);
+    opacity: .85;
+}
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubi_detalle,
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubicacion { background: #166534; color: #fff; }
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubi_detalle { color: #bbf7d0; }
+
+/* artículo: foto grande, referencia y talla en recuadro */
+.o_koroshi_preparacion .o_kp_articulo { margin-top: 12px; gap: 12px; align-items: center; }
+.o_koroshi_preparacion .o_kp_foto {
+    /* v3.9.2: foto vertical 3:4 (las fotos de ropa lo son), de 150 a 200 px de ancho según la PDA */
+    flex: 0 0 clamp(150px, 42%, 200px); width: clamp(150px, 42%, 200px); height: auto; aspect-ratio: 3 / 4;
+    border: 1px solid var(--kp-linea); border-radius: 3px; box-shadow: none; background: #fff;
+}
+.o_koroshi_preparacion .o_kp_producto_ref { font-size: 20px; line-height: 1.2; }
+.o_koroshi_preparacion .o_kp_talla_fila { margin-top: 8px; }
+.o_koroshi_preparacion .o_kp_talla_etq { font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #555; }
+.o_koroshi_preparacion .o_kp_talla {
+    background: #fff; color: var(--kp-negro); border: 3px solid var(--kp-negro); border-radius: 3px; font-size: 30px;
+    padding: 0 12px; min-width: 52px; margin-left: 6px;
+}
+.o_koroshi_preparacion .o_kp_producto { font-size: 14px; margin-top: 6px; }
+
+/* cantidad: número grande + una barrita por ud */
+.o_koroshi_preparacion .o_kp_cuantas {
+    display: flex; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 8px; margin: 14px 0 6px;
+    background: none; color: var(--kp-negro); padding: 0; border-radius: 0;
+}
+.o_koroshi_preparacion .o_kp_n { font-size: 64px; font-weight: bold; line-height: 1; font-variant-numeric: tabular-nums; }
+.o_koroshi_preparacion .o_kp_de { font-size: 24px; color: #777; }
+.o_koroshi_preparacion .o_kp_cuantas_caja { flex-basis: 100%; text-align: center; font-size: 15px; color: #555; }
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_n { color: #166534; }
+.o_koroshi_preparacion .o_kp_segmentos { display: flex; gap: 4px; justify-content: center; margin-bottom: 4px; }
+.o_koroshi_preparacion .o_kp_segmentos span { flex: 0 1 28px; height: 10px; background: #dcdcd8; }
+.o_koroshi_preparacion .o_kp_segmentos span.o_kp_seg_ok { background: #16a34a; }
+.o_koroshi_preparacion .o_kp_cantidad_btn {
+    display: block; margin: 10px auto 0; border: 2px solid var(--kp-negro); border-radius: 4px; background: #fff;
+    color: var(--kp-negro);
+}
+.o_koroshi_preparacion .o_kp_ir_pendiente {
+    border: 2px solid var(--kp-negro); border-radius: 4px; background: #fff; color: var(--kp-negro);
+}
+
+/* avisos: banda plana con franja */
+.o_koroshi_preparacion .o_kp_aviso:not(:empty) { border: 0; border-left: 8px solid; border-radius: 0; }
+.o_koroshi_preparacion .o_kp_ok { background: #dcfce7; border-color: #16a34a; color: #14532d; }
+.o_koroshi_preparacion .o_kp_mal { background: #fee2e2; border-color: #b91c1c; color: #7f1d1d; }
+
+/* botones planos */
+.o_koroshi_preparacion .o_kp_boton { border-radius: 4px; box-shadow: none; }
+.o_koroshi_preparacion .o_kp_boton:disabled { background: #e4e4e0; color: #8a8a86; }
+.o_koroshi_preparacion .o_kp_caja { background: #facc15; color: var(--kp-negro); }
+.o_koroshi_preparacion .o_kp_validar { background: #16a34a; }
+.o_koroshi_preparacion .o_kp_faltante { background: #c2410c; }
+.o_koroshi_preparacion .o_kp_deshacer { background: #fff; color: var(--kp-negro); border: 2px solid var(--kp-negro); }
+.o_koroshi_preparacion .o_kp_deshacer:disabled { border-color: #dcdcd8; background: #fff; color: #b4b4b0; }
+.o_koroshi_preparacion .o_kp_blanco { border-radius: 4px; }
+
+/* líneas: lista con separadores, no tarjetas */
+.o_koroshi_preparacion .o_kp_ver_lineas,
+.o_koroshi_preparacion .o_kp_imprimir { border: 1px solid var(--kp-linea); border-radius: 4px; }
+.o_koroshi_preparacion .o_kp_lineas { border: 1px solid var(--kp-linea); background: #fff; }
+.o_koroshi_preparacion .o_kp_lineas li {
+    border: 0; border-bottom: 1px solid #e6e6e3; border-left: 6px solid transparent; border-radius: 0; margin: 0;
+}
+.o_koroshi_preparacion .o_kp_lineas li:last-child { border-bottom: 0; }
+.o_koroshi_preparacion .o_kp_lineas li.o_kp_ahora { border-width: 0 0 1px 6px; border-left-color: var(--kp-negro); }
+.o_koroshi_preparacion .o_kp_lineas li.o_kp_hecha { background: #f6f6f4; color: #777; }
+.o_koroshi_preparacion .o_kp_l_ubi { font-family: "Roboto Mono", Consolas, "Courier New", monospace; }
+.o_koroshi_preparacion .o_kp_l_cant { font-variant-numeric: tabular-nums; }
+.o_koroshi_preparacion .o_kp_codigo { border-radius: 4px; }
+
+/* hojas inferiores */
+.o_koroshi_preparacion .o_kp_hoja_panel { border-radius: 6px 6px 0 0; border-top: 4px solid var(--kp-negro); }
+.o_koroshi_preparacion .o_kp_hoja_icono { display: none; }
+.o_koroshi_preparacion .o_kp_imp_item { border-radius: 4px; border-color: var(--kp-negro); background: #fff; }
+.o_koroshi_preparacion .o_kp_cant_input { border-radius: 4px; border-color: var(--kp-negro); }
+/* v3.9.3: «Poner cantidad» se ve siempre; antes de leer la primera ud va en gris (avisa al pulsar) */
+.o_koroshi_preparacion .o_kp_cantidad_btn.o_kp_cant_bloqueado { border-color: #b4b4b0; color: #6b6b67; border-style: dashed; }
+
+/* ================================================================ v3.10: todo en una pantalla de PDA (360×640) sin mover
+   arriba y abajo. Sin la barra de Odoo, tarjeta más compacta (cantidad al lado de la foto), Caja y Validar en una fila. */
+body.o_kp_pantalla_pda .o_main_navbar { display: none; }
+.o_koroshi_preparacion .o_kp_cabecera { padding: 6px 12px; gap: 8px; }
+.o_koroshi_preparacion .o_kp_volver { flex-basis: 40px; height: 40px; font-size: 22px; }
+.o_koroshi_preparacion .o_kp_ref { font-size: 18px; }
+.o_koroshi_preparacion .o_kp_tienda { font-size: 13px; }
+.o_koroshi_preparacion .o_kp_progreso { margin-bottom: 6px; }
+.o_koroshi_preparacion .o_kp_barra { height: 22px; }
+.o_koroshi_preparacion .o_kp_progreso_texto { font-size: 14px; }
+.o_koroshi_preparacion .o_kp_progreso_fila { padding: 2px 12px 0; font-size: 14px; }
+.o_koroshi_preparacion .o_kp_nota {
+    font-size: 14px; padding: 5px 10px; margin-bottom: 6px;
+    display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden;
+}
+.o_koroshi_preparacion .o_kp_nota::before { display: inline; margin-right: 6px; }
+
+.o_koroshi_preparacion .o_kp_siguiente { padding: 6px 12px 10px; margin-bottom: 6px; }
+.o_koroshi_preparacion .o_kp_nav { margin-bottom: 0; }
+.o_koroshi_preparacion .o_kp_anterior,
+.o_koroshi_preparacion .o_kp_posterior { flex-basis: 46px; height: 38px; font-size: 18px; }
+.o_koroshi_preparacion .o_kp_etiqueta,
+.o_koroshi_preparacion .o_kp_posicion { font-size: 12px; }
+.o_koroshi_preparacion .o_kp_ubi_detalle { margin-top: 6px; font-size: 12px; padding: 4px 12px 0; }
+.o_koroshi_preparacion .o_kp_ubicacion { padding: 0 12px 16px; }
+.o_koroshi_preparacion .o_kp_ubicacion::after { bottom: 5px; height: 7px; }
+
+.o_koroshi_preparacion .o_kp_articulo { margin-top: 8px; align-items: flex-start; }
+.o_koroshi_preparacion .o_kp_foto { flex-basis: clamp(110px, 38%, 180px); width: clamp(110px, 38%, 180px); }
+.o_koroshi_preparacion .o_kp_producto_ref { font-size: 17px; }
+.o_koroshi_preparacion .o_kp_talla_fila { margin-top: 4px; }
+.o_koroshi_preparacion .o_kp_talla { font-size: 24px; padding: 0 10px; min-width: 44px; }
+.o_koroshi_preparacion .o_kp_producto { font-size: 13px; margin-top: 2px; }
+.o_koroshi_preparacion .o_kp_cuantas { justify-content: flex-start; gap: 6px; margin: 6px 0 4px; }
+.o_koroshi_preparacion .o_kp_n { font-size: 52px; }
+.o_koroshi_preparacion .o_kp_de { font-size: 20px; }
+.o_koroshi_preparacion .o_kp_cuantas_caja { text-align: left; font-size: 13px; }
+.o_koroshi_preparacion .o_kp_segmentos { justify-content: flex-start; gap: 3px; flex-wrap: wrap; }
+.o_koroshi_preparacion .o_kp_segmentos span { flex: 0 1 20px; height: 8px; }
+.o_koroshi_preparacion .o_kp_cantidad_btn {
+    margin: 8px 0 0; min-height: 40px; font-size: 15px; padding: 4px 10px; width: 100%;
+}
+.o_koroshi_preparacion .o_kp_ir_pendiente { min-height: 40px; margin-top: 8px; font-size: 16px; }
+
+.o_koroshi_preparacion .o_kp_aviso { font-size: 16px; margin-bottom: 6px; }
+.o_koroshi_preparacion .o_kp_aviso:not(:empty) { padding: 7px 10px; }
+.o_koroshi_preparacion .o_kp_boton { min-height: 52px; margin-bottom: 6px; padding: 8px 10px; font-size: 20px; }
+.o_koroshi_preparacion .o_kp_fila_botones { gap: 6px; }
+.o_koroshi_preparacion .o_kp_fila_principal .o_kp_boton { font-size: 21px; }
+.o_koroshi_preparacion .o_kp_destacado { min-height: 58px; font-size: 22px; }
+.o_koroshi_preparacion .o_kp_ver_lineas,
+.o_koroshi_preparacion .o_kp_imprimir { min-height: 42px; margin: 2px 0 6px; font-size: 16px; }
+
+/* «Sin caja» y nº de cajas dentro de la barra de progreso (una fila menos) */
+.o_koroshi_preparacion .o_kp_progreso { position: relative; }
+.o_koroshi_preparacion .o_kp_progreso_fila {
+    position: absolute; left: 0; right: 0; top: 0; height: 22px; padding: 0 6px; align-items: center;
+    pointer-events: none; font-size: 13px;
+}
+.o_koroshi_preparacion .o_kp_sin_caja.o_kp_hay { padding: 0 6px; line-height: 18px; }
+.o_koroshi_preparacion .o_kp_cajas_resumen { color: var(--kp-negro); text-shadow: 0 0 3px #fff; }
+.o_koroshi_preparacion .o_kp_ir_pendiente { min-height: 34px; margin-top: 6px; font-size: 15px; }
+
+/* PDA bajitas (pantalla de 640 o menos): foto un poco más pequeña */
+@media (max-height: 700px) {
+    .o_koroshi_preparacion .o_kp_foto { flex-basis: clamp(100px, 32%, 140px); width: clamp(100px, 32%, 140px); }
+    .o_koroshi_preparacion .o_kp_n { font-size: 46px; }
+}
+
+/* ================================================================ v3.11: abajo solo el campo del código; Ver líneas e
+   Imprimir en el menú ☰ de la cabecera */
+.o_koroshi_preparacion .o_kp_menu_btn {
+    flex: 0 0 40px; height: 40px; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff;
+    font-size: 22px; line-height: 1; cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_hoja_menu .o_kp_ver_lineas,
+.o_koroshi_preparacion .o_kp_hoja_menu .o_kp_imprimir {
+    display: block; width: 100%; min-height: 56px; margin: 0 0 8px; border: 2px solid var(--kp-negro); border-radius: 4px;
+    background: #fff; color: var(--kp-negro); font-size: 19px; font-weight: bold; text-align: left; padding: 8px 14px;
+}
+.o_koroshi_preparacion .o_kp_codigo { margin-top: 2px; }
