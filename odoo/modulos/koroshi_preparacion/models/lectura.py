@@ -24,9 +24,10 @@ _logger = logging.getLogger(__name__)
 
 COMPANY_ID = 8                      # EFFECTIVE LOGISTICS, S.L.
 RE_CJ = re.compile(r'^CJ\d{9}$')    # matrícula de caja (igual que koroshi_caja_existente)
-PREFIJOS_ZONA = ('Z-',)             # agrupaciones de zona: se preparan en la app de siempre
+PREFIJOS_ZONA = ('Z-',)             # agrupaciones de zona: v3.15 se preparan enteras (models/agrupacion.py)
 PARAM_ACTIVA = 'koroshi_preparacion.activa'
 PARAM_EMPLEADOS = 'koroshi_preparacion.empleados'
+PARAM_AGRUPACIONES = 'koroshi_preparacion.agrupaciones'   # v3.15: '1' = las Z- también aquí; '0' = app de siempre
 
 
 class Ocupada(UserError):
@@ -72,10 +73,16 @@ class Lectura(models.Model):
         return (employee.barcode or '').upper() in lista or str(employee.id) in lista
 
     @api.model
-    def picking_propio(self, picking):
+    def agrupaciones_activas(self):
+        """v3.15: las agrupaciones de zona (Z-) se preparan en esta pantalla (parámetro koroshi_preparacion.agrupaciones)."""
+        return self._param(PARAM_AGRUPACIONES, '1') not in ('0', 'False', 'false', '')
+
+    @api.model
+    def picking_propio(self, picking, en_lote=False):
         """OUT que se puede preparar aquí: salida de la company 8, sin agrupación de zona, ni hecha ni cancelada.
         v3.14: también las INT que salen del stock (las de web, de EFFEC/Stock a SORTER). Las que salen de otro sitio
-        (p. ej. la ronda de faltantes, desde FALTANTE) siguen en la app de código de barras."""
+        (p. ej. la ronda de faltantes, desde FALTANTE) siguen en la app de código de barras.
+        v3.15: en_lote=True (pantalla de la agrupación entera) acepta también las OUT de una agrupación Z-."""
         if not picking or picking.company_id.id != COMPANY_ID:
             return False
         if picking.picking_type_code == 'internal':
@@ -87,7 +94,7 @@ class Lectura(models.Model):
         if picking.state in ('done', 'cancel', 'draft'):
             return False
         if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
-            return False
+            return bool(en_lote) and picking.picking_type_code == 'outgoing' and self.agrupaciones_activas()
         return True
 
     # ------------------------------------------------------------------ estado de la OUT
@@ -95,7 +102,11 @@ class Lectura(models.Model):
     def _lineas(self, picking):
         """v3.13: en el orden de la RUTA ÓPTIMA (models/ruta.py: menos metros, saliendo de los muelles y volviendo).
         En la misma parada: de abajo arriba (C1, C2...) y por referencia. Lo que no es un lineal (L.. P..), al final."""
-        mls = picking.move_line_ids
+        return self._ordenar(picking.move_line_ids)
+
+    @api.model
+    def _ordenar(self, mls):
+        """v3.15: el orden de la ruta para cualquier conjunto de líneas (una OUT o todas las de una agrupación)."""
         paradas = dict((ml.id, ruta.parada(ml.location_id.complete_name)) for ml in mls)
         puesto = dict((p, i) for i, p in enumerate(ruta.ordenar(paradas.values())))
 
@@ -126,10 +137,15 @@ class Lectura(models.Model):
     @api.model
     def _hermanas(self, picking, producto):
         """v3.13: líneas pendientes de la OUT del MISMO modelo y otra talla (la talla «hermana»)."""
+        return self._hermanas_en(self._lineas(picking), producto)
+
+    @api.model
+    def _hermanas_en(self, ordenadas, producto):
+        """v3.15: lo mismo sobre unas líneas ya ordenadas (las de una agrupación)."""
         modelo = self._modelo(producto)
         if not modelo:
             return self.env['stock.move.line']
-        return self._lineas(picking).filtered(
+        return ordenadas.filtered(
             lambda l: l.product_id != producto and not l.result_package_id
             and float_compare(l.qty_done, l.product_uom_qty, precision_digits=3) < 0
             and self._modelo(l.product_id) == modelo)
@@ -315,8 +331,7 @@ class Lectura(models.Model):
         if not ligero:
             # v3.14: si tiene foto, de todos los artículos de una vez (antes una consulta por artículo: en una OUT de
             # 189 líneas era lo que más tardaba). bin_size: solo el tamaño, sin bajar la imagen
-            for p in ordenadas.mapped('product_id').with_context(bin_size=True):
-                fotos[p.id] = bool(p.image_128)
+            fotos = self._fotos(ordenadas.mapped('product_id'))
         for ml in ordenadas:
             pedidas = ml.product_uom_qty
             leidas = ml.qty_done
@@ -326,27 +341,7 @@ class Lectura(models.Model):
                 if not siguiente and not completa and not ml.result_package_id:
                     siguiente = ml.id
                 continue
-            p = ml.product_id
-            lineas.append({
-                'id': ml.id,
-                'producto_id': p.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
-                'producto': p.display_name or '',
-                'nombre': self._nombre(p),
-                'talla': self._talla(p),
-                'tiene_foto': fotos[p.id],
-                'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
-                'ean': ml.product_id.barcode or '',
-                'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
-                'ubicacion': ml.location_id.name or '',
-                'ubicacion_completa': ml.location_id.complete_name or '',
-                # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
-                'ubicacion_codigos': [c for c in (ml.location_id.barcode, ml.location_id.location_id.barcode) if c],
-                'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
-                'pedidas': round(pedidas),
-                'leidas': round(leidas),
-                'caja': ml.result_package_id.name or '',
-                'completa': completa,
-            })
+            lineas.append(self._linea_json(ml, fotos, alternativos))
             if not siguiente and not completa and not ml.result_package_id:
                 siguiente = ml.id
         cajas = {}
@@ -398,6 +393,36 @@ class Lectura(models.Model):
             'otros_sin_caja': round(otros_sin_caja),
         }
 
+    @api.model
+    def _fotos(self, productos):
+        """v3.14: si tiene foto, de todos los artículos de una vez (bin_size: solo el tamaño, sin bajar la imagen)."""
+        return dict((p.id, bool(p.image_128)) for p in productos.with_context(bin_size=True))
+
+    @api.model
+    def _linea_json(self, ml, fotos, alternativos):
+        """Lo que la PDA necesita de una línea (estado entero). v3.15: también lo usa la agrupación."""
+        p = ml.product_id
+        return {
+            'id': ml.id,
+            'producto_id': p.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
+            'producto': p.display_name or '',
+            'nombre': self._nombre(p),
+            'talla': self._talla(p),
+            'tiene_foto': fotos.get(p.id, False),
+            'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
+            'ean': ml.product_id.barcode or '',
+            'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
+            'ubicacion': ml.location_id.name or '',
+            'ubicacion_completa': ml.location_id.complete_name or '',
+            # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
+            'ubicacion_codigos': [c for c in (ml.location_id.barcode, ml.location_id.location_id.barcode) if c],
+            'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
+            'pedidas': round(ml.product_uom_qty),
+            'leidas': round(ml.qty_done),
+            'caja': ml.result_package_id.name or '',
+            'completa': self._completa(ml),
+        }
+
     # ------------------------------------------------------------------ ayudas
     @api.model
     def _codigos_alternativos(self, productos):
@@ -443,8 +468,12 @@ class Lectura(models.Model):
     def _producto_de(self, picking, codigo):
         """Producto de la OUT con ese código: EAN principal, códigos alternativos (product_multi_barcode) o
         referencia interna. Devuelve (producto, en_la_out)."""
+        return self._producto_entre(picking.move_line_ids.mapped('product_id'), codigo)
+
+    @api.model
+    def _producto_entre(self, productos, codigo):
+        """v3.15: lo mismo entre unos productos dados (los de todas las OUT de una agrupación)."""
         variantes = self._variantes(codigo)
-        productos = picking.move_line_ids.mapped('product_id')
         for p in productos:
             if p.barcode and p.barcode in variantes:
                 return p, True
@@ -493,7 +522,8 @@ class Lectura(models.Model):
             raise UserError(_('%s ya está validada.') % picking.name)
         if picking.state == 'cancel':
             raise UserError(_('%s está cancelada.') % picking.name)
-        if not self.picking_propio(picking):
+        # v3.15: desde la pantalla de la agrupación (contexto preparacion_lote) valen también las OUT de una Z-
+        if not self.picking_propio(picking, en_lote=self.env.context.get('preparacion_lote')):
             raise UserError(_('%s no se prepara aquí: ábrela en la app de código de barras.') % picking.name)
 
     # ------------------------------------------------------------------ leer un producto
@@ -550,7 +580,12 @@ class Lectura(models.Model):
             if hermanas:
                 return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
             return {'ok': False, 'que': 'completo', 'msg': msg}
-        ml = lineas[0]
+        return self._sumar(picking, employee, codigo, lineas[0], id_lectura)
+
+    @api.model
+    def _sumar(self, picking, employee, codigo, ml, id_lectura=False):
+        """+1 ud en la línea elegida (ya bloqueada la OUT). v3.15: también lo usa la agrupación."""
+        producto = ml.product_id
         primera = float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3)
         ml.write({'qty_done': ml.qty_done + 1})
         if primera and hasattr(picking, 'set_barcode_start_date'):

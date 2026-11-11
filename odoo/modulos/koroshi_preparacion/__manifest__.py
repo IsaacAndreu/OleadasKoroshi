@@ -96,8 +96,17 @@ picking y ruta, sin caja (sin botón Caja; se lee y se valida). La ronda de falt
 de código de barras. Abrir más rápido: Lecturas precarga en segundo plano la pantalla y la OUT que toca (Continuar y
 la siguiente tras «¡Hecho!» abren al momento y se refrescan justo después); el servidor mira las fotos de todos los
 artículos de una vez.
+v3.15.0 (11/11/2026): AGRUPACIONES DE ZONA (Z-) en la pantalla nueva, para los operarios de la lista: ya no se abre la
+app de código de barras. La agrupación entera en UN solo recorrido (las líneas de todas sus OUT en el orden de la
+ruta); cada pieza dice a qué caja de tienda va (banda amarilla «→ CAJA 05 · K34 ...», de la nota de la OUT). Si el
+mismo artículo va a varias tiendas, cuenta en la línea que se ve. Leer una CJ cierra la caja de la tienda de esa
+etiqueta (la reservó «Etiquetas de zona»: no hace falta pulsar «Caja»); una CJ de otra agrupación no se cierra.
+Validar valida cada OUT con la validación de siempre (la agrupación se queda «En curso», como hoy). Faltante, Deshacer,
+Poner cantidad e Imprimir (etiquetas y albaranes de todas las tiendas) también. «Volver» de la pantalla de Faltante
+vuelve a la agrupación en la pantalla nueva. Parámetro nuevo koroshi_preparacion.agrupaciones ('1' / '0' = las Z- a
+la app de siempre). Sin campos nuevos en tablas de stock; las OUT sueltas funcionan igual que en la v3.14.
 """,
-    'version': '13.0.3.14.0',
+    'version': '13.0.3.15.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -105,6 +114,7 @@ artículos de una vez.
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',
+        'data/parametros_v315.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
     ],
