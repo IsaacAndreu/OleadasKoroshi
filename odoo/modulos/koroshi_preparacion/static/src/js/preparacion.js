@@ -1,6 +1,11 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.6: no se queda colgada si Odoo va lento o se va la red. Cada lectura cuenta al momento en la PDA (pita y suma
+ * +1) y se guarda en Odoo en segundo plano; si Odoo la rechaza, avisa y la quita. Las lecturas pendientes se guardan
+ * en la memoria de la PDA (localStorage) y se mandan al volver, aunque se cierre la app. Cada petición tiene un tiempo
+ * máximo (20 s): si Odoo no contesta, se vuelve a mandar con el mismo id (no cuenta dos veces). Caja y Validar sí
+ * esperan a Odoo: sin conexión dicen «Esperando conexión…».
  * v3.5: más rápida en OUT grandes. Leer y Deshacer reciben el estado ligero (solo cantidades y totales) y se
  * parchea el que hay; la lista se pinta solo si está abierta; la foto de la línea siguiente se baja antes; las
  * alternativas de Faltante se buscan solas si el operario se queda unos segundos en la misma línea.
@@ -33,6 +38,11 @@ var RE_CJ = /^CJ\d{9}$/i;
 var CONFIRMAR_MS = 4000;       // v3.2: «Tampoco está aquí» se pulsa dos veces
 var PRECARGA_ALT_MS = 3000;     // v3.5: parado en la misma línea 3 s -> se buscan ya las alternativas de Faltante
 var ALT_VALIDO_MS = 120000;     // v3.5: alternativas guardadas: se enseñan al momento durante 2 min
+var LENTO_MS = 5000;            // v3.6: Odoo tarda más de 5 s -> «Odoo va lento, se guarda igual»
+var TIEMPO_MAX_MS = 20000;      // v3.6: sin respuesta en 20 s -> se vuelve a mandar (mismo id)
+var OCUPADA_MS = 1500;          // v3.6: la OUT la está guardando otra petición -> se vuelve a probar
+var CLAVE_COLA = 'koroshi_preparacion_cola';   // v3.6: lecturas pendientes en la memoria de la PDA
+var COLA_HORAS = 24;            // v3.6: las pendientes de más de un día no se mandan
 var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 
@@ -113,6 +123,7 @@ var Pantalla = AbstractAction.extend({
             self.$('.o_kp_f_foto').on('error', function () { $(this).hide(); });   // v3.2
             self._pintar();
             if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
+            self._recuperarCola();   // v3.6: lo que quedó sin guardar (app cerrada, PDA reiniciada)
             // v3.3: preparar a dos -> se ve lo que lee el compañero (y si valida, se vuelve a Lecturas)
             self.timerDos = setInterval(function () {
                 if (self.estado && self.estado.a_dos && self.modo === 'leer' && !self.enviando && !self.cola.length &&
@@ -142,6 +153,8 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerConfirmar);
         clearInterval(this.timerDos);
         clearTimeout(this.timerAlt);
+        clearTimeout(this.timerLento);
+        clearTimeout(this.timerOtra);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -175,7 +188,11 @@ var Pantalla = AbstractAction.extend({
     // orden): entonces hay que cargar la OUT entera.
     _aplicar: function (nuevo) {
         if (!nuevo) { return true; }
-        if (!nuevo.ligero) { this.estado = nuevo; return true; }
+        if (!nuevo.ligero) {
+            this.estado = nuevo;
+            this._reaplicarPendientes();   // v3.6
+            return true;
+        }
         var viejo = this.estado;
         var din = nuevo.lineas || [];
         if (!viejo || !viejo.lineas || viejo.lineas.length !== din.length) { return false; }
@@ -194,7 +211,168 @@ var Pantalla = AbstractAction.extend({
         e.lineas = lineas;
         e.ligero = false;
         this.estado = e;
+        this._reaplicarPendientes();   // v3.6
         return true;
+    },
+
+    // ------------------------------------------------------------ v3.6: lecturas que cuentan al momento
+    // La línea de la OUT con ese código (EAN, EAN con/sin 0 delante o referencia) que aún no está completa ni en caja.
+    _delProducto: function (codigo) {
+        var e = this.estado;
+        if (!e || !e.lineas || RE_CJ.test(codigo)) { return []; }
+        var v = [codigo];
+        if (/^\d{12}$/.test(codigo)) { v.push('0' + codigo); }
+        if (/^0\d{12}$/.test(codigo)) { v.push(codigo.slice(1)); }
+        return e.lineas.filter(function (l) {
+            return (l.ean && v.indexOf(l.ean) >= 0) || (l.ref && l.ref === codigo);
+        });
+    },
+
+    _lineaLocal: function (codigo) {
+        return _.find(this._delProducto(codigo), function (l) { return !l.caja && l.leidas < l.pedidas; }) || null;
+    },
+
+    _recalcular: function (e) {
+        var sig = _.find(e.lineas, function (x) { return !x.completa && !x.caja; });
+        e.siguiente_id = sig ? sig.id : false;
+        e.todo_leido = e.lineas.length > 0 && _.every(e.lineas, function (x) { return x.completa; });
+    },
+
+    _sumarLocal: function (e, l, n) {
+        n = n || 1;
+        l.leidas += n;
+        l.completa = l.leidas >= l.pedidas;
+        e.leidas += n;
+        e.sin_caja += n;
+        e.mias_sin_caja = (e.mias_sin_caja || 0) + n;
+        this._recalcular(e);
+    },
+
+    // lo que aún está en la cola (Odoo no lo tiene) se vuelve a sumar sobre lo que dice Odoo
+    _reaplicarPendientes: function () {
+        var self = this;
+        var e = this.estado;
+        if (!e || !e.lineas) { return; }
+        this.cola.forEach(function (item) {
+            if (!item.optimista) { return; }
+            var l = _.findWhere(e.lineas, {id: item.lineaId});
+            if (!l || l.caja || l.leidas >= l.pedidas) {
+                l = _.find(e.lineas, function (x) {
+                    return x.producto_id === item.productoId && !x.caja && x.leidas < x.pedidas;
+                });
+            }
+            if (l) { self._sumarLocal(e, l); }
+        });
+    },
+
+    _pendientes: function () {
+        return this.cola.filter(function (i) { return i.tipo === 'leer'; }).length;
+    },
+
+    // la cola de lecturas en la memoria de la PDA, por OUT (las cajas no: esas se vuelven a leer)
+    _leerMemoria: function () {
+        try { return JSON.parse(window.localStorage.getItem(CLAVE_COLA) || '{}') || {}; } catch (e) { return {}; }
+    },
+
+    _escribirMemoria: function (todo) {
+        try { window.localStorage.setItem(CLAVE_COLA, JSON.stringify(todo)); } catch (e) { /* sin memoria */ }
+    },
+
+    _guardarCola: function () {
+        var out = this._out();
+        if (!out) { return; }
+        var todo = this._leerMemoria();
+        var lecturas = this.cola.filter(function (i) { return i.tipo === 'leer'; }).map(function (i) {
+            return {codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id};
+        });
+        if (lecturas.length) { todo[out.id] = lecturas; } else { delete todo[out.id]; }
+        this._escribirMemoria(todo);
+    },
+
+    _recuperarCola: function () {
+        var self = this;
+        var out = this._out();
+        var todo = this._leerMemoria();
+        var limite = Date.now() - COLA_HORAS * 3600000;
+        if (out && todo[out.id]) {
+            todo[out.id].forEach(function (i) {
+                if ((i.t || 0) < limite) { return; }
+                var item = {tipo: 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id};
+                var l = self._lineaLocal(i.codigo);
+                if (l) {
+                    item.optimista = true;
+                    item.lineaId = l.id;
+                    item.productoId = l.producto_id;
+                    self._sumarLocal(self.estado, l);
+                }
+                self.cola.push(item);
+            });
+            var n = this._pendientes();
+            if (n) {
+                this._aviso('Guardando ' + n + (n === 1 ? ' lectura que quedó' : ' lecturas que quedaron') +
+                            ' en la PDA…', 'info');
+                this._pintar();
+                this._enviar();
+            } else {
+                this._guardarCola();
+            }
+        }
+        // las de otras OUT (se cerró la app antes de guardarlas): se mandan solas, en segundo plano
+        Object.keys(todo).forEach(function (pid) {
+            if (out && String(out.id) === pid) { return; }
+            var items = (todo[pid] || []).filter(function (i) { return (i.t || 0) >= limite; });
+            self._vaciarOtra(parseInt(pid, 10), items);
+        });
+    },
+
+    _vaciarOtra: function (pickingId, items) {
+        var self = this;
+        var todo = this._leerMemoria();
+        if (items.length) { todo[pickingId] = items; } else { delete todo[pickingId]; }
+        this._escribirMemoria(todo);
+        if (!items.length) { return; }
+        var i = items[0];
+        return this._post('/koroshi/preparacion/leer', {picking_id: pickingId, codigo: i.codigo, id_lectura: i.id,
+                                                       employee_id: i.employee_id || false})
+            .then(function (r) {
+                if (r && r.que === 'ocupada') {
+                    setTimeout(function () { self._vaciarOtra(pickingId, items); }, OCUPADA_MS);
+                    return;
+                }
+                self._vaciarOtra(pickingId, items.slice(1));
+            }, function () { /* sin red / Odoo lento: se queda en la memoria para la próxima vez */ });
+    },
+
+    // llamada JSON a Odoo con tiempo máximo. Si falla, rechaza con {lento} (no contesta o está reiniciando),
+    // {sinRed}, {sesion} (sesión caducada) o {msg} (error de Odoo con esta petición).
+    _post: function (ruta, params) {
+        var ctrl = window.AbortController ? new window.AbortController() : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIEMPO_MAX_MS) : null;
+        var opciones = {
+            method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: params, id: Date.now()}),
+        };
+        if (ctrl) { opciones.signal = ctrl.signal; }
+        return window.fetch(ruta, opciones).then(function (resp) {
+            if (resp.status >= 500) { clearTimeout(timer); throw {lento: true}; }
+            return resp.json().then(function (j) {
+                clearTimeout(timer);
+                return j;
+            }, function () {
+                clearTimeout(timer);
+                throw {lento: true};
+            });
+        }, function (err) {
+            clearTimeout(timer);
+            throw (err && err.name === 'AbortError') ? {lento: true} : {sinRed: true};
+        }).then(function (j) {
+            if (j && j.error) {
+                var d = j.error.data || {};
+                if (j.error.code === 100 || /SessionExpired/.test(d.name || '')) { throw {sesion: true}; }
+                throw {msg: d.message || j.error.message || 'Error de Odoo'};
+            }
+            return j ? j.result : null;
+        });
     },
 
     // ------------------------------------------------------------ lecturas
@@ -219,46 +397,119 @@ var Pantalla = AbstractAction.extend({
         if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
         this.ultima = {codigo: codigo, t: ahora};
         if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
-        if (this.sinRed) {
-            this._aviso('Sin conexión: no se ha leído ' + codigo + '. Espera a que vuelva.', 'mal');
+        if (this.modo === 'pregunta' || this.modo === 'validando') { return; }
+        if (this.modo === 'faltante') {
+            if (this.sinRed) {
+                this._avisoFaltante('Sin conexión: espera a que vuelva para cambiar de ubicación.', 'mal');
+                return this._pitido(false);
+            }
+            return this._reubicar(codigo);   // v3.2: la ubicación de donde se coge
+        }
+        var tipo = this.modo === 'caja' ? 'caja' : 'leer';
+        if (tipo === 'caja' && this.sinRed) {
+            this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal')
+                .text('✖ Sin conexión: la caja se cierra cuando vuelva. Vuelve a leer la etiqueta entonces.');
             return this._pitido(false);
         }
-        if (this.modo === 'pregunta' || this.modo === 'validando') { return; }
-        if (this.modo === 'faltante') { return this._reubicar(codigo); }   // v3.2: la ubicación de donde se coge
-        var tipo = this.modo === 'caja' ? 'caja' : 'leer';
-        this.cola.push({tipo: tipo, codigo: codigo, id: this._nuevoId()});
+        var item = {tipo: tipo, codigo: codigo, id: this._nuevoId(), t: ahora,
+                    employee_id: this.operario ? this.operario.id : false};
+        if (tipo === 'leer') {
+            // v3.6: si el producto es de la OUT y le faltan uds, cuenta ya (pita y +1); Odoo lo guarda detrás
+            var l = this._lineaLocal(codigo);
+            if (l) {
+                item.optimista = true;
+                item.lineaId = l.id;
+                item.productoId = l.producto_id;
+                this._sumarLocal(this.estado, l);
+                this.verId = l.completa ? null : l.id;
+                this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas, 'ok');
+                this._pitido(true);
+                if (this.estado.todo_leido) {
+                    this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'),
+                                'ok');
+                }
+            } else if (this.sinRed) {
+                var delProducto = this._delProducto(codigo);
+                this._aviso(delProducto.length ? 'Ya tienes todas las uds de ' + (delProducto[0].nombre ||
+                    delProducto[0].producto) + '. No cuenta.' : 'Sin conexión: no se puede comprobar ' + codigo +
+                    '. No cuenta.', 'mal');
+                return this._pitido(false);
+            }
+        }
+        this.cola.push(item);
+        this._guardarCola();
+        if (item.optimista) { this._pintar(); }
         this._enviar();
     },
 
     _enviar: function () {
         var self = this;
-        if (this.enviando || this.sinRed || !this.cola.length) { return; }
+        if (this.enviando || this.sinRed || !this.cola.length || !this._out()) { return; }
         var item = this.cola[0];
         this.enviando = true;
+        clearTimeout(this.timerOtra);
+        clearTimeout(this.timerLento);
+        this.timerLento = setTimeout(function () {   // v3.6
+            if (self.enviando) {
+                self._aviso('Odoo va lento: lo leído se guarda igual (' + self._pendientes() + ' pendientes).', 'warn');
+            }
+        }, LENTO_MS);
         var ruta = item.tipo === 'caja' ? '/koroshi/preparacion/caja' : '/koroshi/preparacion/leer';
-        return this._rpc({route: ruta, params: {
+        return this._post(ruta, {
             picking_id: this._out().id, codigo: item.codigo, id_lectura: item.id,
-            employee_id: this.operario ? this.operario.id : false,
-        }}, {shadow: true}).then(function (r) {
-            self.cola.shift();
+            employee_id: item.employee_id || (this.operario ? this.operario.id : false),
+        }).then(function (r) {
+            clearTimeout(self.timerLento);
             self.enviando = false;
+            if (self.isDestroyed && self.isDestroyed()) { return; }
+            if (r && r.que === 'ocupada') {
+                // v3.6: otra petición está guardando en esta OUT: se vuelve a probar (no se pierde)
+                self.timerOtra = setTimeout(function () { self._enviar(); }, OCUPADA_MS);
+                return;
+            }
+            self.sesionCaducada = false;
+            self.cola.shift();
+            self._guardarCola();
             var cuadra = !(r && r.estado) || self._aplicar(r.estado);
             if (!cuadra) { self._recargar(); }   // v3.5: algo ha cambiado de forma (p. ej. la caja del compañero)
-            if (item.tipo === 'caja') { self._trasCaja(r); } else { self._trasLeer(r); }
+            if (item.tipo === 'caja') { self._trasCaja(r); } else { self._trasLeer(r, item); }
             self._pintar();
             self._enviar();
-        }).guardedCatch(function (e) {
+        }, function (err) {
+            clearTimeout(self.timerLento);
             self.enviando = false;
-            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            if (self._esSinConexion(e)) { return self._sinConexion(); }   // la lectura se queda y se reintenta
+            if (err && err.lento) {
+                // v3.6: Odoo no contesta en 20 s (o se está reiniciando): se vuelve a mandar, mismo id
+                self._aviso('Odoo no contesta: se vuelve a intentar (' + self._pendientes() + ' pendientes).', 'warn');
+                self.timerOtra = setTimeout(function () { self._enviar(); }, OCUPADA_MS);
+                return self._pintar();
+            }
+            if (err && err.sinRed) { return self._sinConexion(); }   // la lectura se queda y se reintenta
+            if (err && err.sesion) {
+                self.sesionCaducada = true;
+                self._aviso('La sesión de Odoo ha caducado: vuelve a entrar. Lo leído está guardado en la PDA.', 'mal');
+                return self._pitido(false);
+            }
+            // error de Odoo con esta lectura: se quita y se carga la OUT tal como está en Odoo
             self.cola.shift();
-            self._aviso(self._mensajeError(e), 'mal');
+            self._guardarCola();
+            self._aviso((item.optimista ? 'No se ha guardado ' + item.codigo + ': ' : '') +
+                        ((err && err.msg) || 'Error de Odoo'), 'mal');
             self._pitido(false);
+            self._recargar();
             self._enviar();
         });
     },
 
-    _trasLeer: function (r) {
+    _trasLeer: function (r, item) {
+        if (item && item.optimista) {
+            // v3.6: ya pitó y se vio al leer; solo se avisa si Odoo no la ha aceptado (y ya no cuenta)
+            if (!(r && r.ok)) {
+                this._aviso('No se ha guardado ' + item.codigo + ': ' + ((r && r.msg) || 'Error'), 'mal');
+                this._pitido(false);
+            }
+            return;
+        }
         if (r && r.ok) {
             // v3.0.1: si la línea leída aún no está completa se queda a la vista; si ya lo está, salta sola a la siguiente
             var l = this.estado && _.findWhere(this.estado.lineas, {id: r.linea_id});
@@ -276,7 +527,11 @@ var Pantalla = AbstractAction.extend({
 
     // ------------------------------------------------------------ caja
     _onCaja: function () {
-        if (!this._out() || this.sinRed) { return; }
+        if (!this._out()) { return; }
+        if (this.sinRed) {   // v3.6: la caja espera a Odoo
+            this._aviso('Sin conexión: la caja se cierra cuando vuelva. Puedes seguir leyendo.', 'warn');
+            return this._foco();
+        }
         if (!this.estado.sin_caja) {
             this._aviso('No hay nada leído fuera de caja.', 'info');
             return this._foco();
@@ -341,7 +596,7 @@ var Pantalla = AbstractAction.extend({
             picking_id: out.id, employee_id: this.operario ? this.operario.id : false,
             pedido_pendiente: pedidoPendiente || false,
         }}).then(function (r) {
-            if (r && r.estado) { self.estado = r.estado; }
+            if (r && r.estado) { self._aplicar(r.estado); }
             if (r && r.ok && r.que === 'validada') {
                 self._capa('✓ ' + out.name + ' validada', true);
                 self._pitido(true);
@@ -373,12 +628,38 @@ var Pantalla = AbstractAction.extend({
     // ------------------------------------------------------------ deshacer / faltante / volver
     _onDeshacer: function () {
         var self = this;
-        if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
+        if (!this._out() || this.modo !== 'leer') { return; }
+        // v3.6: la última lectura aún no ha llegado a Odoo -> se quita en la PDA, sin esperar
+        var ultimo = this.cola[this.cola.length - 1];
+        var enVuelo = this.enviando && this.cola.length === 1;
+        if (ultimo && ultimo.tipo === 'leer' && !enVuelo) {
+            this.cola.pop();
+            this._guardarCola();
+            var l = null;
+            if (ultimo.optimista) {
+                var e = this.estado;
+                l = _.findWhere(e.lineas, {id: ultimo.lineaId});
+                if (!l || l.caja || l.leidas < 1) {
+                    l = _.find(e.lineas, function (x) {
+                        return x.producto_id === ultimo.productoId && !x.caja && x.leidas > 0;
+                    });
+                }
+                if (l) { this._sumarLocal(e, l, -1); }
+            }
+            this.verId = l ? l.id : this.verId;
+            this._pintar();
+            this._aviso('Deshecha: ' + (l ? (l.nombre || l.producto) : ultimo.codigo) + ' (−1)', 'info');
+            this._pitido(true);
+            return this._foco();
+        }
+        if (this.sinRed) { this._aviso('Sin conexión: espera a que vuelva para deshacer.', 'warn'); return; }
+        if (this.cola.length || this.enviando) { this._aviso('Un momento: guardando lo leído…', 'info'); return; }
         this.enviando = true;
         return this._rpc({route: '/koroshi/preparacion/deshacer', params: {
             picking_id: this._out().id, employee_id: this.operario ? this.operario.id : false,
         }}).then(function (r) {
             self.enviando = false;
+            if (r && r.que === 'ocupada') { return self._aviso('Odoo está guardando: pulsa otra vez.', 'warn'); }
             if (r && r.estado && !self._aplicar(r.estado)) { self._recargar(); }   // v3.5: ligero
             if (r && r.ok && r.linea_id) { self.verId = r.linea_id; }   // v3.0.1: se ve la línea deshecha
             self._pintar();
@@ -414,6 +695,11 @@ var Pantalla = AbstractAction.extend({
     _onVolver: function () {
         if (this.modo === 'validando') { return; }
         if (this.modo === 'faltante') { return this._cerrarFaltante(); }
+        // v3.6: con red, se espera a que lo leído llegue a Odoo (sin red o sin sesión, se queda en la PDA y se manda
+        // al volver a abrir la preparación)
+        if (this.cola.length && !this.sinRed && !this.sesionCaducada) {
+            return this._aviso('Espera: guardando ' + this._pendientes() + ' lecturas…', 'warn');
+        }
         this.trigger_up('history_back');
     },
 
@@ -443,7 +729,8 @@ var Pantalla = AbstractAction.extend({
     _onFaltante: function () {
         var self = this;
         var e = this.estado;
-        if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
+        if (!this._out() || this.sinRed || this.modo !== 'leer') { return; }
+        if (this.cola.length || this.enviando) { return this._aviso('Un momento: guardando lo leído…', 'info'); }   // v3.6
         var id = this._idVisto();
         var l = id && _.findWhere(e.lineas, {id: id});
         if (!l) { this._aviso('No queda ninguna línea por coger.', 'info'); return this._foco(); }
@@ -745,6 +1032,7 @@ var Pantalla = AbstractAction.extend({
             this._estadoLector();
             this.$el.addClass('o_kp_sin_red');
             this._pitido(false);
+            if (this.estado) { this._pintar(); }   // v3.6.1: Caja / Validar dicen ya «Esperando conexión…»
         }
         clearTimeout(this.timerReintento);
         this.timerReintento = setTimeout(function () { self._probarConexion(); }, REINTENTO_MS);
@@ -762,7 +1050,7 @@ var Pantalla = AbstractAction.extend({
                 self.$('.o_kp_offline').hide();
                 self._estadoLector();
                 self.$el.removeClass('o_kp_sin_red');
-                self.estado = r.estado;
+                self._aplicar(r.estado);   // v3.6: con lo pendiente sumado
                 self._pintar();
                 self._aviso('Conexión recuperada.' + (self.cola.length ? ' Guardando lo leído…' : ' Ya puedes leer.'), 'ok');
                 self._pitido(true);
@@ -801,7 +1089,9 @@ var Pantalla = AbstractAction.extend({
         // progreso
         var pct = e.pedidas ? Math.round(100 * Math.min(e.leidas, e.pedidas) / e.pedidas) : 0;
         this.$('.o_kp_barra_lleno').css('width', pct + '%');
-        this.$('.o_kp_progreso_texto').text(e.leidas + ' de ' + e.pedidas + ' uds');
+        var pendientes = this._pendientes();   // v3.6
+        this.$('.o_kp_progreso_texto').text(e.leidas + ' de ' + e.pedidas + ' uds' +
+            (pendientes ? ' · ⏳ ' + pendientes + (pendientes === 1 ? ' guardándose' : ' guardándose') : ''));
         // v3.1: con 0 leídas no se dice nada de cajas («Todo en caja» confundía)
         var txtCaja = e.sin_caja ? 'Sin caja: ' + e.sin_caja + (e.sin_caja === 1 ? ' ud' : ' uds')
             : (e.leidas ? '✓ Todo en caja' : '');
@@ -859,14 +1149,19 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_completa').show();
         }
         // botones
-        var libre = this.modo === 'leer' && !this.sinRed;
+        // v3.6: sin red se sigue leyendo (y deshaciendo lo no guardado); Caja y Validar esperan a Odoo
+        var libre = this.modo === 'leer';
+        var conRed = !this.sinRed;
+        var guardando = this.cola.length > 0 || this.enviando;
         var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
-        this.$('.o_kp_caja').prop('disabled', !libre || !mias)
-            .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
-        this.$('.o_kp_validar').prop('disabled', !libre || !!e.sin_caja || !e.leidas)
-            .toggleClass('o_kp_destacado', !e.sin_caja && e.todo_leido);
-        this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas);
-        this.$('.o_kp_faltante').prop('disabled', !libre || e.todo_leido || !e.siguiente_id);
+        this.$('.o_kp_caja').prop('disabled', !libre || !conRed || !mias)
+            .text(conRed ? '📦 Caja' : '⏳ Esperando conexión…')
+            .toggleClass('o_kp_destacado', conRed && !!mias && e.todo_leido);
+        this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
+            .text(!conRed ? '⏳ Esperando conexión…' : (guardando ? '⏳ Guardando lecturas…' : '✓ Validar'))
+            .toggleClass('o_kp_destacado', conRed && !guardando && !e.sin_caja && e.todo_leido);
+        this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas || (!conRed && !this.cola.length));
+        this.$('.o_kp_faltante').prop('disabled', !libre || !conRed || e.todo_leido || !e.siguiente_id);
         this._pintarLineas();
     },
 
@@ -972,7 +1267,7 @@ var Pantalla = AbstractAction.extend({
         // El punto solo se pone gris sin conexión.
         var listo = !!this.el && !this.sinRed;
         this.$('.o_kp_lector').toggleClass('o_kp_listo', listo);
-        this.$('.o_kp_lector_texto').text(listo ? 'Lector preparado' : 'Sin conexión');
+        this.$('.o_kp_lector_texto').text(listo ? 'Lector preparado' : 'Sin conexión · lo leído se guarda en la PDA');
     },
 
     // ------------------------------------------------------------ sonido y vibración (mismo interruptor que Lecturas)

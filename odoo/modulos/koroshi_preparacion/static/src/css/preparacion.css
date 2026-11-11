@@ -169,7 +169,7 @@
     position: sticky; top: 0; z-index: 1070; background: var(--kp-rojo); color: #fff; font-size: 18px;
     font-weight: bold; padding: 10px 12px; display: flex; gap: 8px;
 }
-.o_koroshi_preparacion.o_kp_sin_red .o_kp_app { opacity: .6; }
+.o_koroshi_preparacion.o_kp_sin_red .o_kp_app { opacity: .85; }   /* v3.6: sin red se sigue leyendo */
 
 @media (prefers-reduced-motion: reduce) {
     .o_koroshi_preparacion .o_kp_lector.o_kp_listo .o_kp_punto,

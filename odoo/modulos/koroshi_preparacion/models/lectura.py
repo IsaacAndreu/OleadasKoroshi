@@ -25,6 +25,11 @@ PARAM_ACTIVA = 'koroshi_preparacion.activa'
 PARAM_EMPLEADOS = 'koroshi_preparacion.empleados'
 
 
+class Ocupada(UserError):
+    """v3.6: la OUT la está guardando otra petición (otra PDA o un reintento de esta). La PDA vuelve a probar en un
+    momento con el mismo id_lectura, sin perder la lectura."""
+
+
 class Lectura(models.Model):
     _name = 'koroshi.preparacion.lectura'
     _description = 'KOROSHI Preparación: lectura en la PDA'
@@ -313,9 +318,11 @@ class Lectura(models.Model):
     def _bloquear(self, picking):
         """Una sola PDA escribe a la vez en la misma OUT."""
         try:
-            self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE NOWAIT', (picking.id,))
+            # v3.6: en un savepoint, para que si no se puede bloquear la transacción siga sana (apuntar, estado)
+            with self.env.cr.savepoint():
+                self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE NOWAIT', (picking.id,))
         except Exception:
-            raise UserError(_('Otra PDA está guardando en %s. Vuelve a leer en un segundo.') % picking.name)
+            raise Ocupada(_('Otra PDA está guardando en %s. Se vuelve a probar sola.') % picking.name)
 
     @api.model
     def _variantes(self, codigo):
