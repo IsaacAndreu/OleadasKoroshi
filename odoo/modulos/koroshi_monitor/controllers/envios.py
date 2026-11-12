@@ -250,7 +250,7 @@ class KoroshiConsultaEnvios(http.Controller):
             'nota': libro.add_format(dict(base, italic=True, font_color='#667085')),
         }
 
-    def _excel_tiendas(self, env, picks, etiqueta, dia_desde, dia_hasta, fechas=None, manuales=None):
+    def _excel_tiendas(self, env, picks, etiqueta, dia_desde, dia_hasta, fechas=None, manuales=None, avisos=None):
         salida = io.BytesIO()
         libro = xlsxwriter.Workbook(salida, {'in_memory': True})
         f = self._formatos_excel(libro)
@@ -324,6 +324,10 @@ class KoroshiConsultaEnvios(http.Controller):
             if t['a_mano']:
                 observacion = 'Añadido a mano' if len(t['a_mano']) == len(t['outs']) else \
                     'Añadido a mano: %s' % ', '.join(t['a_mano'])
+            for ref in t['expediciones']:
+                for aviso in (avisos or {}).get(ref, []):
+                    observacion = (observacion + '\n' if observacion else '') + \
+                        'No cuenta: %s con el nº %s pero sin etiqueta XPO' % (aviso, ref)
             valores = [nombre, ', '.join(t['pedidos']), ', '.join(sorted(t['outs'])), t['fecha'], transportista,
                        ', '.join(t['expediciones']), t['bultos'], t['cajas'], 'SÍ' if coincide else 'NO',
                        t['pedidas'], t['hechas'], '\n'.join(t['detalle']), observacion]
@@ -458,22 +462,28 @@ class KoroshiConsultaEnvios(http.Controller):
 
         La fecha de una expedicion es la de su PRIMERA etiqueta. Se miran todas las OUT con el
         mismo numero de expedicion (una OUT agrupada, p. ej. la -O de outlet, puede no tener
-        adjunto propio). Devuelve (OUT, {id OUT: fecha de la etiqueta}).
+        adjunto propio). Devuelve (OUT, {id OUT: fecha de la etiqueta}, avisos).
+
+        v1.23.2: en XPO cada OUT de la expedicion recibe su propio LabelXPO_. Una OUT de XPO con el
+        numero pero SIN etiqueta propia no entro en lo registrado en XPO (K81 12/11: XPO 17, Excel 18):
+        no cuenta; sale en avisos {nº expedicion: ['OUT 24900 (1 caja)', ...]}. GLS no cambia.
         """
         Pick = env['stock.picking'].sudo()
         base = self._dominio_apartado('tiendas', transportista) + [
             ('state', '=', 'done'), ('carrier_tracking_ref', '!=', False)]
         del_rango = self._adjuntos_etiqueta(env, [('create_date', '>=', inicio), ('create_date', '<', fin)])
         if not del_rango:
-            return Pick.browse(), {}
+            return Pick.browse(), {}, {}
         con_etiqueta = Pick.search(base + [('id', 'in', list(set([a['res_id'] for a in del_rango])))])
         refs = list(set(con_etiqueta.mapped('carrier_tracking_ref')))
         if not refs:
-            return Pick.browse(), {}
+            return Pick.browse(), {}, {}
         expediciones = Pick.search(base + [('carrier_tracking_ref', 'in', refs)])
         ref_por_out = dict([(p.id, p.carrier_tracking_ref) for p in expediciones])
         primera = {}
+        con_adjunto = set()
         for adjunto in self._adjuntos_etiqueta(env, [('res_id', 'in', expediciones.ids)]):
+            con_adjunto.add(adjunto['res_id'])
             ref = ref_por_out.get(adjunto['res_id'])
             fecha = adjunto['create_date']
             if ref and (ref not in primera or fecha < primera[ref]):
@@ -481,8 +491,18 @@ class KoroshiConsultaEnvios(http.Controller):
         # Etiqueta repetida otro dia con el mismo numero: cuenta solo el dia de la primera.
         picks = expediciones.filtered(lambda p: p.carrier_tracking_ref in primera and
                                       inicio <= primera[p.carrier_tracking_ref] < fin)
+        avisos = {}
+        if transportista == 'xpo':
+            sin_etiqueta = picks.filtered(lambda p: p.id not in con_adjunto)
+            if sin_etiqueta:
+                cajas = self._cajas_por_out(env, sin_etiqueta)
+                for p in sin_etiqueta:
+                    n = len(cajas.get(p.id, set())) or p.number_of_packages or 0
+                    avisos.setdefault(p.carrier_tracking_ref, []).append('OUT %s de %s (%d %s)' % (
+                        (p.name or '').replace('EFFEC/OUT/', ''), p.origin or '', n, n == 1 and 'caja' or 'cajas'))
+                picks = picks - sin_etiqueta
         fechas = dict([(p.id, primera[p.carrier_tracking_ref]) for p in picks])
-        return picks, fechas
+        return picks, fechas, avisos
 
     @staticmethod
     def _extras(env, apartado, transportista, dia_desde, dia_hasta):
@@ -506,9 +526,10 @@ class KoroshiConsultaEnvios(http.Controller):
         env = self._env()
         Pick = env['stock.picking'].sudo()
         fechas = {}
+        avisos = {}
         if apartado == 'tiendas' and transportista != 'todos':
             # Por la fecha de la etiqueta del transportista, aunque la OUT se validara dias antes.
-            picks, fechas = self._tiendas_por_etiqueta(env, transportista, inicio, fin)
+            picks, fechas, avisos = self._tiendas_por_etiqueta(env, transportista, inicio, fin)
         else:
             # Web, y Tiendas "Todos": OUT validadas en esas fechas (en Tiendas, con y sin transportista).
             picks = Pick.search(self._dominio_apartado(apartado, transportista) + [
@@ -521,7 +542,8 @@ class KoroshiConsultaEnvios(http.Controller):
         if apartado == 'web':
             contenido, _n = self._excel_web(env, picks, etiqueta, dia_desde, dia_hasta)
         else:
-            contenido, _n = self._excel_tiendas(env, picks, etiqueta, dia_desde, dia_hasta, fechas, manuales)
+            contenido, _n = self._excel_tiendas(env, picks, etiqueta, dia_desde, dia_hasta, fechas, manuales,
+                                                avisos)
         nombre = 'envios_%s_%s_%s.xlsx' % (
             apartado, transportista, dia_desde.strftime('%Y-%m-%d') if dia_desde == dia_hasta else
             '%s_%s' % (dia_desde.strftime('%Y-%m-%d'), dia_hasta.strftime('%Y-%m-%d')))

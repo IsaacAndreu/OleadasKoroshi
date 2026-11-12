@@ -94,10 +94,13 @@ v1.23.0 (12/11/2026): Excel de Tiendas (XPO, GLS y Todos) con UNA FILA POR TIEND
 pedidos y todas sus OUT; columnas nuevas "Uds pedidas" y "Done Quantity" (uds hechas). Tiendas ordenadas por numero K.
 v1.23.1 (12/11/2026): columna "Cajas por pedido (expedicion)" en el Excel de Tiendas: una linea por pedido con su
 numero de expedicion y sus cajas CJ (para hacer el Excel de GLS; al agrupar por tienda se perdia).
+v1.23.2 (12/11/2026): Excel de Tiendas XPO: solo cuentan las OUT con su PROPIA etiqueta XPO (adjunto LabelXPO_). Una OUT
+con el mismo numero de expedicion pero sin etiqueta no se registro en XPO: no suma bultos ni cajas y sale en Observacion
+("No cuenta: OUT ... sin etiqueta XPO"). K81 12/11, expedicion 121771203: XPO 17 bultos, el Excel daba 18. GLS igual.
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.23.1',
+    'version': '13.0.1.23.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
