@@ -112,8 +112,15 @@ para OUT, INT y agrupaciones Z-.
 v3.16.1 (12/11/2026): las líneas VACÍAS (0 pedidas y 0 leídas, las deja la app de código de
 barras de Odoo al leer en otra ubicación y deshacer) ya no salen ni cuentan: antes salían «0 de 0» y «la que toca»
 volvía siempre a ellas (INT de web 67365). No se borran.
+v3.16.2 (12/11/2026): las ubicaciones MU- (al lado de los muelles) van al FINAL de la ruta, de vuelta a muelles, y no
+al principio (el operario se las saltaba: «al principio no sigue el orden», EFFEC/OUT/24421). Se empieza igual;
+solo la parada MU- pasa a la última (unos pocos metros más). (No llegó a instalarse.)
+v3.17.0 (12/11/2026): ORDEN COMO LA APP DE CÓDIGO DE BARRAS por defecto: las líneas por el nombre de la ubicación
+(00114 - L02..., 00221 - L03..., ..., MU-.., N1-..), igual que en la app de siempre. Parámetro nuevo
+koroshi_preparacion.orden: 'ubicacion' (por defecto) o 'ruta' (la ruta optimizada de la v3.13-3.16.2, sin
+desinstalar nada). Incluye lo de la v3.16.1 (sin líneas 0 de 0).
 """,
-    'version': '13.0.3.16.1',
+    'version': '13.0.3.17.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -122,6 +129,7 @@ volvía siempre a ellas (INT de web 67365). No se borran.
         'security/ir.model.access.csv',
         'data/parametros.xml',
         'data/parametros_v315.xml',
+        'data/parametros_v317.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
     ],

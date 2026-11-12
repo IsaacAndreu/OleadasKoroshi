@@ -1,7 +1,16 @@
-# KOROSHI Preparación en Lecturas (v3.16.1, 12/11/2026)
+# KOROSHI Preparación en Lecturas (v3.17.0, 12/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.17.0: orden como la app de código de barras (12/11/2026)
+
+Isaac prefiere el orden de siempre: las líneas van por el **nombre de la ubicación**, igual que en la app de código de
+barras de Odoo (`_.sortBy(pages, 'location_name')`): 00114 - L02 P31, 00221 - L03 P31, ..., L.., MU-.., N1-... En la
+misma ubicación, por referencia. Es el valor por defecto del parámetro nuevo `koroshi_preparacion.orden`
+(`ubicacion`). Con `ruta` vuelve la ruta optimizada (v3.13-3.16.2, `models/ruta.py`), sin instalar nada.
+Las líneas 0 de 0 (v3.16.1) siguen sin salir en los dos casos. Mapas de la OUT 24421 con los dos órdenes en
+`bin/versiones/20261112_ruta_out_24421/` (código de barras 941 m, ruta 784 m).
 
 ## v3.16.0 / v3.16.1: la ruta no vuelve a los mismos pasillos y sin líneas «0 de 0» (12/11/2026)
 
@@ -15,6 +24,10 @@ Mapa de la ruta de la INT 67365 antes del cambio: `bin/versiones/20261112_ruta_i
 **Líneas «0 de 0» (v3.16.1).** Si la OUT/INT se toca en la app de código de barras de Odoo (leer en otra ubicación y deshacer),
 quedan líneas con 0 pedidas y 0 leídas. Antes salían como pendientes («0 de 0») y «Ir a la que toca» volvía siempre a
 ellas. Ahora `_ordenar` las deja fuera (no salen, no cuentan, no se borran).
+
+**MU- al final (v3.16.2).** Todas las MU- son un solo punto al lado de los muelles. Como la ruta sale de muelles, iban
+las primeras y el operario se las saltaba (EFFEC/OUT/24421: 9 líneas MU- y empezó por L03). Ahora se empieza igual (lo más
+cerca de los muelles) y las MU- pasan al final, de camino a muelles: unos pocos metros más. Mapa: `bin/versiones/20261112_ruta_out_24421/`.
 
 ## v3.15.0: agrupaciones de zona (Z-) en la pantalla nueva (11/11/2026)
 

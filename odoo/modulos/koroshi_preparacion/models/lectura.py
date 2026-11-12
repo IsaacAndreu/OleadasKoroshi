@@ -28,6 +28,7 @@ PREFIJOS_ZONA = ('Z-',)             # agrupaciones de zona: v3.15 se preparan en
 PARAM_ACTIVA = 'koroshi_preparacion.activa'
 PARAM_EMPLEADOS = 'koroshi_preparacion.empleados'
 PARAM_AGRUPACIONES = 'koroshi_preparacion.agrupaciones'   # v3.15: '1' = las Z- también aquí; '0' = app de siempre
+PARAM_ORDEN = 'koroshi_preparacion.orden'   # v3.17: 'ubicacion' = como la app de código de barras; 'ruta' = ruta.py
 
 
 class Ocupada(UserError):
@@ -107,11 +108,17 @@ class Lectura(models.Model):
     @api.model
     def _ordenar(self, mls):
         """v3.15: el orden de la ruta para cualquier conjunto de líneas (una OUT o todas las de una agrupación).
+        v3.17: por defecto, el de la app de código de barras (parámetro koroshi_preparacion.orden).
         v3.16: sin las líneas vacías (0 pedidas y 0 leídas, sin caja). Las deja la app de código de barras de Odoo al
         leer en otra ubicación y deshacer: salían «0 de 0», contaban como pendientes y «la que toca» volvía siempre a
         ellas (EFFEC/INT/67365, 12/11). No se borran: solo no se enseñan ni cuentan."""
         mls = mls.filtered(lambda ml: ml.result_package_id or not float_is_zero(
             ml.product_uom_qty + ml.qty_done, precision_digits=3))
+        if self._param(PARAM_ORDEN, 'ubicacion') != 'ruta':
+            # v3.17: el orden de la app de código de barras de Odoo: por el nombre completo de la ubicación
+            # (EFFEC/Stock/NAVE2/00114 - L02 P31 C3, 00221 - L03..., ..., L.., MU-.., N1-..); en la misma ubicación,
+            # por referencia. La ruta optimizada (ruta.py) sigue con el parámetro koroshi_preparacion.orden = 'ruta'.
+            return mls.sorted(lambda ml: (ml.location_id.complete_name or '', ml.product_id.default_code or '', ml.id))
         paradas = dict((ml.id, ruta.parada(ml.location_id.complete_name)) for ml in mls)
         puesto = dict((p, i) for i, p in enumerate(ruta.ordenar(paradas.values())))
 
