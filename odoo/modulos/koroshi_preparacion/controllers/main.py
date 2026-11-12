@@ -149,6 +149,28 @@ class KoroshiPreparacion(http.Controller):
             res = {'ok': False, 'msg': _msg(e)}
         return self._con_estado(picking, res, emp, ligero=True, lote=lote)
 
+    @http.route('/koroshi/preparacion/color', type='json', auth='user')
+    def color(self, employee_id=False, color=False, **kw):
+        """v3.21: el color de la franja de la ubicación de cada operario (leer o, con color, guardar)."""
+        emp = self._empleado(employee_id)
+        Pref = request.env['koroshi.preparacion.preferencia'].sudo()
+        if color:
+            return {'ok': True, 'color': Pref.poner_color(emp, color)}
+        return {'ok': True, 'color': Pref.color_de(emp)}
+
+    @http.route('/koroshi/preparacion/mover_caja', type='json', auth='user')
+    def mover_caja(self, picking_id=False, linea_id=False, cantidad=1, destino='', employee_id=False, **kw):
+        """v3.21: pasar uds de una caja cerrada a otra caja de la OUT (o a una nueva)."""
+        picking = self._picking(picking_id)
+        emp = self._empleado(employee_id)
+        try:
+            res = self._lectura().mover_caja(picking, emp, linea_id, cantidad, destino)
+        except Ocupada as e:
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
+        except (UserError, ValidationError) as e:
+            res = {'ok': False, 'msg': _msg(e)}
+        return self._con_estado(picking, res, emp)
+
     @http.route('/koroshi/preparacion/impresos', type='json', auth='user')
     def impresos(self, picking_id=False, lote_id=False, **kw):
         """v3.7: etiqueta de caja, etiquetas del transportista y albarán de la OUT (para volver a imprimirlos)."""

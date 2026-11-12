@@ -2,3 +2,4 @@
 from . import lectura
 from . import tarea
 from . import agrupacion
+from . import preferencia

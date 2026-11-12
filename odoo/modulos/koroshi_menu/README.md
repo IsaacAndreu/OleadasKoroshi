@@ -16,13 +16,14 @@ Ahora la barra tiene 7 y KOROSHI solo lo de cada día.
 
 **Inventario › Informes › KOROSHI** (consultar datos)
 
-- KPI por día · Faltas por día · Pesos y litros por tipo
+- KPI por día · Comparativa de semanas · Faltas por día · Faltas repetidas (revisar) · Pesos y litros por tipo
 - Productividad · Tareas · OUT validadas hoy sin operario · Lecturas de preparación (grupo «ver productividad»)
 - Ejecuciones de zonas · Cajas cerradas por día y zona · Diagnóstico de zonas de hoy
 - Rondas de faltantes (INT) · Historial de consumibles
 
 **Inventario › Configuración › KOROSHI** (se toca poco)
 
+- **Ajustes KOROSHI** (responsables): todos los parámetros KOROSHI en una pantalla (v1.1)
 - Operarios · Crear operarios · Motivos para saltar (grupo «ver productividad»)
 - Consumibles: artículos · Consumibles: totales iniciales
 - Zonas: configuración · simular hoy · medir desde el 22/10 (responsables)
@@ -47,3 +48,8 @@ no se tocan.
 ## Versiones
 
 - **v1.0.0 (12/11/2026):** primera versión.
+- **v1.1.0 (12/11/2026):** **Ajustes KOROSHI**: los parámetros KOROSHI (orden de Preparación, agrupaciones, minutos sin
+  leer, salida por inactividad, OUT a dos, informe diario, faltantes, faltas repetidas, usuarios de la PDA) en una
+  pantalla, con nombre y explicación. Solo escribe los que cambian; siguen en Parámetros del sistema como siempre.
+  Menús nuevos de koroshi_kpi 1.5 en Informes › KOROSHI: **Comparativa de semanas** y **Faltas repetidas (revisar)**.
+  Necesita koroshi_kpi 1.5.0 y koroshi_operarios 2.8.0 instalados antes.

@@ -12,5 +12,11 @@
             <field name="key">koroshi_operarios.uds_a_dos</field>
             <field name="value">150</field>
         </record>
+        <!-- v2.8: minutos sin leer nada para que un pedido abierto deje de contar como «lo esta haciendo ahora»:
+             quien lo lee se lo queda sin preguntar «¿Unirte a X?» y el monitor lo marca en rojo. -->
+        <record id="parametro_minutos_sin_leer" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.minutos_sin_leer</field>
+            <field name="value">15</field>
+        </record>
     </data>
 </odoo>

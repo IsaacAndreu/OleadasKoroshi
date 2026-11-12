@@ -1,6 +1,8 @@
 # -*- coding: utf-8 -*-
 from odoo import SUPERUSER_ID, api
 
+from . import models
+
 # Menús de antes que este módulo archiva (views/menu.xml). Al desinstalar, vuelven.
 MENUS_ANTES = [
     'koroshi_kpi.menu_koroshi_kpi_root',

@@ -119,8 +119,24 @@ v3.17.0 (12/11/2026): ORDEN COMO LA APP DE CÓDIGO DE BARRAS por defecto: las l�
 (00114 - L02..., 00221 - L03..., ..., MU-.., N1-..), igual que en la app de siempre. Parámetro nuevo
 koroshi_preparacion.orden: 'ubicacion' (por defecto) o 'ruta' (la ruta optimizada de la v3.13-3.16.2, sin
 desinstalar nada). Incluye lo de la v3.16.1 (sin líneas 0 de 0).
+v3.18.0 (12/11/2026): LECTURA EQUIVOCADA. Si se lee un código numérico (EAN) que no es de ningún artículo y no empieza
+por 8445962, la PDA dice «8410782105213 no es de ningún artículo: es otro código de la bolsa. Lee el de KOROSHI, el que
+empieza por 8445962. No cuenta.» en vez de «Código desconocido». OUT, INT y agrupaciones.
+v3.19.0 (12/11/2026): ZALANDO Y ABOUT YOU SIN ETIQUETA CJ. En las OUT de PED. MARKETPLACE (o cliente Zalando / About
+You) «Caja» crea el paquete de Odoo (PACK0139...) sin leer nada, como «Put in pack» en la app de código de barras, y se
+sigue leyendo. «Validar» mete solo en un paquete nuevo lo que el operario tenga leído fuera de caja y valida. Las OUT de
+tiendas siguen con la etiqueta CJ. Incluye la v3.18.0 (no llegó a instalarse).
+v3.20.0 (12/11/2026): ZALANDO / ABOUT YOU: EL NÚMERO DEL PACK. Al cerrar una caja sale una hoja con el número del
+paquete en grande (PACK0139...), sus uds, «Apunta este número en la caja» y la lista de cajas de la OUT. Al validar,
+la última caja (la que se cierra sola) sale igual, hasta pulsar «Hecho». Tocar «N cajas» arriba enseña la lista.
+v3.21.0 (12/11/2026): CAMBIAR DE CAJA Y COLOR DE LA UBICACIÓN. En «Ver líneas», cada línea ya en caja tiene un ✎:
+pasar 1 o más uds a otra caja de la OUT, a una caja nueva (Zalando / About You: PACK nuevo) o leyendo otra etiqueta
+CJ (si no se mueve la línea entera se parte en dos, como hace Odoo al cerrar caja). Menú ☰ > «Color de la
+ubicación»: cada operario elige entre 6 (A negra, B blanca, C amarilla, D azul, E en casillas, F amarilla grande;
+por defecto F); se guarda por operario (tabla nueva koroshi.preparacion.preferencia). Incluye la v3.20.0 (no llegó a
+instalarse).
 """,
-    'version': '13.0.3.17.0',
+    'version': '13.0.3.21.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

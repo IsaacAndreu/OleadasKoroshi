@@ -253,8 +253,9 @@ var Pantalla = AbstractAction.extend({
                 // v2.5: la OUT ya la hace otro -> se pregunta antes de entrar de ayudante
                 self.ocupado = false;
                 self._pitido(true);
-                return self._confirmar('¿Ayudar a ' + r.titular + '?', r.msg + ' Tú harías la segunda mitad.',
-                    'Sí, ayudarle', 'No', function () {
+                // v2.8: «¿Unirte a X?» en vez de «¿Ayudar a X?»
+                return self._confirmar('¿Unirte a ' + r.titular + '?', r.msg + ' Tú harías la segunda mitad.',
+                    'Sí, unirme', 'No', function () {
                         self.ultima = {codigo: '', t: 0};
                         self._leer(r.codigo, true);
                     });

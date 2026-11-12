@@ -1,7 +1,50 @@
-# KOROSHI Preparación en Lecturas (v3.17.0, 12/11/2026)
+# KOROSHI Preparación en Lecturas (v3.21.0, 12/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.21.0: cambiar de caja y color de la ubicación (12/11/2026)
+
+- **Cambiar de caja (✎).** En ☰ › Ver líneas, cada línea que ya está en una caja tiene un ✎. Se elige cuántas uds
+  (− / +) y a qué caja: otra caja de la OUT, **«+ Caja nueva»** (Zalando / About You: PACK nuevo) o, en las OUT de
+  tiendas, leyendo la etiqueta CJ de otra caja (nueva o de la OUT; si es de otro pedido, no deja). Si no se mueve la
+  línea entera, se parte en dos igual que hace Odoo al cerrar caja (copia con las uds movidas y la original con el
+  resto). Las lecturas de esas uds pasan a la caja nueva. Queda apuntado como «Mover de caja» en las lecturas.
+- **Color de la ubicación.** Menú ☰ › «Color de la ubicación»: A negra (la de antes), B blanca con borde, C
+  amarilla, D azul oscuro, E en casillas (L | P | C) y F amarilla con el hueco muy grande. **Por defecto F.** Se
+  guarda por operario (tabla nueva `koroshi.preparacion.preferencia`, nada en hr.employee), así sale igual en
+  cualquier PDA. Una línea ya cogida sigue saliendo en verde.
+- Incluye la v3.20.0 (no llegó a instalarse).
+
+## v3.20.0: Zalando y About You, el número del PACK y la lista de cajas (12/11/2026)
+
+- Al pulsar **Caja** sale una hoja con el **número del paquete en grande** (PACK0139…), sus uds y «Apunta este
+  número en la caja», y debajo la **lista de cajas** de la OUT (la nueva en verde). «Seguir leyendo» (o leer otra
+  prenda) la cierra.
+- Al **Validar**, si la última caja se ha cerrado sola, sale igual («OUT validada · última caja») y no se vuelve a
+  Lecturas hasta pulsar «Hecho».
+- Tocar **«N cajas»** (arriba, debajo de la barra) enseña la lista de cajas en cualquier OUT.
+- El 12/11 la caja de prueba PACK0139621 de la OUT 24973 se quitó a mano (las 20 uds siguen leídas, fuera de caja).
+
+## v3.19.0: Zalando y About You sin etiqueta CJ (12/11/2026)
+
+- Las OUT de marketplace (pedido de tipo **PED. MARKETPLACE**, o cliente con ZALANDO / ABOUT YOU en el nombre) no
+  llevan etiqueta CJ: sus cajas son paquetes de Odoo con nombre automático (PACK0139568…), como hacía «Put in pack»
+  en la app de código de barras.
+- **Caja**: crea el paquete con lo leído fuera de caja (lo de este operario, si son dos) **sin leer nada**. Sale
+  «Caja PACK0139… cerrada con N uds.» y se sigue leyendo. Si leen una CJ igualmente, también vale.
+- **Validar**: si queda algo leído fuera de caja, lo mete solo en un paquete nuevo y valida (no hace falta pulsar
+  «Caja» antes). Si lo que queda es del compañero, como antes: «Falta que tu compañero cierre su caja».
+- Las OUT de tiendas, las INT y las agrupaciones (Z-) siguen igual.
+- Incluye la v3.18.0 (no llegó a instalarse).
+
+## v3.18.0: lectura equivocada (12/11/2026)
+
+Si el operario lee un código numérico (EAN) que **no es de ningún artículo** y **no empieza por 8445962**, ya no sale
+«Código desconocido», sino: «8410782105213 no es de ningún artículo: es otro código de la bolsa. Lee el de KOROSHI, el
+que empieza por 8445962. No cuenta.» (OUT, INT y agrupaciones). El 12/11 se leyó 8410782105213, que no es de KOROSHI.
+Los artículos de KOROSHI empiezan casi todos por 8445962 (1857 de 2130 en las OUT de noviembre; el resto por 8445514
+y 810000x, que sí están en Odoo y se leen bien).
 
 ## v3.17.0: orden como la app de código de barras (12/11/2026)
 

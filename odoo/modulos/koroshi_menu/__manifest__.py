@@ -23,8 +23,12 @@ nuevo, sale dentro del menú viejo (archivado): hay que añadirlo aquí. Al desi
 antes.
 
 v1.0.0 (12/11/2026): primera versión.
+v1.1.0 (12/11/2026): «Ajustes KOROSHI» (Configuración › KOROSHI, responsables de Inventario): los parámetros KOROSHI
+en una sola pantalla con nombre y explicación (orden de Preparación, agrupaciones, minutos sin leer, informe diario,
+faltantes, faltas repetidas, usuarios de la PDA). Menús nuevos de koroshi_kpi 1.5: Comparativa de semanas y Faltas
+repetidas (Informes › KOROSHI).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -41,6 +45,7 @@ v1.0.0 (12/11/2026): primera versión.
     ],
     'data': [
         'views/menu.xml',
+        'views/ajustes.xml',
     ],
     'uninstall_hook': 'uninstall_hook',
     'installable': True,

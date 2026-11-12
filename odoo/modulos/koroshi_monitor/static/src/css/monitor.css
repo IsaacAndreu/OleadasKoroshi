@@ -143,3 +143,8 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-op { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--km-cur); color: #fff; font-family: monospace; font-size: .95em; }
 .o_koroshi_monitor .km-op-old { background: transparent; color: inherit; opacity: .55; border: 1px solid currentColor; }
 .o_koroshi_monitor table.km-ops tr.km-op-activo td { font-weight: 600; }
+/* v1.21: alarma de bloqueo (pedido abierto sin leer) */
+.o_koroshi_monitor .km-op.km-op-parado { background: #c62828; color: #fff; opacity: 1; border: 0; }
+.o_koroshi_monitor .km-alarma { background: #fdecea; border-color: #c62828; color: #7f1d1d; }
+.o_koroshi_monitor .km-parado-txt { color: #c62828; font-weight: 700; }
+.o_koroshi_monitor table.km-ops tr.km-op-parado-fila td { background: #fdecea; }

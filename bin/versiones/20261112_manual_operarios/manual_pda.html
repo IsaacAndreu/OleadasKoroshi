@@ -1,0 +1,183 @@
+<title>Manual PDA KOROSHI</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: una columna como una hoja de instrucciones de almacén; cada paso = foto de la PDA + texto */
+:root {
+  --bg: #f6f6f3;
+  --paper: #ffffff;
+  --ink: #141414;
+  --muted: #5d5f63;
+  --line: #d9d9d3;
+  --band: #141414;
+  --band-ink: #ffffff;
+  --ok: #1f8a4c;
+  --warn: #b45309;
+  --warn-bg: #fff4e0;
+  --bad: #b42318;
+  --font-display: "Barlow Condensed", "Arial Narrow", Arial, sans-serif;
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111213; --paper: #1b1c1e; --ink: #ededea; --muted: #a3a5a8; --line: #33353a;
+    --band: #ededea; --band-ink: #111213; --ok: #4cc37f; --warn: #f0a245; --warn-bg: #2b2112; --bad: #f2786d;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111213; --paper: #1b1c1e; --ink: #ededea; --muted: #a3a5a8; --line: #33353a;
+  --band: #ededea; --band-ink: #111213; --ok: #4cc37f; --warn: #f0a245; --warn-bg: #2b2112; --bad: #f2786d;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 48px;
+}
+.hoja { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
+header { display: flex; flex-direction: column; gap: 6px; }
+.etiqueta { font-family: var(--font-mono); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--font-display); font-size: clamp(34px, 7vw, 52px); line-height: 1; margin: 0; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 62ch; }
+h2 {
+  font-family: var(--font-display); font-size: 26px; line-height: 1.1; margin: 0; letter-spacing: .01em;
+  background: var(--band); color: var(--band-ink); padding: 8px 12px; text-wrap: balance;
+}
+.paso { background: var(--paper); border: 1px solid var(--line); display: flex; flex-direction: column; }
+.cuerpo { display: grid; grid-template-columns: 200px minmax(0, 1fr); gap: 20px; padding: 18px; align-items: start; }
+.cuerpo.solo { grid-template-columns: minmax(0, 1fr); }
+.foto { width: 100%; max-width: 200px; border: 6px solid var(--band); border-radius: 14px; display: block; background: #000; }
+.texto { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
+.texto p, .texto ol, .texto ul { margin: 0; }
+.texto ol, .texto ul { padding-left: 1.25em; display: flex; flex-direction: column; gap: 6px; }
+.pda {
+  font-family: var(--font-mono); font-size: 14px; background: var(--bg); border: 1px solid var(--line);
+  padding: 8px 10px; display: block; overflow-wrap: anywhere;
+}
+.nota { border-left: 4px solid var(--warn); background: var(--warn-bg); padding: 10px 12px; }
+.no { color: var(--bad); font-weight: 600; }
+.si { color: var(--ok); font-weight: 600; }
+.mensajes { display: flex; flex-direction: column; gap: 0; }
+.msg { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; padding: 14px 18px; border-top: 1px solid var(--line); }
+.msg:first-child { border-top: 0; }
+.msg b { display: block; font-size: 13px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+kbd { font-family: var(--font-mono); font-size: .9em; border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 5px; border-radius: 4px; background: var(--paper); }
+footer { color: var(--muted); font-size: 13px; }
+@media (max-width: 560px) {
+  .cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .foto { max-width: 180px; }
+  .msg { grid-template-columns: minmax(0, 1fr); gap: 6px; }
+}
+</style>
+
+<div class="hoja">
+  <header>
+    <span class="etiqueta">KOROSHI · NAU-2 · PDA Zebra</span>
+    <h1>Cómo preparar un pedido con la PDA</h1>
+    <p class="sub">Lo justo para empezar, entender los avisos y salir de los problemas de siempre. Versión del 12/11/2026.</p>
+  </header>
+
+  <section class="paso">
+    <h2>1 · Abrir Lecturas</h2>
+    <div class="cuerpo">
+      <img class="foto" src="1_inicio_icono_lecturas.jpg" alt="Pantalla de inicio de Odoo con el icono Lecturas (PDA)">
+      <div class="texto">
+        <p>En la pantalla de inicio de Odoo, pulsa el icono negro <b>Lecturas (PDA)</b>. Es el mismo para todos.</p>
+        <p>Si no lo ves, pulsa el menú (las tres rayas) y vuelve al inicio.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso">
+    <h2>2 · Leer tu tarjeta</h2>
+    <div class="cuerpo">
+      <img class="foto" src="2_lee_tu_tarjeta.jpg" alt="Pantalla Lee tu tarjeta con el lector preparado">
+      <div class="texto">
+        <p>Cuando sale <b>Lee tu tarjeta</b> y el punto verde <span class="si">Lector preparado</span>, pasa el lector por tu tarjeta de operario.</p>
+        <p>Lecturas te abre el siguiente pedido de tu cola. Si no tienes cola, lee el código del pedido (OUT o INT).</p>
+        <p>Al acabar el turno, pulsa <b>Salir</b>: la PDA queda libre para otro.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso">
+    <h2>3 · Preparar el pedido</h2>
+    <div class="cuerpo">
+      <img class="foto" src="3_preparacion.png" alt="Pantalla de preparación de un pedido con la ubicación y el artículo">
+      <div class="texto">
+        <ol>
+          <li>Arriba sale <b>dónde ir</b> (lineal, columna y altura) y <b>qué coger</b>.</li>
+          <li>Lee el código de barras de la prenda. Cada lectura suma 1.</li>
+          <li>Para cerrar una caja: pulsa <b>Caja</b> y lee la etiqueta <span class="pda">CJ000000000</span></li>
+          <li>Cuando está todo, <b>Validar</b>.</li>
+        </ol>
+        <p class="nota"><b>Zalando y About You:</b> no llevan etiqueta CJ. Pulsa <b>Caja</b> y la caja se crea sola. Sale su número en grande (PACK0139…): <b>apúntalo en la caja</b> y pulsa «Seguir leyendo». Al <b>Validar</b>, lo que quede fuera de caja va solo a la última caja y también sale su número. Tocando «N cajas» arriba ves la lista de cajas del pedido.</p>
+        <p>Las líneas van en el mismo orden que la app de código de barras: L02, L03… y al final MU- y N1-.</p>
+        <p>Si te tienes que ir a mitad, pulsa <b>Dejar aquí</b>. Así otro puede seguirlo sin problemas.</p>
+        <p><b>Cambiar una prenda de caja:</b> menú ☰ › Ver líneas › pulsa el <b>✎</b> de la línea, elige cuántas y a qué caja (o «Caja nueva»).</p>
+        <p><b>Color de la ubicación:</b> menú ☰ › Color de la ubicación. Elige el que mejor veas; se guarda para ti.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso">
+    <h2>4 · Avisos que te pueden salir</h2>
+    <div class="mensajes">
+      <div class="msg">
+        <div><b>Sale</b><span class="pda">8410782105213 no es de ningún artículo: es otro código de la bolsa. Lee el de KOROSHI, el que empieza por 8445962.</span></div>
+        <div><b>Qué hacer</b>La bolsa tiene más de un código. Busca la etiqueta de KOROSHI y lee ese. Lo que has leído no cuenta.</div>
+      </div>
+      <div class="msg">
+        <div><b>Sale</b><span class="pda">¿Unirte a Andy?</span></div>
+        <div><b>Qué hacer</b>Otro compañero está haciendo ese pedido ahora mismo. <span class="si">Sí, unirme</span>: tú haces la segunda mitad. <b style="display:inline;color:inherit">No</b>: lee otro pedido.</div>
+      </div>
+      <div class="msg">
+        <div><b>Sale</b><span class="pda">Has leído la talla M. Toca L de …</span></div>
+        <div><b>Qué hacer</b>Te has equivocado de talla. Deja la prenda y coge la talla que dice.</div>
+      </div>
+      <div class="msg">
+        <div><b>Sale</b><span class="pda">Es una caja: pulsa «Caja» antes de leerla.</span></div>
+        <div><b>Qué hacer</b>Primero el botón <b style="display:inline;color:inherit">Caja</b>, luego la etiqueta CJ.</div>
+      </div>
+      <div class="msg">
+        <div><b>Sale</b><span class="pda">… no es de este pedido. No cuenta.</span></div>
+        <div><b>Qué hacer</b>Esa prenda no la pide este pedido. Devuélvela a su sitio.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso">
+    <h2>5 · La pantalla se ve antigua o le faltan cosas</h2>
+    <div class="cuerpo solo">
+      <div class="texto">
+        <p>Si en la PDA no sale el lineal y la columna, o se ve distinta a la de los compañeros, la app de Odoo tiene guardada una versión vieja. Hay que borrar la caché:</p>
+        <ol>
+          <li>Cierra la app de Odoo.</li>
+          <li>En la PDA: <b>Ajustes › Aplicaciones › Odoo › Almacenamiento y caché</b>.</li>
+          <li>Pulsa <span class="si">Borrar caché</span>.</li>
+          <li>Abre otra vez Odoo y entra en Lecturas.</li>
+        </ol>
+        <p class="nota"><span class="no">No pulses «Borrar almacenamiento»</span> (o «Borrar datos»): cierra la sesión de Odoo y hay que volver a configurar la PDA.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="paso">
+    <h2>6 · Una línea pone «0 de 0»</h2>
+    <div class="cuerpo solo">
+      <div class="texto">
+        <p>Son líneas vacías que deja la app de código de barras cuando alguien abre el mismo pedido allí. Desde el 12/11 Lecturas ya no las enseña.</p>
+        <ul>
+          <li>Si te sale una, sal del pedido y vuelve a leerlo.</li>
+          <li>Si sigue saliendo, avisa al responsable. No pulses nada en esa línea.</li>
+          <li>Para no crearlas: no abras en la app de código de barras un pedido que estás haciendo con Lecturas.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <footer>Dudas o algo que no sale como aquí: avisa al responsable de turno.</footer>
+</div>

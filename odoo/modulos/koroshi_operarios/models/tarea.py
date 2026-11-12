@@ -21,6 +21,9 @@ from odoo.exceptions import UserError
 ZONA_HORARIA = 'Europe/Madrid'
 PREFIJOS_ZONA = ('Z-',)     # OUT de estas agrupaciones -> la tarea es de toda la agrupacion
 VENTANA_TARJETA = 90        # segundos que vale la tarjeta leida para leer el pedido despues
+# v2.8: una tarea en curso sin leer nada en estos minutos ya no cuenta como «la esta haciendo ahora» (parametro
+# koroshi_operarios.minutos_sin_leer). Quien lee esa OUT se la queda sin preguntar; el monitor la marca en rojo.
+MINUTOS_SIN_LEER = 15
 
 
 class KoroshiOperarioTarea(models.Model):
@@ -55,6 +58,7 @@ class KoroshiOperarioTarea(models.Model):
         ('medianoche', 'Medianoche'),
         ('manual', 'A mano'),
         ('saltar', 'Saltada'),
+        ('relevo', 'La siguio otro operario'),
     ], 'Como se cerro')
 
     uds_inicio = fields.Float('Uds leidas al empezar', digits=(16, 0))
@@ -128,6 +132,54 @@ class KoroshiOperarioTarea(models.Model):
         """v2.5: uds de una tarea en curso hasta ahora (el monitor). koroshi_preparacion la cambia al preparar a dos."""
         self.ensure_one()
         return max(self._uds_leidas(self._pickings()) - (self.uds_inicio or 0.0), 0.0)
+
+    # ------------------------------------------------------------------ v2.8: ¿la esta haciendo ahora?
+    @api.model
+    def _minutos_sin_leer_max(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.minutos_sin_leer', '')
+        try:
+            return int(valor) if valor else MINUTOS_SIN_LEER
+        except ValueError:
+            return MINUTOS_SIN_LEER
+
+    def _ultima_actividad(self):
+        """Ultima vez que alguien hizo algo en el pedido desde que empezo esta tarea: la ultima lectura de este operario
+        en Preparacion (leer, deshacer, caja, validar) o la ultima linea leida del pedido (app de codigo de barras:
+        el 12/11 Andy dejo Preparacion a las 8:40 y siguio la INT 67365 con codigo de barras hasta las 9:53). Lo mas
+        reciente de las dos. Si aun no ha leido nada, la hora en que empezo la tarea."""
+        self.ensure_one()
+        ultima = self.inicio
+        pickings = self._pickings()
+        fechas = [self._ultima_lectura(pickings, self.inicio)]
+        if 'koroshi.preparacion.lectura' in self.env:
+            lectura = self.env['koroshi.preparacion.lectura'].sudo().search(
+                [('picking_id', 'in', pickings.ids), ('employee_id', '=', self.employee_id.id),
+                 ('fecha', '>=', self.inicio)], order='fecha desc', limit=1)
+            if lectura:
+                fechas.append(lectura.fecha)
+        for fecha in fechas:
+            if fecha and (not ultima or fecha > ultima):
+                ultima = fecha
+        return ultima
+
+    def _minutos_sin_leer(self, ahora=None):
+        self.ensure_one()
+        ultima = self._ultima_actividad()
+        if not ultima:
+            return 0.0
+        return max(((ahora or fields.Datetime.now()) - ultima).total_seconds() / 60.0, 0.0)
+
+    def _trabajando_ahora(self):
+        """En curso y con algo leido (o empezada) hace menos de koroshi_operarios.minutos_sin_leer minutos."""
+        self.ensure_one()
+        return self.estado == 'curso' and self._minutos_sin_leer() < self._minutos_sin_leer_max()
+
+    def _relevar(self):
+        """La sigue otro operario: se cierra como dejada a la hora de su ultima lectura (no cuenta el tiempo parado)."""
+        for t in self.filtered(lambda x: x.estado == 'curso'):
+            fin = t._ultima_actividad() or fields.Datetime.now()
+            t._cerrar('dejada', 'relevo', fin)
+        return True
 
     @api.model
     def _validado(self, pickings):

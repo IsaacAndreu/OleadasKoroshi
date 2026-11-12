@@ -23,10 +23,14 @@ se ha cogido, por OUT, articulo y motivo (sin stock, no cogido, en pedido pendie
 con el boton Recalcular de la ficha del dia, cada noche y con el menu Recalcular faltas de hoy.
 v1.4: Hoja de carga XPO (Excel por delegacion con tiendas, pedidos, uds, bultos y palets): menu Inventario > Informes > Hoja de carga
 XPO de hoy, o seleccionar OUT en la lista de albaranes > Accion > KOROSHI Hoja de carga XPO.
+v1.5.0 (12/11/2026): Comparativa de semanas (uds, u/h = uds / horas-persona picking, faltas y cajas de cada dia de
+esta semana contra el mismo dia de la semana pasada, con fila de total de lunes a hoy) y Faltas repetidas (articulos
+que dan falta 3 o mas dias seguidos con actividad, con su ubicacion de mas stock: propuesta para una ronda de revision,
+no crea nada). Dias del parametro koroshi_kpi.dias_falta_repetida. Las dos son vistas SQL de solo lectura.
 
 Solo escribe en sus propias tablas: no cambia albaranes, stock ni productos.
 """,
-    'version': '13.0.1.4.0',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -36,9 +40,12 @@ Solo escribe en sus propias tablas: no cambia albaranes, stock ni productos.
         'data/peso_tipo.xml',
         'data/cron.xml',
         'data/recalcular.xml',
+        'data/parametros.xml',
         'views/kpi_views.xml',
         'views/falta_views.xml',
         'views/hoja_carga.xml',
+        'views/semana_views.xml',
+        'views/falta_repetida_views.xml',
     ],
     'installable': True,
     'application': False,

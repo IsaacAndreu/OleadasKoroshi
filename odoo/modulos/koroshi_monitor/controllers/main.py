@@ -347,9 +347,9 @@ class KoroshiMonitor(http.Controller):
                     fin_real = max(t._hora_validacion(pickings), t.inicio)
             # agrupacion: todas las OUT del lote; OUT suelta: esa OUT
             if t.tipo == 'agrupacion' and t.batch_id:
-                destino = por_lote.setdefault(t.batch_id.name, {'ops': [], 'ahora': []})
+                destino = por_lote.setdefault(t.batch_id.name, {'ops': [], 'ahora': [], 'parados': []})
             elif t.picking_id:
-                destino = por_picking.setdefault(t.picking_id.id, {'ops': [], 'ahora': []})
+                destino = por_picking.setdefault(t.picking_id.id, {'ops': [], 'ahora': [], 'parados': []})
             else:
                 destino = None
             if destino is not None:
@@ -357,8 +357,18 @@ class KoroshiMonitor(http.Controller):
                     destino['ops'].append(cod)
                 if abierta and cod not in destino['ahora']:
                     destino['ahora'].append(cod)
+            # v1.21: abierta pero sin leer nada en koroshi_operarios.minutos_sin_leer minutos = parada (alarma en
+            # rojo). Con operarios < 2.8 no se sabe: nada.
+            sin_leer = 0
+            parado = False
+            if abierta and hasattr(t, '_minutos_sin_leer'):
+                sin_leer = int(t._minutos_sin_leer(ahora))
+                parado = sin_leer >= t._minutos_sin_leer_max()
+                if parado and destino is not None and cod not in destino['parados']:
+                    destino['parados'].append(cod)
             o = ops.setdefault(cod, {'op': cod, 'tareas': 0, 'acabadas': 0, 'dejadas': 0, 'uds': 0.0,
-                                     'min': 0.0, 'ahora': '', 'desde': '', 'ini': None, 'ult': None})
+                                     'min': 0.0, 'ahora': '', 'desde': '', 'ini': None, 'ult': None,
+                                     'sin_leer': 0, 'parado': False, 'ahora_id': False})
             o['tareas'] += 1
             if t.estado == 'acabada' or fin_real:
                 o['acabadas'] += 1
@@ -377,6 +387,9 @@ class KoroshiMonitor(http.Controller):
                     ref = t.batch_id.name if t.tipo == 'agrupacion' else (t.picking_id.name or '')
                     o['ahora'] = (ref or t.referencia or '').replace('EFFEC/OUT/', '')
                     o['desde'] = self._hora(t.inicio)
+                    o['sin_leer'] = sin_leer
+                    o['parado'] = parado
+                    o['ahora_id'] = t.picking_id.id if t.tipo != 'agrupacion' else False
             else:
                 o['uds'] += t.uds or 0.0
                 o['min'] += t.minutos or 0.0
@@ -395,10 +408,18 @@ class KoroshiMonitor(http.Controller):
 
     def _poner_ops(self, D, por_picking, por_lote):
         for d in D:
-            a = por_picking.get(d['id']) or {'ops': [], 'ahora': []}
-            b = por_lote.get(d['lote']) or {'ops': [], 'ahora': []}
+            a = por_picking.get(d['id']) or {'ops': [], 'ahora': [], 'parados': []}
+            b = por_lote.get(d['lote']) or {'ops': [], 'ahora': [], 'parados': []}
             d['ops'] = a['ops'] + [x for x in b['ops'] if x not in a['ops']]
             d['ops_ahora'] = a['ahora'] + [x for x in b['ahora'] if x not in a['ahora']]
+            d['ops_parados'] = a['parados'] + [x for x in b['parados'] if x not in a['parados']]   # v1.21
+
+    def _sin_leer_min(self, env):
+        """v1.21: minutos sin leer para la alarma de OUT parada (el mismo parametro que koroshi_operarios 2.8)."""
+        if 'koroshi.operario.tarea' not in env.registry:
+            return 0
+        Tarea = env['koroshi.operario.tarea'].sudo()
+        return hasattr(Tarea, '_minutos_sin_leer_max') and Tarea._minutos_sin_leer_max() or 0
 
     @http.route('/koroshi_monitor/datos', type='json', auth='user')
     def datos(self, prefijo=None, **kw):
@@ -423,7 +444,8 @@ class KoroshiMonitor(http.Controller):
                 etiquetas[z] = z.rstrip('-') + ' R1'
         ahora = fields.Datetime.now()
         res = {'prefijos': prefijos, 'etiquetas': etiquetas, 'prefijo': prefijo, 'D': [], 'pedidos': 0,
-               'hora': self._hora(ahora), 'modo': prefijo.startswith('TIENDAS:') and 'tiendas' or 'zonas'}
+               'hora': self._hora(ahora), 'modo': prefijo.startswith('TIENDAS:') and 'tiendas' or 'zonas',
+               'sin_leer_min': self._sin_leer_min(env)}
 
         if res['modo'] == 'zonas':
             picks = env['stock.picking'].sudo().search([('batch_id.name', '=like', prefijo + '%'),

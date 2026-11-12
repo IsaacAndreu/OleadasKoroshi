@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v1.5: días laborables seguidos con falta para salir en «Faltas repetidas» -->
+    <record id="param_dias_falta_repetida" model="ir.config_parameter">
+        <field name="key">koroshi_kpi.dias_falta_repetida</field>
+        <field name="value">3</field>
+    </record>
+</odoo>

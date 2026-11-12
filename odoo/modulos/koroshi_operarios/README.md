@@ -1,8 +1,23 @@
-# KOROSHI Operarios (v2.7.0, 11/11/2026)
+# KOROSHI Operarios (v2.8.0, 12/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.8.0: «¿Unirte a X?» solo si X la está haciendo ahora (12/11/2026)
+
+- La pregunta ya no es «¿Ayudar a X?» sino **«¿Unirte a X?»** (botones «Sí, unirme» / «No»). El aviso del compañero
+  puesto desde Colas también: «Te unes a X con OUT…» (antes «Ayudas a X…»).
+
+- **La está haciendo ahora** = tiene el pedido abierto y se ha leído algo (leer, deshacer, caja, validar en
+  Preparación; o una línea del pedido con la app de código de barras: lo más reciente de las dos) en los últimos `koroshi_operarios.minutos_sin_leer` minutos (**15**
+  por defecto; Ajustes › Técnico › Parámetros del sistema). Recién empezado sin leer nada también cuenta.
+- Si alguien la está haciendo ahora: «¿Unirte a X?» (OUT suelta) o «X la está haciendo» (agrupación).
+- Si **nadie** la está haciendo (la dejó con «Dejar aquí», se paró, se fue sin dejarla, o estaba en la cola de otro
+  sin empezar): **quien la lee se la queda sin preguntar nada**. La tarea parada del otro se cierra como *dejada*
+  («La siguió otro operario») a la hora de su última lectura, para no contarle el tiempo parado, y la asignación pasa
+  a quien la lee. Las que están en Expediciones siguen bloqueadas hasta que las libere el responsable.
+- El monitor (v1.21) usa lo mismo para la **alarma de bloqueo**: pedido abierto y sin leer más de esos minutos, en rojo.
 
 ## v2.7.0: Salir lleva al inicio de Odoo; icono «Lecturas (PDA)» (11/11/2026)
 

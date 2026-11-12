@@ -61,7 +61,8 @@ var ConsultaEnvios = AbstractAction.extend({
         var tiendas = this.apartado === 'tiendas';
         var transportista = this.transportistas[this.apartado];
         var opciones = tiendas ?
-            '<option value="xpo"' + (transportista === 'xpo' ? ' selected' : '') + '>XPO SAS</option><option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option>' :
+            '<option value="xpo"' + (transportista === 'xpo' ? ' selected' : '') + '>XPO SAS</option><option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option>' +
+            '<option value="todos"' + (transportista === 'todos' ? ' selected' : '') + '>Todos (con y sin transportista)</option>' :
             '<option value="gls"' + (transportista === 'gls' ? ' selected' : '') + '>GLS</option><option value="seur"' + (transportista === 'seur' ? ' selected' : '') + '>SEUR</option>';
         return '<main><div class="ke-cab"><div><h1>Consulta de envíos</h1>' +
             '<p>Pedido, bultos y número de expedición, en pantalla o en Excel.</p></div>' +
@@ -69,7 +70,7 @@ var ConsultaEnvios = AbstractAction.extend({
             '<nav class="ke-tabs"><button type="button" class="ke-tab' + (tiendas ? ' active' : '') + '" data-apartado="tiendas">Tiendas</button>' +
             '<button type="button" class="ke-tab' + (!tiendas ? ' active' : '') + '" data-apartado="web">Web</button></nav>' +
             '<section class="ke-export"><div><h2>Descargar Excel de ' + (tiendas ? 'tiendas' : 'pedidos web') + '</h2>' +
-            '<p>' + (tiendas ? 'Elige XPO SAS o GLS. Salen los pedidos con la etiqueta del transportista creada en esas fechas.' : 'Elige GLS o SEUR.') + ' Puedes descargar un día o un rango de fechas.</p></div>' +
+            '<p>' + (tiendas ? 'XPO SAS o GLS: pedidos con la etiqueta del transportista creada en esas fechas. Todos: pedidos validados en esas fechas, con y sin transportista.' : 'Elige GLS o SEUR.') + ' Puedes descargar un día o un rango de fechas.</p></div>' +
             '<div class="ke-export-camps"><label>Transportista<select class="ke-export-control ke-export-transport">' + opciones + '</select></label>' +
             '<label>Desde<input class="ke-export-control ke-export-desde" type="date" value="' + e(this.desde) + '"></label>' +
             '<label>Hasta<input class="ke-export-control ke-export-hasta" type="date" value="' + e(this.hasta) + '"></label>' +

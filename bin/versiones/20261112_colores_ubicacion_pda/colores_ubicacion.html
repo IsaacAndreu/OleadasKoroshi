@@ -1,0 +1,139 @@
+<title>Colores ubicación PDA</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: rejilla de «PDA» de 360px, una por propuesta, con la misma línea real (L24 P19 C2 · KO_241026_494) */
+:root {
+  --bg: #e9ebee; --fg: #111827; --muted: #4b5563; --card: #ffffff; --line: #c4cbd3;
+  --mono: "Roboto Mono", Consolas, "Courier New", monospace;
+  --sans: Roboto, "Segoe UI", system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #16181b; --fg: #eceff3; --muted: #a5adb8; --card: #ffffff; --line: #3a3f46; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #16181b; --fg: #eceff3; --muted: #a5adb8; --card: #ffffff; --line: #3a3f46; color-scheme: dark; }
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--sans); margin: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+h1 { font-size: 24px; margin: 0 0 4px; text-wrap: balance; }
+.sub { color: var(--muted); margin: 0 0 18px; max-width: 60ch; }
+.rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 22px; }
+.opcion { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.opcion h2 { font-size: 18px; margin: 0; }
+.opcion p { margin: 0; color: var(--muted); font-size: 14px; }
+.pda { background: #eef1f4; border: 8px solid #222; border-radius: 18px; padding: 10px; max-width: 360px; width: 100%; }
+.tarjeta { background: var(--card); color: #111827; border: 1px solid #c4cbd3; padding: 8px 12px 12px; overflow: hidden; }
+.ve { text-align: center; font-size: 12px; font-weight: bold; letter-spacing: 1px; color: #555; }
+.lin { text-align: center; font-size: 12px; color: #777; margin-bottom: 4px; }
+.det { margin: 6px -12px 0; padding: 4px 12px 0; font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.aqui { margin-left: auto; background: #facc15; color: #111; font-weight: bold; font-size: 12px; padding: 1px 8px; }
+.ubi { margin: 0 -12px; padding: 2px 12px 18px; font-family: var(--mono); font-size: 28px; font-weight: bold;
+       white-space: nowrap; display: flex; align-items: baseline; gap: .5em; position: relative; }
+.hueco { padding-right: .5em; }
+.ko { font-size: .8em; }
+.rayas::after { content: ""; position: absolute; left: 12px; right: 12px; bottom: 6px; height: 8px; opacity: .85;
+  background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 3px, currentColor 3px 4px, transparent 4px 7px, currentColor 7px 10px, transparent 10px 11px); }
+.art { display: flex; gap: 10px; margin-top: 10px; align-items: center; }
+.foto { width: 90px; height: 90px; background: #f3f4f6; border: 1px solid #ddd; display: grid; place-items: center; color: #9ca3af; font-size: 12px; }
+.art b { display: block; font-size: 15px; }
+.art .n { font-size: 34px; font-weight: bold; }
+
+/* A: la de ahora */
+.a .det, .a .ubi { background: #111; color: #fff; } .a .det { color: #a3a3a3; } .a .hueco { border-right: 2px solid #6b6b6b; }
+/* B: blanca con borde negro grueso */
+.b .det { background: #fff; color: #374151; border: 3px solid #111; border-bottom: 0; }
+.b .ubi { background: #fff; color: #111; border: 3px solid #111; border-top: 0; padding-bottom: 10px; } .b .hueco { border-right: 3px solid #111; }
+/* C: amarilla (como las etiquetas de seguridad) */
+.c .det, .c .ubi { background: #facc15; color: #111; } .c .det { color: #3f3a1a; font-weight: bold; } .c .hueco { border-right: 3px solid #111; } .c .aqui { background: #111; color: #facc15; }
+/* D: azul oscuro */
+.d .det, .d .ubi { background: #1e3a8a; color: #fff; } .d .det { color: #bfdbfe; } .d .hueco { border-right: 2px solid #93c5fd; }
+/* E: el hueco en grande, cada parte en su casilla */
+.e .det { background: #111; color: #d1d5db; }
+.e .ubi { background: #fff; color: #111; border: 3px solid #111; border-top: 0; padding: 8px 10px 10px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; font-size: 16px; white-space: normal; }
+.e .casilla { border: 2px solid #111; text-align: center; padding: 2px 0 4px; }
+.e .casilla small { display: block; font-family: var(--sans); font-size: 11px; font-weight: bold; letter-spacing: .5px; color: #4b5563; }
+.e .casilla span { font-size: 30px; }
+.e .ko { grid-column: 1 / -1; font-size: 15px; text-align: center; color: #374151; }
+/* F: amarilla y el hueco grande, sin el código KO arriba */
+.f .det { background: #111; color: #facc15; font-weight: bold; }
+.f .ubi { background: #facc15; color: #111; font-size: 40px; padding: 4px 12px 6px; display: block; }
+.f .ubi .ko { display: block; font-size: 15px; font-weight: normal; padding-bottom: 4px; }
+</style>
+
+<h1>¿Qué color se ve mejor en la PDA?</h1>
+<p class="sub">La misma línea real (NAVE2 · L24 P19 C2 · caja KO_241026_494) en seis versiones, al tamaño de la PDA. Dime la letra que mejor se lee en el almacén.</p>
+
+<div class="rejilla">
+  <div class="opcion a">
+    <h2>A · La de ahora (negra)</h2>
+    <p>Blanco sobre negro, con rayas de código de barras debajo.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi rayas"><span class="hueco">L24 P19 C2</span><span class="ko">KO_241026_494</span></div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+
+  <div class="opcion b">
+    <h2>B · Blanca con borde negro</h2>
+    <p>Letra negra sobre blanco, sin rayas. Como una etiqueta impresa.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi"><span class="hueco">L24 P19 C2</span><span class="ko">KO_241026_494</span></div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+
+  <div class="opcion c">
+    <h2>C · Amarilla</h2>
+    <p>Negro sobre amarillo. Es lo que más contraste da con poca luz y con sol.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi rayas"><span class="hueco">L24 P19 C2</span><span class="ko">KO_241026_494</span></div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+
+  <div class="opcion d">
+    <h2>D · Azul oscuro</h2>
+    <p>Blanco sobre azul. Más suave que el negro, igual de claro.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi rayas"><span class="hueco">L24 P19 C2</span><span class="ko">KO_241026_494</span></div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+
+  <div class="opcion e">
+    <h2>E · L, P y C en casillas</h2>
+    <p>Cada parte en grande, en su casilla. El código KO debajo, más pequeño.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi">
+        <div class="casilla"><small>L</small><span>24</span></div>
+        <div class="casilla"><small>P</small><span>19</span></div>
+        <div class="casilla"><small>C</small><span>2</span></div>
+        <div class="ko">KO_241026_494</div>
+      </div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+
+  <div class="opcion f">
+    <h2>F · Amarilla y el hueco muy grande</h2>
+    <p>El hueco ocupa todo el ancho; el código KO en otra línea.</p>
+    <div class="pda"><div class="tarjeta">
+      <div class="ve">VE A</div><div class="lin">Línea 2 de 106</div>
+      <div class="det">NAVE2 <span class="aqui">AQUÍ MISMO: 2 más</span></div>
+      <div class="ubi"><span class="hueco">L24 P19 C2</span><span class="ko">KO_241026_494</span></div>
+      <div class="art"><div class="foto">foto</div><div><b>Calzoncillo Boxer</b><span class="n">0</span> de 1</div></div>
+    </div></div>
+  </div>
+</div>

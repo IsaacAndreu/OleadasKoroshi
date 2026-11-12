@@ -84,10 +84,16 @@ v1.20.2: "Personas cogiendo ahora" (Tiendas, hoy) = operarios de Lecturas con un
 agrupacion) + OUT de tiendas cogiendose sin operario (caja cerrada en los ultimos 20 min). Cada persona cuenta una
 vez: la OUT que ya tiene operario no suma otra. Antes solo contaban las OUT (el operario de la INT de web no salia).
 Las u/h por persona solo con los que cogen OUT de tiendas.
+v1.21.0 (12/11/2026): alarma de bloqueo. Un operario con un pedido abierto en Lecturas que lleva mas de
+koroshi_operarios.minutos_sin_leer minutos (15) sin leer nada sale en un aviso en rojo arriba (codigo, pedido y minutos)
+y su codigo en rojo en la OUT y en la tabla de operarios. Necesita koroshi_operarios 2.8 (si no, no sale nada).
+v1.22.0 (12/11/2026): Consulta de envios, Tiendas: transportista "Todos (con y sin transportista)". Excel con todos
+los pedidos de tienda validados en esas fechas, tengan o no transportista ("Sin transportista" en la columna), mas los
+anadidos a mano de cualquier transportista. XPO y GLS siguen por fecha de etiqueta.
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.20.2',
+    'version': '13.0.1.22.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

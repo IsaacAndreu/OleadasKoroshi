@@ -42,6 +42,8 @@ var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
 var CLAVE_PDA = 'koroshi_preparacion_pda';
 var RE_CJ = /^CJ\d{9}$/i;
+var COLORES = ['a', 'b', 'c', 'd', 'e', 'f'];   // v3.21: colores de la franja de la ubicación (menú ☰)
+var COLOR_DEFECTO = 'f';
 var CONFIRMAR_MS = 4000;       // v3.2: «Tampoco está aquí» se pulsa dos veces
 var PRECARGA_ALT_MS = 3000;     // v3.5: parado en la misma línea 3 s -> se buscan ya las alternativas de Faltante
 var ALT_VALIDO_MS = 120000;     // v3.5: alternativas guardadas: se enseñan al momento durante 2 min
@@ -89,6 +91,16 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_cant_cancelar': '_cerrarHoja',
         'click .o_kp_imprimir': '_onMenuImprimir',   // v3.11: desde el menú ☰
         'click .o_kp_menu_btn': '_onMenu',
+        'click .o_kp_pack_seguir': '_onPackSeguir',      // v3.20
+        'click .o_kp_l_editar': '_onEditarCaja',         // v3.21: ✎ en una línea ya en caja
+        'click .o_kp_menu_color': '_onMenuColor',        // v3.21: color de la franja de la ubicación
+        'click .o_kp_color_op': '_onElegirColor',
+        'click .o_kp_color_cerrar': '_cerrarHoja',
+        'click .o_kp_mv_menos': '_onMoverMenos',
+        'click .o_kp_mv_mas': '_onMoverMas',
+        'click .o_kp_mv_destino': '_onMoverDestino',
+        'click .o_kp_mv_cancelar': '_cerrarHoja',
+        'click .o_kp_cajas_resumen': '_onVerCajas',     // v3.20: tocar «N cajas» enseña la lista
         'click .o_kp_menu_cerrar': '_cerrarHoja',
         'click .o_kp_imp_item': '_onImprimirItem',
         'click .o_kp_imp_cerrar': '_cerrarHoja',
@@ -150,6 +162,8 @@ var Pantalla = AbstractAction.extend({
             // v3.0.1: producto sin foto -> no se ve el hueco
             self.$('.o_kp_foto').on('error', function () { $(this).hide(); }).on('load', function () { $(this).show(); });
             self.$('.o_kp_f_foto').on('error', function () { $(this).hide(); });   // v3.2
+            self._ponerColor(self._colorGuardado());   // v3.21: el de la última vez en esta PDA, sin esperar
+            self._cargarColor();
             self._pintar();
             if (self.errorCarga) { self._aviso(self.errorCarga, 'mal'); }
             self._recuperarCola();   // v3.6: lo que quedó sin guardar (app cerrada, PDA reiniciada)
@@ -534,7 +548,17 @@ var Pantalla = AbstractAction.extend({
         if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
         this.ultima = {codigo: codigo, t: ahora};
         if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
-        if (this.modo === 'menu') { this._cerrarHoja(); }   // v3.11: leer con el menú abierto lo cierra y cuenta
+        if (this.modo === 'menu' || this.modo === 'color') { this._cerrarHoja(); }   // v3.11, v3.21: lo cierra y cuenta
+        if (this.modo === 'mover') {   // v3.21: con «Cambiar de caja» abierto, leer una CJ es la caja de destino
+            if (RE_CJ.test(codigo.toUpperCase())) { return this._moverA(codigo.toUpperCase()); }
+            this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
+                .text('✖ Eso no es una etiqueta de caja. Elige una caja o lee su etiqueta CJ.');
+            return this._pitido(false);
+        }
+        if (this.modo === 'pack') {   // v3.20: leer con el número de caja a la vista lo cierra y cuenta
+            if (this.packVolver) { return; }
+            this._cerrarHoja();
+        }
         if (this.modo === 'pregunta' || this.modo === 'validando' || this.modo === 'cantidad' ||
                 this.modo === 'imprimir') { return; }
         if (this.modo === 'faltante') {
@@ -705,12 +729,22 @@ var Pantalla = AbstractAction.extend({
     // ------------------------------------------------------------ caja
     _onCaja: function () {
         if (!this._out()) { return; }
+        if (this.modo === 'pack') { this._cerrarHoja(); }
         if (this.sinRed) {   // v3.6: la caja espera a Odoo
             this._aviso('Sin conexión: la caja se cierra cuando vuelva. Puedes seguir leyendo.', 'warn');
             return this._foco();
         }
         if (!this.estado.sin_caja) {
             this._aviso('No hay nada leído fuera de caja.', 'info');
+            return this._foco();
+        }
+        if (!this._esLote() && this.estado.out && this.estado.out.pack_auto) {
+            // v3.19: Zalando / About You: sin etiqueta CJ. Odoo crea el paquete (PACK...) y se sigue leyendo
+            this._aviso('Cerrando caja…', 'info');
+            this.cola.push({tipo: 'caja', codigo: '', id: this._nuevoId(), t: Date.now(),
+                            employee_id: this.operario ? this.operario.id : false});
+            this._guardarCola();
+            this._enviar();
             return this._foco();
         }
         this.modo = 'caja';
@@ -736,8 +770,12 @@ var Pantalla = AbstractAction.extend({
     _trasCaja: function (r) {
         if (r && r.ok) {
             this._cerrarHoja();
-            this._aviso(r.msg, 'ok');
+            this._aviso(r.msg, 'ok', true);
             this._sonar('caja');   // v3.13
+            var out = this._out();
+            if (out && out.pack_auto && r.caja) {   // v3.20: Zalando / About You: el número en grande
+                this._verPack('Caja cerrada', r.caja, r.uds, false);
+            }
             return;
         }
         var msg = (r && r.msg) || 'Error';
@@ -752,12 +790,188 @@ var Pantalla = AbstractAction.extend({
         if (this.estado && !this.estado.sin_caja) { this._cerrarHoja(); this._aviso(msg, 'mal'); }
     },
 
+    // v3.20: hoja con el número del paquete (PACK...) en grande y la lista de cajas de la OUT. volver = tras validar
+    // (al pulsar el botón se vuelve a Lecturas).
+    _verPack: function (titulo, nombre, uds, volver) {
+        var e = this.estado || {};
+        var cajas = (e.cajas || []).slice();
+        if (nombre && !_.findWhere(cajas, {nombre: nombre})) { cajas.push({nombre: nombre, uds: uds || 0}); }
+        this.modo = 'pack';
+        this.packVolver = !!volver;
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad, .o_kp_hoja_imprimir, ' +
+               '.o_kp_hoja_menu, .o_kp_hoja_mover').hide();
+        this.$('.o_kp_pack_titulo').text(titulo || '');
+        this.$('.o_kp_pack_numero').text(nombre || '').toggle(!!nombre);
+        this.$('.o_kp_pack_uds').text(nombre ? (uds || 0) + (uds === 1 ? ' ud' : ' uds') : '').toggle(!!nombre);
+        this.$('.o_kp_pack_nota').toggle(!!nombre);
+        this.$('.o_kp_pack_lista_titulo').text(cajas.length ? 'Cajas de ' + ((this._out() || {}).name || 'esta OUT') +
+                                               ' (' + cajas.length + ')' : 'Aún no hay cajas cerradas.');
+        var $l = this.$('.o_kp_pack_lista').empty();
+        cajas.forEach(function (c) {
+            $('<li/>').toggleClass('o_kp_pack_nueva', c.nombre === nombre)
+                .append($('<b/>').text(c.nombre))
+                .append($('<span/>').text(' · ' + c.uds + (c.uds === 1 ? ' ud' : ' uds')))
+                .appendTo($l);
+        });
+        this.$('.o_kp_pack_seguir').text(volver ? 'Hecho' : 'Seguir leyendo');
+        this.$('.o_kp_hoja_pack').show();
+        this.$('.o_kp_hoja').show();
+    },
+
+    // ------------------------------------------------------------ v3.21: color de la ubicación (por operario)
+    _claveColor: function () {
+        return 'koroshi_preparacion_color_' + (this.operario ? this.operario.id : 'pda');
+    },
+
+    _colorGuardado: function () {
+        try { return window.localStorage.getItem(this._claveColor()) || COLOR_DEFECTO; } catch (e) { return COLOR_DEFECTO; }
+    },
+
+    _ponerColor: function (color) {
+        if (COLORES.indexOf(color) < 0) { color = COLOR_DEFECTO; }
+        this.color = color;
+        var $r = this.$('.o_koroshi_preparacion').addBack('.o_koroshi_preparacion');
+        COLORES.forEach(function (c) { $r.removeClass('o_kp_color_' + c); });
+        $r.addClass('o_kp_color_' + color);
+        try { window.localStorage.setItem(this._claveColor(), color); } catch (e) { /* sin memoria */ }
+        this.$('.o_kp_color_op').each(function () {
+            $(this).toggleClass('o_kp_color_elegido', $(this).data('color') === color);
+        });
+    },
+
+    _cargarColor: function () {
+        var self = this;
+        if (!this.operario) { return; }
+        this._rpc({route: '/koroshi/preparacion/color', params: {employee_id: this.operario.id}}).then(function (r) {
+            if (r && r.ok && r.color && r.color !== self.color) {
+                self._ponerColor(r.color);
+                self._pintar();
+            }
+        }).guardedCatch(function (e) { if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); } });
+    },
+
+    _onMenuColor: function () {
+        this.modo = 'color';
+        this.$('.o_kp_hoja_menu').hide();
+        this._ponerColor(this.color || COLOR_DEFECTO);
+        this.$('.o_kp_hoja_color').show();
+        this.$('.o_kp_hoja').show();
+    },
+
+    _onElegirColor: function (ev) {
+        var color = String($(ev.currentTarget).data('color') || '');
+        this._ponerColor(color);
+        this._cerrarHoja();
+        this._aviso('Color de la ubicación: ' + color.toUpperCase() + '.', 'ok');
+        if (this.operario) {
+            this._rpc({route: '/koroshi/preparacion/color', params: {employee_id: this.operario.id, color: color}})
+                .guardedCatch(function (e) { if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); } });
+        }
+    },
+
+    // ------------------------------------------------------------ v3.21: cambiar de caja
+    _onEditarCaja: function (ev) {
+        ev.stopPropagation();
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        var l = this.estado && _.findWhere(this.estado.lineas, {id: id});
+        if (!l || !l.caja || this.modo !== 'leer') { return; }
+        if (this.sinRed) { return this._aviso('Sin conexión: espera a que vuelva para cambiar de caja.', 'mal'); }
+        if (this.cola.length) { return this._aviso('Espera un momento: se está guardando lo leído.', 'warn'); }
+        this.mover = {linea: l, n: 1};
+        this.modo = 'mover';
+        this.$('.o_kp_hoja_caja, .o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad, .o_kp_hoja_imprimir, ' +
+               '.o_kp_hoja_menu, .o_kp_hoja_pack').hide();
+        this.$('.o_kp_mv_producto').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : ''));
+        this.$('.o_kp_mv_ahora').text('Ahora en la caja ' + l.caja + ' (' + l.leidas + (l.leidas === 1 ? ' ud)' : ' uds)'));
+        this.$('.o_kp_mv_cant_fila').toggle(l.leidas > 1);
+        this.$('.o_kp_mv_cant').text('1');
+        var $d = this.$('.o_kp_mv_destinos').empty();
+        _.each((this.estado.cajas || []), function (c) {
+            if (c.nombre === l.caja) { return; }
+            $('<button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_destino"/>').attr('data-destino', c.nombre)
+                .text(c.nombre + ' (' + c.uds + (c.uds === 1 ? ' ud)' : ' uds)')).appendTo($d);
+        });
+        var auto = this._out() && this._out().pack_auto;
+        if (auto) {
+            $('<button type="button" class="o_kp_boton o_kp_mv_destino"/>').attr('data-destino', 'NUEVA')
+                .text('+ Caja nueva').appendTo($d);
+        }
+        this.$('.o_kp_mv_cj').toggle(!auto);
+        this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso').text('');
+        this.$('.o_kp_hoja_mover').show();
+        this.$('.o_kp_hoja').show();
+        this._foco();
+    },
+
+    _onMoverMenos: function () {
+        if (!this.mover) { return; }
+        this.mover.n = Math.max(1, this.mover.n - 1);
+        this.$('.o_kp_mv_cant').text(this.mover.n);
+    },
+
+    _onMoverMas: function () {
+        if (!this.mover) { return; }
+        this.mover.n = Math.min(this.mover.linea.leidas, this.mover.n + 1);
+        this.$('.o_kp_mv_cant').text(this.mover.n);
+    },
+
+    _onMoverDestino: function (ev) {
+        this._moverA(String($(ev.currentTarget).data('destino') || ''));
+    },
+
+    _moverA: function (destino) {
+        var self = this;
+        var out = this._out();
+        if (!this.mover || !out || !destino || this.moviendo) { return; }
+        this.moviendo = true;
+        this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso').text('Cambiando de caja…');
+        return this._rpc({route: '/koroshi/preparacion/mover_caja', params: _.extend(this._obj(out.id), {
+            linea_id: this.mover.linea.id, cantidad: this.mover.n, destino: destino,
+            employee_id: this.operario ? this.operario.id : false,
+        })}).then(function (r) {
+            self.moviendo = false;
+            if (r && r.estado) { self._aplicar(r.estado); }
+            if (r && r.ok) {
+                self.mover = null;
+                self._cerrarHoja();
+                if (self.$('.o_kp_lineas').is(':visible')) { self._pintarLineas(true); }
+                self._aviso(r.msg, 'ok', true);
+                self._sonar('caja');
+                return;
+            }
+            self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
+                .text('✖ ' + ((r && r.msg) || 'No se ha podido cambiar de caja.'));
+            self._pitido(false);
+        }).guardedCatch(function (e) {
+            self.moviendo = false;
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
+                .text('✖ ' + (self._esSinConexion(e) ? 'Sin conexión. Prueba otra vez.' : self._mensajeError(e)));
+            self._pitido(false);
+        });
+    },
+
+    _onVerCajas: function () {
+        if (!this._out() || this.modo !== 'leer') { return; }
+        this._verPack('Cajas cerradas', '', 0, false);
+    },
+
+    _onPackSeguir: function () {
+        if (this.packVolver) {
+            this.packVolver = false;
+            return this.trigger_up('history_back');
+        }
+        this._cerrarHoja();
+    },
+
     _salirDeCaja: function () {
         this._cerrarHoja();
         this._aviso('Caja sin cerrar. Puedes seguir leyendo.', 'info');
     },
 
     _onFondoHoja: function () {
+        if (this.modo === 'pack') { return this._onPackSeguir(); }   // v3.20
+        if (this.modo === 'mover' || this.modo === 'color') { return this._cerrarHoja(); }      // v3.21
         if (this.modo === 'caja') { this._salirDeCaja(); } else if (this.modo === 'pregunta') { this._cerrarHoja(); }
         else if (this.modo === 'faltante') { this._cerrarFaltante(); }
         else if (this.modo === 'cantidad' || this.modo === 'imprimir' || this.modo === 'menu') { this._cerrarHoja(); }
@@ -766,7 +980,9 @@ var Pantalla = AbstractAction.extend({
     _cerrarHoja: function () {
         this.modo = 'leer';
         this.$('.o_kp_hoja').hide();
-        this.$('.o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu').hide();   // v3.7, v3.11
+        this.$('.o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu, .o_kp_hoja_pack, .o_kp_hoja_mover, ' +
+               '.o_kp_hoja_color').hide();   // v3.7, v3.11, v3.20, v3.21
+        this.mover = null;
         this._pintar();
         this._foco();
     },
@@ -791,6 +1007,13 @@ var Pantalla = AbstractAction.extend({
             pedido_pendiente: pedidoPendiente || false,
         })}).then(function (r) {
             if (r && r.estado) { self._aplicar(r.estado); }
+            if (r && r.ok && r.que === 'validada' && r.caja_auto) {
+                // v3.20: Zalando / About You: la última caja se ha cerrado sola: su número y la lista, hasta «Hecho»
+                self._ocultarCapa();
+                self._pitido(true);
+                self._verPack('✓ ' + out.name + ' validada · última caja', r.caja_auto, r.caja_uds, true);
+                return;
+            }
             if (r && r.ok && r.que === 'validada') {
                 self._capa('✓ ' + (self._esLote() ? r.msg : out.name + ' validada'), true);   // v3.15: «N OUT validadas»
                 self._pitido(true);
@@ -1445,7 +1668,18 @@ var Pantalla = AbstractAction.extend({
             // v3.9.2: hueco (lineal, palet, columna) y caja KO en la misma línea y del mismo tamaño
             var ubi = this._partesUbicacion(sig);
             var $u = this.$('.o_kp_ubicacion').empty();
-            if (ubi.hueco) { $('<span class="o_kp_hueco"/>').text(ubi.hueco).appendTo($u); }
+            if (ubi.hueco && this.color === 'e') {
+                // v3.21: E = cada parte del hueco (L24, P19, C2, MU-02...) en su casilla
+                var $cas = $('<span class="o_kp_casillas"/>').appendTo($u);
+                ubi.hueco.split(/\s+/).forEach(function (t) {
+                    var mm = /^([A-Za-z]+)-?(\d+)$/.exec(t);
+                    var $c = $('<span class="o_kp_casilla"/>').appendTo($cas);
+                    $('<small/>').text(mm ? mm[1].toUpperCase() : '').appendTo($c);
+                    $('<span/>').text(mm ? mm[2] : t).appendTo($c);
+                });
+            } else if (ubi.hueco) {
+                $('<span class="o_kp_hueco"/>').text(ubi.hueco).appendTo($u);
+            }
             $('<span class="o_kp_ko"/>').text(sig.ubicacion).appendTo($u);
             this.$('.o_kp_ubi_detalle').text(ubi.detalle);
             var aqui = esLaQueToca && !sig.completa ? this._aquiMismo(sig) : 0;   // v3.13
@@ -1563,7 +1797,8 @@ var Pantalla = AbstractAction.extend({
     _ajustarUbicacion: function () {
         var el = this.$('.o_kp_ubicacion')[0];
         if (!el || !el.offsetWidth) { return; }
-        var fs = 30;
+        if (this.color === 'e') { el.style.fontSize = ''; return; }   // v3.21: las casillas ya caben
+        var fs = this.color === 'f' ? 44 : 30;                         // v3.21: F = el hueco muy grande
         el.style.fontSize = fs + 'px';
         while (el.scrollWidth > el.clientWidth && fs > 15) {
             fs -= 1;
@@ -1622,6 +1857,11 @@ var Pantalla = AbstractAction.extend({
             if (destino) { $('<span class="o_kp_l_destino"/>').text('→ ' + destino).appendTo($t); }
             if (l.caja) { $('<span class="o_kp_l_caja"/>').text('Caja ' + l.caja).appendTo($t); }
             $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
+            if (l.caja && l.leidas > 0 && !self._esLote()) {
+                // v3.21: cambiar de caja lo que ya está en una caja cerrada
+                $('<button type="button" class="o_kp_l_editar" aria-label="Cambiar de caja"/>').text('✎')
+                    .attr('data-id', l.id).appendTo($li);
+            }
             $l.append($li);
         });
     },
