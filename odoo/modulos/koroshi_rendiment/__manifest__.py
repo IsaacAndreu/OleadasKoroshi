@@ -16,14 +16,19 @@ Arregla dos botones lentos de la ficha de producto, sin cambiar lo que ensenan.
    Desde los botones ya no se ejecuta; lo sigue haciendo el planificador
    (stock.rule._run_scheduler_tasks), igual que antes.
 
+v1.1.0: PDA (codigo de barras). Al abrir un albaran la PDA pide sus productos con
+('barcode', '!=', False). product_multi_barcode cambia ese filtro por un IN con los 463.120
+codigos de product.barcode: 4,5 s por albaran para 6 productos. Ahora ese filtro va a la
+columna barcode (guardada, y comprobado que coincide al 100% con product.barcode): ~0,1 s.
+
 Para volver atras: desinstalar el modulo. El boton Stock vuelve al estandar al momento; la vista SQL
 se queda con esta version (da lo mismo) hasta que se actualice el modulo stock, que la regenera.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['stock'],
+    'depends': ['stock', 'product_multi_barcode'],
     'data': [],
     'installable': True,
     'application': False,
