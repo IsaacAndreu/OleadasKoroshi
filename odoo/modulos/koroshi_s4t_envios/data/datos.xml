@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+
+        <!-- Modo: 'diagnostico' (no llama a S4T) o 'real'. Se instala en diagnostico. -->
+        <record id="param_modo" model="ir.config_parameter">
+            <field name="key">koroshi_s4t_envios.modo</field>
+            <field name="value">diagnostico</field>
+        </record>
+
+        <!-- Solo pedidos con fecha de pedido desde aqui. -->
+        <record id="param_desde" model="ir.config_parameter">
+            <field name="key">koroshi_s4t_envios.desde</field>
+            <field name="value">2026-11-01 00:00:00</field>
+        </record>
+
+        <!-- Cron ARCHIVADO (inactivo). Activarlo solo despues de poner el modo a 'real' y probar. -->
+        <record id="cron_envios_s4t" model="ir.cron">
+            <field name="name">KOROSHI - Envios a S4T (POST /shipments)</field>
+            <field name="model_id" ref="model_koroshi_s4t_envio"/>
+            <field name="state">code</field>
+            <field name="code">model.cron_enviar()</field>
+            <field name="interval_number">15</field>
+            <field name="interval_type">minutes</field>
+            <field name="numbercall">-1</field>
+            <field name="doall" eval="False"/>
+            <field name="active" eval="False"/>
+        </record>
+
+    </data>
+</odoo>

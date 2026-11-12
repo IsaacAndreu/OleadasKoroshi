@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <record id="view_koroshi_s4t_envio_tree" model="ir.ui.view">
+        <field name="name">koroshi.s4t.envio.tree</field>
+        <field name="model">koroshi.s4t.envio</field>
+        <field name="arch" type="xml">
+            <tree decoration-success="state == 'enviado'" decoration-danger="state == 'error'"
+                  decoration-muted="state in ('omitido', 'diagnostico')" decoration-info="state == 'pendiente'">
+                <field name="sale_id"/>
+                <field name="carrier"/>
+                <field name="tracking_number"/>
+                <field name="packages" sum="Bultos"/>
+                <field name="weight_kg"/>
+                <field name="volume_m3"/>
+                <field name="is_final"/>
+                <field name="state"/>
+                <field name="order_status"/>
+                <field name="fecha_envio"/>
+                <field name="intentos"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_s4t_envio_form" model="ir.ui.view">
+        <field name="name">koroshi.s4t.envio.form</field>
+        <field name="model">koroshi.s4t.envio</field>
+        <field name="arch" type="xml">
+            <form string="Envio a S4T" create="false">
+                <header>
+                    <button name="action_enviar_ahora" type="object" string="Enviar ahora a S4T" class="btn-primary"
+                            groups="stock.group_stock_manager"
+                            attrs="{'invisible': [('state', 'in', ('enviado', 'omitido'))]}"
+                            confirm="Se enviara este pedido a S4T de verdad. El ultimo envio pasa la orden a SHIPPED. ¿Seguir?"/>
+                    <button name="action_consultar_s4t" type="object" string="Consultar en S4T"/>
+                    <button name="action_recalcular" type="object" string="Recalcular"
+                            groups="stock.group_stock_manager"
+                            attrs="{'invisible': [('state', '=', 'enviado')]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="diagnostico,pendiente,enviado"/>
+                </header>
+                <sheet>
+                    <h1><field name="name"/></h1>
+                    <group>
+                        <group>
+                            <field name="sale_id"/>
+                            <field name="order_number"/>
+                            <field name="carrier"/>
+                            <field name="tracking_number"/>
+                            <field name="is_final"/>
+                        </group>
+                        <group>
+                            <field name="packages"/>
+                            <field name="weight_kg"/>
+                            <field name="volume_m3"/>
+                            <field name="order_status"/>
+                            <field name="fecha_envio"/>
+                            <field name="intentos"/>
+                        </group>
+                    </group>
+                    <field name="picking_ids"/>
+                    <group string="Error" attrs="{'invisible': [('error', '=', False)]}">
+                        <field name="error" nolabel="1"/>
+                    </group>
+                    <group string="Respuesta S4T">
+                        <field name="respuesta" nolabel="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_s4t_envio_search" model="ir.ui.view">
+        <field name="name">koroshi.s4t.envio.search</field>
+        <field name="model">koroshi.s4t.envio</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="sale_id"/>
+                <field name="tracking_number"/>
+                <filter name="f_error" string="Con error" domain="[('state', '=', 'error')]"/>
+                <filter name="f_pendiente" string="Pendientes" domain="[('state', 'in', ('pendiente', 'diagnostico'))]"/>
+                <filter name="f_enviado" string="Enviados" domain="[('state', '=', 'enviado')]"/>
+                <separator/>
+                <filter name="f_xpo" string="XPO" domain="[('carrier', '=', 'XPO')]"/>
+                <filter name="f_gls" string="GLS" domain="[('carrier', '=', 'GLS')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'state'}"/>
+                    <filter name="g_carrier" string="Transportista" context="{'group_by': 'carrier'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_s4t_envio" model="ir.actions.act_window">
+        <field name="name">Envios a S4T</field>
+        <field name="res_model">koroshi.s4t.envio</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_koroshi_s4t_envio_search"/>
+    </record>
+
+    <menuitem id="menu_koroshi_s4t_envio" name="Envios a S4T" parent="stock.menu_stock_warehouse_mgmt"
+              action="action_koroshi_s4t_envio" sequence="90"/>
+
+</odoo>

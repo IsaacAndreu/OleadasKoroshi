@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_s4t_envio_user,koroshi.s4t.envio usuario,model_koroshi_s4t_envio,stock.group_stock_user,1,0,0,0
+access_koroshi_s4t_envio_manager,koroshi.s4t.envio responsable,model_koroshi_s4t_envio,stock.group_stock_manager,1,1,1,0
+access_koroshi_s4t_envio_system,koroshi.s4t.envio admin,model_koroshi_s4t_envio,base.group_system,1,1,1,1

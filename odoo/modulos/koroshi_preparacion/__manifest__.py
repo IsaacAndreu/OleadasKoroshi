@@ -135,8 +135,10 @@ CJ (si no se mueve la línea entera se parte en dos, como hace Odoo al cerrar ca
 ubicación»: cada operario elige entre 6 (A negra, B blanca, C amarilla, D azul, E en casillas, F amarilla grande;
 por defecto F); se guarda por operario (tabla nueva koroshi.preparacion.preferencia). Incluye la v3.20.0 (no llegó a
 instalarse).
+v3.21.1 (12/11/2026): colores amarillos (C y F) con la letra más negra y gruesa; en F el código KO también en
+negrita. Solo CSS.
 """,
-    'version': '13.0.3.21.0',
+    'version': '13.0.3.21.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
