@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v3.17: orden de las líneas en la pantalla de preparar.
+         'ubicacion' = como la app de código de barras de Odoo (por el nombre de la ubicación: 00114 - L02..., 00221 -
+         L03..., ..., MU-.., N1-..). 'ruta' = la ruta optimizada de la v3.13-3.16 (models/ruta.py).
+         noupdate: lo que se cambie a mano (Ajustes > Técnico > Parámetros del sistema) no se pisa al actualizar. -->
+    <data noupdate="1">
+        <record id="param_orden" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.orden</field>
+            <field name="value">ubicacion</field>
+        </record>
+    </data>
+</odoo>

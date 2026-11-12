@@ -105,6 +105,12 @@ def ordenar(paradas):
     # la vuelta tiene dos sentidos iguales de largos: se empieza por la punta más cerca de los muelles
     if d[0][camino[-1]] < d[0][camino[0]]:
         camino.reverse()
+    # v3.16.2: las MU- (al lado de los muelles) al FINAL, de vuelta a muelles, no al principio: el operario se las
+    # saltaba (EFFEC/OUT/24421: las 9 líneas MU- primero y empezó por L03). Se empieza igual (lo más cerca de los
+    # muelles) y la parada MU- pasa a la última: como está al lado de los muelles, son unos pocos metros más.
+    if ZONA_MU in todos:
+        i_mu = todos.index(ZONA_MU)
+        camino = [i for i in camino if i != i_mu] + [i_mu]
     res = [todos[i] for i in camino]
     if len(_CACHE) >= _CACHE_MAX:
         _CACHE.clear()
