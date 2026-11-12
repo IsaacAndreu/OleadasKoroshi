@@ -259,54 +259,94 @@ class KoroshiConsultaEnvios(http.Controller):
         manuales = manuales or set()
         es_gls = etiqueta == 'GLS'
         todos = etiqueta == NOMBRES_TRANSPORTISTA['todos']
-        cab = ['Fecha validación' if todos else 'Fecha etiqueta', 'Pedido', 'Tienda', 'OUT', 'Transportista', 'Nº expedición',
-               'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide', 'Observación']
+        uds = self._uds_por_out(env, picks)
+
+        # v1.23: una fila por TIENDA (antes una por pedido). A la izquierda, todos sus pedidos y OUT.
+        tiendas = {}
+        for g in grupos:
+            # GLS genera como maximo cinco etiquetas por expedicion: se limita por pedido y luego se suma.
+            bultos = min(g['bultos'], 5) if es_gls and g['expediciones'] else g['bultos']
+            cajas = min(g['cajas'], 5) if es_gls else g['cajas']
+            t = tiendas.setdefault(g['tienda'] or '—', {
+                'pedidos': [], 'outs': [], 'transportistas': set(), 'expediciones': [], 'bultos': 0,
+                'cajas': 0, 'cajas_cmp': 0, 'pedidas': 0, 'hechas': 0, 'fecha': None, 'a_mano': [],
+                'sin_transportista': 0,
+            })
+            t['pedidos'].append(g['pedido'])
+            for o in g['outs']:
+                t['outs'].append(o['out'])
+                pedida, hecha = uds.get(o['id'], (0, 0))
+                t['pedidas'] += pedida
+                t['hechas'] += hecha
+                if o['id'] in manuales:
+                    t['a_mano'].append(o['out'])
+            if g['transportista']:
+                t['transportistas'].add(g['transportista'])
+            else:
+                t['sin_transportista'] += 1
+            t['expediciones'] += [x for x in g['expediciones'] if x not in t['expediciones']]
+            t['bultos'] += bultos
+            t['cajas'] += g['cajas']
+            t['cajas_cmp'] += cajas
+            try:
+                fecha = datetime.datetime.strptime(g['fecha'], '%d/%m/%Y %H:%M')
+            except (TypeError, ValueError):
+                fecha = None
+            if fecha and (not t['fecha'] or fecha > t['fecha']):
+                t['fecha'] = fecha
+
+        def orden_tienda(nombre):
+            numero = re.search(r'K(\d+)', nombre or '')
+            return (int(numero.group(1)) if numero else 99999, nombre)
+
+        cab = ['Tienda', 'Pedidos', 'OUT', 'Fecha validación' if todos else 'Fecha etiqueta', 'Transportista',
+               'Nº expedición', 'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide',
+               'Uds pedidas', 'Done Quantity', 'Observación']
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS DE TIENDA · %s · %s' % (
                              'TODOS (con y sin transportista)' if todos else etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
                              '%s - %s' % (dia_desde.strftime('%d/%m/%Y'), dia_hasta.strftime('%d/%m/%Y'))),
                          f['titulo'])
         hoja.write_row(2, 0, cab, f['cab'])
-        for fila, grupo in enumerate(grupos, start=3):
-            try:
-                fecha = datetime.datetime.strptime(grupo['fecha'], '%d/%m/%Y %H:%M')
-            except (TypeError, ValueError):
-                fecha = None
-            # GLS genera como maximo cinco etiquetas por expedicion. Si hay mas
-            # cajas fisicas, alguna viaja juntada bajo una de esas cinco etiquetas.
-            bultos = min(grupo['bultos'], 5) if es_gls and grupo['expediciones'] else grupo['bultos']
-            coincide = bultos == (min(grupo['cajas'], 5) if es_gls else grupo['cajas'])
-            a_mano = [o['out'] for o in grupo['outs'] if o['id'] in manuales]
+        nombres = sorted(tiendas.keys(), key=orden_tienda)
+        for fila, nombre in enumerate(nombres, start=3):
+            t = tiendas[nombre]
+            coincide = t['bultos'] == t['cajas_cmp']
+            transportista = ' · '.join(sorted(t['transportistas']))
+            if t['sin_transportista']:
+                transportista = (transportista + ' · ' if transportista else '') + (
+                    SIN_TRANSPORTISTA if todos else etiqueta)
             observacion = ''
-            if a_mano:
-                observacion = 'Añadido a mano' if len(a_mano) == len(grupo['outs']) else \
-                    'Añadido a mano: %s' % ', '.join(a_mano)
-            valores = [fecha, grupo['pedido'], grupo['tienda'], ', '.join([o['out'] for o in grupo['outs']]),
-                       grupo['transportista'] or (SIN_TRANSPORTISTA if todos else etiqueta),
-                       ', '.join(grupo['expediciones']),
-                       bultos, grupo['cajas'], 'SÍ' if coincide else 'NO', observacion]
-            formatos = [f['fecha'], f['txt'], f['wrap'], f['wrap'], f['txt'], f['txt'],
-                        f['num'], f['num'], f['ok'] if coincide else f['mal'], f['wrap']]
+            if t['a_mano']:
+                observacion = 'Añadido a mano' if len(t['a_mano']) == len(t['outs']) else \
+                    'Añadido a mano: %s' % ', '.join(t['a_mano'])
+            valores = [nombre, ', '.join(t['pedidos']), ', '.join(sorted(t['outs'])), t['fecha'], transportista,
+                       ', '.join(t['expediciones']), t['bultos'], t['cajas'], 'SÍ' if coincide else 'NO',
+                       t['pedidas'], t['hechas'], observacion]
+            formatos = [f['wrap'], f['wrap'], f['wrap'], f['fecha'], f['wrap'], f['wrap'],
+                        f['num'], f['num'], f['ok'] if coincide else f['mal'], f['num'], f['num'], f['wrap']]
             for col, valor in enumerate(valores):
                 if valor is None:
                     hoja.write_blank(fila, col, None, formatos[col])
                 else:
                     hoja.write(fila, col, valor, formatos[col])
-        total = 3 + len(grupos)
-        hoja.write(total, 0, 'TOTAL', f['total'])
-        hoja.write(total, 1, len(grupos), f['total_num'])
-        for col in range(2, 6):
+        total = 3 + len(nombres)
+        hoja.write(total, 0, 'TOTAL %d tiendas' % len(nombres), f['total'])
+        hoja.write(total, 1, '%d pedidos' % len(grupos), f['total'])
+        hoja.write(total, 2, '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), f['total'])
+        for col in range(3, 6):
             hoja.write_blank(total, col, None, f['total'])
-        hoja.write(total, 6, sum([
-            min(g['bultos'], 5) if es_gls and g['expediciones'] else g['bultos'] for g in grupos
-        ]), f['total_num'])
-        hoja.write(total, 7, sum([g['cajas'] for g in grupos]), f['total_num'])
+        hoja.write(total, 6, sum([t['bultos'] for t in tiendas.values()]), f['total_num'])
+        hoja.write(total, 7, sum([t['cajas'] for t in tiendas.values()]), f['total_num'])
         hoja.write_blank(total, 8, None, f['total'])
-        hoja.write_blank(total, 9, None, f['total'])
+        hoja.write(total, 9, sum([t['pedidas'] for t in tiendas.values()]), f['total_num'])
+        hoja.write(total, 10, sum([t['hechas'] for t in tiendas.values()]), f['total_num'])
+        hoja.write_blank(total, 11, None, f['total'])
         nota = ('Etiquetas GLS = solo expediciones con etiqueta generada, máximo 5 por pedido. '
                 'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
                 'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.')
-        hoja.write(total + 2, 0, nota, f['nota'])
+        hoja.write(total + 2, 0, nota + ' Uds pedidas = lo que pide el pedido en esas OUT; Done Quantity = '
+                   'uds hechas (leídas).', f['nota'])
         if todos:
             sin = len([g for g in grupos if not g['transportista']])
             hoja.write(total + 3, 0, 'Salen todos los pedidos de tienda validados en estas fechas, tengan o no '
@@ -315,14 +355,29 @@ class KoroshiConsultaEnvios(http.Controller):
         else:
             hoja.write(total + 3, 0, 'Salen los pedidos con la etiqueta del transportista creada en estas fechas, '
                        'aunque se validaran días antes, más los añadidos a mano en Consulta de envíos.', f['nota'])
-        for col, ancho in enumerate([18, 20, 35, 24, 18, 24, 13, 16, 11, 22]):
+        for col, ancho in enumerate([26, 22, 22, 17, 16, 18, 11, 11, 10, 11, 12, 20]):
             hoja.set_column(col, col, ancho)
-        hoja.freeze_panes(3, 0)
+        hoja.freeze_panes(3, 1)
         hoja.autofilter(2, 0, max(2, total - 1), len(cab) - 1)
         hoja.set_landscape()
         hoja.fit_to_pages(1, 0)
         libro.close()
-        return salida.getvalue(), len(grupos)
+        return salida.getvalue(), len(nombres)
+
+    @staticmethod
+    def _uds_por_out(env, picks):
+        """{id OUT: (uds pedidas, uds hechas)}. Pedidas = movimientos no cancelados; hechas = qty_done."""
+        uds = {}
+        if not picks:
+            return uds
+        for dato in env['stock.move'].sudo().read_group(
+                [('picking_id', 'in', picks.ids), ('state', '!=', 'cancel')],
+                ['product_uom_qty'], ['picking_id'], lazy=False):
+            uds[dato['picking_id'][0]] = [dato['product_uom_qty'], 0]
+        for dato in env['stock.move.line'].sudo().read_group(
+                [('picking_id', 'in', picks.ids)], ['qty_done'], ['picking_id'], lazy=False):
+            uds.setdefault(dato['picking_id'][0], [0, 0])[1] = dato['qty_done']
+        return dict([(k, (v[0], v[1])) for k, v in uds.items()])
 
     def _excel_web(self, env, picks, etiqueta, dia_desde, dia_hasta):
         salida = io.BytesIO()

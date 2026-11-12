@@ -90,10 +90,12 @@ y su codigo en rojo en la OUT y en la tabla de operarios. Necesita koroshi_opera
 v1.22.0 (12/11/2026): Consulta de envios, Tiendas: transportista "Todos (con y sin transportista)". Excel con todos
 los pedidos de tienda validados en esas fechas, tengan o no transportista ("Sin transportista" en la columna), mas los
 anadidos a mano de cualquier transportista. XPO y GLS siguen por fecha de etiqueta.
+v1.23.0 (12/11/2026): Excel de Tiendas (XPO, GLS y Todos) con UNA FILA POR TIENDA: a la izquierda la tienda, todos sus
+pedidos y todas sus OUT; columnas nuevas "Uds pedidas" y "Done Quantity" (uds hechas). Tiendas ordenadas por numero K.
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.22.0',
+    'version': '13.0.1.23.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
