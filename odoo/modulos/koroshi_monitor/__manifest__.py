@@ -92,10 +92,12 @@ los pedidos de tienda validados en esas fechas, tengan o no transportista ("Sin 
 anadidos a mano de cualquier transportista. XPO y GLS siguen por fecha de etiqueta.
 v1.23.0 (12/11/2026): Excel de Tiendas (XPO, GLS y Todos) con UNA FILA POR TIENDA: a la izquierda la tienda, todos sus
 pedidos y todas sus OUT; columnas nuevas "Uds pedidas" y "Done Quantity" (uds hechas). Tiendas ordenadas por numero K.
+v1.23.1 (12/11/2026): columna "Cajas por pedido (expedicion)" en el Excel de Tiendas: una linea por pedido con su
+numero de expedicion y sus cajas CJ (para hacer el Excel de GLS; al agrupar por tienda se perdia).
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.23.0',
+    'version': '13.0.1.23.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
