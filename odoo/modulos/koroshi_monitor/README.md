@@ -152,3 +152,6 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   **Uds pedidas** y **Done Quantity** (uds hechas, leídas). Las tiendas van ordenadas por número K. En GLS el máximo
   de 5 etiquetas se sigue aplicando por pedido antes de sumar la tienda. La línea TOTAL dice cuántas tiendas, pedidos y
   OUT hay. El Excel de Web no cambia.
+- **v1.23.1 (12/11/2026):** Excel de Tiendas: columna nueva **«Cajas por pedido (expedición)»**, con una línea por
+  pedido: «S-6665004084 (1378195458): 3 cajas». Al agrupar por tienda en la v1.23.0 se perdía cuántas cajas lleva cada
+  pedido o expedición, y hace falta para el Excel de GLS.

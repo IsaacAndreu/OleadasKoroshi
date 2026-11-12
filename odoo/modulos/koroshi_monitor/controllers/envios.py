@@ -270,9 +270,13 @@ class KoroshiConsultaEnvios(http.Controller):
             t = tiendas.setdefault(g['tienda'] or '—', {
                 'pedidos': [], 'outs': [], 'transportistas': set(), 'expediciones': [], 'bultos': 0,
                 'cajas': 0, 'cajas_cmp': 0, 'pedidas': 0, 'hechas': 0, 'fecha': None, 'a_mano': [],
-                'sin_transportista': 0,
+                'sin_transportista': 0, 'detalle': [],
             })
             t['pedidos'].append(g['pedido'])
+            # v1.23.1: cajas de cada pedido/expedicion, para el Excel de GLS (al agrupar por tienda se perdia).
+            t['detalle'].append('%s%s: %d %s' % (
+                g['pedido'], g['expediciones'] and ' (%s)' % ', '.join(g['expediciones']) or '',
+                g['cajas'], g['cajas'] == 1 and 'caja' or 'cajas'))
             for o in g['outs']:
                 t['outs'].append(o['out'])
                 pedida, hecha = uds.get(o['id'], (0, 0))
@@ -301,7 +305,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
         cab = ['Tienda', 'Pedidos', 'OUT', 'Fecha validación' if todos else 'Fecha etiqueta', 'Transportista',
                'Nº expedición', 'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide',
-               'Uds pedidas', 'Done Quantity', 'Observación']
+               'Uds pedidas', 'Done Quantity', 'Cajas por pedido (expedición)', 'Observación']
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS DE TIENDA · %s · %s' % (
                              'TODOS (con y sin transportista)' if todos else etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
@@ -322,9 +326,10 @@ class KoroshiConsultaEnvios(http.Controller):
                     'Añadido a mano: %s' % ', '.join(t['a_mano'])
             valores = [nombre, ', '.join(t['pedidos']), ', '.join(sorted(t['outs'])), t['fecha'], transportista,
                        ', '.join(t['expediciones']), t['bultos'], t['cajas'], 'SÍ' if coincide else 'NO',
-                       t['pedidas'], t['hechas'], observacion]
+                       t['pedidas'], t['hechas'], '\n'.join(t['detalle']), observacion]
             formatos = [f['wrap'], f['wrap'], f['wrap'], f['fecha'], f['wrap'], f['wrap'],
-                        f['num'], f['num'], f['ok'] if coincide else f['mal'], f['num'], f['num'], f['wrap']]
+                        f['num'], f['num'], f['ok'] if coincide else f['mal'], f['num'], f['num'], f['wrap'],
+                        f['wrap']]
             for col, valor in enumerate(valores):
                 if valor is None:
                     hoja.write_blank(fila, col, None, formatos[col])
@@ -342,6 +347,7 @@ class KoroshiConsultaEnvios(http.Controller):
         hoja.write(total, 9, sum([t['pedidas'] for t in tiendas.values()]), f['total_num'])
         hoja.write(total, 10, sum([t['hechas'] for t in tiendas.values()]), f['total_num'])
         hoja.write_blank(total, 11, None, f['total'])
+        hoja.write_blank(total, 12, None, f['total'])
         nota = ('Etiquetas GLS = solo expediciones con etiqueta generada, máximo 5 por pedido. '
                 'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
                 'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.')
@@ -355,7 +361,7 @@ class KoroshiConsultaEnvios(http.Controller):
         else:
             hoja.write(total + 3, 0, 'Salen los pedidos con la etiqueta del transportista creada en estas fechas, '
                        'aunque se validaran días antes, más los añadidos a mano en Consulta de envíos.', f['nota'])
-        for col, ancho in enumerate([26, 22, 22, 17, 16, 18, 11, 11, 10, 11, 12, 20]):
+        for col, ancho in enumerate([26, 22, 22, 17, 16, 18, 11, 11, 10, 11, 12, 34, 20]):
             hoja.set_column(col, col, ancho)
         hoja.freeze_panes(3, 1)
         hoja.autofilter(2, 0, max(2, total - 1), len(cab) - 1)
