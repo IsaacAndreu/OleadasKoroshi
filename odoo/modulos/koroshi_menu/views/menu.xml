@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- =====================================================================================================
+         KOROSHI (barra de Inventario): solo lo de cada día. Mismas acciones y grupos que los menús de antes.
+         ===================================================================================================== -->
+    <menuitem id="menu_koroshi" name="KOROSHI" parent="stock.menu_stock_root" sequence="90"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_koroshi_monitor" name="Monitor picking" parent="menu_koroshi" sequence="10"
+              action="koroshi_monitor.action_koroshi_monitor" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consulta_envios" name="Consulta de envíos" parent="menu_koroshi" sequence="20"
+              action="koroshi_monitor.action_koroshi_consulta_envios" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_reparto" name="Reparto de hoy" parent="menu_koroshi" sequence="30"
+              action="koroshi_operarios.action_koroshi_operario_reparto_hoy"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_colas" name="Colas" parent="menu_koroshi" sequence="40"
+              action="koroshi_operarios.action_koroshi_operario_colas" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_mapa" name="Mapa NAU-2" parent="menu_koroshi" sequence="50"
+              action="koroshi_warehouse_map.action_koroshi_warehouse_map" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_hoja_carga" name="Hoja de carga XPO de hoy" parent="menu_koroshi" sequence="60"
+              action="koroshi_kpi.action_koroshi_hoja_carga_hoy" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_faltante_pda" name="Faltante (PDA)" parent="menu_koroshi" sequence="70"
+              action="koroshi_faltantes.action_koroshi_faltantes_pantalla"/>
+    <menuitem id="menu_koroshi_revision_faltantes" name="Revisión de faltantes" parent="menu_koroshi" sequence="80"
+              action="koroshi_faltantes.action_koroshi_faltante_revision"/>
+    <menuitem id="menu_koroshi_registrar_consumo" name="Registrar consumo" parent="menu_koroshi" sequence="90"
+              action="koroshi_consumibles.action_koroshi_consumable_quick_consumption" groups="stock.group_stock_user"/>
+
+    <!-- =====================================================================================================
+         Informes › KOROSHI: consultar datos
+         ===================================================================================================== -->
+    <menuitem id="menu_koroshi_informes" name="KOROSHI" parent="stock.menu_warehouse_report" sequence="1"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_koroshi_kpi_dia" name="KPI por día" parent="menu_koroshi_informes" sequence="10"
+              action="koroshi_kpi.action_koroshi_kpi_dia"/>
+    <menuitem id="menu_koroshi_kpi_falta" name="Faltas por día" parent="menu_koroshi_informes" sequence="20"
+              action="koroshi_kpi.action_koroshi_kpi_falta"/>
+    <menuitem id="menu_koroshi_kpi_peso_tipo" name="Pesos y litros por tipo" parent="menu_koroshi_informes"
+              sequence="30" action="koroshi_kpi.action_koroshi_kpi_peso_tipo"/>
+    <menuitem id="menu_koroshi_productividad" name="Productividad" parent="menu_koroshi_informes" sequence="40"
+              action="koroshi_operarios.action_koroshi_operario_productividad"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_tareas" name="Tareas" parent="menu_koroshi_informes" sequence="50"
+              action="koroshi_operarios.action_koroshi_operario_tarea" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_sin_operario" name="OUT validadas hoy sin operario" parent="menu_koroshi_informes"
+              sequence="60" action="koroshi_operarios.action_koroshi_validadas_sin_operario"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_lecturas_preparacion" name="Lecturas de preparación" parent="menu_koroshi_informes"
+              sequence="70" action="koroshi_preparacion.action_koroshi_preparacion_lectura"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_zonas_ejecucion" name="Ejecuciones de zonas" parent="menu_koroshi_informes"
+              sequence="80" action="koroshi_zonas.action_koroshi_zonas_ejecucion"/>
+    <menuitem id="menu_koroshi_zonas_cajas" name="Cajas cerradas por día y zona" parent="menu_koroshi_informes"
+              sequence="90" action="koroshi_zonas.action_koroshi_zonas_ejecucion_out"/>
+    <menuitem id="menu_koroshi_zonas_diagnostico" name="Diagnóstico de zonas de hoy" parent="menu_koroshi_informes"
+              sequence="100" action="koroshi_zonas.action_koroshi_zonas_diagnostico_hoy"/>
+    <menuitem id="menu_koroshi_rondas_faltantes" name="Rondas de faltantes (INT)" parent="menu_koroshi_informes"
+              sequence="110" action="koroshi_faltantes.action_koroshi_rondas"/>
+    <menuitem id="menu_koroshi_consumibles_historial" name="Historial de consumibles" parent="menu_koroshi_informes"
+              sequence="120" action="koroshi_consumibles.action_koroshi_consumable_moves"
+              groups="stock.group_stock_user"/>
+
+    <!-- =====================================================================================================
+         Configuración › KOROSHI: lo que se toca poco
+         ===================================================================================================== -->
+    <menuitem id="menu_koroshi_config" name="KOROSHI" parent="stock.menu_stock_config_settings" sequence="2"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_koroshi_operarios" name="Operarios" parent="menu_koroshi_config" sequence="10"
+              action="koroshi_operarios.action_koroshi_operarios_empleados"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_crear_operarios" name="Crear operarios" parent="menu_koroshi_config" sequence="20"
+              action="koroshi_operarios.action_koroshi_crear_operarios" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_motivos" name="Motivos para saltar" parent="menu_koroshi_config" sequence="30"
+              action="koroshi_operarios.action_koroshi_operario_motivos" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_consumibles_articulos" name="Consumibles: artículos" parent="menu_koroshi_config"
+              sequence="40" action="koroshi_consumibles.action_koroshi_consumable_items"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_consumibles_totales" name="Consumibles: totales iniciales" parent="menu_koroshi_config"
+              sequence="50" action="koroshi_consumibles.action_koroshi_consumable_totals"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_zonas_config" name="Zonas: configuración" parent="menu_koroshi_config" sequence="60"
+              action="koroshi_zonas.action_koroshi_zonas_config" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_zonas_simular" name="Zonas: simular hoy (se deshace)" parent="menu_koroshi_config"
+              sequence="70" action="koroshi_zonas.action_koroshi_zonas_simular_hoy" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_zonas_medir" name="Zonas: medir desde el 22/10" parent="menu_koroshi_config"
+              sequence="80" action="koroshi_zonas.action_koroshi_zonas_medir_historico"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_planos" name="Configuración de planos" parent="menu_koroshi_config" sequence="90"
+              action="koroshi_warehouse_map.action_koroshi_layouts" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_sesiones" name="Sesiones operativas" parent="menu_koroshi_config" sequence="100"
+              action="koroshi_warehouse_map.action_koroshi_pick_sessions" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_crear_ronda" name="Crear ronda de revisión" parent="menu_koroshi_config" sequence="110"
+              action="koroshi_faltantes.action_koroshi_crear_ronda" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_puestos_cero" name="Puestos a 0 hoy" parent="menu_koroshi_config" sequence="120"
+              action="koroshi_faltantes.action_koroshi_puestos_a_cero" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_recalcular_faltas" name="Recalcular faltas de hoy" parent="menu_koroshi_config"
+              sequence="130" action="koroshi_kpi.action_koroshi_kpi_falta_recalcular"/>
+
+    <!-- =====================================================================================================
+         Los menús de antes: archivados (vuelven al desinstalar este módulo, ver __init__.py)
+         ===================================================================================================== -->
+    <record id="koroshi_kpi.menu_koroshi_kpi_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="koroshi_operarios.menu_koroshi_operarios_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="koroshi_zonas.menu_koroshi_zonas_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="koroshi_warehouse_map.menu_koroshi_warehouse_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="koroshi_faltantes.menu_koroshi_faltantes_root" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+    <record id="koroshi_kpi.menu_koroshi_hoja_carga" model="ir.ui.menu">
+        <field name="active" eval="False"/>
+    </record>
+</odoo>

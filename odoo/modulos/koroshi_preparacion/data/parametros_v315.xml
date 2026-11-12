@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v3.15: '1' = las agrupaciones de zona (Z-) también se preparan en la pantalla nueva (enteras, un solo
+         recorrido) para los operarios de koroshi_preparacion.empleados; '0' = las Z- vuelven a la app de código de
+         barras (vuelta atrás sin desinstalar). noupdate: lo que se cambie a mano no se pisa al actualizar. -->
+    <data noupdate="1">
+        <record id="param_agrupaciones" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.agrupaciones</field>
+            <field name="value">1</field>
+        </record>
+    </data>
+</odoo>

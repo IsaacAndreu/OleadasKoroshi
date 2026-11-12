@@ -30,7 +30,8 @@ N_PREFIJOS = 15         # agrupaciones que salen en el desplegable
 N_DIAS = 3              # dias de "Tiendas" que salen en el desplegable
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # OUT en curso sin cerrar caja en estos minutos = parada (no cuenta como persona activa)
-PERSONA_INACTIVA_MIN = 5  # una OUT sin lecturas/cajas durante este tiempo deja de contar como persona
+PERSONA_INACTIVA_MIN = 5  # tiendas: una OUT sin lecturas/cajas durante este tiempo deja de contar como persona
+# zonas (v1.20.1): entre dos cajas de la misma OUT, hasta PARADA_MIN minutos se sigue cogiendo (ver _personas)
 
 RE_LINEAL = re.compile(r' L(\d+) ')
 RE_MU = re.compile(r'^(MU-\d+)')
@@ -199,32 +200,62 @@ class KoroshiMonitor(http.Controller):
                 dia['marcas'].append((fields.Datetime.context_timestamp(request.env.user, w), quien))
         return filas, por_hora, dia, por_hora_out
 
-    def _personas(self, dia, leidas):
+    def _personas(self, dia, leidas, zonas=False):
         """Horas-persona estimadas por actividad real de cada OUT.
 
-        Cada lectura/caja mantiene su OUT activa durante PERSONA_INACTIVA_MIN minutos. Las ventanas consecutivas
-        de una misma OUT se unen, pero no se rellena ningun hueco mayor: una OUT parada por picos o faltantes deja
-        de contar como persona a los 5 minutos.
+        Tiendas: cada lectura/caja mantiene su OUT activa durante PERSONA_INACTIVA_MIN minutos. Las ventanas
+        consecutivas de una misma OUT se unen, pero no se rellena ningun hueco mayor.
+
+        Zonas (v1.20.1): una persona hace una OUT. Cada caja es el FINAL de su trabajo: la OUT cuenta como persona
+        desde que empieza la caja hasta que la cierra. Entre dos cajas de la misma OUT, si pasan PARADA_MIN minutos
+        o menos, la persona sigue cogiendo (llenando la caja siguiente); si pasan mas, la OUT estaba parada (pico,
+        faltante) y ese hueco no cuenta. La primera caja de cada tramo empieza antes de cerrarse: se le da el tiempo
+        tipico de una caja de ese dia (mediana entre cajas). Con 5 min fijos (v1.19.4) se perdia el tiempo entre
+        cajas (mediana ~7 min) y las u/h por persona salian infladas (Z-1111: 167 en vez de ~114).
         """
         marcas_por_out = {}
         for dt, quien in dia['marcas']:
             marcas_por_out.setdefault(quien, set()).add(dt)
 
-        margen = datetime.timedelta(minutes=PERSONA_INACTIVA_MIN)
         intervalos = []
-        for marcas in marcas_por_out.values():
-            inicio = fin = None
-            for dt in sorted(marcas):
-                nuevo_fin = dt + margen
-                if inicio is None:
-                    inicio, fin = dt, nuevo_fin
-                elif dt <= fin:
-                    fin = max(fin, nuevo_fin)
-                else:
+        primera_caja = None
+        if zonas:
+            hueco_max = datetime.timedelta(minutes=PARADA_MIN)
+            huecos = []
+            for marcas in marcas_por_out.values():
+                orden = sorted(marcas)
+                for a, b in zip(orden, orden[1:]):
+                    if b - a <= hueco_max:
+                        huecos.append(b - a)
+            huecos.sort()
+            primera_caja = huecos and huecos[len(huecos) // 2] or datetime.timedelta(minutes=PERSONA_INACTIVA_MIN)
+            for marcas in marcas_por_out.values():
+                inicio = fin = None
+                for dt in sorted(marcas):
+                    if inicio is None:
+                        inicio, fin = dt - primera_caja, dt
+                    elif dt - fin <= hueco_max:
+                        fin = dt
+                    else:
+                        intervalos.append((inicio, fin))
+                        inicio, fin = dt - primera_caja, dt
+                if inicio is not None:
                     intervalos.append((inicio, fin))
-                    inicio, fin = dt, nuevo_fin
-            if inicio is not None:
-                intervalos.append((inicio, fin))
+        else:
+            margen = datetime.timedelta(minutes=PERSONA_INACTIVA_MIN)
+            for marcas in marcas_por_out.values():
+                inicio = fin = None
+                for dt in sorted(marcas):
+                    nuevo_fin = dt + margen
+                    if inicio is None:
+                        inicio, fin = dt, nuevo_fin
+                    elif dt <= fin:
+                        fin = max(fin, nuevo_fin)
+                    else:
+                        intervalos.append((inicio, fin))
+                        inicio, fin = dt, nuevo_fin
+                if inicio is not None:
+                    intervalos.append((inicio, fin))
 
         hp = sum([(fin - inicio).total_seconds() for inicio, fin in intervalos]) / 3600.0
         eventos = []
@@ -251,6 +282,9 @@ class KoroshiMonitor(http.Controller):
             'uds_persona': maximo and int(round(leidas / maximo)) or 0,
             's_ud': leidas and round(hp * 3600.0 / leidas, 1) or 0,
             'inactividad_min': PERSONA_INACTIVA_MIN,
+            'zonas': bool(zonas),
+            'hueco_max_min': PARADA_MIN,
+            'primera_caja_min': primera_caja and round(primera_caja.total_seconds() / 60.0, 1) or 0,
         }
 
     def _fila(self, f):
@@ -427,7 +461,7 @@ class KoroshiMonitor(http.Controller):
             self._poner_ops(D, pp, pl)
             res['D'] = D
             res['pedidos'] = len(set([d['pedido'] for d in D]))
-            res['personas'] = self._personas(dia_z, sum([x[1] for x in por_hora.items()]))
+            res['personas'] = self._personas(dia_z, sum([x[1] for x in por_hora.items()]), zonas=True)
             res['personas']['inicio'] = self._hora(dia_z['primera'])
             res['personas']['ultima'] = self._hora(dia_z['ultima'])
             return res
@@ -463,12 +497,14 @@ class KoroshiMonitor(http.Controller):
             d['uh'] = d['min'] and round(d['leido'] * 60.0 / d['min']) or 0
             d['hace'] = ''
             d['parada'] = False
+            d['activa'] = False     # v1.20.2: OUT cogiendose ahora (caja cerrada hace poco)
             if d['est'] == 'curso' and d['_b'] and es_hoy:
                 hace = int((ahora - d['_b']).total_seconds() // 60)
                 d['hace'] = max(hace, 0)
                 d['parada'] = hace > PARADA_MIN
                 if not d['parada']:
                     activas += 1
+                    d['activa'] = True
             # v1.8: cogiendose pero sin cerrar caja hace mas de PARADA_MIN (o de un dia anterior) = ya no se esta
             # cogiendo: se da por HECHA (sin validar); lo que no se ha cogido (sin stock o no encontrado) es lo que falta.
             # Antes (v1.4) salia como "parcial".
@@ -506,6 +542,25 @@ class KoroshiMonitor(http.Controller):
         # v1.18: operarios (codigos) del dia
         pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas)
         self._poner_ops(D, pp, pl)
+        # v1.20.2: personas cogiendo ahora = operarios de Lecturas con una tarea abierta (OUT, INT o agrupacion) +
+        # OUT de tiendas cogiendose sin operario de Lecturas (app de siempre). Cada persona cuenta UNA vez: la OUT
+        # que ya tiene su operario no suma otra persona. Antes solo contaban las OUT de tiendas (una INT de web con
+        # su operario no salia).
+        if es_hoy:
+            ops_ahora = set([o['op'] for o in res['operarios'] if o.get('ahora')])
+        else:
+            ops_ahora = set()
+        sin_op = len([d for d in D if d.get('activa') and not d.get('ops_ahora')])
+        ops_tiendas = set()
+        for d in D:
+            for c in d.get('ops_ahora') or []:
+                if c in ops_ahora:
+                    ops_tiendas.add(c)
+        equipo['activas'] = len(ops_ahora) + sin_op
+        equipo['activas_op'] = len(ops_ahora)
+        equipo['activas_sin_op'] = sin_op
+        equipo['activas_otras'] = len(ops_ahora - ops_tiendas)      # operarios en INT u otro trabajo
+        equipo['activas_tiendas'] = len(ops_tiendas) + sin_op         # para las u/h por persona de tiendas
         res['D'] = D
         res['pedidos'] = len(set([d['pedido'] for d in D]))
         res['equipo'] = equipo
