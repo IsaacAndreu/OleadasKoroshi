@@ -146,3 +146,9 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   elegidas, tengan o no transportista: la columna Transportista dice XPO/GLS o **«Sin transportista»**, la primera
   columna es «Fecha validación» y al final pone cuántos pedidos van con y sin transportista. También salen los
   añadidos a mano de cualquier transportista. Los Excel de XPO SAS y GLS no cambian (siguen por fecha de etiqueta).
+- **v1.23.0 (12/11/2026):** el Excel de **Tiendas** (XPO SAS, GLS y Todos) sale con **una fila por tienda** en vez
+  de una por pedido, para que haya muchas menos líneas. A la izquierda: **Tienda**, **todos sus pedidos** y **todas sus
+  OUT**; después fecha, transportista, nº de expedición, bultos, cajas y si coinciden, y dos columnas nuevas:
+  **Uds pedidas** y **Done Quantity** (uds hechas, leídas). Las tiendas van ordenadas por número K. En GLS el máximo
+  de 5 etiquetas se sigue aplicando por pedido antes de sumar la tienda. La línea TOTAL dice cuántas tiendas, pedidos y
+  OUT hay. El Excel de Web no cambia.
