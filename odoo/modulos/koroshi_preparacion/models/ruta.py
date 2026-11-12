@@ -16,6 +16,10 @@
 #   - mismo pasillo: lo que hay en horizontal;
 #   - pasillo distinto: ir hasta el transversal que salga más corto, cruzar los pasillos (2 m cada uno) y volver.
 # Orden: vecino más cercano desde los muelles y después 2-opt (se deshacen los cruces) con vuelta a muelles.
+# v3.16: al ORDENAR, cada cambio de pasillo cuesta PENAL_PASILLO metros de más (entrar y salir de un pasillo no es
+# gratis y el operario no quiere volver a un pasillo donde ya ha estado). En 14 OUT/INT reales grandes: +0,9 % de
+# metros y 30 pasillos repetidos en vez de 125 (antes la ruta iba por un tramo y volvía al final por otro del mismo
+# pasillo: «da muchas vueltas»). metros() sigue midiendo solo los metros de verdad.
 # =============================================================================
 import re
 
@@ -27,6 +31,7 @@ PASILLOS_X = (2.5, 10.1, 29.9, 41.3, 58.5)   # centros de los pasillos transvers
 ENTRE_PASILLOS = 2.0                           # m entre un pasillo de picking y el siguiente
 MUELLES = (0, 29.9)                            # zona de muelles, por el pasillo central
 ZONA_MU = (0, 40.0)                            # ubicaciones MU-: encima de los muelles 15-18 (plano)
+PENAL_PASILLO = 10.0                           # v3.16: m de más por cada cambio de pasillo (solo para ordenar)
 _CACHE = {}
 _CACHE_MAX = 500
 
@@ -73,7 +78,8 @@ def ordenar(paradas):
         return list(_CACHE[clave])
     todos = [MUELLES] + puntos
     n = len(todos)
-    d = [[distancia(todos[i], todos[j]) for j in range(n)] for i in range(n)]
+    d = [[distancia(todos[i], todos[j]) + (PENAL_PASILLO if todos[i][0] != todos[j][0] else 0.0)
+          for j in range(n)] for i in range(n)]
     # vecino más cercano desde los muelles (0)
     camino = [0]
     libres = set(range(1, n))

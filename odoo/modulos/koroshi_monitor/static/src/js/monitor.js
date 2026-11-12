@@ -77,9 +77,15 @@ function tablaOperarios(ops, tv) {
 function personas(p, quien) {
     if (!p || !p.hp) { return ''; }
     var inactividad = p.inactividad_min || 5;
-    return '<h2>Personas y horas</h2><p class="km-nota">Estimado por las cajas cerradas: cada ' + quien +
-        ' cuenta como una persona mientras tenga actividad en los últimos ' + inactividad +
-        ' min. Si pasa más tiempo sin lectura deja de contar (puede ser un pico o un faltante). Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios.</p>' +
+    // v1.20.1: en zonas, una persona por OUT desde que empieza cada caja hasta que la cierra
+    var nota = p.zonas ?
+        'Estimado por las cajas cerradas: cada ' + quien + ' es una persona. Cuenta desde que empieza una caja hasta que la cierra ' +
+        '(la primera, ' + String(p.primera_caja_min || 0).replace('.', ',') + ' min antes: lo típico entre cajas ese día). ' +
+        'Si entre dos cajas pasan más de ' + (p.hueco_max_min || 20) + ' min, ese hueco no cuenta (pico o faltante).' :
+        'Estimado por las cajas cerradas: cada ' + quien + ' cuenta como una persona mientras tenga actividad en los últimos ' +
+        inactividad + ' min. Si pasa más tiempo sin lectura deja de contar (puede ser un pico o un faltante).';
+    return '<h2>Personas y horas</h2><p class="km-nota">' + nota +
+        ' Todas las PDA usan el mismo usuario: por persona, ver la tabla Operarios.</p>' +
         '<div class="km-grid">' + [
             [p.personas_max + (p.personas_media ? ' <small>(media ' + String(p.personas_media).replace('.', ',') + ')</small>' : ''), 'personas (máximo a la vez)'],
             [hm(p.hp), 'horas-persona'],
@@ -579,8 +585,12 @@ Monitor.include({
 
         if (!tv) {
             h += '<div class="km-grid">' + [
-                [eq.activas || 0, 'personas cogiendo ahora (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)' +
-                    (eq.activas && eq.uh ? ' · ~' + n(eq.uh / eq.activas) + ' u/h por persona' : '')],
+                // v1.20.2: operarios de Lecturas + OUT sin operario, sin contar a nadie dos veces
+                [eq.activas || 0, 'personas cogiendo ahora' + (eq.activas_op !== undefined ?
+                    ': ' + (eq.activas_op || 0) + ' con Lecturas' + (eq.activas_otras ? ' (' + eq.activas_otras + ' en INT u otro trabajo)' : '') +
+                    ' + ' + (eq.activas_sin_op || 0) + ' OUT sin operario (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)' :
+                    ' (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)') +
+                    ((eq.activas_tiendas || eq.activas) && eq.uh ? ' · ~' + n(eq.uh / (eq.activas_tiendas || eq.activas)) + ' u/h por persona' : '')],
                 [n(eq.cajas || 0), 'cajas cerradas' + (eq.cajas ? ' · ' + (T.l / eq.cajas).toFixed(1).replace('.', ',') + ' u por caja' : '')],
                 [D.filter(function (o) { return o.sin_validar; }).length, 'hechas sin validar (con faltas de stock)'],
             ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';

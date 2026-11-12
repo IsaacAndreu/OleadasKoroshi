@@ -1,6 +1,10 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.15: también una agrupación de zona (Z-) entera, en un solo recorrido: las líneas de todas sus OUT en el orden de
+ * la ruta, cada una con su caja de tienda («CAJA 05 · K34 ...», banda amarilla). Leer una CJ cierra la caja de la
+ * tienda de esa etiqueta (no hace falta pulsar «Caja»). Validar valida cada OUT. La PDA manda lote_id en vez de
+ * picking_id; la memoria de la PDA guarda la cola con la clave 'L<id>'.
  * v3.7: leer una ubicación lleva a su línea; «Poner cantidad» (varias uds de golpe tras leer una con la pistola);
  * notas de la OUT arriba; los códigos de barras alternativos también cuentan al momento; «Imprimir» abre otra vez la
  * etiqueta de caja (OUT + matrícula), la del transportista o el albarán.
@@ -93,7 +97,8 @@ var Pantalla = AbstractAction.extend({
     init: function (parent, action) {
         this._super.apply(this, arguments);
         var ctx = (action && action.context) || {};
-        this.pickingName = ctx.preparacion_out || false;
+        this.lote = ctx.preparacion_lote || null;            // v3.15: {id, name} de una agrupación Z-
+        this.pickingName = this.lote ? this.lote.name : (ctx.preparacion_out || false);
         this.operario = ctx.preparacion_operario || null;   // {id, nombre}
         this.precargada = ctx.preparacion_estado || null;   // v3.14: el estado que ya tenía Lecturas
         this.estado = null;
@@ -123,8 +128,9 @@ var Pantalla = AbstractAction.extend({
             this.refrescarAlEmpezar = true;
             return this._super.apply(this, arguments);
         }
-        var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_name: this.pickingName,
-            employee_id: this.operario ? this.operario.id : false}})
+        var carga = this._rpc({route: '/koroshi/preparacion/cargar', params: _.extend(
+            this.lote ? {lote_id: this.lote.id} : {picking_name: this.pickingName},   // v3.15
+            {employee_id: this.operario ? this.operario.id : false})})
             .then(function (r) {
                 if (r && r.ok) { self.estado = r.estado; } else { self.errorCarga = (r && r.msg) || 'Error'; }
             }).guardedCatch(function (e) {
@@ -216,6 +222,29 @@ var Pantalla = AbstractAction.extend({
         return this.estado && this.estado.out;
     },
 
+    // v3.15: agrupación Z- entera (lote_id) o una OUT (picking_id)
+    _esLote: function () {
+        return !!this.lote || !!(this.estado && this.estado.out && this.estado.out.es_lote);
+    },
+
+    _obj: function (id, esLote) {
+        if (esLote === undefined) { esLote = this._esLote(); }
+        return esLote ? {lote_id: id} : {picking_id: id};
+    },
+
+    _claveMemoria: function () {
+        var out = this._out();
+        if (!out) { return null; }
+        return (this._esLote() ? 'L' : '') + out.id;
+    },
+
+    // v3.15: «CAJA 05 · K34 TIENDA» de una línea de agrupación ('' en una OUT suelta)
+    _destino: function (l) {
+        if (!l || !this._esLote()) { return ''; }
+        if (l.caja_tienda) { return 'CAJA ' + l.caja_tienda + ' · ' + (l.tienda || l.out_name || ''); }
+        return (l.out_name || '') + (l.tienda ? ' · ' + l.tienda : '');
+    },
+
     // v3.5: estado ligero -> se parchea el que hay. Devuelve false si no cuadra (líneas nuevas, partidas o en otro
     // orden): entonces hay que cargar la OUT entera.
     _aplicar: function (nuevo) {
@@ -286,7 +315,15 @@ var Pantalla = AbstractAction.extend({
     },
 
     _lineaLocal: function (codigo) {
-        return _.find(this._delProducto(codigo), function (l) { return !l.caja && l.leidas < l.pedidas; }) || null;
+        var libres = _.filter(this._delProducto(codigo), function (l) { return !l.caja && l.leidas < l.pedidas; });
+        if (this._esLote()) {
+            // v3.15: el mismo artículo puede ir a varias tiendas: primero la línea que se ve (su caja es la que dice
+            // la pantalla); si no, la primera de la ruta. Odoo recibe la misma línea (linea_id).
+            var visto = this._idVisto();
+            var esa = _.findWhere(libres, {id: visto});
+            if (esa) { return esa; }
+        }
+        return libres[0] || null;
     },
 
     _recalcular: function (e) {
@@ -303,6 +340,8 @@ var Pantalla = AbstractAction.extend({
         if (!e.out || e.out.con_caja !== false) {   // v3.14: las INT no van en caja
             e.sin_caja += n;
             e.mias_sin_caja = (e.mias_sin_caja || 0) + n;
+            var o = l.out_id && _.findWhere(e.outs || [], {id: l.out_id});   // v3.15: por tienda
+            if (o) { o.sin_caja += n; o.leidas += n; }
         }
         this._recalcular(e);
     },
@@ -343,25 +382,26 @@ var Pantalla = AbstractAction.extend({
     },
 
     _guardarCola: function () {
-        var out = this._out();
-        if (!out) { return; }
+        var clave = this._claveMemoria();   // v3.15: 'L<id>' en las agrupaciones
+        if (!clave) { return; }
         var todo = this._leerMemoria();
         var lecturas = this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; })
             .map(function (i) {
                 return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
                         lineaId: i.lineaId, n: i.n};
             });
-        if (lecturas.length) { todo[out.id] = lecturas; } else { delete todo[out.id]; }
+        if (lecturas.length) { todo[clave] = lecturas; } else { delete todo[clave]; }
         this._escribirMemoria(todo);
     },
 
     _recuperarCola: function () {
         var self = this;
         var out = this._out();
+        var clave = this._claveMemoria();
         var todo = this._leerMemoria();
         var limite = Date.now() - COLA_HORAS * 3600000;
-        if (out && todo[out.id]) {
-            todo[out.id].forEach(function (i) {
+        if (out && todo[clave]) {
+            todo[clave].forEach(function (i) {
                 if ((i.t || 0) < limite) { return; }
                 var item = {tipo: i.tipo || 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
                             lineaId: i.lineaId, n: i.n};
@@ -393,26 +433,30 @@ var Pantalla = AbstractAction.extend({
         }
         // las de otras OUT (se cerró la app antes de guardarlas): se mandan solas, en segundo plano
         Object.keys(todo).forEach(function (pid) {
-            if (out && String(out.id) === pid) { return; }
+            if (out && clave === pid) { return; }
             var items = (todo[pid] || []).filter(function (i) { return (i.t || 0) >= limite; });
-            self._vaciarOtra(parseInt(pid, 10), items);
+            self._vaciarOtra(pid, items);
         });
     },
 
-    _vaciarOtra: function (pickingId, items) {
+    // clave: el id de la OUT o, v3.15, 'L<id>' de una agrupación
+    _vaciarOtra: function (clave, items) {
         var self = this;
         var todo = this._leerMemoria();
-        if (items.length) { todo[pickingId] = items; } else { delete todo[pickingId]; }
+        if (items.length) { todo[clave] = items; } else { delete todo[clave]; }
         this._escribirMemoria(todo);
         if (!items.length) { return; }
+        var esLote = String(clave).charAt(0) === 'L';
+        var id = parseInt(esLote ? String(clave).slice(1) : clave, 10);
+        if (!id) { return; }
         var i = items[0];
-        return this._post(this._ruta(i), this._params(i, pickingId))
+        return this._post(this._ruta(i), this._params(i, id, esLote))
             .then(function (r) {
                 if (r && r.que === 'ocupada') {
-                    setTimeout(function () { self._vaciarOtra(pickingId, items); }, OCUPADA_MS);
+                    setTimeout(function () { self._vaciarOtra(clave, items); }, OCUPADA_MS);
                     return;
                 }
-                self._vaciarOtra(pickingId, items.slice(1));
+                self._vaciarOtra(clave, items.slice(1));
             }, function () { /* sin red / Odoo lento: se queda en la memoria para la próxima vez */ });
     },
 
@@ -423,13 +467,16 @@ var Pantalla = AbstractAction.extend({
         return '/koroshi/preparacion/leer';
     },
 
-    _params: function (item, pickingId) {
-        var p = {picking_id: pickingId, codigo: item.codigo, id_lectura: item.id,
-                 employee_id: item.employee_id || (this.operario ? this.operario.id : false)};
+    _params: function (item, pickingId, esLote) {
+        if (esLote === undefined) { esLote = this._esLote(); }
+        var p = _.extend(this._obj(pickingId, esLote), {codigo: item.codigo, id_lectura: item.id,
+                 employee_id: item.employee_id || (this.operario ? this.operario.id : false)});
         if (item.tipo === 'cantidad') {
             p.linea_id = item.lineaId;
             p.cantidad = item.n;
         }
+        if (esLote && item.tipo === 'leer' && item.lineaId) { p.linea_id = item.lineaId; }   // v3.15: la que se ve
+        if (esLote && item.tipo === 'caja' && item.outId) { p.out_id = item.outId; }          // v3.15: CJ sin tienda
         return p;
     },
 
@@ -498,13 +545,24 @@ var Pantalla = AbstractAction.extend({
             return this._reubicar(codigo);   // v3.2: la ubicación de donde se coge
         }
         var tipo = this.modo === 'caja' ? 'caja' : 'leer';
+        // v3.15: en una agrupación, leer una CJ es cerrar la caja de esa tienda (su etiqueta dice de qué OUT es)
+        if (tipo === 'leer' && this._esLote() && RE_CJ.test(codigo)) { tipo = 'caja'; }
         if (tipo === 'caja' && this.sinRed) {
+            if (this.modo !== 'caja') {
+                this._aviso('Sin conexión: la caja se cierra cuando vuelva. Vuelve a leer la etiqueta entonces.', 'mal');
+                return this._pitido(false);
+            }
             this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal')
                 .text('✖ Sin conexión: la caja se cierra cuando vuelva. Vuelve a leer la etiqueta entonces.');
             return this._pitido(false);
         }
         var item = {tipo: tipo, codigo: codigo, id: this._nuevoId(), t: ahora,
                     employee_id: this.operario ? this.operario.id : false};
+        if (tipo === 'caja' && this._esLote()) {
+            // v3.15: si la CJ no es de ninguna tienda, va a la tienda de la línea que se ve
+            var vista = this.estado && _.findWhere(this.estado.lineas, {id: this._idVisto()});
+            item.outId = vista ? vista.out_id : false;
+        }
         if (tipo === 'leer') {
             // v3.6: si el producto es de la OUT y le faltan uds, cuenta ya (pita y +1); Odoo lo guarda detrás
             var l = this._lineaLocal(codigo);
@@ -514,7 +572,10 @@ var Pantalla = AbstractAction.extend({
                 item.productoId = l.producto_id;
                 this._sumarLocal(this.estado, l);
                 this.verId = l.completa ? null : l.id;
-                this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas, 'ok');
+                var destino = this._destino(l);   // v3.15: a qué caja de tienda va
+                // v3.15: con destino el aviso no se va solo (la pantalla ya enseña la línea siguiente)
+                this._aviso((destino ? '→ ' + destino + ' · ' : '') + (l.nombre || l.producto) + ' · ' + l.leidas +
+                            ' de ' + l.pedidas, 'ok', !!destino);
                 this._sonar(l.completa ? 'linea' : 'ok');   // v3.13: otro sonido si la línea queda completa
                 if (l.completa) { this._avisoAquiMismo(l); }
                 if (this.estado.todo_leido) {
@@ -605,7 +666,7 @@ var Pantalla = AbstractAction.extend({
             // v3.0.1: si la línea leída aún no está completa se queda a la vista; si ya lo está, salta sola a la siguiente
             var l = this.estado && _.findWhere(this.estado.lineas, {id: r.linea_id});
             this.verId = l && !l.completa ? l.id : null;
-            this._aviso(r.msg, 'ok');
+            this._aviso(r.msg, 'ok', !!r.destino);   // v3.15: con la caja de tienda, no se va solo
             this._sonar(l && l.completa ? 'linea' : 'ok');   // v3.13
             if (l && l.completa) { this._avisoAquiMismo(l); }
             if (this.estado && this.estado.todo_leido) {
@@ -653,8 +714,18 @@ var Pantalla = AbstractAction.extend({
             return this._foco();
         }
         this.modo = 'caja';
-        this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
-                                        ' a esta caja. Lee la etiqueta CJ de la caja.');
+        var $t = this.$('.o_kp_hoja_tiendas').empty().hide();
+        if (this._esLote()) {
+            // v3.15: cada tienda tiene su caja: la etiqueta CJ dice de qué tienda es
+            this.$('.o_kp_hoja_texto').text('Lee la etiqueta CJ de la caja de la tienda. Fuera de caja:');
+            _.filter(this.estado.outs || [], function (o) { return o.sin_caja > 0; }).forEach(function (o) {
+                $('<li/>').text(o.destino + ': ' + o.sin_caja + (o.sin_caja === 1 ? ' ud' : ' uds')).appendTo($t);
+            });
+            $t.toggle(!!$t.children().length);
+        } else {
+            this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
+                                            ' a esta caja. Lee la etiqueta CJ de la caja.');
+        }
         this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
         this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante').hide();
         this.$('.o_kp_hoja_caja').show();
@@ -669,8 +740,13 @@ var Pantalla = AbstractAction.extend({
             this._sonar('caja');   // v3.13
             return;
         }
-        // sigue esperando la etiqueta
         var msg = (r && r.msg) || 'Error';
+        if (this.modo !== 'caja') {
+            // v3.15: CJ leída sin pulsar «Caja» (agrupación): el aviso en la pantalla
+            this._aviso(msg, 'mal');
+            return this._pitido(false);
+        }
+        // sigue esperando la etiqueta
         this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal').text('✖ ' + msg);
         this._pitido(false);
         if (this.estado && !this.estado.sin_caja) { this._cerrarHoja(); this._aviso(msg, 'mal'); }
@@ -710,13 +786,13 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja').hide();
         this.modo = 'validando';
         this._capa('Validando ' + out.name + '…', false);
-        return this._rpc({route: '/koroshi/preparacion/validar', params: {
-            picking_id: out.id, employee_id: this.operario ? this.operario.id : false,
+        return this._rpc({route: '/koroshi/preparacion/validar', params: _.extend(this._obj(out.id), {
+            employee_id: this.operario ? this.operario.id : false,
             pedido_pendiente: pedidoPendiente || false,
-        }}).then(function (r) {
+        })}).then(function (r) {
             if (r && r.estado) { self._aplicar(r.estado); }
             if (r && r.ok && r.que === 'validada') {
-                self._capa('✓ ' + out.name + ' validada', true);
+                self._capa('✓ ' + (self._esLote() ? r.msg : out.name + ' validada'), true);   // v3.15: «N OUT validadas»
                 self._pitido(true);
                 self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
                 return;
@@ -775,9 +851,9 @@ var Pantalla = AbstractAction.extend({
         if (this.sinRed) { this._aviso('Sin conexión: espera a que vuelva para deshacer.', 'warn'); return; }
         if (this.cola.length || this.enviando) { this._aviso('Un momento: guardando lo leído…', 'info'); return; }
         this.enviando = true;
-        return this._rpc({route: '/koroshi/preparacion/deshacer', params: {
-            picking_id: this._out().id, employee_id: this.operario ? this.operario.id : false,
-        }}).then(function (r) {
+        return this._rpc({route: '/koroshi/preparacion/deshacer', params: _.extend(this._obj(this._out().id), {
+            employee_id: this.operario ? this.operario.id : false,
+        })}).then(function (r) {
             self.enviando = false;
             if (r && r.que === 'ocupada') { return self._aviso('Odoo está guardando: pulsa otra vez.', 'warn'); }
             if (r && r.estado && !self._aplicar(r.estado)) { self._recargar(); }   // v3.5: ligero
@@ -826,8 +902,8 @@ var Pantalla = AbstractAction.extend({
     _recargar: function (despues, ligero) {
         var self = this;
         if (!this._out()) { return; }
-        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id,
-            employee_id: this.operario ? this.operario.id : false, ligero: !!ligero}}, {shadow: true})
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: _.extend(this._obj(this._out().id), {
+            employee_id: this.operario ? this.operario.id : false, ligero: !!ligero})}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.ok) { return; }
                 if (!self._aplicar(r.estado)) { return self._recargar(despues); }   // v3.5: no cuadra -> entera
@@ -1206,7 +1282,7 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_imp_lista').empty();
             return this.$('.o_kp_imp_aviso').addClass('o_kp_mal').text('✖ Sin conexión: espera a que vuelva.');
         }
-        return this._post('/koroshi/preparacion/impresos', {picking_id: this._out().id}).then(function (r) {
+        return this._post('/koroshi/preparacion/impresos', this._obj(this._out().id)).then(function (r) {
             if (self.modo !== 'imprimir') { return; }
             var $l = self.$('.o_kp_imp_lista').empty();
             var lista = (r && r.ok && r.impresos) || [];
@@ -1291,8 +1367,8 @@ var Pantalla = AbstractAction.extend({
     _probarConexion: function () {
         var self = this;
         if (!this.sinRed || !this._out()) { return; }
-        return this._rpc({route: '/koroshi/preparacion/cargar', params: {picking_id: this._out().id,
-            employee_id: this.operario ? this.operario.id : false}}, {shadow: true})
+        return this._rpc({route: '/koroshi/preparacion/cargar', params: _.extend(this._obj(this._out().id), {
+            employee_id: this.operario ? this.operario.id : false})}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.ok) { return self._sinConexion(); }
                 clearTimeout(self.timerReintento);
@@ -1364,6 +1440,8 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_posicion').text('Línea ' + (pos + 1) + ' de ' + e.lineas.length);
             this.$('.o_kp_anterior').prop('disabled', pos <= 0);
             this.$('.o_kp_posterior').prop('disabled', pos >= e.lineas.length - 1);
+            var destino = this._destino(sig);   // v3.15: agrupación -> a qué caja de tienda va
+            this.$('.o_kp_destino').text(destino ? '→ ' + destino : '').toggle(!!destino);
             // v3.9.2: hueco (lineal, palet, columna) y caja KO en la misma línea y del mismo tamaño
             var ubi = this._partesUbicacion(sig);
             var $u = this.$('.o_kp_ubicacion').empty();
@@ -1526,6 +1604,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _llenarLineas: function ($l, e) {
+        var self = this;
         e.lineas.forEach(function (l) {
             var $li = $('<li/>').attr('data-id', l.id).toggleClass('o_kp_hecha', l.completa)
                 .toggleClass('o_kp_ahora', l.id === e.siguiente_id);
@@ -1539,6 +1618,8 @@ var Pantalla = AbstractAction.extend({
             var $t = $('<span class="o_kp_l_texto"/>').appendTo($li);
             $('<span class="o_kp_l_ubi"/>').text(l.ubicacion).appendTo($t);
             $('<span class="o_kp_l_prod"/>').text((l.nombre || l.producto) + (l.talla ? ' · Talla ' + l.talla : '')).appendTo($t);
+            var destino = self._destino(l);   // v3.15
+            if (destino) { $('<span class="o_kp_l_destino"/>').text('→ ' + destino).appendTo($t); }
             if (l.caja) { $('<span class="o_kp_l_caja"/>').text('Caja ' + l.caja).appendTo($t); }
             $('<span class="o_kp_l_cant"/>').text(l.leidas + '/' + l.pedidas).appendTo($li);
             $l.append($li);
@@ -1560,7 +1641,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_capa').hide().removeClass('o_kp_capa_hecho');
     },
 
-    _aviso: function (texto, clase) {
+    _aviso: function (texto, clase, fijo) {
         var self = this;
         clearTimeout(this.timerAviso);
         var $a = this.$('.o_kp_aviso').empty();
@@ -1569,7 +1650,7 @@ var Pantalla = AbstractAction.extend({
         if (!texto) { return; }
         $('<span class="o_kp_aviso_icono" role="presentation"/>').text(ICONOS[tipo] || ICONOS.info).appendTo($a);
         $('<span/>').text(texto).appendTo($a);
-        if (tipo === 'ok') {
+        if (tipo === 'ok' && !fijo) {   // v3.15: fijo = se queda hasta el siguiente aviso
             this.timerAviso = setTimeout(function () { self._aviso('', ''); }, AVISO_OK_MS);
         }
     },
@@ -1710,6 +1791,9 @@ Operarios.include({
     _abrir: function (obj) {
         var self = this;
         var deSiempre = this._super.bind(this);
+        if (obj && obj.tipo === 'agrupacion' && obj.batch_id && this.operario && !this.sinRed) {
+            return this._abrirLote(obj, deSiempre);   // v3.15: agrupación Z- entera en la pantalla nueva
+        }
         if (!obj || obj.tipo !== 'out' || !this.operario || this.sinRed) {
             return deSiempre(obj);
         }
@@ -1755,6 +1839,35 @@ Operarios.include({
                 return deSiempre(obj);   // si falla la pregunta, la app de siempre
             });
     },
+
+    /** v3.15: agrupación Z- (tarea o asignación de tipo 'agrupacion'): si el operario está activado y la agrupación
+     * se puede preparar aquí (parámetro koroshi_preparacion.agrupaciones), la pantalla nueva con la agrupación entera;
+     * si no, la app de código de barras como siempre. */
+    _abrirLote: function (obj, deSiempre) {
+        var self = this;
+        var ref = obj.ref || '';
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/preparacion/modo',
+                          params: {employee_id: this.operario.id, lote_id: obj.batch_id}}, {shadow: true})
+            .then(function (r) {
+                if (!r || !r.propia) {
+                    self.ocupado = false;
+                    return deSiempre(obj);
+                }
+                self._mostrarAbriendo(ref, self.operario.nombre);
+                return self.do_action('koroshi_preparacion.action_koroshi_preparacion_pantalla', {
+                    additional_context: {
+                        preparacion_lote: {id: obj.batch_id, name: ref},
+                        preparacion_operario: {id: self.operario.id, nombre: self.operario.nombre},
+                    },
+                }).then(function () { self.ocupado = false; });
+            }).guardedCatch(function (e) {
+                self.ocupado = false;
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                if (self._esSinConexion(e)) { self._ocultarCapa(); return self._sinConexion(); }
+                return deSiempre(obj);   // si falla la pregunta, la app de siempre
+            });
+    },
 });
 return Operarios;
 });
@@ -1776,23 +1889,32 @@ Faltantes.include({
     _onVolver: function () {
         var self = this;
         var deSiempre = this._super.bind(this);
-        if (!this.out || this.ocupado || this.paso === 'validada' || this.out.batch_id || this.out.lote_id) {
-            return deSiempre();
-        }
-        if (this.desdePreparacion) {
+        if (this.desdePreparacion && this.out && !this.ocupado && this.paso !== 'validada') {
+            // v3.15: antes que la agrupación: si venía de la pantalla nueva (OUT o agrupación Z-), vuelve a ella
             return this.trigger_up('history_back');
+        }
+        if (!this.out || this.ocupado || this.paso === 'validada') {
+            return deSiempre();
         }
         var emp = this._empleadoId ? this._empleadoId() : false;
         if (!emp) { return deSiempre(); }
-        return this._rpc({route: '/koroshi/preparacion/modo', params: {employee_id: emp, picking_name: this.out.name}},
-                         {shadow: true})
+        // v3.15: la agrupación Z- de esta OUT (o la agrupación leída) también vuelve a la pantalla nueva
+        var loteId = this.out.lote_id || this.out.batch_id || false;
+        var loteName = this.out.batch_name || this.out.name;
+        var pregunta = loteId ? {employee_id: emp, lote_id: loteId} : {employee_id: emp, picking_name: this.out.name};
+        return this._rpc({route: '/koroshi/preparacion/modo', params: pregunta}, {shadow: true})
             .then(function (r) {
                 if (!r || !r.propia) { return deSiempre(); }
+                var ctx = {
+                    preparacion_operario: self.operario ? {id: self.operario.id, nombre: self.operario.nombre} : false,
+                };
+                if (loteId) {
+                    ctx.preparacion_lote = {id: loteId, name: loteName};
+                } else {
+                    ctx.preparacion_out = self.out.name;
+                }
                 return self.do_action('koroshi_preparacion.action_koroshi_preparacion_pantalla', {
-                    additional_context: {
-                        preparacion_out: self.out.name,
-                        preparacion_operario: self.operario ? {id: self.operario.id, nombre: self.operario.nombre} : false,
-                    },
+                    additional_context: ctx,
                     replace_last_action: true,
                 });
             }).guardedCatch(function (e) {

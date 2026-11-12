@@ -76,10 +76,18 @@ LabelXPO_... / gls_label_... de la OUT), no por la de validacion: el 11 -> 11 sa
 el pedido sea del 9 o del 10. Columna "Fecha etiqueta" y "Observacion". Recuadro "Anadir un pedido u OUT al Excel
 de un dia" (Tiendas y Web): se guarda en el modelo nuevo koroshi.envio.extra, sale en el Excel de ese dia junto al
 resto y se puede quitar. Textos que estaban en catalan, en castellano.
+v1.20.1: "Personas y horas" en zonas: cada OUT es una persona desde que empieza cada caja hasta que la cierra. Los
+huecos entre cajas de hasta 20 min (PARADA_MIN) cuentan como trabajo y la primera caja empieza el tiempo tipico
+entre cajas antes (mediana del dia). Con la ventana fija de 5 min se perdia ese tiempo y las u/h por persona salian
+infladas (Z-1111: 167 u/h en vez de ~114). Tiendas, igual que antes.
+v1.20.2: "Personas cogiendo ahora" (Tiendas, hoy) = operarios de Lecturas con una tarea abierta (OUT, INT de web o
+agrupacion) + OUT de tiendas cogiendose sin operario (caja cerrada en los ultimos 20 min). Cada persona cuenta una
+vez: la OUT que ya tiene operario no suma otra. Antes solo contaban las OUT (el operario de la INT de web no salia).
+Las u/h por persona solo con los que cogen OUT de tiendas.
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 """,
-    'version': '13.0.1.20.0',
+    'version': '13.0.1.20.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

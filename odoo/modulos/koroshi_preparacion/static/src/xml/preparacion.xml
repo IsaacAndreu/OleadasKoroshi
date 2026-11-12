@@ -43,6 +43,8 @@
                         </div>
                         <button type="button" class="o_kp_posterior" aria-label="Línea siguiente">▶</button>
                     </div>
+                    <!-- v3.15: agrupación Z-: a qué caja de tienda va esta pieza («CAJA 05 · K34 ...») -->
+                    <div class="o_kp_destino" style="display: none;"/>
                     <!-- v3.9: la ubicación como la etiqueta del rack (zona / hueco arriba, código grande) -->
                     <div class="o_kp_ubi_detalle"/>
                     <div class="o_kp_ubicacion"/>
@@ -98,6 +100,8 @@
                         <div class="o_kp_hoja_icono" role="presentation">📦</div>
                         <h2 class="o_kp_hoja_titulo">Escanea la caja</h2>
                         <p class="o_kp_hoja_texto"/>
+                        <!-- v3.15: agrupación Z-: las tiendas con algo leído fuera de caja -->
+                        <ul class="o_kp_hoja_tiendas" style="display: none;"/>
                         <div class="o_kp_hoja_aviso" role="alert"/>
                         <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
                     </div>

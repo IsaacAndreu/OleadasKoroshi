@@ -96,8 +96,24 @@ picking y ruta, sin caja (sin botón Caja; se lee y se valida). La ronda de falt
 de código de barras. Abrir más rápido: Lecturas precarga en segundo plano la pantalla y la OUT que toca (Continuar y
 la siguiente tras «¡Hecho!» abren al momento y se refrescan justo después); el servidor mira las fotos de todos los
 artículos de una vez.
+v3.15.0 (11/11/2026): AGRUPACIONES DE ZONA (Z-) en la pantalla nueva, para los operarios de la lista: ya no se abre la
+app de código de barras. La agrupación entera en UN solo recorrido (las líneas de todas sus OUT en el orden de la
+ruta); cada pieza dice a qué caja de tienda va (banda amarilla «→ CAJA 05 · K34 ...», de la nota de la OUT). Si el
+mismo artículo va a varias tiendas, cuenta en la línea que se ve. Leer una CJ cierra la caja de la tienda de esa
+etiqueta (la reservó «Etiquetas de zona»: no hace falta pulsar «Caja»); una CJ de otra agrupación no se cierra.
+Validar valida cada OUT con la validación de siempre (la agrupación se queda «En curso», como hoy). Faltante, Deshacer,
+Poner cantidad e Imprimir (etiquetas y albaranes de todas las tiendas) también. «Volver» de la pantalla de Faltante
+vuelve a la agrupación en la pantalla nueva. Parámetro nuevo koroshi_preparacion.agrupaciones ('1' / '0' = las Z- a
+la app de siempre). Sin campos nuevos en tablas de stock; las OUT sueltas funcionan igual que en la v3.14.
+v3.16.0 (12/11/2026): RUTA sin volver a los mismos pasillos. Al ordenar, cada cambio de pasillo cuenta 10 m de más
+(models/ruta.py, PENAL_PASILLO): la ruta acaba lo que hay en un pasillo antes de irse y no vuelve al final por otro
+tramo del mismo pasillo. En 14 OUT/INT reales grandes: +0,9 % de metros y 30 pasillos repetidos en vez de 125. Vale
+para OUT, INT y agrupaciones Z-.
+v3.16.1 (12/11/2026): las líneas VACÍAS (0 pedidas y 0 leídas, las deja la app de código de
+barras de Odoo al leer en otra ubicación y deshacer) ya no salen ni cuentan: antes salían «0 de 0» y «la que toca»
+volvía siempre a ellas (INT de web 67365). No se borran.
 """,
-    'version': '13.0.3.14.0',
+    'version': '13.0.3.16.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -105,6 +121,7 @@ artículos de una vez.
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',
+        'data/parametros_v315.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
     ],
