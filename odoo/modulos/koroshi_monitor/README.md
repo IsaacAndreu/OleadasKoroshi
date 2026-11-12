@@ -137,3 +137,12 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   INT de web o agrupación) **+** OUT de tiendas cogiéndose sin operario (caja cerrada en los últimos 20 min). Cada
   persona cuenta **una vez**: si la OUT ya tiene su operario, no suma otra persona. Antes solo contaban las OUT, y el
   operario que hacía la INT de web no salía. Las u/h por persona solo cuentan a los que cogen OUT de tiendas.
+- **v1.21.0 (12/11/2026):** **alarma de bloqueo**. Si un operario tiene un pedido abierto en Lecturas y lleva más de
+  `koroshi_operarios.minutos_sin_leer` minutos (15 por defecto) sin leer nada, sale un aviso en rojo arriba (código,
+  pedido y minutos sin leer), y su código sale en rojo en la OUT y en la tabla de operarios. Tiendas y zonas. Solo
+  códigos, nunca nombres. Necesita koroshi_operarios 2.8; con una versión anterior no sale nada.
+- **v1.22.0 (12/11/2026):** Consulta de envíos, apartado Tiendas: en Transportista hay una tercera opción,
+  **«Todos (con y sin transportista)»**. Descarga un Excel con **todos los pedidos de tienda validados** en las fechas
+  elegidas, tengan o no transportista: la columna Transportista dice XPO/GLS o **«Sin transportista»**, la primera
+  columna es «Fecha validación» y al final pone cuántos pedidos van con y sin transportista. También salen los
+  añadidos a mano de cualquier transportista. Los Excel de XPO SAS y GLS no cambian (siguen por fecha de etiqueta).

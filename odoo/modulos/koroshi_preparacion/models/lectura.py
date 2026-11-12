@@ -24,6 +24,14 @@ _logger = logging.getLogger(__name__)
 
 COMPANY_ID = 8                      # EFFECTIVE LOGISTICS, S.L.
 RE_CJ = re.compile(r'^CJ\d{9}$')    # matrícula de caja (igual que koroshi_caja_existente)
+# v3.18: código de barras de producto (EAN/UPC) que no está en Odoo = otro código de la bolsa o de la etiqueta del
+# proveedor (p. ej. 8410782105213 el 12/11). Los de KOROSHI empiezan casi todos por 8445962 (1857 de 2130 artículos
+# de las OUT de noviembre; el resto 8445514 y 810000x).
+RE_EAN = re.compile(r'^\d{8,14}$')
+PREFIJO_KOROSHI = '8445962'
+# v3.19: pedidos de marketplace: la caja es un paquete de Odoo (PACK...) sin etiqueta CJ
+TIPO_MARKETPLACE = 'PED. MARKETPLACE'
+MARKETPLACES = ('ZALANDO', 'ABOUT YOU')
 PREFIJOS_ZONA = ('Z-',)             # agrupaciones de zona: v3.15 se preparan enteras (models/agrupacion.py)
 PARAM_ACTIVA = 'koroshi_preparacion.activa'
 PARAM_EMPLEADOS = 'koroshi_preparacion.empleados'
@@ -46,7 +54,8 @@ class Lectura(models.Model):
     move_line_id = fields.Many2one('stock.move.line', 'Línea', ondelete='set null')
     employee_id = fields.Many2one('hr.employee', 'Operario', index=True, ondelete='set null')
     user_id = fields.Many2one('res.users', 'Usuario', default=lambda s: s.env.uid)
-    tipo = fields.Selection([('leer', 'Leer'), ('deshacer', 'Deshacer'), ('caja', 'Caja'), ('validar', 'Validar')],
+    tipo = fields.Selection([('leer', 'Leer'), ('deshacer', 'Deshacer'), ('caja', 'Caja'), ('validar', 'Validar'),
+                             ('mover', 'Mover de caja')],
                             'Tipo', required=True)
     codigo = fields.Char('Código leído')
     producto = fields.Char('Producto')
@@ -196,6 +205,20 @@ class Lectura(models.Model):
     def _con_caja(self, picking):
         """v3.14: las OUT van en cajas CJ; las INT (web, a SORTER) no: se lee y se valida."""
         return picking.picking_type_code == 'outgoing'
+
+    @api.model
+    def _pack_auto(self, picking):
+        """v3.19: OUT de marketplace (Zalando, About You): no llevan etiqueta CJ. «Caja» crea el paquete de Odoo
+        (PACK0139...) sin leer nada, igual que «Put in pack» en la app de código de barras, y «Validar» cierra solo lo
+        que quede fuera de caja."""
+        if picking.picking_type_code != 'outgoing':
+            return False
+        pedido = picking.sale_id if 'sale_id' in picking._fields else False
+        tipo = pedido and 's_order_type_id' in pedido._fields and pedido.s_order_type_id
+        if tipo and (tipo.name or '').strip().upper() == TIPO_MARKETPLACE:
+            return True
+        nombre = (picking.partner_id.display_name or '').upper()
+        return any(m in nombre for m in MARKETPLACES)
 
     @api.model
     def _sin_caja(self, picking):
@@ -379,6 +402,7 @@ class Lectura(models.Model):
                 'id': picking.id,
                 'name': picking.name,
                 'con_caja': con_caja,   # v3.14: False en las INT (sin botón Caja)
+                'pack_auto': con_caja and self._pack_auto(picking),   # v3.19: Zalando / About You
                 'tipo': 'INT' if picking.picking_type_code == 'internal' else 'OUT',
                 'tienda': picking.partner_id.name or '',
                 'origen': picking.origin or '',
@@ -561,7 +585,7 @@ class Lectura(models.Model):
                 # v3.7: es una ubicación (las de la OUT las resuelve la PDA sola): no hay nada del pedido allí
                 return {'ok': False, 'que': 'ubicacion',
                         'msg': _('En %s no hay nada de este pedido.') % (ubicacion.name or codigo)}
-            msg = _('Código %s desconocido. No cuenta.') % codigo
+            msg = self._msg_desconocido(codigo)
             self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
             return {'ok': False, 'que': 'desconocido', 'msg': msg}
         if not en_la_out:
@@ -593,6 +617,14 @@ class Lectura(models.Model):
                 return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
             return {'ok': False, 'que': 'completo', 'msg': msg}
         return self._sumar(picking, employee, codigo, lineas[0], id_lectura)
+
+    @api.model
+    def _msg_desconocido(self, codigo):
+        """v3.18: un código numérico que no es de ningún artículo casi siempre es otro código de la bolsa."""
+        if RE_EAN.match(codigo or '') and not codigo.startswith(PREFIJO_KOROSHI):
+            return _('%s no es de ningún artículo: es otro código de la bolsa. Lee el de KOROSHI, el que empieza '
+                     'por %s. No cuenta.') % (codigo, PREFIJO_KOROSHI)
+        return _('Código %s desconocido. No cuenta.') % codigo
 
     @api.model
     def _sumar(self, picking, employee, codigo, ml, id_lectura=False):
@@ -709,7 +741,8 @@ class Lectura(models.Model):
         if previa:
             return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'que': 'repetida'}
         self._comprobar(picking)
-        if not RE_CJ.match(codigo):
+        auto = not codigo and self._pack_auto(picking)   # v3.19: Zalando / About You: paquete de Odoo sin etiqueta
+        if not auto and not RE_CJ.match(codigo):
             return {'ok': False, 'msg': _('%s no es una etiqueta de caja (CJ + 9 cifras). Lee la etiqueta de la caja.')
                     % codigo}
         self._bloquear(picking)
@@ -729,7 +762,9 @@ class Lectura(models.Model):
                 for ml in sin_caja.filtered(lambda l: l.id in apartar):
                     ml.write({'qty_done': reparto[ml.id][0]})
                 # igual que el diálogo «Nombre del Paquete» de la app (Brain Station + koroshi_caja_existente)
-                res = picking.put_in_pack(package_name=codigo)
+                # v3.19: sin nombre = «Put in pack» de siempre: Odoo le pone PACK0139...
+                antes = picking.move_line_ids.mapped('result_package_id')
+                res = picking.put_in_pack(package_name=codigo) if codigo else picking.put_in_pack()
                 if isinstance(res, dict) and res.get('res_model'):
                     raise UserError(_('Odoo pide otra cosa al cerrar la caja (%s). Ciérrala en la app de código de '
                                       'barras.') % (res.get('name') or res.get('res_model')))
@@ -740,6 +775,11 @@ class Lectura(models.Model):
                         raise UserError(_('No se ha podido separar lo de tu compañero en %s. Avisa a la oficina.')
                                         % self._corto(ml.product_id))
                     ml.write({'qty_done': ml.qty_done + apartar[ml.id]})
+                if auto:
+                    nuevo = picking.move_line_ids.mapped('result_package_id') - antes
+                    if not nuevo:
+                        raise UserError(_('Odoo no ha creado la caja. Ciérrala en la app de código de barras.'))
+                    codigo = nuevo[0].name
         except (UserError, ValidationError) as e:
             msg = e.name if hasattr(e, 'name') else str(e)
             self._apuntar(picking, employee, 'caja', codigo, 'error', msg, id_lectura=id_lectura)
@@ -756,7 +796,75 @@ class Lectura(models.Model):
         self.sudo().search(dominio).write({'en_caja': codigo})
         msg = _('Caja %s cerrada con %s uds.') % (codigo, round(uds))
         self._apuntar(picking, employee, 'caja', codigo, 'ok', msg, cantidad=uds, id_lectura=id_lectura)
-        return {'ok': True, 'msg': msg}
+        return {'ok': True, 'msg': msg, 'caja': codigo, 'uds': round(uds)}   # v3.20: la PDA enseña el número
+
+    # ------------------------------------------------------------------ v3.21: mover de caja
+    @api.model
+    def mover_caja(self, picking, employee, linea_id, cantidad, destino):
+        """Pasa n uds de una línea ya en caja a otra caja de la misma OUT (o a una nueva): «la caja va muy llena,
+        esta chaqueta a la otra». destino = nombre de una caja de la OUT, una etiqueta CJ (nueva o de la OUT) o
+        'NUEVA' (Zalando / About You: paquete PACK... nuevo). Igual que Odoo al cerrar caja: si no se mueve la línea
+        entera, se parte en dos (copia con las uds movidas y la original con el resto)."""
+        self._comprobar(picking)
+        if not self._con_caja(picking):
+            return {'ok': False, 'msg': _('Esta OUT no va en cajas.')}
+        ml = self.env['stock.move.line'].sudo().browse(int(linea_id or 0)).exists()
+        if not ml or ml.picking_id != picking or not ml.result_package_id:
+            return {'ok': False, 'msg': _('Esa línea no está en ninguna caja.')}
+        try:
+            n = int(cantidad or 1)
+        except (TypeError, ValueError):
+            n = 0
+        hechas = int(round(ml.qty_done))
+        if n < 1 or n > hechas:
+            return {'ok': False, 'msg': _('Pon entre 1 y %s uds.') % hechas}
+        origen = ml.result_package_id
+        destino = (destino or '').strip().upper()
+        Paquete = self.env['stock.quant.package'].sudo()
+        de_la_out = picking.move_line_ids.mapped('result_package_id')
+        self._bloquear(picking)
+        try:
+            with self.env.cr.savepoint():
+                if destino == 'NUEVA':
+                    if not self._pack_auto(picking):
+                        raise UserError(_('Lee la etiqueta CJ de la caja nueva.'))
+                    vals = {}
+                    if 'company_id' in Paquete._fields:
+                        vals['company_id'] = picking.company_id.id
+                    paquete = Paquete.create(vals)   # nombre de la secuencia de Odoo: PACK0139...
+                else:
+                    paquete = de_la_out.filtered(lambda p: (p.name or '').strip().upper() == destino)[:1]
+                    if not paquete:
+                        if not RE_CJ.match(destino):
+                            raise UserError(_('%s no es una caja de esta OUT.') % destino)
+                        if Paquete.search([('name', '=ilike', destino)], limit=1):
+                            raise UserError(_('La caja %s ya se ha usado en otro pedido. Lee otra etiqueta.') % destino)
+                        vals = {'name': destino}
+                        if 'company_id' in Paquete._fields:
+                            vals['company_id'] = picking.company_id.id
+                        paquete = Paquete.create(vals)
+                if paquete == origen:
+                    raise UserError(_('Ya está en la caja %s.') % origen.name)
+                nueva = ml
+                if n < hechas or float_compare(ml.qty_done, ml.product_uom_qty, precision_digits=3) != 0:
+                    # lo mismo que put_in_pack de Odoo: copia con 0 pedidas y las hechas, y luego se reparte
+                    nueva = ml.copy({'product_uom_qty': 0, 'qty_done': n, 'result_package_id': paquete.id})
+                    ml.write({'product_uom_qty': max(ml.product_uom_qty - n, 0), 'qty_done': ml.qty_done - n})
+                    nueva.write({'product_uom_qty': n})
+                else:
+                    ml.write({'result_package_id': paquete.id})
+                # las lecturas de esas uds pasan a la caja nueva (lo de cada operario sigue cuadrando)
+                lecturas = self.sudo().search([('picking_id', '=', picking.id), ('en_caja', '=', origen.name),
+                                               ('move_line_id', '=', ml.id), ('tipo', '=', 'leer'),
+                                               ('resultado', '=', 'ok'), ('deshecha', '=', False)], limit=n)
+                lecturas.write({'en_caja': paquete.name, 'move_line_id': nueva.id})
+        except (UserError, ValidationError) as e:
+            msg = e.name if hasattr(e, 'name') else str(e)
+            return {'ok': False, 'msg': msg}
+        msg = _('%s %s: de %s a %s.') % (n, n == 1 and _('ud') or _('uds'), origen.name, paquete.name)
+        msg = '%s · %s' % (self._corto(ml.product_id), msg)
+        self._apuntar(picking, employee, 'mover', paquete.name, 'ok', msg, ml=nueva, cantidad=n)
+        return {'ok': True, 'msg': msg, 'caja': paquete.name, 'origen': origen.name, 'uds': n}
 
     # ------------------------------------------------------------------ validar
     @api.model
@@ -764,6 +872,15 @@ class Lectura(models.Model):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
         {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}."""
         self._comprobar(picking)
+        caja_auto = {}
+        if self._con_caja(picking) and self._pack_auto(picking) and self._sin_caja(picking):
+            # v3.19: Zalando / About You: lo leído fuera de caja (lo de este operario) va solo a un paquete nuevo
+            reparto = self._reparto_sin_caja(picking, employee)
+            if sum(v[0] for v in reparto.values()) > 0:
+                r = self.caja(picking, employee, '')
+                if not r.get('ok'):
+                    return {'ok': False, 'que': 'sin_caja', 'msg': r.get('msg')}
+                caja_auto = {'caja_auto': r.get('caja'), 'caja_uds': r.get('uds')}   # v3.20: la PDA la enseña
         sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if self._con_caja(picking) else 0   # v3.14
         if float_compare(sin_caja, 0, precision_digits=3) > 0:
             reparto = self._reparto_sin_caja(picking, employee)
@@ -806,7 +923,9 @@ class Lectura(models.Model):
                 self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
         except Exception:
             pass
-        return {'ok': True, 'que': 'validada', 'msg': msg}
+        res = {'ok': True, 'que': 'validada', 'msg': msg}
+        res.update(caja_auto)
+        return res
 
 
 class Equipo(models.Model):

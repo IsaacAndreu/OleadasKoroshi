@@ -181,7 +181,7 @@ class Agrupacion(models.AbstractModel):
             if ubicacion:
                 return {'ok': False, 'que': 'ubicacion',
                         'msg': _('En %s no hay nada de esta agrupación.') % (ubicacion.name or codigo)}
-            msg = _('Código %s desconocido. No cuenta.') % codigo
+            msg = L._msg_desconocido(codigo)   # v3.18
             L._apuntar(False, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
             return {'ok': False, 'que': 'desconocido', 'msg': msg}
         pendiente = lambda l: not l.result_package_id and float_compare(

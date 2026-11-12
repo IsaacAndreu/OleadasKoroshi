@@ -74,8 +74,15 @@ llamarse «Expediciones» en la PDA y en los menus (la clave interna sigue siend
 v2.7.0 (11/11/2026): «Salir» deja la PDA libre y lleva a la pantalla de inicio de Odoo (todas las apps). Icono nuevo
 «Lecturas (PDA)» en la pantalla de inicio, para todos los usuarios, para volver a entrar. La salida automatica por
 inactividad se queda en Lecturas.
+v2.8.0 (12/11/2026): la pregunta pasa a ser «¿Unirte a X?» (Si, unirme / No) y el aviso «Te unes a X con OUT»; antes
+«¿Ayudar a X?». Y solo se pregunta si X la esta haciendo AHORA (ha leido algo en los ultimos
+koroshi_operarios.minutos_sin_leer minutos, 15 por defecto). Si nadie la esta haciendo (la dejo con «Dejar aqui», se paro
+o se fue sin dejarla, o estaba en la cola de otro sin empezar), quien la lee se la queda sin preguntar nada: la tarea
+parada del otro se cierra como dejada («La siguio otro operario») a la hora de su ultima lectura, y la asignacion pasa a
+quien la lee. Las de Expediciones siguen bloqueadas. Agrupaciones: si otro la esta haciendo ahora, «X la esta haciendo».
+Metodos _ultima_actividad, _minutos_sin_leer y _trabajando_ahora para el monitor (alarma de bloqueo).
 """,
-    'version': '13.0.2.7.0',
+    'version': '13.0.2.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

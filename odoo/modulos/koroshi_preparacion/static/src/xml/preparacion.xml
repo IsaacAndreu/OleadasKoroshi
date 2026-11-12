@@ -105,6 +105,33 @@
                         <div class="o_kp_hoja_aviso" role="alert"/>
                         <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
                     </div>
+                    <!-- v3.21: mover uds de una caja cerrada a otra (✎ en la lista de líneas) -->
+                    <div class="o_kp_hoja_mover" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Cambiar de caja</h2>
+                        <div class="o_kp_mv_producto"/>
+                        <div class="o_kp_mv_ahora"/>
+                        <div class="o_kp_mv_cant_fila">
+                            <span>Uds a mover</span>
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_menos" aria-label="Una menos">−</button>
+                            <span class="o_kp_mv_cant"/>
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_mas" aria-label="Una más">+</button>
+                        </div>
+                        <div class="o_kp_mv_etq">¿A qué caja?</div>
+                        <div class="o_kp_mv_destinos"/>
+                        <p class="o_kp_mv_cj">O lee la etiqueta CJ de otra caja.</p>
+                        <div class="o_kp_hoja_aviso o_kp_mv_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_mv_cancelar">Cancelar</button>
+                    </div>
+                    <!-- v3.20: Zalando / About You: el número del paquete (PACK...) en grande y las cajas de la OUT -->
+                    <div class="o_kp_hoja_pack" style="display: none;">
+                        <div class="o_kp_pack_titulo"/>
+                        <div class="o_kp_pack_numero"/>
+                        <div class="o_kp_pack_uds"/>
+                        <p class="o_kp_pack_nota">Apunta este número en la caja.</p>
+                        <div class="o_kp_pack_lista_titulo"/>
+                        <ol class="o_kp_pack_lista"/>
+                        <button type="button" class="o_kp_boton o_kp_pack_seguir">Seguir leyendo</button>
+                    </div>
                     <!-- v3.2: Faltante de la línea que se ve, sin lista: dónde probar y leer la ubicación -->
                     <div class="o_kp_hoja_faltante" style="display: none;">
                         <div class="o_kp_f_cabecera">
@@ -139,7 +166,22 @@
                         <button type="button" class="o_kp_ver_lineas" aria-expanded="false">Ver líneas</button>
                         <!-- v3.7: volver a imprimir etiqueta de caja, del transportista o albarán -->
                         <button type="button" class="o_kp_imprimir">Imprimir etiqueta o albarán</button>
+                        <!-- v3.21: cada operario elige el color de la franja de la ubicación -->
+                        <button type="button" class="o_kp_menu_color">Color de la ubicación</button>
                         <button type="button" class="o_kp_boton o_kp_blanco o_kp_menu_cerrar">Cerrar</button>
+                    </div>
+                    <div class="o_kp_hoja_color" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Color de la ubicación</h2>
+                        <p class="o_kp_color_texto">Elige el que mejor veas. Se guarda para ti en todas las PDA.</p>
+                        <div class="o_kp_colores">
+                            <button type="button" class="o_kp_color_op" data-color="a"><span class="o_kp_muestra o_kp_m_a">L24 P19</span>A · Negra</button>
+                            <button type="button" class="o_kp_color_op" data-color="b"><span class="o_kp_muestra o_kp_m_b">L24 P19</span>B · Blanca</button>
+                            <button type="button" class="o_kp_color_op" data-color="c"><span class="o_kp_muestra o_kp_m_c">L24 P19</span>C · Amarilla</button>
+                            <button type="button" class="o_kp_color_op" data-color="d"><span class="o_kp_muestra o_kp_m_d">L24 P19</span>D · Azul</button>
+                            <button type="button" class="o_kp_color_op" data-color="e"><span class="o_kp_muestra o_kp_m_e">L|24 P|19</span>E · Casillas</button>
+                            <button type="button" class="o_kp_color_op" data-color="f"><span class="o_kp_muestra o_kp_m_f">L24 P19</span>F · Amarilla grande</button>
+                        </div>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_color_cerrar">Cerrar</button>
                     </div>
                     <!-- v3.7: cantidad a mano -->
                     <div class="o_kp_hoja_cantidad" style="display: none;">

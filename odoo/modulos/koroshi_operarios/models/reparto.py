@@ -651,11 +651,19 @@ class KoroshiOperarioAsignacion(models.Model):
         """El operario lee una OUT a mano: si esta libre (o ya es suya) pasa a ser la que hace."""
         objetivo_lote = lote if tipo == 'agrupacion' else None
         viva = self._viva_de(picking=picking if tipo == 'out' else None, lote=objetivo_lote)
-        if viva and viva.employee_id and viva.employee_id != employee:
-            raise UserError(_('%s esta asignada a %s') % (viva.name, viva.employee_id.name))
         if viva and viva.estado == 'oficina':
             raise UserError(_('%s esta en oficina (%s). Que la libere el responsable.')
                             % (viva.name, viva.motivo_id.name or ''))
+        if viva and viva.employee_id and viva.employee_id != employee:
+            # v2.8: si otro la esta haciendo AHORA (ha leido hace poco), sigue siendo suya. Si nadie la esta haciendo
+            # (la dejo, se paro o aun no la habia empezado), se la queda quien la lee, sin preguntar nada.
+            otras = self._tareas_de_otros(employee, tipo, picking, lote)
+            ahora = otras.filtered(lambda t: t._trabajando_ahora())
+            if ahora:
+                raise UserError(_('%s la esta haciendo %s') % (viva.name, ', '.join(ahora.mapped('employee_id.name'))))
+            otras._relevar()
+            viva.write({'employee_id': employee.id, 'estado': 'cola', 'tarea_id': False,
+                        'secuencia': self._primera_secuencia(employee)})
         actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')])
         if actual and actual != viva:
             # la que estaba haciendo vuelve la primera de su cola
@@ -680,15 +688,37 @@ class KoroshiOperarioAsignacion(models.Model):
             return self.browse()
         viva = self._viva_de(picking=picking)
         if viva and viva.estado == 'curso' and viva.employee_id and viva.employee_id != employee:
+            # v2.8: solo es «ayudar» si alguien la esta haciendo ahora (ha leido hace menos de
+            # koroshi_operarios.minutos_sin_leer). Si no, nada: leida_a_mano se la da a quien la lee.
+            otras = self._tareas_de_otros(employee, tipo, picking, self.env['stock.picking.batch'])
+            ahora = otras.filtered(lambda t: t._trabajando_ahora())
+            if not ahora:
+                return self.browse()
+            # las tareas paradas de otros (se fueron sin dejarla) se cierran: no cuentan para el «como mucho dos»
+            (otras - ahora)._relevar()
             # v2.5: como mucho dos por OUT (titular + un ayudante)
-            Tarea = self.env['koroshi.operario.tarea'].sudo()
-            otros = Tarea.search([('picking_id', '=', picking.id), ('tipo', '=', 'out'), ('estado', '=', 'curso'),
-                                  ('employee_id', '!=', employee.id)]).mapped('employee_id')
+            otros = ahora.mapped('employee_id')
             if len(otros) >= MAX_POR_OUT:
                 raise UserError(_('Ya hay %s operarios con %s (%s). Lee otro pedido.')
                                 % (len(otros), picking.name, ', '.join(otros.mapped('name'))))
             return viva
         return self.browse()
+
+    @api.model
+    def _tareas_de_otros(self, employee, tipo, picking, lote):
+        """v2.8: tareas en curso de OTROS operarios con este pedido (OUT suelta) o esta agrupacion."""
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        if tipo == 'agrupacion':
+            dom = [('tipo', '=', 'agrupacion'), ('batch_id', '=', lote.id)]
+        else:
+            dom = [('tipo', '=', 'out'), ('picking_id', '=', picking.id)]
+        return Tarea.search(dom + [('estado', '=', 'curso'), ('employee_id', '!=', employee.id)])
+
+    @api.model
+    def quien_la_hace(self, employee, picking):
+        """v2.8: operarios que estan haciendo ahora esta OUT suelta (para el «¿Ayudar a X?»)."""
+        otras = self._tareas_de_otros(employee, 'out', picking, self.env['stock.picking.batch'])
+        return otras.filtered(lambda t: t._trabajando_ahora()).mapped('employee_id')
 
     @api.model
     def unirse(self, employee, viva):

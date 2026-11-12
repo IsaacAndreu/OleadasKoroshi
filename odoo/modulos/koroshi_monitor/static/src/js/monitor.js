@@ -54,11 +54,24 @@ function transporteTexto(o) {
 // v1.18: operarios por codigo (OP1, OP2...), del modulo koroshi_operarios. Nunca nombres.
 // En negrita el que la tiene abierta ahora; los demas (la empezaron o la dejaron) en gris.
 function opsTxt(o) {
-    var ahora = o.ops_ahora || [], todos = o.ops || [];
+    var ahora = o.ops_ahora || [], todos = o.ops || [], parados = o.ops_parados || [];
     if (!todos.length) { return '<span class="km-muted">–</span>'; }
     return todos.map(function (c) {
+        // v1.21: en rojo el que la tiene abierta pero lleva rato sin leer
+        if (parados.indexOf(c) >= 0) { return '<b class="km-op km-op-parado" title="Abierta, sin leer">' + e(c) + '</b>'; }
         return ahora.indexOf(c) >= 0 ? '<b class="km-op">' + e(c) + '</b>' : '<span class="km-op km-op-old">' + e(c) + '</span>';
     }).join(' ');
+}
+// v1.21: alarma de bloqueo. Operarios con un pedido abierto en Lecturas que llevan mas de r.sin_leer_min minutos sin
+// leer nada (se han parado o se han ido sin «Dejar aqui»). Quien lea ese pedido se lo queda sin preguntar.
+function avisoParados(r, tv) {
+    var ps = (r.operarios || []).filter(function (o) { return o.parado; });
+    if (!ps.length) { return ''; }
+    ps.sort(function (a, b) { return b.sin_leer - a.sin_leer; });
+    return '<div class="km-card km-aviso km-alarma"><b>' + (ps.length === 1 ? '1 pedido abierto sin leer' : ps.length + ' pedidos abiertos sin leer') +
+        ' desde hace más de ' + (r.sin_leer_min || 15) + ' min:</b> ' +
+        ps.map(function (o) { return '<b class="km-op km-op-parado">' + e(o.op) + '</b> ' + e(o.ahora) + ' (' + o.sin_leer + ' min)'; }).join(' · ') +
+        (tv ? '' : '. ¿Se ha parado o se ha ido sin «Dejar aquí»? Si otro operario lee ese pedido, se lo queda sin preguntar.') + '</div>';
 }
 function tablaOperarios(ops, tv) {
     if (!ops || !ops.length) { return ''; }
@@ -66,7 +79,8 @@ function tablaOperarios(ops, tv) {
         (tv ? '' : '<th class="r">Pedidos</th><th class="r">Acabados</th><th class="r">Dejados</th>') +
         '<th class="r">Uds</th><th class="r">Min</th><th class="r">u/h</th></tr></thead><tbody>';
     ops.forEach(function (o) {
-        h += '<tr' + (o.ahora ? ' class="km-op-activo"' : '') + '><td><b class="km-op">' + e(o.op) + '</b></td><td class="m">' + (o.ahora ? e(o.ahora) : '<span class="km-muted">–</span>') +
+        h += '<tr' + (o.ahora ? ' class="km-op-activo' + (o.parado ? ' km-op-parado-fila' : '') + '"' : '') + '><td><b class="km-op' + (o.parado ? ' km-op-parado' : '') + '">' + e(o.op) + '</b></td><td class="m">' +
+            (o.ahora ? e(o.ahora) + (o.parado ? ' <span class="km-parado-txt">' + o.sin_leer + ' min sin leer</span>' : '') : '<span class="km-muted">–</span>') +
             '</td><td>' + e(o.desde) + '</td>' +
             (tv ? '' : '<td class="r">' + o.tareas + '</td><td class="r">' + o.acabadas + '</td><td class="r">' + (o.dejadas || '') + '</td>') +
             '<td class="r">' + n(o.uds) + '</td><td class="r">' + n(o.min) + '</td><td class="r"><b>' + (o.uh || '') + '</b></td></tr>';
@@ -331,6 +345,7 @@ var Monitor = AbstractAction.extend({
             [T.c, 'OUT cogiéndose ahora'],
             [T.p, 'OUT sin empezar'],
         ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
+        h += avisoParados(r, false);
         h += personas(r.personas, 'OUT');
         h += tablaOperarios(r.operarios, false);
 
@@ -576,6 +591,7 @@ Monitor.include({
             (eq.inicio ? ' desde las ' + e(eq.inicio) : '') + ' · <b>' + (eq.activas || 0) + '</b> cogiendo ahora · OUT: <b>' + T.hecha + '</b> hechas, <b>' +
             (T.curso + T.parcial) + '</b> en marcha, <b>' + T.pend + '</b> sin empezar</div></div>';
 
+        h += avisoParados(r, tv);
         if (paradas.length) {
             h += '<div class="km-card km-aviso"><b>' + paradas.length + ' OUT hechas sin validar (sin cerrar caja hace más de ' + (eq.parada_min || 20) + ' min):</b> ' +
                 paradas.map(function (o) { return e(o.out) + ' ' + e(o.tienda) + ' (' + o.hace + ' min, faltan ' + n(o.falta) + ')'; }).join(' · ') +

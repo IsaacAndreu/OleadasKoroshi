@@ -17,7 +17,8 @@ class KoroshiEnvioExtra(models.Model):
     dia = fields.Date(string='Día del Excel', required=True, index=True)
     apartado = fields.Selection([('tiendas', 'Tiendas'), ('web', 'Web')], string='Apartado',
                                 required=True, default='tiendas', index=True)
-    transportista = fields.Selection([('xpo', 'XPO SAS'), ('gls', 'GLS'), ('seur', 'SEUR')],
+    transportista = fields.Selection([('xpo', 'XPO SAS'), ('gls', 'GLS'), ('seur', 'SEUR'),
+                                      ('todos', 'Todos (sin transportista)')],
                                      string='Excel de', required=True, index=True)
     picking_id = fields.Many2one('stock.picking', string='OUT', required=True, ondelete='cascade', index=True)
     pedido = fields.Char(string='Pedido')

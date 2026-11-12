@@ -118,7 +118,7 @@ class KoroshiOperarios(http.Controller):
                'tarea': _tarea_json(tarea) if tarea else False, 'cola': self._cola_json(emp),
                'operario': emp.name, 'employee_id': emp.id}
         if ayudante and nueva:
-            res['msg_ayudante'] = 'Ayudas a %s con %s. Tú haces la segunda mitad.' % (
+            res['msg_ayudante'] = 'Te unes a %s con %s. Tú haces la segunda mitad.' % (
                 asig.employee_id.name, asig.picking_id.name)
         if not asig:
             res['msg'] = 'No tienes más pedidos. Pide a tu responsable.'
@@ -148,8 +148,10 @@ class KoroshiOperarios(http.Controller):
             ayuda = Asig.ayudante_de(emp, tipo, picking)
             if ayuda and not ayudar:
                 # v2.5: antes de entrar se pregunta (por si la ha leido sin querer)
-                return {'ok': True, 'que': 'ayudar', 'codigo': codigo, 'titular': ayuda.employee_id.name,
-                        'msg': '%s está haciendo %s.' % (ayuda.employee_id.name, picking.name)}
+                # v2.8: solo se llega aqui si alguien la esta haciendo ahora; se nombra a quien de verdad lee
+                nombres = ', '.join(Asig.quien_la_hace(emp, picking).mapped('name')) or ayuda.employee_id.name
+                return {'ok': True, 'que': 'ayudar', 'codigo': codigo, 'titular': nombres,
+                        'msg': '%s está haciendo %s.' % (nombres, picking.name)}
             if ayuda:
                 # v2.4: la OUT ya la esta haciendo otro -> entra de ayudante (preparar a dos)
                 tarea = Asig.unirse(emp, ayuda)

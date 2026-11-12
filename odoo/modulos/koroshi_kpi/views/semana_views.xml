@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Comparativa de semanas (v1.5) ======================= -->
+    <record id="view_koroshi_kpi_semana_tree" model="ir.ui.view">
+        <field name="name">koroshi.kpi.semana.tree</field>
+        <field name="model">koroshi.kpi.semana</field>
+        <field name="arch" type="xml">
+            <tree string="Esta semana / semana pasada" create="false" edit="false" delete="false"
+                  decoration-bf="es_total" decoration-muted="not hay_esta and not hay_pasada">
+                <field name="es_total" invisible="1"/>
+                <field name="hay_esta" invisible="1"/>
+                <field name="hay_pasada" invisible="1"/>
+                <field name="dia"/>
+                <field name="fecha_esta" optional="hide"/>
+                <field name="fecha_pasada" optional="hide"/>
+                <field name="uds_esta" attrs="{'invisible': [('hay_esta', '=', False)]}"/>
+                <field name="uds_pasada" attrs="{'invisible': [('hay_pasada', '=', False)]}"/>
+                <field name="hp_esta" optional="hide" attrs="{'invisible': [('hp_esta', '=', 0)]}"/>
+                <field name="hp_pasada" optional="hide" attrs="{'invisible': [('hp_pasada', '=', 0)]}"/>
+                <field name="uh_esta" attrs="{'invisible': [('uh_esta', '=', 0)]}"/>
+                <field name="uh_pasada" attrs="{'invisible': [('uh_pasada', '=', 0)]}"/>
+                <field name="delta_uh" attrs="{'invisible': ['|', ('uh_esta', '=', 0), ('uh_pasada', '=', 0)]}"/>
+                <field name="faltas_esta" attrs="{'invisible': [('hay_esta', '=', False)]}"/>
+                <field name="faltas_pasada" attrs="{'invisible': [('hay_pasada', '=', False)]}"/>
+                <field name="cajas_esta" attrs="{'invisible': [('hay_esta', '=', False)]}"/>
+                <field name="cajas_pasada" attrs="{'invisible': [('hay_pasada', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_semana_search" model="ir.ui.view">
+        <field name="name">koroshi.kpi.semana.search</field>
+        <field name="model">koroshi.kpi.semana</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="dia"/>
+                <filter name="f_con_datos" string="Con datos" domain="['|', ('hay_esta', '=', True), ('hay_pasada', '=', True)]"/>
+                <filter name="f_sin_total" string="Sin fila de total" domain="[('es_total', '=', False)]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_semanas" model="ir.actions.act_window">
+        <field name="name">Esta semana / semana pasada</field>
+        <field name="res_model">koroshi.kpi.semana</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_koroshi_kpi_semana_tree"/>
+        <field name="search_view_id" ref="view_koroshi_kpi_semana_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay datos de estas dos semanas.</p>
+            <p>Sale de las fichas del día completo de «KPI por día» y de «Faltas por día».
+               u/h = uds ÷ horas-persona de picking.</p>
+        </field>
+    </record>
+</odoo>

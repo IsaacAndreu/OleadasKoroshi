@@ -5,3 +5,5 @@ access_koroshi_kpi_peso_user,koroshi.kpi.peso.tipo usuario,model_koroshi_kpi_pes
 access_koroshi_kpi_peso_manager,koroshi.kpi.peso.tipo responsable,model_koroshi_kpi_peso_tipo,stock.group_stock_manager,1,1,1,1
 access_koroshi_kpi_falta_user,koroshi.kpi.falta usuario,model_koroshi_kpi_falta,stock.group_stock_user,1,0,0,0
 access_koroshi_kpi_falta_manager,koroshi.kpi.falta responsable,model_koroshi_kpi_falta,stock.group_stock_manager,1,1,1,1
+access_koroshi_kpi_semana_user,koroshi.kpi.semana usuario,model_koroshi_kpi_semana,stock.group_stock_user,1,0,0,0
+access_koroshi_kpi_falta_repetida_user,koroshi.kpi.falta.repetida usuario,model_koroshi_kpi_falta_repetida,stock.group_stock_user,1,0,0,0

@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ======================= Faltas repetidas (v1.5) ======================= -->
+    <record id="view_koroshi_kpi_falta_repetida_tree" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.repetida.tree</field>
+        <field name="model">koroshi.kpi.falta.repetida</field>
+        <field name="arch" type="xml">
+            <tree string="Faltas repetidas (3 días seguidos)" create="false" edit="false" delete="false"
+                  decoration-danger="sigue" decoration-muted="not sigue">
+                <field name="sigue" invisible="1"/>
+                <field name="referencia"/>
+                <field name="product_id" optional="show"/>
+                <field name="dias"/>
+                <field name="primer_dia"/>
+                <field name="ultimo_dia"/>
+                <field name="faltan" sum="Uds que faltan"/>
+                <field name="n_outs" sum="OUT"/>
+                <field name="outs" optional="hide"/>
+                <field name="ubicacion_id"/>
+                <field name="stock_ubicacion" optional="show"/>
+                <field name="stock_interno" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_falta_repetida_form" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.repetida.form</field>
+        <field name="model">koroshi.kpi.falta.repetida</field>
+        <field name="arch" type="xml">
+            <form string="Falta repetida" create="false" edit="false" delete="false">
+                <sheet>
+                    <div class="alert alert-warning" role="alert">
+                        Revisar la ubicación y el stock de estos artículos: dan falta varios días seguidos.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="product_id"/>
+                            <field name="referencia"/>
+                            <field name="dias"/>
+                            <field name="primer_dia"/>
+                            <field name="ultimo_dia"/>
+                            <field name="sigue"/>
+                        </group>
+                        <group>
+                            <field name="faltan"/>
+                            <field name="n_outs"/>
+                            <field name="outs"/>
+                            <field name="ubicacion_id"/>
+                            <field name="stock_ubicacion"/>
+                            <field name="stock_interno"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_kpi_falta_repetida_search" model="ir.ui.view">
+        <field name="name">koroshi.kpi.falta.repetida.search</field>
+        <field name="model">koroshi.kpi.falta.repetida</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="referencia"/>
+                <field name="product_id"/>
+                <field name="ubicacion_id"/>
+                <field name="outs"/>
+                <filter name="f_sigue" string="Siguen dando falta" domain="[('sigue', '=', True)]"/>
+                <filter name="f_sin_stock" string="Sin stock interno" domain="[('stock_interno', '=', 0)]"/>
+                <filter name="f_con_stock" string="Con stock interno" domain="[('stock_interno', '&gt;', 0)]"/>
+                <separator/>
+                <filter name="f_ultimo" string="Último día" date="ultimo_dia"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_ubicacion" string="Ubicación habitual" context="{'group_by': 'ubicacion_id'}"/>
+                    <filter name="g_ultimo" string="Último día" context="{'group_by': 'ultimo_dia:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_kpi_faltas_repetidas" model="ir.actions.act_window">
+        <field name="name">Faltas repetidas (3 días seguidos)</field>
+        <field name="res_model">koroshi.kpi.falta.repetida</field>
+        <field name="view_mode">tree,form</field>
+        <field name="view_id" ref="view_koroshi_kpi_falta_repetida_tree"/>
+        <field name="search_view_id" ref="view_koroshi_kpi_falta_repetida_search"/>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ningún artículo da falta varios días seguidos.</p>
+            <p>Revisar la ubicación y el stock de estos artículos: dan falta varios días seguidos.
+               Es una propuesta para una ronda de revisión: no crea transferencias ni movimientos.
+               El número de días se cambia en el parámetro del sistema «koroshi_kpi.dias_falta_repetida» (3 por defecto).</p>
+        </field>
+    </record>
+</odoo>

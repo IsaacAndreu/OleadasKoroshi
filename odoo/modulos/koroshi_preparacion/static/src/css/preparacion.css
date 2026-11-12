@@ -599,3 +599,112 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion .o_kp_hoja_tiendas li {
     padding: 4px 8px; border-left: 6px solid #facc15; background: #fffbe6; margin-bottom: 4px;
 }
+
+/* ---------------------------------------------------------------- v3.20: Zalando / About You: número del PACK */
+.o_koroshi_preparacion .o_kp_hoja_pack { text-align: center; }
+.o_koroshi_preparacion .o_kp_pack_titulo { font-size: 20px; font-weight: bold; color: var(--kp-verde); margin-bottom: 4px; }
+.o_koroshi_preparacion .o_kp_pack_numero {
+    font-family: monospace; font-size: 40px; font-weight: bold; letter-spacing: 1px; color: var(--kp-texto);
+    border: 3px solid var(--kp-texto); border-radius: 8px; padding: 6px 10px; margin: 6px auto; overflow-wrap: anywhere;
+}
+.o_koroshi_preparacion .o_kp_pack_uds { font-size: 20px; font-weight: bold; }
+.o_koroshi_preparacion .o_kp_pack_nota { font-size: 17px; color: var(--kp-suave); margin: 4px 0 12px; }
+.o_koroshi_preparacion .o_kp_pack_lista_titulo { font-size: 16px; font-weight: bold; text-align: left; margin-bottom: 4px; }
+.o_koroshi_preparacion .o_kp_pack_lista {
+    text-align: left; font-size: 18px; margin: 0 0 12px; padding-left: 28px; max-height: 40vh; overflow: auto;
+}
+.o_koroshi_preparacion .o_kp_pack_lista li { padding: 3px 0; border-bottom: 1px solid var(--kp-borde); }
+.o_koroshi_preparacion .o_kp_pack_lista li b { font-family: monospace; }
+.o_koroshi_preparacion .o_kp_pack_lista li.o_kp_pack_nueva { background: var(--kp-verde-claro); }
+.o_koroshi_preparacion .o_kp_cajas_resumen { cursor: pointer; text-decoration: underline; }
+
+/* ================================================================ v3.21: color de la franja de la ubicación (menú ☰)
+   A = la de siempre (negra). Por defecto F. Una línea ya cogida sigue en verde en todos. */
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+    background: #fff; color: #374151; border: 3px solid #111; border-bottom: 0;
+}
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+    background: #fff; color: #111; border: 3px solid #111; border-top: 0; padding-bottom: 8px;
+}
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion::after { display: none; }
+.o_koroshi_preparacion.o_kp_color_b .o_kp_hueco { border-right-color: #111; border-right-width: 3px; }
+
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+    background: #facc15; color: #3f3a1a; font-weight: bold;
+}
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #facc15; color: #111; }
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion::after {
+    background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 3px, #111 3px 4px, transparent 4px 7px,
+                                          #111 7px 10px, transparent 10px 11px);
+}
+.o_koroshi_preparacion.o_kp_color_c .o_kp_hueco { border-right-color: #111; border-right-width: 3px; }
+.o_koroshi_preparacion.o_kp_color_c .o_kp_aqui { background: #111; color: #facc15; }
+
+.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle { background: #1e3a8a; color: #bfdbfe; }
+.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #1e3a8a; color: #fff; }
+.o_koroshi_preparacion.o_kp_color_d .o_kp_hueco { border-right-color: #93c5fd; }
+
+.o_koroshi_preparacion.o_kp_color_e .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+    background: #fff; color: #111; border: 3px solid #111; border-top: 0;
+}
+.o_koroshi_preparacion.o_kp_color_e .o_kp_ubicacion {
+    display: block; white-space: normal; padding: 8px 10px 10px; font-size: 16px;
+}
+.o_koroshi_preparacion.o_kp_color_e .o_kp_ubicacion::after { display: none; }
+.o_koroshi_preparacion.o_kp_color_e .o_kp_casillas { display: flex; gap: 6px; }
+.o_koroshi_preparacion.o_kp_color_e .o_kp_casilla {
+    flex: 1 1 0; min-width: 0; border: 2px solid currentColor; text-align: center; padding: 2px 0 4px;
+}
+.o_koroshi_preparacion.o_kp_color_e .o_kp_casilla small {
+    display: block; font-family: Roboto, Arial, sans-serif; font-size: 12px; font-weight: bold; opacity: .75;
+}
+.o_koroshi_preparacion.o_kp_color_e .o_kp_casilla span { font-size: 32px; font-weight: bold; line-height: 1.1; }
+.o_koroshi_preparacion.o_kp_color_e .o_kp_ko { display: block; text-align: center; font-size: 15px; margin-top: 6px; }
+
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+    background: #111; color: #facc15; font-weight: bold;
+}
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #facc15; color: #111; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_ubicacion { display: block; padding: 2px 12px 6px; font-weight: bold; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_ubicacion::after { display: none; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_hueco { display: block; border-right: 0; padding-right: 0; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_ko { display: block; font-size: 15px; font-weight: normal; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_aqui { background: #facc15; color: #111; }
+
+/* la hoja para elegir */
+.o_koroshi_preparacion .o_kp_color_texto { font-size: 16px; margin: 0 0 10px; }
+.o_koroshi_preparacion .o_kp_colores { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.o_koroshi_preparacion .o_kp_color_op {
+    display: flex; flex-direction: column; align-items: stretch; gap: 4px; padding: 6px; font-size: 15px;
+    font-weight: bold; background: #fff; border: 2px solid #c4cbd3; border-radius: 6px; color: #111;
+}
+.o_koroshi_preparacion .o_kp_color_op.o_kp_color_elegido { border: 4px solid #1e7b34; }
+.o_koroshi_preparacion .o_kp_muestra {
+    display: block; font-family: "Roboto Mono", Consolas, monospace; font-size: 22px; padding: 4px 0; text-align: center;
+}
+.o_koroshi_preparacion .o_kp_m_a { background: #111; color: #fff; }
+.o_koroshi_preparacion .o_kp_m_b { background: #fff; color: #111; border: 3px solid #111; }
+.o_koroshi_preparacion .o_kp_m_c { background: #facc15; color: #111; }
+.o_koroshi_preparacion .o_kp_m_d { background: #1e3a8a; color: #fff; }
+.o_koroshi_preparacion .o_kp_m_e { background: #fff; color: #111; border: 2px solid #111; letter-spacing: 1px; }
+.o_koroshi_preparacion .o_kp_m_f { background: #facc15; color: #111; font-size: 28px; }
+.o_koroshi_preparacion .o_kp_menu_color { display: block; width: 100%; }
+.o_koroshi_preparacion .o_kp_menu_color {
+    width: 100%; min-height: 48px; margin: 0 0 10px; border: 1px solid var(--kp-linea); border-radius: 4px;
+    background: #fff; font-size: 17px; font-weight: bold; text-align: left; padding: 8px 12px; cursor: pointer; color: var(--kp-texto);
+}
+/* v3.21: ✎ cambiar de caja (lista de líneas) y su hoja */
+.o_koroshi_preparacion .o_kp_l_editar {
+    flex: 0 0 44px; height: 44px; border: 2px solid var(--kp-texto); border-radius: 6px; background: #fff;
+    font-size: 22px; line-height: 1; color: var(--kp-texto); cursor: pointer;
+}
+.o_koroshi_preparacion .o_kp_hoja_mover { text-align: center; }
+.o_koroshi_preparacion .o_kp_mv_producto { font-size: 19px; font-weight: bold; }
+.o_koroshi_preparacion .o_kp_mv_ahora { font-size: 17px; color: var(--kp-suave); margin: 4px 0 10px; }
+.o_koroshi_preparacion .o_kp_mv_cant_fila { display: flex; align-items: center; justify-content: center; gap: 10px; font-size: 17px; margin-bottom: 10px; }
+.o_koroshi_preparacion .o_kp_mv_cant_fila .o_kp_boton { flex: 0 0 52px; min-height: 48px; font-size: 26px; padding: 0; }
+.o_koroshi_preparacion .o_kp_mv_cant { font-size: 30px; font-weight: bold; min-width: 40px; }
+.o_koroshi_preparacion .o_kp_mv_etq { font-size: 15px; font-weight: bold; text-align: left; margin-bottom: 6px; }
+.o_koroshi_preparacion .o_kp_mv_destinos { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.o_koroshi_preparacion .o_kp_mv_destino { font-family: "Roboto Mono", Consolas, monospace; font-size: 19px; }
+.o_koroshi_preparacion .o_kp_mv_cj { font-size: 16px; color: var(--kp-suave); margin: 0 0 10px; }

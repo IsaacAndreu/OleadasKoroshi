@@ -29,8 +29,10 @@ RE_TIENDA = re.compile(r'\bK\d+ - .*$')
 TIPO_TIENDAS = 'PED. TIENDAS'
 # Adjuntos PDF que deja el transportista en la OUT al generar la etiqueta.
 ETIQUETAS_ADJUNTO = ('LabelXPO_%', 'gls_label_%')
-PERMITIDOS = {'tiendas': ('xpo', 'gls'), 'web': ('gls', 'seur')}
-NOMBRES_TRANSPORTISTA = {'xpo': 'XPO SAS', 'gls': 'GLS', 'seur': 'SEUR'}
+# v1.22: 'todos' = Excel de tiendas con todos los pedidos validados ese dia, con y sin transportista.
+PERMITIDOS = {'tiendas': ('xpo', 'gls', 'todos'), 'web': ('gls', 'seur')}
+NOMBRES_TRANSPORTISTA = {'xpo': 'XPO SAS', 'gls': 'GLS', 'seur': 'SEUR', 'todos': 'Todos'}
+SIN_TRANSPORTISTA = 'Sin transportista'
 
 
 class KoroshiConsultaEnvios(http.Controller):
@@ -256,11 +258,12 @@ class KoroshiConsultaEnvios(http.Controller):
         grupos = self._agrupar(env, picks, fechas)
         manuales = manuales or set()
         es_gls = etiqueta == 'GLS'
-        cab = ['Fecha etiqueta', 'Pedido', 'Tienda', 'OUT', 'Transportista', 'Nº expedición',
+        todos = etiqueta == NOMBRES_TRANSPORTISTA['todos']
+        cab = ['Fecha validación' if todos else 'Fecha etiqueta', 'Pedido', 'Tienda', 'OUT', 'Transportista', 'Nº expedición',
                'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide', 'Observación']
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS DE TIENDA · %s · %s' % (
-                             etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
+                             'TODOS (con y sin transportista)' if todos else etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
                              '%s - %s' % (dia_desde.strftime('%d/%m/%Y'), dia_hasta.strftime('%d/%m/%Y'))),
                          f['titulo'])
         hoja.write_row(2, 0, cab, f['cab'])
@@ -279,7 +282,8 @@ class KoroshiConsultaEnvios(http.Controller):
                 observacion = 'Añadido a mano' if len(a_mano) == len(grupo['outs']) else \
                     'Añadido a mano: %s' % ', '.join(a_mano)
             valores = [fecha, grupo['pedido'], grupo['tienda'], ', '.join([o['out'] for o in grupo['outs']]),
-                       grupo['transportista'] or etiqueta, ', '.join(grupo['expediciones']),
+                       grupo['transportista'] or (SIN_TRANSPORTISTA if todos else etiqueta),
+                       ', '.join(grupo['expediciones']),
                        bultos, grupo['cajas'], 'SÍ' if coincide else 'NO', observacion]
             formatos = [f['fecha'], f['txt'], f['wrap'], f['wrap'], f['txt'], f['txt'],
                         f['num'], f['num'], f['ok'] if coincide else f['mal'], f['wrap']]
@@ -303,8 +307,14 @@ class KoroshiConsultaEnvios(http.Controller):
                 'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
                 'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.')
         hoja.write(total + 2, 0, nota, f['nota'])
-        hoja.write(total + 3, 0, 'Salen los pedidos con la etiqueta del transportista creada en estas fechas, '
-                   'aunque se validaran días antes, más los añadidos a mano en Consulta de envíos.', f['nota'])
+        if todos:
+            sin = len([g for g in grupos if not g['transportista']])
+            hoja.write(total + 3, 0, 'Salen todos los pedidos de tienda validados en estas fechas, tengan o no '
+                       'transportista (%d con transportista, %d sin transportista), más los añadidos a mano.'
+                       % (len(grupos) - sin, sin), f['nota'])
+        else:
+            hoja.write(total + 3, 0, 'Salen los pedidos con la etiqueta del transportista creada en estas fechas, '
+                       'aunque se validaran días antes, más los añadidos a mano en Consulta de envíos.', f['nota'])
         for col, ancho in enumerate([18, 20, 35, 24, 18, 24, 13, 16, 11, 22]):
             hoja.set_column(col, col, ancho)
         hoja.freeze_panes(3, 0)
@@ -365,8 +375,9 @@ class KoroshiConsultaEnvios(http.Controller):
             ('state', '!=', 'cancel'),
         ]
         if apartado == 'tiendas':
-            dominio += [('sale_id.s_order_type_id.name', '=', TIPO_TIENDAS),
-                        ('carrier_id.name', 'ilike', 'XPO' if transportista == 'xpo' else 'GLS')]
+            dominio.append(('sale_id.s_order_type_id.name', '=', TIPO_TIENDAS))
+            if transportista in ('xpo', 'gls'):
+                dominio.append(('carrier_id.name', 'ilike', 'XPO' if transportista == 'xpo' else 'GLS'))
         elif transportista == 'seur':
             # Las dos muestras de Betty separan los pedidos web por su numeracion:
             # W-000... = SEUR; el resto de W-... = GLS.
@@ -414,13 +425,16 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @staticmethod
     def _extras(env, apartado, transportista, dia_desde, dia_hasta):
-        return env['koroshi.envio.extra'].search([
+        dominio = [
             ('company_id', '=', COMPANY_ID),
             ('apartado', '=', apartado),
-            ('transportista', '=', transportista),
             ('dia', '>=', dia_desde),
             ('dia', '<=', dia_hasta),
-        ])
+        ]
+        if transportista != 'todos':
+            # En el Excel "Todos" salen los añadidos a mano de cualquier transportista.
+            dominio.append(('transportista', '=', transportista))
+        return env['koroshi.envio.extra'].search(dominio)
 
     @http.route('/koroshi_monitor/consulta_envios.xlsx', type='http', auth='user')
     def consulta_envios_excel(self, apartado='tiendas', transportista=None, desde=None, hasta=None, **kw):
@@ -431,10 +445,11 @@ class KoroshiConsultaEnvios(http.Controller):
         env = self._env()
         Pick = env['stock.picking'].sudo()
         fechas = {}
-        if apartado == 'tiendas':
+        if apartado == 'tiendas' and transportista != 'todos':
             # Por la fecha de la etiqueta del transportista, aunque la OUT se validara dias antes.
             picks, fechas = self._tiendas_por_etiqueta(env, transportista, inicio, fin)
         else:
+            # Web, y Tiendas "Todos": OUT validadas en esas fechas (en Tiendas, con y sin transportista).
             picks = Pick.search(self._dominio_apartado(apartado, transportista) + [
                 ('state', '=', 'done'), ('date_done', '>=', inicio), ('date_done', '<', fin)])
         # OUT añadidas a mano a alguno de estos dias, en el Excel de este transportista.

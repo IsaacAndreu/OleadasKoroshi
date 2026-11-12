@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1: Ajustes KOROSHI en una sola pantalla (los parámetros del sistema de siempre, con nombre y explicación) -->
+    <record id="view_koroshi_ajustes_form" model="ir.ui.view">
+        <field name="name">koroshi.ajustes.form</field>
+        <field name="model">koroshi.ajustes</field>
+        <field name="arch" type="xml">
+            <form string="Ajustes KOROSHI">
+                <header>
+                    <button name="action_guardar" string="Guardar" type="object" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="alert alert-success" role="status" attrs="{'invisible': [('aviso', '=', False)]}">
+                        <field name="aviso" nolabel="1"/>
+                    </div>
+                    <p class="text-muted">
+                        Los mismos parámetros que en Ajustes › Técnico › Parámetros del sistema, aquí juntos.
+                        Se aplican al guardar; en las PDA, al volver a abrir el pedido o Lecturas.
+                    </p>
+                    <group string="Preparación en Lecturas (PDA)">
+                        <field name="prep_activa"/>
+                        <field name="prep_empleados" placeholder="*"/>
+                        <field name="prep_agrupaciones"/>
+                        <field name="prep_orden" widget="radio"/>
+                    </group>
+                    <group string="Operarios y monitor">
+                        <field name="ops_minutos_sin_leer"/>
+                        <field name="ops_minutos_inactividad"/>
+                        <field name="ops_uds_a_dos"/>
+                        <field name="ops_informe_destinatarios"/>
+                        <field name="ops_informe_hora" placeholder="17:00"/>
+                    </group>
+                    <group string="Faltantes">
+                        <field name="falt_validar_sola"/>
+                        <field name="falt_pedido_pendiente" widget="radio"/>
+                    </group>
+                    <group string="KPI">
+                        <field name="kpi_dias_falta_repetida"/>
+                    </group>
+                    <group string="PDA">
+                        <field name="pda_usuarios"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_ajustes" model="ir.actions.act_window">
+        <field name="name">Ajustes KOROSHI</field>
+        <field name="res_model">koroshi.ajustes</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <menuitem id="menu_koroshi_ajustes" name="Ajustes KOROSHI" parent="menu_koroshi_config" sequence="1"
+              action="action_koroshi_ajustes" groups="stock.group_stock_manager"/>
+</odoo>

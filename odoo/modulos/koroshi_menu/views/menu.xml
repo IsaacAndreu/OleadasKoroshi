@@ -34,8 +34,12 @@
 
     <menuitem id="menu_koroshi_kpi_dia" name="KPI por día" parent="menu_koroshi_informes" sequence="10"
               action="koroshi_kpi.action_koroshi_kpi_dia"/>
+    <menuitem id="menu_koroshi_kpi_semanas" name="Comparativa de semanas" parent="menu_koroshi_informes"
+              sequence="15" action="koroshi_kpi.action_koroshi_kpi_semanas"/>
     <menuitem id="menu_koroshi_kpi_falta" name="Faltas por día" parent="menu_koroshi_informes" sequence="20"
               action="koroshi_kpi.action_koroshi_kpi_falta"/>
+    <menuitem id="menu_koroshi_kpi_faltas_repetidas" name="Faltas repetidas (revisar)" parent="menu_koroshi_informes"
+              sequence="25" action="koroshi_kpi.action_koroshi_kpi_faltas_repetidas"/>
     <menuitem id="menu_koroshi_kpi_peso_tipo" name="Pesos y litros por tipo" parent="menu_koroshi_informes"
               sequence="30" action="koroshi_kpi.action_koroshi_kpi_peso_tipo"/>
     <menuitem id="menu_koroshi_productividad" name="Productividad" parent="menu_koroshi_informes" sequence="40"
