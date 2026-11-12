@@ -16,7 +16,8 @@ Arregla dos botones lentos de la ficha de producto, sin cambiar lo que ensenan.
    Desde los botones ya no se ejecuta; lo sigue haciendo el planificador
    (stock.rule._run_scheduler_tasks), igual que antes.
 
-Para volver al comportamiento estandar: desinstalar el modulo (la vista vuelve a la de stock).
+Para volver atras: desinstalar el modulo. El boton Stock vuelve al estandar al momento; la vista SQL
+se queda con esta version (da lo mismo) hasta que se actualice el modulo stock, que la regenera.
 """,
     'version': '13.0.1.0.0',
     'author': 'NATH',
