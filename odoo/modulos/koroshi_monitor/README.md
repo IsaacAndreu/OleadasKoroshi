@@ -155,3 +155,7 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
 - **v1.23.1 (12/11/2026):** Excel de Tiendas: columna nueva **«Cajas por pedido (expedición)»**, con una línea por
   pedido: «S-6665004084 (1378195458): 3 cajas». Al agrupar por tienda en la v1.23.0 se perdía cuántas cajas lleva cada
   pedido o expedición, y hace falta para el Excel de GLS.
+- **v1.23.2 (12/11/2026):** Excel de Tiendas **XPO**: solo cuentan las OUT que tienen **su propia etiqueta XPO**
+  (adjunto `LabelXPO_…`). Una OUT con el mismo nº de expedición pero sin etiqueta no se registró en XPO: no suma bultos
+  ni cajas y sale en «Observación»: «No cuenta: OUT 24900 de S-6665004175 (1 caja) con el nº 121771203 pero sin etiqueta
+  XPO». Caso K81 del 12/11: XPO 17 bultos, el Excel daba 18. GLS no cambia.
