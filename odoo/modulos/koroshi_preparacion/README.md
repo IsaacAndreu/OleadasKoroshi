@@ -1,7 +1,12 @@
-# KOROSHI Preparación en Lecturas (v3.21.0, 12/11/2026)
+# KOROSHI Preparación en Lecturas (v3.21.1, 12/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.21.1: amarillos más en negrita (12/11/2026)
+
+En los colores con fondo amarillo (C y F) la letra de la ubicación es más negra y gruesa, y en F el código KO
+también va en negrita. Solo CSS (capturas en bin/versiones/20261112_colores_ubicacion_pda/).
 
 ## v3.21.0: cambiar de caja y color de la ubicación (12/11/2026)
 

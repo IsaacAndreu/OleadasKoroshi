@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_traspaso_user,koroshi.s4t.traspaso usuario,model_koroshi_s4t_traspaso,stock.group_stock_user,1,0,0,0
+access_traspaso_manager,koroshi.s4t.traspaso responsable,model_koroshi_s4t_traspaso,stock.group_stock_manager,1,1,1,0
+access_traspaso_system,koroshi.s4t.traspaso admin,model_koroshi_s4t_traspaso,base.group_system,1,1,1,1
+access_traspaso_linea_user,koroshi.s4t.traspaso.linea usuario,model_koroshi_s4t_traspaso_linea,stock.group_stock_user,1,0,0,0
+access_traspaso_linea_manager,koroshi.s4t.traspaso.linea responsable,model_koroshi_s4t_traspaso_linea,stock.group_stock_manager,1,1,1,0
+access_traspaso_linea_system,koroshi.s4t.traspaso.linea admin,model_koroshi_s4t_traspaso_linea,base.group_system,1,1,1,1
+access_recuperar_manager,koroshi.s4t.traspaso.recuperar,model_koroshi_s4t_traspaso_recuperar,stock.group_stock_manager,1,1,1,1

@@ -708,3 +708,19 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion .o_kp_mv_destinos { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
 .o_koroshi_preparacion .o_kp_mv_destino { font-family: "Roboto Mono", Consolas, monospace; font-size: 19px; }
 .o_koroshi_preparacion .o_kp_mv_cj { font-size: 16px; color: var(--kp-suave); margin: 0 0 10px; }
+
+/* ================================================================ v3.21.1: fondo amarillo (C y F) más negrita
+   La letra mono solo tiene «bold»: se engorda con un trazo del mismo color. En F el código KO también en negrita. */
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion,
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+    font-weight: 900; color: #000; -webkit-text-stroke: 1.2px #000;
+}
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+    color: #000; font-weight: 900;
+}
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ko {
+    font-weight: 900; font-size: 17px; -webkit-text-stroke: .5px #000;
+}
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ko { -webkit-text-stroke: .9px #000; }
+.o_koroshi_preparacion .o_kp_m_c,
+.o_koroshi_preparacion .o_kp_m_f { font-weight: 900; -webkit-text-stroke: 1px #000; }

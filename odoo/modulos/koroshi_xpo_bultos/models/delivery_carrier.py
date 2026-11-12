@@ -1,16 +1,21 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI XPO bultos - cajas distintas de toda la expedicion XPO.
+# KOROSHI XPO bultos - cajas distintas, peso y volumen por bulto en la expedicion XPO.
 #
 # delivery_xpo.xpo_es_send_shipping(pickings) hace:
 #     total_packages = sum(len(p.package_ids) for p in pickings)
-#     ... RegistraExpedicion(..., TotalUnidadesManipulacion=str(total_packages or 1), ...)
-# package_ids de una OUT = cajas destino (result_package_id) de sus lineas. Una caja compartida por dos OUT
-# (KOROSHI Caja existente v1.1+) se sumaba dos veces -> XPO declaraba y etiquetaba un bulto de mas.
+#     weight = 15 + por OUT (shipping_weight o sus bultos)        -> 15 + 1 kg/caja (no hay pesos en Odoo)
+#     volume = suma volumen producto x uds (0,09 m3/ud sin dato) -> p. ej. 5 cajas = 5,63 m3
+#     ... RegistraExpedicion(expedicion={..'Peso'..}, TotalUnidadesManipulacion=..., PesoNeto, PesoBruto,
+#                            VolumenNeto, VolumenOperacional)
 #
-# Aqui no se copia el metodo de EFFEC: se calcula len(pickings.mapped('package_ids')) (cajas distintas) y, solo
-# si es distinto de la suma, se cambia TotalUnidadesManipulacion en la llamada a RegistraExpedicion a traves de
-# un envoltorio del cliente zeep. Todo lo demas (peso, volumen, referencia, etiquetas, tracking) igual.
+# v1.0 (10/11/2026): una caja compartida por dos OUT contaba dos veces -> se mandan las cajas DISTINTAS.
+# v1.1 (12/11/2026): XPO factura con 15 kg y 0,09 m3 POR BULTO (su tabla del 30/10: 5 bultos = 75 kg y
+#   0,45 m3) y se quejaba de que recibia mal los m3 y kg (K80: 5 bultos, 5,63 m3, 20 kg). Ahora, en TODAS las
+#   expediciones de EFFEC, se mandan: bultos = cajas distintas, peso = 15 x bultos, volumen = 0,09 x bultos.
+#
+# No se copia el metodo de EFFEC: se cambian esos valores en la llamada a RegistraExpedicion a traves de un
+# envoltorio del cliente zeep. Referencia, etiquetas, tracking y cancelacion: igual que delivery_xpo.
 # =============================================================================
 import logging
 
@@ -21,10 +26,17 @@ _logger = logging.getLogger(__name__)
 
 COMPANY_ID = 8                              # EFFECTIVE LOGISTICS, S.L.
 CTX = 'koroshi_xpo_bultos'
+PESO_BULTO = 15.0                           # kg por bulto (criterio de XPO)
+VOLUMEN_BULTO = 0.09                        # m3 por bulto (criterio de XPO)
+
+
+def valores_xpo(bultos):
+    """Peso (kg) y volumen (m3) que se declaran a XPO para N bultos."""
+    return round(PESO_BULTO * bultos, 2), round(VOLUMEN_BULTO * bultos, 2)
 
 
 class _ServicioXPO(object):
-    """Envoltorio de client.service: solo cambia TotalUnidadesManipulacion de RegistraExpedicion."""
+    """Envoltorio de client.service: cambia bultos, peso y volumen de RegistraExpedicion."""
 
     def __init__(self, servicio, bultos):
         self._servicio = servicio
@@ -35,12 +47,22 @@ class _ServicioXPO(object):
         if nombre != 'RegistraExpedicion':
             return metodo
         bultos = self._bultos
+        peso, volumen = valores_xpo(bultos)
 
         def registra_expedicion(*args, **kwargs):
-            if 'TotalUnidadesManipulacion' in kwargs:
-                _logger.info('KOROSHI XPO BULTOS: TotalUnidadesManipulacion %s -> %d',
-                             kwargs['TotalUnidadesManipulacion'], bultos)
-                kwargs['TotalUnidadesManipulacion'] = str(bultos)
+            antes = (kwargs.get('TotalUnidadesManipulacion'), kwargs.get('PesoBruto'), kwargs.get('VolumenNeto'))
+            kwargs['TotalUnidadesManipulacion'] = str(bultos)
+            kwargs['PesoNeto'] = peso
+            kwargs['PesoBruto'] = peso
+            kwargs['VolumenNeto'] = volumen
+            kwargs['VolumenOperacional'] = volumen
+            expedicion = kwargs.get('expedicion')
+            if isinstance(expedicion, dict) and 'Peso' in expedicion:
+                expedicion = dict(expedicion)
+                expedicion['Peso'] = peso
+                kwargs['expedicion'] = expedicion
+            _logger.info('KOROSHI XPO BULTOS: bultos/peso/volumen %s/%s/%s -> %d/%.2f/%.2f',
+                         antes[0], antes[1], antes[2], bultos, peso, volumen)
             return metodo(*args, **kwargs)
         return registra_expedicion
 
@@ -62,7 +84,7 @@ class DeliveryCarrier(models.Model):
             suma = sum(len(p.package_ids) for p in pickings)
             cajas = pickings.mapped('package_ids')
             distintas = len(cajas)
-            if distintas != suma:
+            if distintas and distintas != suma:
                 # Mismo minimo que delivery_xpo, pero con las cajas distintas
                 if distintas < 3:
                     raise UserError(_("XPO es para pedidos con 3 o más bultos - pedidos: %s, bultos totales: %s "
@@ -72,11 +94,15 @@ class DeliveryCarrier(models.Model):
                 _logger.info('KOROSHI XPO BULTOS: %s: %d cajas distintas (suma por OUT %d; en varias OUT: %s)',
                              ', '.join(pickings.mapped('name')), distintas, suma,
                              ', '.join(repetidas.mapped('name')))
-                res = super(DeliveryCarrier, self.with_context(**{CTX: distintas})).xpo_es_send_shipping(pickings)
                 pickings[:1].message_post(body=_('XPO: %d bultos (cajas distintas de la expedicion). Cajas en mas '
                                                  'de una OUT, contadas una vez: %s')
                                           % (distintas, ', '.join(repetidas.mapped('name'))))
-                return res
+            bultos = distintas or suma or 1
+            res = super(DeliveryCarrier, self.with_context(**{CTX: bultos})).xpo_es_send_shipping(pickings)
+            peso, volumen = valores_xpo(bultos)
+            pickings[:1].message_post(body=_('XPO: declarados %d bultos, %.2f kg y %.2f m3 (15 kg y 0,09 m3 por '
+                                             'bulto).') % (bultos, peso, volumen))
+            return res
         return super(DeliveryCarrier, self).xpo_es_send_shipping(pickings)
 
     def _xpo_es_get_client(self):
