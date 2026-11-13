@@ -1,4 +1,9 @@
-# KOROSHI Informe de productividad (v1.0.0, 12/11/2026)
+# KOROSHI Informe de productividad (v1.0.1, 13/11/2026)
+
+## v1.0.1 (13/11/2026)
+
+- La 1.0.0 no se instalaba: «View inheritance may not use attribute 'string' as a selector». El grupo de Ajustes se
+  engancha ahora al campo `kpi_dias_falta_repetida` (su grupo «KPI»), no a `@string`.
 
 Correo automático de productividad del almacén KOROSHI para la responsable y el jefe de almacén. Lo pidió la
 responsable en la reunión: un resumen diario por operario, más uno semanal y uno mensual.
