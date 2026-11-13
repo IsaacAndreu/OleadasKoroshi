@@ -7,6 +7,12 @@ entera sin salir a la app de código de barras: leer productos, cerrar cajas con
 
 
 
+
+## v3.28.1: ✎ en la tarjeta (13/11/2026)
+
+- Al lado de **«En la caja X»** de la prenda que se ve sale también el **✎**: abre lo mismo que el ✎ de la lista
+  (sacar de la caja u otra caja) sin tener que entrar en la lista.
+
 ## v3.28.0: sacar de la caja (13/11/2026)
 
 - En la lista de líneas, **✎** en una línea ya en caja tiene ahora **«↩ Sacar de la caja (va a la siguiente)»**: se
