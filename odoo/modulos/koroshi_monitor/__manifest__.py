@@ -99,8 +99,10 @@ con el mismo numero de expedicion pero sin etiqueta no se registro en XPO: no su
 ("No cuenta: OUT ... sin etiqueta XPO"). K81 12/11, expedicion 121771203: XPO 17 bultos, el Excel daba 18. GLS igual.
 
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
+v1.24.0 (13/11/2026): en la tabla de Operarios, quien esta en pausa (comer, cafe): «⏸ Pausa OUT» y la hora en
+Desde (con koroshi_operarios 2.11 o mas).
 """,
-    'version': '13.0.1.23.2',
+    'version': '13.0.1.24.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -80,8 +80,10 @@ function tablaOperarios(ops, tv) {
         '<th class="r">Uds</th><th class="r">Min</th><th class="r">u/h</th></tr></thead><tbody>';
     ops.forEach(function (o) {
         h += '<tr' + (o.ahora ? ' class="km-op-activo' + (o.parado ? ' km-op-parado-fila' : '') + '"' : '') + '><td><b class="km-op' + (o.parado ? ' km-op-parado' : '') + '">' + e(o.op) + '</b></td><td class="m">' +
-            (o.ahora ? e(o.ahora) + (o.parado ? ' <span class="km-parado-txt">' + o.sin_leer + ' min sin leer</span>' : '') : '<span class="km-muted">–</span>') +
-            '</td><td>' + e(o.desde) + '</td>' +
+            (o.ahora ? e(o.ahora) + (o.parado ? ' <span class="km-parado-txt">' + o.sin_leer + ' min sin leer</span>' : '') :
+             o.pausa ? '<span class="km-pausa">⏸ Pausa</span> ' + e(o.pausa_ref || '') :   // v1.24
+             '<span class="km-muted">–</span>') +
+            '</td><td>' + e(o.ahora ? o.desde : (o.pausa || o.desde)) + '</td>' +
             (tv ? '' : '<td class="r">' + o.tareas + '</td><td class="r">' + o.acabadas + '</td><td class="r">' + (o.dejadas || '') + '</td>') +
             '<td class="r">' + n(o.uds) + '</td><td class="r">' + n(o.min) + '</td><td class="r"><b>' + (o.uh || '') + '</b></td></tr>';
     });

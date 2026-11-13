@@ -90,8 +90,11 @@ libre para otro y a quien la deja no se le vuelve a dar en el dia. Motivos nuevo
 v2.11.0 (13/11/2026): en Lecturas, «Cogiendo ahora» enseña quien esta en pausa y desde que hora. Si un pedido lo
 deja un segundo operario el mismo dia («Dejar este pedido»), va a expediciones con la nota «Dejado por X, Y».
 Pausa tambien desde el menu de la preparacion (koroshi_preparacion 3.26).
+v2.11.1 (13/11/2026): quien esta en pausa ya no sale en Lecturas (sale en el Monitor, koroshi_monitor 1.24:
+asignacion.en_pausa()). Sin la ventana «Error de CORS desconocido» en las PDA (js/sin_error_cors.js:
+window.onOriginError); los errores con fichero y linea siguen saliendo.
 """,
-    'version': '13.0.2.11.0',
+    'version': '13.0.2.11.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

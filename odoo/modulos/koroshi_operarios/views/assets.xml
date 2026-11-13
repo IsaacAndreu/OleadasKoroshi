@@ -4,6 +4,8 @@
         <xpath expr="." position="inside">
             <link rel="stylesheet" type="text/css" href="/koroshi_operarios/static/src/css/operarios.css"/>
             <script type="text/javascript" src="/koroshi_operarios/static/src/js/operarios_pantalla.js"/>
+            <!-- v2.11.1: sin la ventana «Error de CORS desconocido» en las PDA -->
+            <script type="text/javascript" src="/koroshi_operarios/static/src/js/sin_error_cors.js"/>
         </xpath>
     </template>
 </odoo>

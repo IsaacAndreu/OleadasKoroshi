@@ -148,3 +148,6 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-alarma { background: #fdecea; border-color: #c62828; color: #7f1d1d; }
 .o_koroshi_monitor .km-parado-txt { color: #c62828; font-weight: 700; }
 .o_koroshi_monitor table.km-ops tr.km-op-parado-fila td { background: #fdecea; }
+
+/* v1.24: operario en pausa (comer, café) */
+.o_koroshi_monitor .km-pausa { color: #1d4ed8; font-weight: 700; }

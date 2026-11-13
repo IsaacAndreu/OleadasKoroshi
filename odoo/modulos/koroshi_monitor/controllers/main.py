@@ -395,6 +395,17 @@ class KoroshiMonitor(http.Controller):
                 o['min'] += t.minutos or 0.0
             if t.inicio and (not o['ini'] or t.inicio < o['ini']):
                 o['ini'] = t.inicio
+        # v1.24: en pausa (comer, café) con koroshi_operarios 2.11 o más: su OUT sigue suya, sin tarea abierta
+        if 'koroshi.operario.asignacion' in env.registry and \
+                hasattr(env['koroshi.operario.asignacion'], 'en_pausa'):
+            try:
+                for a in env['koroshi.operario.asignacion'].sudo().en_pausa():
+                    o = ops.get(codigo_op(a.employee_id))
+                    if o is not None and not o['ahora']:
+                        o['pausa'] = self._hora(a.fecha_salto)
+                        o['pausa_ref'] = (a.name or '').replace('EFFEC/OUT/', '')
+            except Exception:
+                pass
         resumen = []
         for cod in sorted(ops, key=lambda c: (int(re.sub(r'\D', '', c) or 0), c)):
             o = ops[cod]
