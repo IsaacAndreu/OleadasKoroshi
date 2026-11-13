@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # KOROSHI - Preparacion v3.28.0.
-#   koroshi_preparacion v3.28.0  (sobre la v3.28.0): ✎ «Sacar de la caja (va a la siguiente)» en lugar de
+#   koroshi_preparacion v3.28.0  (sobre la v3.27.1): ✎ «Sacar de la caja (va a la siguiente)» en lugar de
 #                                «+ Caja nueva».
 #   En Odoo: Actualizar KOROSHI Preparacion.
 # Valida los ZIP antes de tocar nada; si falla, no copia nada ni reinicia.
