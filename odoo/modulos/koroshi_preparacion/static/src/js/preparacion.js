@@ -1282,13 +1282,28 @@ var Pantalla = AbstractAction.extend({
     // ------------------------------------------------------------ validar
     _onValidar: function () {
         if (!this._out() || this.sinRed || this.modo !== 'leer' || this.cola.length || this.enviando) { return; }
-        return this._validar(false);
+        // v3.27: Zalando / About You: segundo toque en «Validar incompleto» (en los 8 s siguientes)
+        var incompleto = this.incompletoOut === this._out().id;
+        this._desarmarIncompleto();
+        return this._validar(false, incompleto);
+    },
+
+    // v3.27: Odoo ha dicho que faltan uds en una OUT de Zalando / About You: el botón pasa a «Validar incompleto»
+    _armarIncompleto: function (outId) {
+        var self = this;
+        this.incompletoOut = outId;
+        clearTimeout(this.timerIncompleto);
+        this.timerIncompleto = setTimeout(function () { self._desarmarIncompleto(); self._pintar(); }, 8000);
+    },
+    _desarmarIncompleto: function () {
+        clearTimeout(this.timerIncompleto);
+        this.incompletoOut = null;
     },
 
     _onPendienteSi: function () { return this._validar('si'); },
     _onPendienteNo: function () { return this._validar('no'); },
 
-    _validar: function (pedidoPendiente) {
+    _validar: function (pedidoPendiente, incompleto) {
         var self = this;
         var out = this._out();
         this.$('.o_kp_hoja').hide();
@@ -1298,17 +1313,19 @@ var Pantalla = AbstractAction.extend({
             employee_id: this.operario ? this.operario.id : false,
             pedido_pendiente: pedidoPendiente || false,
             tipo_caja: this._tipoCaja() || false,   // v3.24: la última caja de Zalando / About You
+            incompleto: incompleto || false,   // v3.27
         })}).then(function (r) {
             if (r && r.estado) { self._aplicar(r.estado); }
+            var titulo = '✓ ' + out.name + (r && r.incompleta ? ' validada INCOMPLETA' : ' validada');   // v3.27
             if (r && r.ok && r.que === 'validada' && r.caja_auto) {
                 // v3.20: Zalando / About You: la última caja se ha cerrado sola: su número y la lista, hasta «Hecho»
                 self._ocultarCapa();
                 self._pitido(true);
-                self._verPack('✓ ' + out.name + ' validada · última caja', r.caja_auto, r.caja_uds, true);
+                self._verPack(titulo + ' · última caja', r.caja_auto, r.caja_uds, true);
                 return;
             }
             if (r && r.ok && r.que === 'validada') {
-                self._capa('✓ ' + (self._esLote() ? r.msg : out.name + ' validada'), true);   // v3.15: «N OUT validadas»
+                self._capa(self._esLote() ? '✓ ' + r.msg : (r.incompleta ? '✓ ' + r.msg : titulo), true);   // v3.15, v3.27
                 self._pitido(true);
                 self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
                 return;
@@ -1322,6 +1339,7 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.modo = 'leer';
+            if (r && r.que === 'quedan' && r.incompleto) { self._armarIncompleto(out.id); }   // v3.27
             self._pintar();
             self._aviso((r && r.msg) || 'No se ha podido validar.', r && r.que === 'quedan' ? 'warn' : 'mal');
             self._pitido(false);
@@ -2088,8 +2106,11 @@ var Pantalla = AbstractAction.extend({
             .prop('disabled', !libre || !mias)   // v3.22: también sin red (Odoo la cierra al volver)
             .text(conRed ? 'Caja' : 'Caja (sin red)')
             .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
+        var armado = this.incompletoOut === out.id;   // v3.27: Zalando / About You, validar incompleto
         this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
-            .text(!conRed ? 'Esperando conexión…' : (guardando ? 'Guardando lecturas…' : '✓ Validar'))
+            .text(!conRed ? 'Esperando conexión…' : (guardando ? 'Guardando lecturas…' :
+                  (armado ? '⚠ Validar incompleto' : '✓ Validar')))
+            .toggleClass('o_kp_incompleto', armado)
             .toggleClass('o_kp_destacado', conRed && !guardando && !e.sin_caja && e.todo_leido);
         this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas || (!conRed && !this.cola.length));
         this.$('.o_kp_faltante').prop('disabled', !libre || !conRed || e.todo_leido || !e.siguiente_id);

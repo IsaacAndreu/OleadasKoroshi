@@ -170,8 +170,12 @@ v3.25.0 (13/11/2026): una OUT de una zona (Z-) se prepara sola cuando se lee la 
 como en la agrupación (sin el «se valida desde la agrupación» de Faltantes). La zona entera, leyendo la Z-.
 v3.26.0 (13/11/2026): «⏸ Pausa (comer, café)» en el menú ☰ (dos toques): guarda lo leído, para el tiempo (motivo
 pausa de koroshi_operarios 2.10+) y vuelve a Lecturas sin operario. Al volver, tarjeta y sale la misma OUT.
+v3.27.0 (13/11/2026): ZALANDO / ABOUT YOU SE VALIDAN INCOMPLETAS (van por bultos). Con líneas sin leer,
+«Validar» avisa de cuántas uds faltan y el botón pasa a «⚠ Validar incompleto» (8 s): con el segundo toque se
+valida lo leído y lo que falta queda en una OUT pendiente (aunque pedido_pendiente sea 'no'), con una nota en las
+dos para revisar si se han hecho menos cajas. El resto de pedidos, como antes (léelas o «Faltante»).
 """,
-    'version': '13.0.3.26.0',
+    'version': '13.0.3.27.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -4,6 +4,16 @@ Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
 
+
+## v3.27.0: Zalando y About You se validan incompletas (13/11/2026)
+
+- Van por bultos: si quedan líneas sin leer, **«Validar»** dice cuántas uds faltan y el botón pasa a
+  **«⚠ Validar incompleto»** durante 8 s. Con el segundo toque se valida lo leído y **lo que falta queda en una OUT
+  pendiente** (siempre, aunque «pedido pendiente» esté en «no»), para revisar si se han hecho menos cajas de las que
+  tocaba. Las dos OUT llevan una nota con quién la validó y cuántas uds faltaban.
+- El primer toque no cierra la última caja: si no se confirma, no cambia nada.
+- El resto de pedidos, igual que antes: hay que leer las líneas o pulsar «Faltante».
+
 ## v3.26.0: pausa desde la preparación (13/11/2026)
 
 - En el menú ☰, **«⏸ Pausa (comer, café)»**. Primer toque: «Toca otra vez para la pausa»; segundo: se guarda lo leído,

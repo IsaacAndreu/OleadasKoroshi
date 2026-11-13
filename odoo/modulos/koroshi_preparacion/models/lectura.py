@@ -16,7 +16,7 @@ import json
 from werkzeug.urls import url_quote
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
-from odoo.tools import float_compare, float_is_zero, html2plaintext
+from odoo.tools import float_compare, float_is_zero, html2plaintext, html_escape
 
 from . import ruta   # v3.13: ruta óptima por la nave
 
@@ -964,10 +964,54 @@ class Lectura(models.Model):
         return Faltante._todo_o_nada(Faltante._validar_out, picking, pedido_pendiente)
 
     @api.model
-    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False):
+    def _validar_incompleta(self, Faltante, picking, employee):
+        """v3.27: Zalando / About You van por bultos: se valida lo leído y lo que falta queda en una OUT pendiente
+        (siempre, aunque koroshi_faltantes.pedido_pendiente sea 'no'), por si se han hecho menos cajas de las que
+        tocaba y hay que revisarlo. Nota en las dos OUT."""
+        if picking.state in ('done', 'cancel'):
+            raise UserError(_('La OUT %s ya está %s.') % (picking.name, picking.state == 'done' and _('validada')
+                                                            or _('cancelada')))
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            raise UserError(_('En %s no hay nada leído.') % picking.name)
+        pendientes = Faltante.lineas_pendientes(picking)
+        faltan = sum(Faltante.pendiente_de(ml) for ml in pendientes)
+        r = Faltante._todo_o_nada(Faltante._validar_out, picking, 'si')
+        resto = picking.backorder_ids.filtered(lambda b: b.state not in ('done', 'cancel'))
+        quien = employee and employee.name or self.env.user.name
+        try:
+            with self.env.cr.savepoint():
+                picking.message_post(body=html_escape(
+                    _('Validada INCOMPLETA en la PDA por %s: faltaban %s uds (%s líneas). Lo que falta queda en %s. '
+                      'Revisar si se han hecho menos cajas de las que tocaba.')
+                    % (quien, round(faltan), len(pendientes), ', '.join(resto.mapped('name')) or '-')))
+                for b in resto:
+                    b.message_post(body=html_escape(
+                        _('Pendiente de %s, validada incompleta en la PDA por %s. Revisar antes de prepararla.')
+                        % (picking.name, quien)))
+        except Exception:
+            pass
+        r['resto'] = ', '.join(resto.mapped('name'))
+        r['faltan'] = faltan
+        return r
+
+    @api.model
+    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False, incompleto=False):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
-        {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}."""
+        {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}.
+        v3.27: Zalando / About You con líneas sin leer: 'quedan' con 'incompleto': True (la PDA pide confirmar) y,
+        con incompleto=True, se valida lo leído y lo que falta va a una OUT pendiente."""
         self._comprobar(picking)
+        Faltante = self.env['koroshi.faltante']
+        if self._con_caja(picking) and self._pack_auto(picking) and Faltante.lineas_pendientes(picking):
+            if not incompleto:
+                # antes de cerrar la última caja: si no lo confirma, no se toca nada
+                pendientes = Faltante.lineas_pendientes(picking)
+                faltan = sum(Faltante.pendiente_de(ml) for ml in pendientes)
+                return {'ok': False, 'que': 'quedan', 'incompleto': True, 'n': len(pendientes),
+                        'msg': _('Faltan %s uds (%s líneas). Para validar así, pulsa otra vez «Validar incompleto»: '
+                                 'lo que falta queda en otra OUT para revisar.') % (round(faltan), len(pendientes))}
+        else:
+            incompleto = False
         caja_auto = {}
         if self._con_caja(picking) and self._pack_auto(picking) and self._sin_caja(picking):
             # v3.19: Zalando / About You: lo leído fuera de caja (lo de este operario) va solo a un paquete nuevo
@@ -992,9 +1036,12 @@ class Lectura(models.Model):
         if pedido_pendiente not in ('si', 'no'):
             fijo = self._param('koroshi_faltantes.pedido_pendiente', 'no')
             pedido_pendiente = fijo if fijo in ('si', 'no') else None
-        Faltante = self.env['koroshi.faltante']
+        if self._con_caja(picking) and self._pack_auto(picking):
+            pedido_pendiente = 'si'   # v3.27: Zalando / About You: lo que no sale nunca se cancela, queda pendiente
         try:
-            if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+            if incompleto:
+                r = self._validar_incompleta(Faltante, picking, employee)   # v3.27
+            elif picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
                 r = self._validar_out_de_zona(Faltante, picking, pedido_pendiente)   # v3.25
             else:
                 r = Faltante.validar_out(picking, pedido_pendiente)
@@ -1015,6 +1062,9 @@ class Lectura(models.Model):
         if r['estado'] == 'preguntar':
             return {'ok': True, 'que': 'preguntar', 'msg': _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')}
         msg = _('%s validada.') % picking.name
+        if incompleto:   # v3.27
+            msg = _('%s validada incompleta (faltan %s uds): lo que falta, en %s.') % (
+                picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
         self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg)
         try:
             # cierra ya la tarea del operario (lo mismo que hace koroshi_faltantes al validar)
@@ -1022,7 +1072,7 @@ class Lectura(models.Model):
                 self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
         except Exception:
             pass
-        res = {'ok': True, 'que': 'validada', 'msg': msg}
+        res = {'ok': True, 'que': 'validada', 'msg': msg, 'incompleta': bool(incompleto)}
         res.update(caja_auto)
         return res
 
