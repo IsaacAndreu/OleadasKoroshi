@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- App en la pantalla de inicio para el portátil (para todos, sin grupos) -->
+    <menuitem id="menu_koroshi_actividades_app" name="Actividades" action="action_koroshi_actividades_pantalla"
+              web_icon="koroshi_actividades,static/description/icon.png" sequence="2"/>
+
+    <!-- Dentro de Inventario > KOROSHI Operarios -->
+    <menuitem id="menu_koroshi_actividades_root" name="Actividades (manipulaciones)"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" sequence="90"/>
+    <menuitem id="menu_koroshi_actividades_pantalla" name="Actividades (portátil)"
+              parent="menu_koroshi_actividades_root" action="action_koroshi_actividades_pantalla" sequence="10"/>
+    <menuitem id="menu_koroshi_actividades_jornada" name="Jornada por persona" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_actividad_jornada" sequence="20" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_actividades_horas" name="Horas por actividad" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_actividad_horas" sequence="30" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_actividades_tramos" name="Tramos de tiempo" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_actividad_registro" sequence="40" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_actividades_config" name="Configuración: actividades"
+              parent="menu_koroshi_actividades_root" action="action_koroshi_actividad" sequence="90"
+              groups="koroshi_operarios.grupo_productividad"/>
+</odoo>

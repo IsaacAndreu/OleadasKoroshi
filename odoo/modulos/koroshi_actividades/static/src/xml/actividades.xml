@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- KOROSHI Actividades v1.0.0: pantalla del portátil. Lo de dentro (persona y lista) lo pinta actividades.js. -->
+    <t t-name="koroshi_actividades.Pantalla">
+        <div class="o_koroshi_actividades">
+            <div class="o_ka_offline" role="alert">Sin conexión con Odoo: reintentando…</div>
+            <header class="o_ka_cab">
+                <div>
+                    <div class="o_ka_titulo">Actividades · manipulaciones</div>
+                    <div class="o_ka_horario"/>
+                </div>
+                <label class="o_ka_campo">
+                    <span>Tarjeta</span>
+                    <input type="text" class="o_ka_codigo" autocomplete="off" placeholder="Pasa la tarjeta o escribe tu código y Enter"/>
+                </label>
+                <div class="o_ka_reloj"/>
+            </header>
+            <div class="o_ka_cuerpo">
+                <section class="o_ka_izq">
+                    <div class="o_ka_aviso"/>
+                    <div class="o_ka_lector">
+                        <div class="o_ka_tarjeta_dibujo" role="presentation">
+                            <span class="o_ka_banda"/><span class="o_ka_linea"/><span class="o_ka_linea o_ka_corta"/>
+                        </div>
+                        <h1>Pasa tu tarjeta</h1>
+                        <p>Para empezar, pausar, cambiar de actividad o acabar.</p>
+                        <p class="o_ka_pequeno">Cada persona con su tarjeta: se puede ser varias a la vez.</p>
+                    </div>
+                    <div class="o_ka_persona o_ka_oculto"/>
+                </section>
+                <section class="o_ka_der">
+                    <h2>Ahora</h2>
+                    <div class="o_ka_lista"/>
+                </section>
+            </div>
+        </div>
+    </t>
+</templates>

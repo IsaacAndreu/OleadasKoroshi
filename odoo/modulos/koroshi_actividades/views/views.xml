@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ pantalla del portátil -->
+    <record id="action_koroshi_actividades_pantalla" model="ir.actions.client">
+        <field name="name">Actividades</field>
+        <field name="tag">koroshi_actividades_pantalla</field>
+    </record>
+
+    <!-- ============================================================ actividades (configuración) -->
+    <record id="view_koroshi_actividad_tree" model="ir.ui.view">
+        <field name="name">koroshi.actividad.tree</field>
+        <field name="model">koroshi.actividad</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="nota"/>
+                <field name="color"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_koroshi_actividad" model="ir.actions.act_window">
+        <field name="name">Actividades</field>
+        <field name="res_model">koroshi.actividad</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p>Botones que salen en el portátil. Para quitar uno sin perder sus horas: Acción &gt; Archivar.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================ tramos -->
+    <record id="view_koroshi_actividad_registro_tree" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.tree</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="estado == 'curso'" decoration-warning="motivo_fin in ('pausa_auto', 'fin_auto')">
+                <field name="dia"/>
+                <field name="employee_id"/>
+                <field name="actividad_id"/>
+                <field name="inicio"/>
+                <field name="fin"/>
+                <field name="horas" widget="float_time" sum="Total"/>
+                <field name="estado"/>
+                <field name="motivo_fin"/>
+                <field name="nota" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_registro_form" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.form</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_cerrar_a_mano" string="Cerrar ahora" type="object"
+                            attrs="{'invisible': [('estado', '!=', 'curso')]}"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="employee_id"/>
+                            <field name="actividad_id"/>
+                            <field name="dia"/>
+                        </group>
+                        <group>
+                            <field name="inicio"/>
+                            <field name="fin"/>
+                            <field name="horas" widget="float_time"/>
+                            <field name="motivo_fin"/>
+                        </group>
+                    </group>
+                    <field name="nota" placeholder="Nota (p. ej. corregido a mano por…)"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_registro_pivot" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.pivot</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="arch" type="xml">
+            <pivot string="Horas por persona y actividad">
+                <field name="employee_id" type="row"/>
+                <field name="actividad_id" type="col"/>
+                <field name="horas" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_registro_graph" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.graph</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="arch" type="xml">
+            <graph string="Horas por actividad" type="bar" stacked="True">
+                <field name="dia" type="row" interval="day"/>
+                <field name="actividad_id" type="col"/>
+                <field name="horas" type="measure"/>
+            </graph>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_registro_search" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.search</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="actividad_id"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="semana" string="Últimos 7 días"
+                        domain="[('dia', '>=', (context_today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="curso" string="En curso" domain="[('estado', '=', 'curso')]"/>
+                <filter name="auto" string="Cerrados solos (se olvidó)"
+                        domain="[('motivo_fin', 'in', ('pausa_auto', 'fin_auto'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_actividad" string="Actividad" context="{'group_by': 'actividad_id'}"/>
+                    <filter name="g_dia" string="Día" context="{'group_by': 'dia:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_koroshi_actividad_registro" model="ir.actions.act_window">
+        <field name="name">Tramos de tiempo</field>
+        <field name="res_model">koroshi.actividad.registro</field>
+        <field name="view_mode">tree,pivot,graph,form</field>
+        <field name="context">{'search_default_hoy': 1}</field>
+    </record>
+    <record id="action_koroshi_actividad_horas" model="ir.actions.act_window">
+        <field name="name">Horas por actividad</field>
+        <field name="res_model">koroshi.actividad.registro</field>
+        <field name="view_mode">pivot,graph,tree,form</field>
+        <field name="context">{'search_default_semana': 1}</field>
+    </record>
+
+    <!-- ============================================================ jornada -->
+    <record id="view_koroshi_actividad_jornada_tree" model="ir.ui.view">
+        <field name="name">koroshi.actividad.jornada.tree</field>
+        <field name="model">koroshi.actividad.jornada</field>
+        <field name="arch" type="xml">
+            <tree decoration-info="abierta" decoration-warning="automatica">
+                <field name="dia"/>
+                <field name="employee_id"/>
+                <field name="entrada"/>
+                <field name="salida"/>
+                <field name="horas" widget="float_time" sum="Total"/>
+                <field name="horas_pausa" widget="float_time"/>
+                <field name="actividades"/>
+                <field name="tramos" optional="hide"/>
+                <field name="abierta"/>
+                <field name="automatica"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_jornada_pivot" model="ir.ui.view">
+        <field name="name">koroshi.actividad.jornada.pivot</field>
+        <field name="model">koroshi.actividad.jornada</field>
+        <field name="arch" type="xml">
+            <pivot string="Jornada">
+                <field name="employee_id" type="row"/>
+                <field name="dia" type="col" interval="day"/>
+                <field name="horas" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="view_koroshi_actividad_jornada_search" model="ir.ui.view">
+        <field name="name">koroshi.actividad.jornada.search</field>
+        <field name="model">koroshi.actividad.jornada</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="semana" string="Últimos 7 días"
+                        domain="[('dia', '>=', (context_today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d'))]"/>
+                <separator/>
+                <filter name="auto" string="Se olvidó de pausar o acabar" domain="[('automatica', '=', True)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_dia" string="Día" context="{'group_by': 'dia:day'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_koroshi_actividad_jornada" model="ir.actions.act_window">
+        <field name="name">Jornada por persona</field>
+        <field name="res_model">koroshi.actividad.jornada</field>
+        <field name="view_mode">tree,pivot</field>
+        <field name="context">{'search_default_semana': 1}</field>
+    </record>
+</odoo>

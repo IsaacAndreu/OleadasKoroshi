@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: si se cambian en Ajustes > Técnico > Parámetros del sistema, al actualizar no se pisan. -->
+    <data noupdate="1">
+        <!-- Quien siga trabajando a esta hora queda en pausa a esta hora exacta (comida). '' = no. -->
+        <record id="parametro_hora_pausa" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.hora_pausa</field>
+            <field name="value">13:00</field>
+        </record>
+        <!-- A esta hora se cierra todo lo que siga abierto (fin de jornada). '' = no. -->
+        <record id="parametro_hora_cierre" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.hora_cierre</field>
+            <field name="value">17:00</field>
+        </record>
+        <!-- '1' = en el portátil se puede abrir a una persona tocando su nombre en la lista (sin tarjeta). -->
+        <record id="parametro_sin_tarjeta" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.sin_tarjeta</field>
+            <field name="value">0</field>
+        </record>
+    </data>
+</odoo>
