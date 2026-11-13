@@ -1,0 +1,3 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_informe_operario_dia_ver,koroshi.informe.operario.dia ver,model_koroshi_informe_operario_dia,koroshi_operarios.grupo_productividad,1,0,0,0
+access_koroshi_informe_operario_dia_admin,koroshi.informe.operario.dia admin,model_koroshi_informe_operario_dia,base.group_system,1,1,1,1

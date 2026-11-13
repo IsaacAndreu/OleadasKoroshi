@@ -108,6 +108,7 @@ class Agrupacion(models.AbstractModel):
                 siguiente = ml.id
         outs = []
         sin_caja = 0.0
+        cjs = self._cjs_de_outs(vivas)   # v3.22: la PDA sabe sin red de qué tienda es cada CJ
         for p in vivas:
             fuera = sum(L._sin_caja(p).mapped('qty_done'))
             sin_caja += fuera
@@ -115,7 +116,8 @@ class Agrupacion(models.AbstractModel):
             outs.append({'id': p.id, 'name': i['name'], 'tienda': i['tienda'], 'caja': i['caja'],
                          'destino': self._destino(i), 'sin_caja': round(fuera),
                          'pedidas': round(sum(p.move_line_ids.mapped('product_uom_qty'))),
-                         'leidas': round(sum(p.move_line_ids.mapped('qty_done')))})
+                         'leidas': round(sum(p.move_line_ids.mapped('qty_done'))),
+                         'cjs': cjs.get(p.name, [])})
         cajas = {}
         for ml in mls.filtered('result_package_id'):
             cajas.setdefault(ml.result_package_id.name, 0)
@@ -153,6 +155,8 @@ class Agrupacion(models.AbstractModel):
             'faltantes_companero': [],
             'mias_sin_caja': round(sin_caja),
             'otros_sin_caja': 0,
+            'alarma_min': L.minutos_alarma(),   # v3.22
+            'alarma_horario': L.horario_alarma(),   # v3.23
         }
 
     # ------------------------------------------------------------------ leer un producto
@@ -250,6 +254,17 @@ class Agrupacion(models.AbstractModel):
         return res
 
     # ------------------------------------------------------------------ cerrar caja
+    @api.model
+    def _cjs_de_outs(self, pickings):
+        """v3.22: {nombre de OUT: [CJ reservadas para ella]} (zebra.label con nota «ETQ ZONA <OUT>»)."""
+        if not pickings or 'zebra.label' not in self.env:
+            return {}
+        notas = [NOTA_ETIQUETA + n for n in pickings.mapped('name')]
+        res = {}
+        for et in self.env['zebra.label'].sudo().search_read([('note', 'in', notas)], ['name', 'note']):
+            res.setdefault((et['note'] or '')[len(NOTA_ETIQUETA):].strip(), []).append((et['name'] or '').upper())
+        return res
+
     @api.model
     def _out_de_etiqueta(self, codigo):
         """La OUT para la que se reservó la matrícula (zebra.label con nota «ETQ ZONA <OUT>»), si la hay."""

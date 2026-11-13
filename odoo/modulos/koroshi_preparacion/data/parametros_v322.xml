@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v3.22: alarma de parado. Minutos con la OUT abierta en la pantalla de preparar sin leer ninguna prenda hasta
+         que la PDA pita sin parar y la pantalla parpadea en rojo. 0 = sin alarma. Se cambia en Inventario >
+         Configuración > KOROSHI > Ajustes KOROSHI (koroshi_menu v1.2) o en Parámetros del sistema.
+         noupdate: lo que se cambie a mano no se pisa al actualizar. -->
+    <data noupdate="1">
+        <record id="param_minutos_alarma" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.minutos_alarma</field>
+            <field name="value">4</field>
+        </record>
+        <!-- v3.23: tramos (hora de la PDA) en que puede sonar la alarma. Fuera de ellos no suena ni cuenta: pausa de
+             10:00-10:15 y comida de 13 a 14. -->
+        <record id="param_horario_alarma" model="ir.config_parameter">
+            <field name="key">koroshi_preparacion.horario_alarma</field>
+            <field name="value">06:00-10:00,10:15-13:00,14:00-17:00</field>
+        </record>
+    </data>
+</odoo>

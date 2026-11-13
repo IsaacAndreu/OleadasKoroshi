@@ -1,6 +1,8 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.22: «Caja» también sin red: la caja se cierra en la PDA (lo leído pasa a ella) y va a la cola, en su sitio, con
+ * las lecturas; Odoo la cierra al volver la conexión. Zalando / About You: «S<n>» para apuntar y luego su PACK.
  * v3.15: también una agrupación de zona (Z-) entera, en un solo recorrido: las líneas de todas sus OUT en el orden de
  * la ruta, cada una con su caja de tienda («CAJA 05 · K34 ...», banda amarilla). Leer una CJ cierra la caja de la
  * tienda de esa etiqueta (no hace falta pulsar «Caja»). Validar valida cada OUT. La PDA manda lote_id en vez de
@@ -54,6 +56,15 @@ var CLAVE_COLA = 'koroshi_preparacion_cola';   // v3.6: lecturas pendientes en l
 var COLA_HORAS = 24;            // v3.6: las pendientes de más de un día no se mandan
 var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
+// v3.22: ALARMA DE PARADO. Con la OUT abierta y X min sin leer ninguna prenda (parámetro
+// koroshi_preparacion.minutos_alarma, por defecto 4; 0 = sin alarma), sirena a volumen máximo, vibración y la
+// pantalla parpadeando en rojo. No se para hasta que cuenta una lectura (prenda, caja, Poner cantidad, Faltante
+// resuelto) o se sale con ←. No hace caso del interruptor de sonido de Lecturas.
+var ALARMA_MIN_DEFECTO = 4;
+// v3.23: solo en horario de trabajo (koroshi_preparacion.horario_alarma), en minutos desde las 00:00 de la PDA
+var ALARMA_HORARIO_DEFECTO = [[360, 600], [615, 780], [840, 1020]];   // 6-10, 10:15-13, 14-17
+var ALARMA_MIRAR_MS = 2000;     // cada 2 s se mira si toca
+var SIRENA_MS = 1000;           // un ciclo de sirena por segundo
 
 var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_preparacion.Pantalla',
@@ -129,6 +140,10 @@ var Pantalla = AbstractAction.extend({
         this.altCache = {};            // v3.5: {move_line_id: {t, leidas, r}} alternativas de Faltante ya buscadas
         this.fotosBajadas = {};        // v3.5: fotos ya pedidas al navegador
         this.listaSucia = true;        // v3.5: la lista de líneas se pinta al abrirla
+        this.alarmaMin = ALARMA_MIN_DEFECTO;   // v3.22
+        this.alarmaHorario = ALARMA_HORARIO_DEFECTO;   // v3.23
+        this.ultimaActividad = Date.now();
+        this.alarmaOn = false;
     },
 
     willStart: function () {
@@ -175,6 +190,8 @@ var Pantalla = AbstractAction.extend({
                     self._recargar(null, true);   // v3.5: ligero
                 }
             }, A_DOS_MS);
+            self.ultimaActividad = Date.now();   // v3.22: cuenta desde que se abre la OUT
+            self.timerAlarma = setInterval(self._mirarAlarma.bind(self), ALARMA_MIRAR_MS);
             self._foco();
         });
     },
@@ -185,12 +202,14 @@ var Pantalla = AbstractAction.extend({
         $('body').addClass('o_kp_pantalla_pda');   // v3.10
         if (this.yaMostrada) { this._recargar(); }
         this.yaMostrada = true;
+        this.ultimaActividad = Date.now();   // v3.22: vuelve de Faltante: se cuenta otra vez desde ahora
         this._foco();
         this._ajustarUbicacion();
     },
 
     on_detach_callback: function () {
         $('body').removeClass('o_kp_pantalla_pda');   // v3.10: otras pantallas, con su barra
+        this._alarma(false);   // v3.22: en otra pantalla no suena
         this._super.apply(this, arguments);
     },
 
@@ -207,6 +226,8 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerAlt);
         clearTimeout(this.timerLento);
         clearTimeout(this.timerOtra);
+        clearInterval(this.timerAlarma);   // v3.22: «←» (dejar la OUT aquí) para la alarma
+        this._alarma(false);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -366,6 +387,10 @@ var Pantalla = AbstractAction.extend({
         var e = this.estado;
         if (!e || !e.lineas) { return; }
         this.cola.forEach(function (item) {
+            if (item.tipo === 'caja') {   // v3.22: caja cerrada sin red: lo leído antes ya va en ella
+                if (item.local) { self._cajaLocal(e, item); }
+                return;
+            }
             if (!item.optimista) { return; }
             var n = item.n || 1;
             var l = _.findWhere(e.lineas, {id: item.lineaId});
@@ -386,7 +411,69 @@ var Pantalla = AbstractAction.extend({
         return this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; }).length;
     },
 
-    // la cola de lecturas en la memoria de la PDA, por OUT (las cajas no: esas se vuelven a leer)
+    // v3.22: cajas cerradas en la PDA que Odoo aún no tiene
+    _cajasPendientes: function () {
+        return this.cola.filter(function (i) { return i.tipo === 'caja'; }).length;
+    },
+
+    // v3.22: «N lecturas y M cajas» de lo que falta por guardar
+    _textoPendientes: function () {
+        var n = this._pendientes();
+        var c = this._cajasPendientes();
+        var t = [];
+        if (n || !c) { t.push(n + (n === 1 ? ' lectura' : ' lecturas')); }
+        if (c) { t.push(c + (c === 1 ? ' caja' : ' cajas')); }
+        return t.join(' y ');
+    },
+
+    // v3.22: a qué OUT de la agrupación va una CJ, sin preguntar a Odoo (las mismas reglas que Odoo):
+    // la de su etiqueta de zona, la que ya tiene esa caja, la de la línea que se ve o la única con algo fuera de caja.
+    _outDeCaja: function (e, codigo, outId) {
+        var outs = e.outs || [];
+        var c = (codigo || '').toUpperCase();
+        var o = _.find(outs, function (x) { return (x.cjs || []).indexOf(c) >= 0; });
+        if (o) { return o; }
+        var conCaja = _.find(e.lineas || [], function (l) { return l.caja === c && l.out_id; });
+        if (conCaja) { return _.findWhere(outs, {id: conCaja.out_id}) || null; }
+        var conAlgo = _.filter(outs, function (x) { return x.sin_caja > 0; });
+        if (outId) {
+            o = _.findWhere(conAlgo, {id: outId});
+            if (o) { return o; }
+        }
+        return conAlgo.length === 1 ? conAlgo[0] : null;
+    },
+
+    // v3.22: cerrar la caja en la PDA (sin red): lo leído fuera de caja pasa a esa caja. Odoo la cierra al volver,
+    // en el mismo orden (las lecturas de antes van a ella; las de después, fuera). Las líneas a medias siguen libres:
+    // al volver la conexión Odoo las parte y la PDA carga lo que diga Odoo.
+    _cajaLocal: function (e, item) {
+        var nombre = item.codigo || item.provisional || '';
+        var uds = 0;
+        var outId = false;
+        if (this._esLote()) {
+            var o = this._outDeCaja(e, item.codigo, item.outId);
+            if (!o || !o.sin_caja) { return 0; }
+            outId = o.id;
+            uds = o.sin_caja;
+            o.sin_caja = 0;
+        } else {
+            uds = e.a_dos ? (e.mias_sin_caja || 0) : e.sin_caja;
+        }
+        if (!uds) { return 0; }
+        e.sin_caja = Math.max(0, (e.sin_caja || 0) - uds);
+        e.mias_sin_caja = Math.max(0, (e.mias_sin_caja || 0) - uds);
+        (e.lineas || []).forEach(function (l) {
+            if (l.completa && !l.caja && l.leidas > 0 && (!outId || l.out_id === outId)) { l.caja = nombre; }
+        });
+        var cajas = (e.cajas || []).slice();
+        var ya = _.findWhere(cajas, {nombre: nombre});
+        if (ya) { ya.uds += uds; } else { cajas.push({nombre: nombre, uds: uds, sin_red: true}); }
+        e.cajas = cajas;
+        this._recalcular(e);
+        return uds;
+    },
+
+    // la cola de lecturas (y, v3.22, de cajas) en la memoria de la PDA, por OUT
     _leerMemoria: function () {
         try { return JSON.parse(window.localStorage.getItem(CLAVE_COLA) || '{}') || {}; } catch (e) { return {}; }
     },
@@ -399,11 +486,13 @@ var Pantalla = AbstractAction.extend({
         var clave = this._claveMemoria();   // v3.15: 'L<id>' en las agrupaciones
         if (!clave) { return; }
         var todo = this._leerMemoria();
-        var lecturas = this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; })
-            .map(function (i) {
-                return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
-                        lineaId: i.lineaId, n: i.n};
-            });
+        // v3.22: también las cajas, en su sitio de la cola (si no, lo leído después iría a la caja de antes)
+        var lecturas = this.cola.filter(function (i) {
+            return i.tipo === 'leer' || i.tipo === 'cantidad' || i.tipo === 'caja';
+        }).map(function (i) {
+            return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
+                    lineaId: i.lineaId, n: i.n, outId: i.outId, provisional: i.provisional};
+        });
         if (lecturas.length) { todo[clave] = lecturas; } else { delete todo[clave]; }
         this._escribirMemoria(todo);
     },
@@ -419,6 +508,14 @@ var Pantalla = AbstractAction.extend({
                 if ((i.t || 0) < limite) { return; }
                 var item = {tipo: i.tipo || 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
                             lineaId: i.lineaId, n: i.n};
+                if (item.tipo === 'caja') {   // v3.22: la caja cerrada sin red (mismo id: Odoo no la cierra dos veces)
+                    item.outId = i.outId;
+                    item.provisional = i.provisional;
+                    item.local = true;
+                    self._cajaLocal(self.estado, item);
+                    self.cola.push(item);
+                    return;
+                }
                 if (item.tipo === 'cantidad') {   // v3.7
                     var lc = _.findWhere(self.estado.lineas, {id: i.lineaId});
                     item.optimista = true;
@@ -435,10 +532,9 @@ var Pantalla = AbstractAction.extend({
                 }
                 self.cola.push(item);
             });
-            var n = this._pendientes();
+            var n = this.cola.length;
             if (n) {
-                this._aviso('Guardando ' + n + (n === 1 ? ' lectura que quedó' : ' lecturas que quedaron') +
-                            ' en la PDA…', 'info');
+                this._aviso('Guardando ' + this._textoPendientes() + ' que quedaron en la PDA…', 'info');
                 this._pintar();
                 this._enviar();
             } else {
@@ -571,21 +667,16 @@ var Pantalla = AbstractAction.extend({
         var tipo = this.modo === 'caja' ? 'caja' : 'leer';
         // v3.15: en una agrupación, leer una CJ es cerrar la caja de esa tienda (su etiqueta dice de qué OUT es)
         if (tipo === 'leer' && this._esLote() && RE_CJ.test(codigo)) { tipo = 'caja'; }
-        if (tipo === 'caja' && this.sinRed) {
-            if (this.modo !== 'caja') {
-                this._aviso('Sin conexión: la caja se cierra cuando vuelva. Vuelve a leer la etiqueta entonces.', 'mal');
-                return this._pitido(false);
-            }
-            this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal')
-                .text('✖ Sin conexión: la caja se cierra cuando vuelva. Vuelve a leer la etiqueta entonces.');
-            return this._pitido(false);
-        }
         var item = {tipo: tipo, codigo: codigo, id: this._nuevoId(), t: ahora,
                     employee_id: this.operario ? this.operario.id : false};
         if (tipo === 'caja' && this._esLote()) {
             // v3.15: si la CJ no es de ninguna tienda, va a la tienda de la línea que se ve
             var vista = this.estado && _.findWhere(this.estado.lineas, {id: this._idVisto()});
             item.outId = vista ? vista.out_id : false;
+        }
+        if (tipo === 'caja' && this.sinRed) {
+            // v3.22: sin red la caja se cierra en la PDA y Odoo la cierra al volver (en su sitio de la cola)
+            return this._cajaSinRed(item);
         }
         if (tipo === 'leer') {
             // v3.6: si el producto es de la OUT y le faltan uds, cuenta ya (pita y +1); Odoo lo guarda detrás
@@ -601,6 +692,7 @@ var Pantalla = AbstractAction.extend({
                 this._aviso((destino ? '→ ' + destino + ' · ' : '') + (l.nombre || l.producto) + ' · ' + l.leidas +
                             ' de ' + l.pedidas, 'ok', !!destino);
                 this._sonar(l.completa ? 'linea' : 'ok');   // v3.13: otro sonido si la línea queda completa
+                this._actividad();   // v3.22
                 if (l.completa) { this._avisoAquiMismo(l); }
                 if (this.estado.todo_leido) {
                     this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'),
@@ -648,7 +740,7 @@ var Pantalla = AbstractAction.extend({
             self._guardarCola();
             var cuadra = !(r && r.estado) || self._aplicar(r.estado);
             if (!cuadra) { self._recargar(); }   // v3.5: algo ha cambiado de forma (p. ej. la caja del compañero)
-            if (item.tipo === 'caja') { self._trasCaja(r); } else { self._trasLeer(r, item); }
+            if (item.tipo === 'caja') { self._trasCaja(r, item); } else { self._trasLeer(r, item); }
             self._pintar();
             self._enviar();
         }, function (err) {
@@ -670,6 +762,8 @@ var Pantalla = AbstractAction.extend({
             self.cola.shift();
             self._guardarCola();
             self._aviso((item.optimista ? 'No se ha guardado ' + item.codigo + ': ' : '') +
+                        (item.tipo === 'caja' && item.local ? 'La caja ' + (item.codigo || item.provisional) +
+                         ' no se ha cerrado en Odoo (lo leído sigue fuera de caja): ' : '') +
                         ((err && err.msg) || 'Error de Odoo'), 'mal');
             self._pitido(false);
             self._recargar();
@@ -692,6 +786,7 @@ var Pantalla = AbstractAction.extend({
             this.verId = l && !l.completa ? l.id : null;
             this._aviso(r.msg, 'ok', !!r.destino);   // v3.15: con la caja de tienda, no se va solo
             this._sonar(l && l.completa ? 'linea' : 'ok');   // v3.13
+            this._actividad();   // v3.22
             if (l && l.completa) { this._avisoAquiMismo(l); }
             if (this.estado && this.estado.todo_leido) {
                 this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
@@ -730,19 +825,17 @@ var Pantalla = AbstractAction.extend({
     _onCaja: function () {
         if (!this._out()) { return; }
         if (this.modo === 'pack') { this._cerrarHoja(); }
-        if (this.sinRed) {   // v3.6: la caja espera a Odoo
-            this._aviso('Sin conexión: la caja se cierra cuando vuelva. Puedes seguir leyendo.', 'warn');
-            return this._foco();
-        }
         if (!this.estado.sin_caja) {
             this._aviso('No hay nada leído fuera de caja.', 'info');
             return this._foco();
         }
         if (!this._esLote() && this.estado.out && this.estado.out.pack_auto) {
             // v3.19: Zalando / About You: sin etiqueta CJ. Odoo crea el paquete (PACK...) y se sigue leyendo
+            var auto = {tipo: 'caja', codigo: '', id: this._nuevoId(), t: Date.now(),
+                        employee_id: this.operario ? this.operario.id : false};
+            if (this.sinRed) { return this._cajaSinRed(auto); }   // v3.22
             this._aviso('Cerrando caja…', 'info');
-            this.cola.push({tipo: 'caja', codigo: '', id: this._nuevoId(), t: Date.now(),
-                            employee_id: this.operario ? this.operario.id : false});
+            this.cola.push(auto);
             this._guardarCola();
             this._enviar();
             return this._foco();
@@ -760,18 +853,95 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
                                             ' a esta caja. Lee la etiqueta CJ de la caja.');
         }
-        this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
+        this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
         this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante').hide();
         this.$('.o_kp_hoja_caja').show();
         this.$('.o_kp_hoja').show();
         this._foco();
     },
 
-    _trasCaja: function (r) {
+    // v3.22: cerrar la caja sin red. Se comprueba en la PDA lo mismo que Odoo (etiqueta CJ, que haya algo fuera de
+    // caja, de qué tienda es) y lo leído pasa ya a esa caja. Zalando / About You: sin número aún -> «S<n>» para
+    // apuntar en la caja; al volver la conexión sale su PACK.
+    _cajaSinRed: function (item) {
+        var e = this.estado;
+        var self = this;
+        var error = function (msg) {
+            if (self.modo === 'caja') {
+                self.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal').text('✖ ' + msg);
+            } else {
+                self._aviso(msg, 'mal');
+            }
+            self._pitido(false);
+            return self._foco();
+        };
+        item.codigo = (item.codigo || '').toUpperCase();
+        if (item.codigo && !RE_CJ.test(item.codigo)) {
+            return error(item.codigo + ' no es una etiqueta de caja (CJ + 9 cifras). Lee la etiqueta de la caja.');
+        }
+        if (this._esLote()) {
+            var o = this._outDeCaja(e, item.codigo, item.outId);
+            if (!o) {
+                return error('La caja ' + item.codigo + ' no tiene tienda. Lee la etiqueta de la caja de la tienda ' +
+                             '(la de «CAJA nn»).');
+            }
+            if (!o.sin_caja) { return error(o.destino + ': no hay nada leído fuera de caja para esta tienda.'); }
+        } else if (!(e.a_dos ? e.mias_sin_caja : e.sin_caja)) {
+            return error('No hay nada leído fuera de caja: lee algún artículo antes de cerrar la caja.');
+        }
+        if (!item.codigo) { item.provisional = 'S' + ((e.cajas || []).length + 1); }
+        item.local = true;
+        var uds = this._cajaLocal(e, item);
+        this._actividad();   // v3.22: cerrar caja también para la alarma de parado
+        this.cola.push(item);
+        this._guardarCola();
+        if (this.modo === 'caja') { this._cerrarHoja(); }
+        this._sonar('caja');
+        this._pintar();
+        var udsTxt = uds + (uds === 1 ? ' ud' : ' uds');
+        if (item.provisional) {
+            this._verPack('Caja cerrada SIN CONEXIÓN · apunta en la caja', item.provisional, uds, false);
+            this.$('.o_kp_pack_nota').text('Su número PACK sale cuando vuelva la conexión.');
+            return;
+        }
+        this._aviso('Caja ' + item.codigo + ' cerrada en la PDA con ' + udsTxt + '. Se guarda en Odoo cuando vuelva ' +
+                    'la conexión. Puedes seguir leyendo.', 'ok', true);
+        return this._foco();
+    },
+
+    _trasCaja: function (r, item) {
+        if (item && item.local) {
+            // v3.22: una caja cerrada sin red llega a Odoo: no se toca lo que el operario tenga abierto ahora
+            if (r && r.ok) {
+                if (item.provisional && r.caja) {
+                    this.mapaSC = this.mapaSC || {};
+                    this.mapaSC[r.caja] = item.provisional;
+                    if (this.estado && this.estado.cajas) {   // la «S<n>» de la PDA ya es su PACK
+                        this.estado.cajas = _.reject(this.estado.cajas, function (c) {
+                            return c.nombre === item.provisional;
+                        });
+                    }
+                    if (this.modo === 'leer' || this.modo === 'pack') {
+                        this._sonar('caja');
+                        this._verPack('La caja ' + item.provisional + ' ya tiene número · apúntalo', r.caja, r.uds,
+                                      false);
+                        this.$('.o_kp_pack_nota').text('Táchale «' + item.provisional + '» y apunta este número.');
+                        return;
+                    }
+                    return this._aviso('La caja ' + item.provisional + ' es la ' + r.caja + ': apúntalo en la caja.',
+                                       'ok', true);
+                }
+                return this._aviso('Guardada en Odoo: ' + ((r && r.msg) || ('caja ' + item.codigo)), 'ok');
+            }
+            this._aviso('La caja ' + (item.codigo || item.provisional) + ' no se ha cerrado en Odoo (lo leído sigue ' +
+                        'fuera de caja): ' + ((r && r.msg) || 'Error') + ' Ciérrala otra vez.', 'mal', true);
+            return this._pitido(false);
+        }
         if (r && r.ok) {
             this._cerrarHoja();
             this._aviso(r.msg, 'ok', true);
             this._sonar('caja');   // v3.13
+            this._actividad();   // v3.22
             var out = this._out();
             if (out && out.pack_auto && r.caja) {   // v3.20: Zalando / About You: el número en grande
                 this._verPack('Caja cerrada', r.caja, r.uds, false);
@@ -785,7 +955,7 @@ var Pantalla = AbstractAction.extend({
             return this._pitido(false);
         }
         // sigue esperando la etiqueta
-        this.$('.o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal').text('✖ ' + msg);
+        this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal').text('✖ ' + msg);
         this._pitido(false);
         if (this.estado && !this.estado.sin_caja) { this._cerrarHoja(); this._aviso(msg, 'mal'); }
     },
@@ -807,10 +977,14 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_pack_lista_titulo').text(cajas.length ? 'Cajas de ' + ((this._out() || {}).name || 'esta OUT') +
                                                ' (' + cajas.length + ')' : 'Aún no hay cajas cerradas.');
         var $l = this.$('.o_kp_pack_lista').empty();
+        var mapa = this.mapaSC || {};
+        this.$('.o_kp_pack_nota').text('Apunta este número en la caja.');   // v3.22: la de siempre (sin red cambia)
         cajas.forEach(function (c) {
             $('<li/>').toggleClass('o_kp_pack_nueva', c.nombre === nombre)
                 .append($('<b/>').text(c.nombre))
-                .append($('<span/>').text(' · ' + c.uds + (c.uds === 1 ? ' ud' : ' uds')))
+                .append($('<span/>').text(' · ' + c.uds + (c.uds === 1 ? ' ud' : ' uds') +
+                                          (mapa[c.nombre] ? ' · era ' + mapa[c.nombre] : '') +   // v3.22
+                                          (c.sin_red ? ' · sin guardar aún' : '')))
                 .appendTo($l);
         });
         this.$('.o_kp_pack_seguir').text(volver ? 'Hecho' : 'Seguir leyendo');
@@ -937,6 +1111,7 @@ var Pantalla = AbstractAction.extend({
                 if (self.$('.o_kp_lineas').is(':visible')) { self._pintarLineas(true); }
                 self._aviso(r.msg, 'ok', true);
                 self._sonar('caja');
+                self._actividad();   // v3.22
                 return;
             }
             self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
@@ -1117,7 +1292,7 @@ var Pantalla = AbstractAction.extend({
         // v3.6: con red, se espera a que lo leído llegue a Odoo (sin red o sin sesión, se queda en la PDA y se manda
         // al volver a abrir la preparación)
         if (this.cola.length && !this.sinRed && !this.sesionCaducada) {
-            return this._aviso('Espera: guardando ' + this._pendientes() + ' lecturas…', 'warn');
+            return this._aviso('Espera: guardando ' + this._textoPendientes() + '…', 'warn');   // v3.22
         }
         this.trigger_up('history_back');
     },
@@ -1299,6 +1474,7 @@ var Pantalla = AbstractAction.extend({
             var productoId = f.linea.producto_id;
             self._cerrarFaltante(true);
             self._pitido(true);
+            self._actividad();   // v3.22
             return self._recargar(function () {
                 // se ve la línea en su ubicación nueva: ahora se lee el EAN como siempre
                 var l = _.find(self.estado.lineas, function (x) {
@@ -1340,6 +1516,7 @@ var Pantalla = AbstractAction.extend({
             }
             self._cerrarFaltante(true);
             self._pitido(true);
+            self._actividad();   // v3.22
             return self._recargar(function () {
                 self.verId = null;
                 var e = self.estado;
@@ -1485,6 +1662,7 @@ var Pantalla = AbstractAction.extend({
         this._cerrarHoja();
         this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas + ' (+' + n + ' a mano)', 'ok');
         this._pitido(true);
+        this._actividad();   // v3.22
         if (e.todo_leido) {
             this._aviso('Todo leído. ' + (e.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
         }
@@ -1737,15 +1915,15 @@ var Pantalla = AbstractAction.extend({
             this.$('.o_kp_completa').show();
         }
         // botones
-        // v3.6: sin red se sigue leyendo (y deshaciendo lo no guardado); Caja y Validar esperan a Odoo
+        // v3.6: sin red se sigue leyendo (y deshaciendo lo no guardado); v3.22: y cerrando cajas. Validar espera a Odoo
         var libre = this.modo === 'leer';
         var conRed = !this.sinRed;
         var guardando = this.cola.length > 0 || this.enviando;
         var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
         this.$('.o_kp_caja').toggle(out.con_caja !== false)   // v3.14: en las INT no hay botón Caja
-            .prop('disabled', !libre || !conRed || !mias)
-            .text(conRed ? 'Caja' : 'Esperando conexión…')
-            .toggleClass('o_kp_destacado', conRed && !!mias && e.todo_leido);
+            .prop('disabled', !libre || !mias)   // v3.22: también sin red (Odoo la cierra al volver)
+            .text(conRed ? 'Caja' : 'Caja (sin red)')
+            .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
         this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
             .text(!conRed ? 'Esperando conexión…' : (guardando ? 'Guardando lecturas…' : '✓ Validar'))
             .toggleClass('o_kp_destacado', conRed && !guardando && !e.sin_caja && e.todo_leido);
@@ -1968,6 +2146,87 @@ var Pantalla = AbstractAction.extend({
                 o.start(ctx.currentTime + n[1]);
                 o.stop(ctx.currentTime + n[1] + n[2]);
             });
+        } catch (e) { /* sin sonido */ }
+    },
+
+    // ------------------------------------------------------------ v3.22: alarma de parado
+    // Algo ha contado (prenda, caja, cantidad, faltante): vuelve a contar desde ahora y se para la alarma.
+    _actividad: function () {
+        this.ultimaActividad = Date.now();
+        if (this.alarmaOn) { this._alarma(false); }
+    },
+
+    _mirarAlarma: function () {
+        var e = this.estado;
+        if (e && typeof e.alarma_min === 'number') { this.alarmaMin = e.alarma_min; }
+        if (e && e.alarma_horario) { this.alarmaHorario = e.alarma_horario; }   // v3.23
+        var enHorario = this._enHorario();
+        var out = this._out();
+        var abierta = !!out && out.estado !== 'done' && out.estado !== 'cancel';
+        var toca = this.alarmaMin > 0 && abierta && this._visible() && this.modo !== 'validando' && !this.packVolver &&
+            enHorario;
+        if (!toca) {
+            this._alarma(false);
+            // v3.23: fuera de horario (pausa, comida) tampoco cuenta: a las 10:15 o a las 14:00 empieza de cero
+            if (!this._visible() || this.modo === 'validando' || !enHorario) { this.ultimaActividad = Date.now(); }
+            return;
+        }
+        var parado = Date.now() - this.ultimaActividad;
+        if (parado >= this.alarmaMin * 60000) {
+            this._alarma(true, Math.floor(parado / 60000));
+        }
+    },
+
+    // v3.23: ¿la hora de la PDA está dentro de algún tramo del horario?
+    _enHorario: function () {
+        var tramos = this.alarmaHorario;
+        if (!tramos || !tramos.length) { return true; }
+        var d = new Date();
+        var m = d.getHours() * 60 + d.getMinutes();
+        return tramos.some(function (t) { return m >= t[0] && m < t[1]; });
+    },
+
+    _alarma: function (on, minutos) {
+        if (on) {
+            this.$('.o_kp_alarma_min').text(minutos || this.alarmaMin);
+            if (this.alarmaOn) { return; }
+            this.alarmaOn = true;
+            this.$('.o_koroshi_preparacion').addClass('o_kp_alarma');
+            this.$('.o_kp_alarma_aviso').show();
+            this._sirena();
+            this.timerSirena = setInterval(this._sirena.bind(this), SIRENA_MS);
+            return;
+        }
+        if (!this.alarmaOn) { return; }
+        this.alarmaOn = false;
+        clearInterval(this.timerSirena);
+        this.$('.o_koroshi_preparacion').removeClass('o_kp_alarma');
+        this.$('.o_kp_alarma_aviso').hide();
+        try { if (navigator.vibrate) { navigator.vibrate(0); } } catch (e) { /* nada */ }
+    },
+
+    // Un ciclo de sirena (~0,9 s): dos tonos agudos de onda cuadrada que se alternan, al máximo del navegador
+    // (gain 1). Es lo más fuerte que puede sacar una página web; el volumen del sistema lo pone el Android.
+    _sirena: function () {
+        try { if (navigator.vibrate) { navigator.vibrate([450, 100, 350]); } } catch (e) { /* nada */ }
+        try {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) { return; }
+            if (!this.audio) { this.audio = new Ctx(); }
+            var ctx = this.audio;
+            if (ctx.state === 'suspended' && ctx.resume) { ctx.resume(); }
+            var t0 = ctx.currentTime + 0.02;
+            var g = ctx.createGain();
+            g.gain.value = 1;
+            g.connect(ctx.destination);
+            for (var i = 0; i < 6; i++) {
+                var o = ctx.createOscillator();
+                o.type = 'square';
+                o.frequency.value = i % 2 ? 2300 : 3100;
+                o.connect(g);
+                o.start(t0 + i * 0.15);
+                o.stop(t0 + i * 0.15 + 0.14);
+            }
         } catch (e) { /* sin sonido */ }
     },
 });

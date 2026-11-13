@@ -5,7 +5,12 @@
         <div class="o_koroshi_preparacion">
             <div class="o_kp_offline" role="alert" style="display: none;">
                 <span role="presentation">⚠</span>
-                <span>Sin conexión con Odoo. Puedes seguir leyendo: se guarda en la PDA y se manda al volver. Caja y Validar esperan.</span>
+                <span>Sin conexión con Odoo. Puedes seguir leyendo y cerrar cajas: se guarda en la PDA y se manda al volver. Solo Validar espera.</span>
+            </div>
+            <!-- v3.22: alarma de parado (no tapa los toques: ← y los botones siguen funcionando) -->
+            <div class="o_kp_alarma_aviso" role="alert" style="display: none;">
+                <div class="o_kp_alarma_titulo">¡LLEVAS <span class="o_kp_alarma_min"/> MIN SIN LEER!</div>
+                <div class="o_kp_alarma_texto">Lee una prenda para pararla, o pulsa ← para dejar la OUT aquí.</div>
             </div>
             <div class="o_kp_app">
                 <!-- cabecera: volver, OUT, tienda, operario -->

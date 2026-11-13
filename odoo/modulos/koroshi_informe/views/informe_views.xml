@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ver el correo sin mandarlo -->
+    <record id="action_koroshi_informe_ver_diario" model="ir.actions.act_url">
+        <field name="name">Ver informe de hoy</field>
+        <field name="url">/koroshi/informe/ver?tipo=diario</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_koroshi_informe_ver_semanal" model="ir.actions.act_url">
+        <field name="name">Ver informe de la semana pasada</field>
+        <field name="url">/koroshi/informe/ver?tipo=semanal</field>
+        <field name="target">new</field>
+    </record>
+    <record id="action_koroshi_informe_ver_mensual" model="ir.actions.act_url">
+        <field name="name">Ver informe del mes pasado</field>
+        <field name="url">/koroshi/informe/ver?tipo=mensual</field>
+        <field name="target">new</field>
+    </record>
+
+    <!-- Mandarlo ahora a los correos de Ajustes KOROSHI (no marca el dia como enviado) -->
+    <record id="action_koroshi_informe_enviar_diario" model="ir.actions.server">
+        <field name="name">Mandar informe de hoy ahora</field>
+        <field name="model_id" ref="model_koroshi_informe"/>
+        <field name="groups_id" eval="[(4, ref('koroshi_operarios.grupo_productividad'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_enviar_diario()</field>
+    </record>
+
+    <!-- Resumen por operario y dia (lo que usa el correo para records y comparar) -->
+    <record id="view_koroshi_informe_operario_dia_tree" model="ir.ui.view">
+        <field name="name">koroshi.informe.operario.dia.tree</field>
+        <field name="model">koroshi.informe.operario.dia</field>
+        <field name="arch" type="xml">
+            <tree string="Productividad por operario y día" create="0" edit="0" delete="0">
+                <field name="fecha"/>
+                <field name="codigo"/>
+                <field name="nombre"/>
+                <field name="acabadas" sum="Total"/>
+                <field name="uds" sum="Total"/>
+                <field name="minutos" sum="Total"/>
+                <field name="parado" sum="Total"/>
+                <field name="efectivo" sum="Total"/>
+                <field name="uds_hora"/>
+                <field name="sin_detalle"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_koroshi_informe_operario_dia_search" model="ir.ui.view">
+        <field name="name">koroshi.informe.operario.dia.search</field>
+        <field name="model">koroshi.informe.operario.dia</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="codigo"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_semana" string="Semana" context="{'group_by': 'fecha:week'}"/>
+                    <filter name="g_mes" string="Mes" context="{'group_by': 'fecha:month'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_koroshi_informe_operario_dia" model="ir.actions.act_window">
+        <field name="name">Productividad por operario y día</field>
+        <field name="res_model">koroshi.informe.operario.dia</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <menuitem id="menu_koroshi_informe" name="Informe de productividad (correo)"
+              parent="koroshi_menu.menu_koroshi_informes" sequence="45"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_informe_ver_diario" name="Ver informe de hoy" parent="menu_koroshi_informe"
+              sequence="10" action="action_koroshi_informe_ver_diario"/>
+    <menuitem id="menu_koroshi_informe_ver_semanal" name="Ver semana pasada" parent="menu_koroshi_informe"
+              sequence="20" action="action_koroshi_informe_ver_semanal"/>
+    <menuitem id="menu_koroshi_informe_ver_mensual" name="Ver mes pasado" parent="menu_koroshi_informe"
+              sequence="30" action="action_koroshi_informe_ver_mensual"/>
+    <menuitem id="menu_koroshi_informe_enviar" name="Mandar informe de hoy ahora" parent="menu_koroshi_informe"
+              sequence="40" action="action_koroshi_informe_enviar_diario"/>
+    <menuitem id="menu_koroshi_informe_operario_dia" name="Productividad por operario y día"
+              parent="menu_koroshi_informe" sequence="50" action="action_koroshi_informe_operario_dia"/>
+</odoo>

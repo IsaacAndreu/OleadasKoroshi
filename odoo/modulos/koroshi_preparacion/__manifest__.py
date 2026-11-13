@@ -137,8 +137,25 @@ por defecto F); se guarda por operario (tabla nueva koroshi.preparacion.preferen
 instalarse).
 v3.21.1 (12/11/2026): colores amarillos (C y F) con la letra más negra y gruesa; en F el código KO también en
 negrita. Solo CSS.
+v3.23.0 (12/11/2026): ALARMA DE PARADO + CAJA SIN INTERNET (la 3.22.0 no llegó a instalarse: todo va aquí, con la
+v3.21.1). ALARMA DE PARADO. Con la OUT (o la agrupación) abierta y X minutos sin leer ninguna prenda, la
+PDA pita sin parar (sirena aguda a volumen máximo del navegador, sin hacer caso del interruptor de sonido) y vibra, y la
+pantalla parpadea en rojo con «¡LLEVAS N MIN SIN LEER!». Se para al contar una lectura (prenda, caja cerrada, Poner
+cantidad, Faltante resuelto) o al salir con ← (dejar la OUT aquí). Deshacer, leer una ubicación o tocar la pantalla no
+la paran. No cuenta mientras está en la pantalla de Faltante ni validando. Parámetro nuevo
+koroshi_preparacion.minutos_alarma (por defecto 4; 0 = sin alarma). Solo suena en horario de trabajo: parámetro
+koroshi_preparacion.horario_alarma (por defecto 06:00-10:00,10:15-13:00,14:00-17:00, hora de la PDA); en la pausa de
+10:00-10:15 y la comida de 13 a 14 no suena ni cuenta. Los dos en Ajustes KOROSHI (koroshi_menu v1.3).
+CAJA SIN INTERNET. Sin conexión, «Caja» (y leer la CJ) ya no espera: la caja se cierra en la PDA (lo
+leído fuera de caja pasa a ella) y va a la cola de la PDA en su sitio, con las lecturas, y también a su memoria (si se
+cierra la app, no se pierde). Al volver la conexión Odoo la cierra en el mismo orden (lo leído antes va a esa caja; lo de
+después, fuera) con el mismo id (no se cierra dos veces). La PDA comprueba lo mismo que Odoo: etiqueta CJ, que haya algo
+fuera de caja y, en una agrupación, de qué tienda es la CJ (el estado trae ahora las CJ reservadas de cada OUT, «cjs»).
+Zalando / About You: sin red la caja sale como «S<n>» para apuntarla; al volver la conexión sale su PACK y en la lista
+«era S<n>». Si Odoo no acepta una caja guardada así, avisa y lo leído queda fuera de caja para cerrarla otra vez.
+Validar sigue necesitando conexión.
 """,
-    'version': '13.0.3.21.1',
+    'version': '13.0.3.23.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -148,6 +165,7 @@ negrita. Solo CSS.
         'data/parametros.xml',
         'data/parametros_v315.xml',
         'data/parametros_v317.xml',
+        'data/parametros_v322.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
     ],

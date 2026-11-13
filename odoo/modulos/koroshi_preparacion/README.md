@@ -1,7 +1,41 @@
-# KOROSHI Preparación en Lecturas (v3.21.1, 12/11/2026)
+# KOROSHI Preparación en Lecturas (v3.23.0, 12/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+## v3.23.0: alarma de parado + caja sin internet (12/11/2026)
+
+La 3.22.0 no llegó a instalarse: la caja sin internet va en esta versión, con la alarma y la v3.21.1.
+
+### Alarma de parado
+
+- Con la OUT (o la agrupación) abierta y X minutos sin leer ninguna prenda, la PDA suena sin parar: una sirena aguda
+  al volumen máximo del navegador, aunque el sonido de Lecturas esté apagado. Además vibra, y la pantalla parpadea en
+  rojo con «¡LLEVAS N MIN SIN LEER!».
+- Se para cuando cuenta algo: una prenda, una caja cerrada, «Poner cantidad» o un Faltante resuelto. También se para al
+  salir con ←. Deshacer, leer una ubicación o tocar la pantalla no la paran.
+- No cuenta mientras el operario está en la pantalla de Faltante ni mientras valida.
+- Parámetros (los dos están en Ajustes KOROSHI, `koroshi_menu` v1.3):
+  - `koroshi_preparacion.minutos_alarma`: por defecto 4; 0 = sin alarma.
+  - `koroshi_preparacion.horario_alarma`: por defecto `06:00-10:00,10:15-13:00,14:00-17:00`, con la hora de la PDA.
+    En la pausa (10:00-10:15) y la comida (13 a 14) no suena ni cuenta. Al empezar el siguiente tramo, el tiempo
+    empieza de cero.
+- El volumen del sistema lo pone Android. Para que no lo bajen en las TC22: StageNow, Audio Volume UI Manager, con un
+  mínimo de STREAM_MUSIC.
+
+### Caja sin internet
+
+- Sin conexión, «Caja» y leer la CJ ya no esperan: la caja se cierra en la PDA y lo leído fuera de caja pasa a ella.
+- La caja va a la cola de la PDA en su sitio, entre las lecturas, y se guarda en la memoria de la PDA.
+- Al volver la conexión, Odoo cierra las cajas en el mismo orden y con el mismo id: no se cierran dos veces.
+- La PDA comprueba lo mismo que Odoo: etiqueta CJ, que haya algo fuera de caja y, en las Z-, de qué tienda es la CJ.
+  Para eso el estado de una agrupación trae las CJ reservadas de cada OUT (`outs[].cjs`).
+- Zalando / About You: sin red la caja sale como «S1», «S2»… para apuntarla. Al volver la conexión sale su PACK y en la
+  lista de cajas «era S1».
+- Si Odoo no acepta una caja guardada sin red, la PDA avisa y lo leído queda fuera de caja para cerrarla otra vez.
+- Validar sigue necesitando conexión.
+- Arreglado (venía de antes): al pulsar «Caja» se borraba la clase de los avisos de las otras hojas (Faltante,
+  Cambiar de caja, Poner cantidad, Imprimir) y sus mensajes podían dejar de verse hasta recargar.
 
 ## v3.21.1: amarillos más en negrita (12/11/2026)
 
