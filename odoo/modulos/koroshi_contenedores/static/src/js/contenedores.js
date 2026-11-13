@@ -1,6 +1,8 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Contenedores v1.3.0 - mover contenedores KO_/TT_, limpiar huecos y ver inventario por lineal.
+/* KOROSHI Contenedores v1.4.0 - mover contenedores KO_/TT_, limpiar huecos y ver inventario por lineal.
+ * v1.4: lo que se lee mientras la pantalla espera a Odoo ya no se pierde: va a una cola corta (EN_ESPERA_MAX) y se
+ *   lee después, en orden. Si la cola está llena, pita y lo dice. Una lectura de la cola que falla también pita.
  * 0. Pasar la tarjeta de operario (se mantiene 3 min sin actividad; así queda apuntado quién lo hace).
  * Mover: escanear 1 o más contenedores (se ven prendas y reservas) y después la ubicación de destino.
  * Limpiar: escanear un hueco sin contenedores en cola: se ven sus contenedores; se archivan los que están a cero
@@ -11,6 +13,7 @@ var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
 var REPETIDA_MS = 700;
 var PERSONA_MS = 180000;
+var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
 function _n(x) { return (Math.round((x || 0) * 100) / 100).toString().replace('.', ','); }
@@ -41,6 +44,7 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = false;
         this.ultima = {codigo: '', t: 0};
         this.actividadEn = Date.now();
+        this.enEspera = [];             // v1.4
     },
 
     start: function () {
@@ -96,22 +100,64 @@ var Pantalla = AbstractAction.extend({
             msg ? 'o_kc_' + (tipo || 'info') : '').text(msg || '');
     },
 
-    _fin: function () { this.ocupado = false; this.actividadEn = Date.now(); },
+    // v1.4: al acabar una petición, la siguiente lectura que esperaba (si no ha empezado otra petición)
+    _fin: function () {
+        var self = this;
+        this.ocupado = false;
+        this.actividadEn = Date.now();
+        if (this.enEspera.length) {
+            setTimeout(function () {
+                if (!self.ocupado && self.enEspera.length) { self._leer(self.enEspera.shift(), true); }
+            }, 0);
+        }
+    },
+
+    // v1.4: pitido corto (bien) o doble y grave (mal), sin ficheros de sonido
+    _pitido: function (bien) {
+        try {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) { return; }
+            this.audio = this.audio || new Ctx();
+            var a = this.audio;
+            (bien ? [0] : [0, 0.18]).forEach(function (t0) {
+                var o = a.createOscillator();
+                var g = a.createGain();
+                o.frequency.value = bien ? 1200 : 300;
+                g.gain.value = 0.2;
+                o.connect(g);
+                g.connect(a.destination);
+                o.start(a.currentTime + t0);
+                o.stop(a.currentTime + t0 + 0.12);
+            });
+        } catch (e) { /* sin sonido */ }
+    },
 
     _sinConexion: function () { this._fin(); this._aviso('mal', 'Sin conexión con Odoo. Vuelve a probar.'); },
 
-    _leer: function (codigo) {
+    _leer: function (codigo, deCola) {
         var self = this;
         codigo = (codigo || '').trim();
-        if (!codigo || this.ocupado) { return; }
+        if (!codigo) { return; }
         var t = Date.now();
-        if (codigo === this.ultima.codigo && t - this.ultima.t < REPETIDA_MS) { return; }
-        this.ultima = {codigo: codigo, t: t};
+        if (!deCola) {
+            if (codigo === this.ultima.codigo && t - this.ultima.t < REPETIDA_MS) { return; }
+            this.ultima = {codigo: codigo, t: t};
+        }
+        if (this.ocupado) {
+            // v1.4: antes se perdía sin avisar. Ahora espera su turno (o pita si ya hay demasiadas)
+            if (this.enEspera.length >= EN_ESPERA_MAX) {
+                this._pitido(false);
+                return this._aviso('mal', 'Espera a que acabe: ' + codigo + ' NO se ha leído. Vuelve a leerlo.');
+            }
+            this.enEspera.push(codigo);
+            return this._aviso('info', codigo + ' leído: va en cuanto acabe lo anterior.');
+        }
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/leer', params: {codigo: codigo}}).then(function (r) {
             self._fin();
             if (!r || !r.ok) {
                 self._aviso('mal', (r && r.msg) || 'No se ha podido leer.');
+                if (deCola) { self._pitido(false); }   // v1.4: el operario ya no lo mira
                 return;
             }
             if (r.tipo === 'persona') {

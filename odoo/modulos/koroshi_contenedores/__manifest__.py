@@ -24,8 +24,11 @@ v1.3.0 (13/11/2026): confirmación «¿está físicamente vacía?» antes de arc
 v1.1.0 (13/11/2026): segunda parte (limpiar ubicación) y hay que pasar la tarjeta de operario (la misma de Actividades) antes de mover; el movimiento
   guarda quién lo hizo (campo employee_id de koroshi.contenedor.movimiento). La persona se mantiene 3 min sin actividad.
 v1.0.0 (13/11/2026): primera versión (mover).
+v1.4.0 (13/11/2026): auditoría del 13/11. Leer un contenedor KO_…_… ya no puede coger otro: en la búsqueda el «_» era
+  «cualquier letra» (=ilike); ahora se busca el nombre tal cual. Lo que se lee mientras la pantalla espera a Odoo ya no
+  se pierde sin pitido: va a una cola corta y se lee después; si la cola está llena, pita y lo dice. Incluye la 1.3.0.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
