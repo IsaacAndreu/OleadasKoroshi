@@ -1042,20 +1042,12 @@ var Pantalla = AbstractAction.extend({
                 // v2.3.1: sin contador del día (pedidos / uds): los operarios no ven nada de productividad
                 self.$('.o_ko_dia').text('');
                 var $c = self.$('.o_ko_abiertas').empty();
-                var pausas = r.pausas || [];   // v2.11
-                if (!r.abiertas.length && !pausas.length) { $c.text('Nadie'); return; }
+                if (!r.abiertas.length) { $c.text('Nadie'); return; }
                 r.abiertas.forEach(function (t) {
                     var $f = $('<div class="o_ko_fila"/>');
                     var $a = $('<span/>').append($('<b/>').text(t.operario))
                         .append(document.createTextNode(' · ' + t.ref + (t.tienda ? ' · ' + t.tienda : '')));
                     $f.append($a).append($('<span/>').text(t.inicio));
-                    $c.append($f);
-                });
-                pausas.forEach(function (t) {   // v2.11: en pausa (comer, café)
-                    var $f = $('<div class="o_ko_fila o_ko_fila_pausa"/>');
-                    var $a = $('<span/>').append($('<b/>').text('⏸ ' + t.operario))
-                        .append(document.createTextNode(' · en pausa · ' + t.ref));
-                    $f.append($a).append($('<span/>').text('desde ' + t.desde));
                     $c.append($f);
                 });
             }).guardedCatch(function (e) {

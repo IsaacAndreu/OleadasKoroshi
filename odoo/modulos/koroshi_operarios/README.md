@@ -1,13 +1,20 @@
-# KOROSHI Operarios (v2.11.0, 13/11/2026)
+# KOROSHI Operarios (v2.11.1, 13/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
 
+## v2.11.1: pausa al Monitor y sin «Error de CORS desconocido» (13/11/2026)
+
+- Quién está en pausa ya **no sale en Lecturas** (lo veían todos los operarios): sale en el **Monitor**
+  (koroshi_monitor 1.24), en la tabla de Operarios.
+- En las PDA ya no sale la ventana **«Odoo Client Error · Error de CORS desconocido»** al entrar en Odoo o al salir de
+  Código de barras. Era un error de un script que no es de Odoo, sin fichero ni línea; ahora solo se apunta en la
+  consola. Los errores de verdad siguen saliendo.
+
 ## v2.11.0: quién está en pausa y pedidos que deja más de uno (13/11/2026)
 
-- En Lecturas, «Cogiendo ahora» enseña también quién está **en pausa**: «⏸ Nombre · en pausa · OUT · desde 13:02».
-  Desaparece cuando vuelve (lee su tarjeta y empieza).
+- (Quitado en la 2.11.1: pasa al Monitor.) En Lecturas, «Cogiendo ahora» enseñaba quién estaba en pausa.
 - Si un pedido lo deja **un segundo operario** el mismo día con «Dejar este pedido», ya no queda libre: va a
   **expediciones** con la nota «Dejado por X, Y», para que lo revisen.
 - La pausa también se puede hacer desde el menú ☰ de la preparación (koroshi_preparacion 3.26).

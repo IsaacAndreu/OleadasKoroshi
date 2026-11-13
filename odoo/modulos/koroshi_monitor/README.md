@@ -29,6 +29,12 @@ capa inventada ni ralentice el seguimiento.
   (al validar van a pedido pendiente). **«Sin stock»**: OUT en espera sin nada que coger. El % y la hora de fin cuentan
   solo lo que hay en stock. Al final de la pantalla, **lista de faltantes** por OUT y artículo.
 
+
+## v1.24.0: operarios en pausa (13/11/2026)
+
+- En la tabla **Operarios**, quien está en pausa (comer, café) sale con **«⏸ Pausa»**, su OUT y en «Desde» la hora en
+  que la empezó. Necesita koroshi_operarios 2.11 o más; con versiones anteriores no sale nada.
+
 ## Instalar
 
 1. Copiar la carpeta `koroshi_monitor` (o descomprimir `bin/koroshi_monitor_2026-10-22_0825_v1.zip`)

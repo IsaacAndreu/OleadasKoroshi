@@ -234,11 +234,6 @@ class KoroshiOperarios(http.Controller):
                # v2.3
                'n_operarios': len(abiertas.mapped('employee_id')),
                'minutos_inactividad': self._minutos_inactividad()}
-        try:   # v2.11: quién está en pausa (comer, café); solo informativo
-            res['pausas'] = [{'operario': a.employee_id.name, 'ref': a.name or '', 'desde': _hora(a.fecha_salto)}
-                             for a in request.env['koroshi.operario.asignacion'].sudo().en_pausa()]
-        except Exception:
-            res['pausas'] = []
         emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
         if emp:
             res['dia'] = self._contador_dia(emp)
