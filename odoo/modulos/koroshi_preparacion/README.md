@@ -5,6 +5,13 @@ entera sin salir a la app de código de barras: leer productos, cerrar cajas con
 
 
 
+
+## v3.27.1: línea cogida, en verde el fondo (13/11/2026)
+
+- Al leer una prenda y completar la línea, la franja de la ubicación ya no se pone verde oscura (no se leía bien):
+  se queda con su color (amarilla por defecto) con la ubicación y el KO. Lo que se pone **verde es el fondo de la
+  tarjeta**, con un borde verde.
+
 ## v3.27.0: Zalando y About You se validan incompletas (13/11/2026)
 
 - Van por bultos: si quedan líneas sin leer, **«Validar»** dice cuántas uds faltan y el botón pasa a
