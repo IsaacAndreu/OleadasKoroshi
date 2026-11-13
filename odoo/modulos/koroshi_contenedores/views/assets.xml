@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="KOROSHI Contenedores assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/koroshi_contenedores/static/src/css/contenedores.css"/>
+            <script type="text/javascript" src="/koroshi_contenedores/static/src/js/contenedores.js"/>
+        </xpath>
+    </template>
+</odoo>

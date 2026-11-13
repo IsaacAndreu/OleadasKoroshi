@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_koroshi_contenedores_app" name="Contenedores" action="action_koroshi_contenedores_pantalla"
+              web_icon="koroshi_contenedores,static/description/icon.png" sequence="3"/>
+    <menuitem id="menu_koroshi_contenedores_root" name="Contenedores"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" sequence="95"/>
+    <menuitem id="menu_koroshi_contenedores_pantalla" name="Mover contenedores"
+              parent="menu_koroshi_contenedores_root" action="action_koroshi_contenedores_pantalla" sequence="10"/>
+    <menuitem id="menu_koroshi_contenedores_mov" name="Movimientos hechos"
+              parent="menu_koroshi_contenedores_root" action="action_koroshi_contenedor_mov" sequence="20"/>
+</odoo>

@@ -1,0 +1,35 @@
+/* KOROSHI Contenedores v1.3.0. Todo dentro de .o_koroshi_contenedores. Sin aria-hidden (Odoo 13 lo oculta). */
+.o_koroshi_contenedores { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
+.o_koroshi_contenedores * { box-sizing: border-box; }
+.o_koroshi_contenedores .o_kc_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
+.o_koroshi_contenedores .o_kc_titulo { font-size: 22px; font-weight: bold; }
+.o_koroshi_contenedores .o_kc_codigo { flex: 1; min-width: 220px; font-size: 18px; padding: 10px; border: 2px solid #c4cbd3; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_codigo:focus { border-color: #1e7b34; outline: none; }
+.o_koroshi_contenedores .o_kc_aviso { margin: 12px 16px 0; padding: 12px 14px; border-radius: 8px; font-weight: bold; display: none; }
+.o_koroshi_contenedores .o_kc_aviso.o_kc_ok { display: block; background: #dff3e3; color: #14572a; }
+.o_koroshi_contenedores .o_kc_aviso.o_kc_mal { display: block; background: #fbe0e1; color: #8c1014; }
+.o_koroshi_contenedores .o_kc_paso { margin: 12px 16px 0; font-size: 20px; font-weight: bold; color: #0b4f9c; }
+.o_koroshi_contenedores .o_kc_card { margin: 10px 16px 0; background: #fff; border: 1px solid #c4cbd3; border-radius: 10px; padding: 12px 14px; }
+.o_koroshi_contenedores .o_kc_card h3 { margin: 0; font-size: 20px; }
+.o_koroshi_contenedores .o_kc_hueco { color: #4b5563; font-size: 14px; margin: 2px 0 6px; word-break: break-all; }
+.o_koroshi_contenedores .o_kc_vacio { color: #b86e00; font-weight: bold; }
+.o_koroshi_contenedores table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.o_koroshi_contenedores td { padding: 3px 4px; border-top: 1px solid #e3e7ec; }
+.o_koroshi_contenedores td.o_kc_n { text-align: right; white-space: nowrap; }
+.o_koroshi_contenedores .o_kc_quitar { float: right; border: 0; background: #e3e7ec; border-radius: 6px; padding: 4px 10px; font-size: 15px; }
+.o_koroshi_contenedores .o_kc_botones { margin: 14px 16px 0; }
+.o_koroshi_contenedores .o_kc_vaciar { padding: 10px 16px; font-size: 16px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_persona { margin: 10px 16px 0; font-size: 17px; }
+.o_koroshi_contenedores .o_kc_cambiar { border: 0; background: #e3e7ec; border-radius: 6px; padding: 4px 10px; font-size: 15px; margin-left: 8px; }
+.o_koroshi_contenedores .o_kc_aviso.o_kc_info { display: block; background: #fff1d6; color: #7a4a00; }
+.o_koroshi_contenedores .o_kc_hueco_panel .o_kc_card { margin-top: 10px; }
+.o_koroshi_contenedores .o_kc_archivar { margin-top: 10px; padding: 12px 18px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; background: #1e7b34; color: #fff; }
+.o_koroshi_contenedores .o_kc_solo_stock, .o_koroshi_contenedores .o_kc_volver { margin: 8px 16px 8px 0; padding: 8px 14px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_hueco_panel > .o_kc_volver { margin: 10px 16px 0; }
+.o_koroshi_contenedores .o_kc_fila_hueco { cursor: pointer; }
+.o_koroshi_contenedores .o_kc_fila_hueco.o_kc_con td { color: #8c1014; font-weight: bold; }
+.o_koroshi_contenedores .o_kc_fila_hueco.o_kc_sin td { color: #6b7280; }
+.o_koroshi_contenedores .o_kc_confirmar { margin-top: 12px; padding: 12px; background: #fff1d6; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_confirmar button { margin: 10px 10px 0 0; padding: 12px 18px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_confirmar_si { background: #1e7b34; color: #fff; }
+.o_koroshi_contenedores .o_kc_confirmar_no { background: #e3e7ec; color: #111827; }

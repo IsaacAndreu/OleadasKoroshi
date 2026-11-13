@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_koroshi_contenedores_pantalla" model="ir.actions.client">
+        <field name="name">Contenedores</field>
+        <field name="tag">koroshi_contenedores_pantalla</field>
+    </record>
+
+    <record id="view_koroshi_contenedor_mov_tree" model="ir.ui.view">
+        <field name="name">koroshi.contenedor.movimiento.tree</field>
+        <field name="model">koroshi.contenedor.movimiento</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="create_date" string="Cuándo"/>
+                <field name="accion"/>
+                <field name="employee_id"/>
+                <field name="user_id" optional="hide"/>
+                <field name="contenedor"/>
+                <field name="origen"/>
+                <field name="destino"/>
+                <field name="lineas"/>
+                <field name="uds"/>
+                <field name="reservadas"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_koroshi_contenedor_mov" model="ir.actions.act_window">
+        <field name="name">Movimientos de contenedores</field>
+        <field name="res_model">koroshi.contenedor.movimiento</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

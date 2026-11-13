@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_contenedores.Pantalla">
+        <div class="o_koroshi_contenedores">
+            <header class="o_kc_cab">
+                <div class="o_kc_titulo">Contenedores</div>
+                <input type="text" class="o_kc_codigo" autocomplete="off"
+                       placeholder="Tarjeta, contenedor KO_…, ubicación o lineal (L94)"/>
+            </header>
+            <div class="o_kc_persona"/>
+            <div class="o_kc_aviso"/>
+            <div class="o_kc_paso"/>
+            <div class="o_kc_lista"/>
+            <div class="o_kc_hueco_panel"/>
+            <div class="o_kc_botones">
+                <button type="button" class="o_kc_vaciar">Empezar de nuevo</button>
+            </div>
+        </div>
+    </t>
+</templates>

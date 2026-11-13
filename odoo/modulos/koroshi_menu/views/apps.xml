@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v2.1: archiva los iconos de aplicaciones que no se usan (lista en models/apps.py). Sin noupdate: se ejecuta en
+         cada instalación y actualización de este módulo. Al desinstalarlo vuelven (__init__.py). -->
+    <function model="koroshi.menu.apps" name="ocultar_apps"/>
+</odoo>
