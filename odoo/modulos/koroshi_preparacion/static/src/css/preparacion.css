@@ -386,9 +386,6 @@
                                           #fff 7px 10px, transparent 10px 11px);
     opacity: .85;
 }
-.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubi_detalle,
-.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubicacion { background: #166534; color: #fff; }
-.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_ubi_detalle { color: #bbf7d0; }
 
 /* artículo: foto grande, referencia y talla en recuadro */
 .o_koroshi_preparacion .o_kp_articulo { margin-top: 12px; gap: 12px; align-items: center; }
@@ -593,7 +590,6 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
     margin: 8px -12px 0; padding: 4px 12px; background: #facc15; color: var(--kp-negro);
     font-size: 22px; font-weight: bold; line-height: 1.2; overflow-wrap: anywhere;
 }
-.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_destino { background: #bbf7d0; }
 .o_koroshi_preparacion .o_kp_l_destino { display: block; font-weight: bold; font-size: 13px; }
 .o_koroshi_preparacion .o_kp_hoja_tiendas { margin: 0 0 8px; padding: 0; list-style: none; font-size: 16px; }
 .o_koroshi_preparacion .o_kp_hoja_tiendas li {
@@ -619,32 +615,32 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion .o_kp_cajas_resumen { cursor: pointer; text-decoration: underline; }
 
 /* ================================================================ v3.21: color de la franja de la ubicación (menú ☰)
-   A = la de siempre (negra). Por defecto F. Una línea ya cogida sigue en verde en todos. */
-.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+   A = la de siempre (negra). Por defecto F. v3.27.1: la franja no cambia al estar cogida (se pone verde el fondo). */
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente .o_kp_ubi_detalle {
     background: #fff; color: #374151; border: 3px solid #111; border-bottom: 0;
 }
-.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente .o_kp_ubicacion {
     background: #fff; color: #111; border: 3px solid #111; border-top: 0; padding-bottom: 8px;
 }
-.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion::after { display: none; }
+.o_koroshi_preparacion.o_kp_color_b .o_kp_siguiente .o_kp_ubicacion::after { display: none; }
 .o_koroshi_preparacion.o_kp_color_b .o_kp_hueco { border-right-color: #111; border-right-width: 3px; }
 
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ubi_detalle {
     background: #facc15; color: #3f3a1a; font-weight: bold;
 }
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #facc15; color: #111; }
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion::after {
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ubicacion { background: #facc15; color: #111; }
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ubicacion::after {
     background: repeating-linear-gradient(90deg, #111 0 2px, transparent 2px 3px, #111 3px 4px, transparent 4px 7px,
                                           #111 7px 10px, transparent 10px 11px);
 }
 .o_koroshi_preparacion.o_kp_color_c .o_kp_hueco { border-right-color: #111; border-right-width: 3px; }
 .o_koroshi_preparacion.o_kp_color_c .o_kp_aqui { background: #111; color: #facc15; }
 
-.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle { background: #1e3a8a; color: #bfdbfe; }
-.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #1e3a8a; color: #fff; }
+.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente .o_kp_ubi_detalle { background: #1e3a8a; color: #bfdbfe; }
+.o_koroshi_preparacion.o_kp_color_d .o_kp_siguiente .o_kp_ubicacion { background: #1e3a8a; color: #fff; }
 .o_koroshi_preparacion.o_kp_color_d .o_kp_hueco { border-right-color: #93c5fd; }
 
-.o_koroshi_preparacion.o_kp_color_e .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+.o_koroshi_preparacion.o_kp_color_e .o_kp_siguiente .o_kp_ubicacion {
     background: #fff; color: #111; border: 3px solid #111; border-top: 0;
 }
 .o_koroshi_preparacion.o_kp_color_e .o_kp_ubicacion {
@@ -661,10 +657,10 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion.o_kp_color_e .o_kp_casilla span { font-size: 32px; font-weight: bold; line-height: 1.1; }
 .o_koroshi_preparacion.o_kp_color_e .o_kp_ko { display: block; text-align: center; font-size: 15px; margin-top: 6px; }
 
-.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente .o_kp_ubi_detalle {
     background: #111; color: #facc15; font-weight: bold;
 }
-.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion { background: #facc15; color: #111; }
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente .o_kp_ubicacion { background: #facc15; color: #111; }
 .o_koroshi_preparacion.o_kp_color_f .o_kp_ubicacion { display: block; padding: 2px 12px 6px; font-weight: bold; }
 .o_koroshi_preparacion.o_kp_color_f .o_kp_ubicacion::after { display: none; }
 .o_koroshi_preparacion.o_kp_color_f .o_kp_hueco { display: block; border-right: 0; padding-right: 0; }
@@ -711,17 +707,17 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 
 /* ================================================================ v3.21.1: fondo amarillo (C y F) más negrita
    La letra mono solo tiene «bold»: se engorda con un trazo del mismo color. En F el código KO también en negrita. */
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion,
-.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubicacion {
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ubicacion,
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente .o_kp_ubicacion {
     font-weight: 900; color: #000; -webkit-text-stroke: 1.2px #000;
 }
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ubi_detalle {
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ubi_detalle {
     color: #000; font-weight: 900;
 }
-.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ko {
+.o_koroshi_preparacion.o_kp_color_f .o_kp_siguiente .o_kp_ko {
     font-weight: 900; font-size: 17px; -webkit-text-stroke: .5px #000;
 }
-.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ko { -webkit-text-stroke: .9px #000; }
+.o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente .o_kp_ko { -webkit-text-stroke: .9px #000; }
 .o_koroshi_preparacion .o_kp_m_c,
 .o_koroshi_preparacion .o_kp_m_f { font-weight: 900; -webkit-text-stroke: 1px #000; }
 
@@ -771,3 +767,15 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 
 /* v3.27: Zalando / About You: segundo toque para validar incompleto */
 .o_koroshi_preparacion .o_kp_validar.o_kp_incompleto { background: #d97706; border-color: #d97706; color: #fff; }
+
+/* v3.27.1: línea ya cogida: la franja de la ubicación y el KO se quedan igual (se leen bien) y lo que se pone verde
+   es el fondo de la tarjeta, con un borde verde gordo. */
+.o_koroshi_preparacion .o_kp_siguiente.o_kp_vista_hecha {
+    background: #86efac; border-color: #15803d; box-shadow: inset 0 0 0 4px #15803d;
+}
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_n { color: #14532d; }
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_de,
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_etiqueta,
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_posicion,
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_cuantas_caja,
+.o_koroshi_preparacion .o_kp_vista_hecha .o_kp_talla_etq { color: #14532d; }

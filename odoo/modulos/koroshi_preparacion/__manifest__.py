@@ -174,8 +174,10 @@ v3.27.0 (13/11/2026): ZALANDO / ABOUT YOU SE VALIDAN INCOMPLETAS (van por bultos
 «Validar» avisa de cuántas uds faltan y el botón pasa a «⚠ Validar incompleto» (8 s): con el segundo toque se
 valida lo leído y lo que falta queda en una OUT pendiente (aunque pedido_pendiente sea 'no'), con una nota en las
 dos para revisar si se han hecho menos cajas. El resto de pedidos, como antes (léelas o «Faltante»).
+v3.27.1 (13/11/2026): línea ya cogida: la franja de la ubicación (y el KO) se queda con su color y se lee bien;
+lo que se pone verde es el fondo de la tarjeta.
 """,
-    'version': '13.0.3.27.0',
+    'version': '13.0.3.27.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
