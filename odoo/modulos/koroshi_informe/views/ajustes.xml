@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Ajustes KOROSHI (koroshi_menu): grupo «Informe de productividad» debajo de KPI -->
+    <record id="view_koroshi_ajustes_form_informe" model="ir.ui.view">
+        <field name="name">koroshi.ajustes.form.informe</field>
+        <field name="model">koroshi.ajustes</field>
+        <field name="inherit_id" ref="koroshi_menu.view_koroshi_ajustes_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group[@string='KPI']" position="after">
+                <group string="Informe de productividad (correo)">
+                    <field name="inf_destinatarios" placeholder="responsable@..., jefe.almacen@..."/>
+                    <field name="inf_diario"/>
+                    <field name="inf_hora_diario" placeholder="17:00"/>
+                    <field name="inf_semanal"/>
+                    <field name="inf_mensual"/>
+                    <field name="inf_hora_resumen" placeholder="08:00"/>
+                    <field name="inf_minutos_ranking"/>
+                    <field name="inf_excluir" placeholder="OP1, OP2"/>
+                </group>
+            </xpath>
+        </field>
+    </record>
+</odoo>

@@ -13,6 +13,9 @@ PARAMETROS = {
     'prep_empleados': ('koroshi_preparacion.empleados', 'char', ''),
     'prep_agrupaciones': ('koroshi_preparacion.agrupaciones', 'bool', '1'),
     'prep_orden': ('koroshi_preparacion.orden', 'sel', 'ubicacion'),
+    'prep_minutos_alarma': ('koroshi_preparacion.minutos_alarma', 'int', '4'),   # v1.2
+    'prep_horario_alarma': ('koroshi_preparacion.horario_alarma', 'char',
+                            '06:00-10:00,10:15-13:00,14:00-17:00'),   # v1.3
     'ops_minutos_sin_leer': ('koroshi_operarios.minutos_sin_leer', 'int', '15'),
     'ops_minutos_inactividad': ('koroshi_operarios.minutos_inactividad', 'int', '0'),
     'ops_uds_a_dos': ('koroshi_operarios.uds_a_dos', 'int', '150'),
@@ -39,6 +42,14 @@ class KoroshiAjustes(models.TransientModel):
                                        help='Si se apaga, las agrupaciones de zona van con la app de siempre.')
     prep_orden = fields.Selection([('ubicacion', 'Por ubicación (como la app de código de barras)'),
                                    ('ruta', 'Ruta optimizada (menos metros)')], 'Orden de las líneas')
+    prep_minutos_alarma = fields.Integer(
+        'Alarma en la PDA: minutos sin leer',
+        help='Con la OUT abierta en la pantalla de preparar y estos minutos sin leer ninguna prenda, la PDA pita sin '
+             'parar y parpadea en rojo hasta que lea una prenda o salga con ←. 0 = sin alarma. Por defecto 4.')
+    prep_horario_alarma = fields.Char(
+        'Alarma en la PDA: horario',
+        help='Tramos en que puede sonar la alarma, HH:MM-HH:MM separados por coma (hora de la PDA). Fuera de estos '
+             'tramos no suena ni cuenta. Por defecto 06:00-10:00,10:15-13:00,14:00-17:00 (sin la pausa ni la comida).')
     # Operarios y monitor
     ops_minutos_sin_leer = fields.Integer(
         'Minutos sin leer = parado',
@@ -93,7 +104,11 @@ class KoroshiAjustes(models.TransientModel):
         icp = self.env['ir.config_parameter'].sudo()
         if self.ops_informe_hora and not self._hora_valida(self.ops_informe_hora):
             raise UserError(_('La hora del informe tiene que ser HH:MM (por ejemplo 17:00).'))
-        for n in ('ops_minutos_sin_leer', 'ops_minutos_inactividad', 'ops_uds_a_dos', 'kpi_dias_falta_repetida'):
+        if self.prep_horario_alarma and not self._horario_valido(self.prep_horario_alarma):
+            raise UserError(_('El horario de la alarma tiene que ser tramos HH:MM-HH:MM separados por coma, con el '
+                              'inicio antes del final (por ejemplo 06:00-10:00,10:15-13:00,14:00-17:00).'))
+        for n in ('ops_minutos_sin_leer', 'ops_minutos_inactividad', 'ops_uds_a_dos', 'kpi_dias_falta_repetida',
+                  'prep_minutos_alarma'):
             if self[n] < 0:
                 raise UserError(_('Los números no pueden ser negativos.'))
         if self.kpi_dias_falta_repetida < 2:
@@ -121,6 +136,25 @@ class KoroshiAjustes(models.TransientModel):
         accion = self.env.ref('koroshi_menu.action_koroshi_ajustes').read()[0]
         accion['context'] = {'koroshi_aviso': msg}
         return accion
+
+    @api.model
+    def _horario_valido(self, texto):
+        """v1.3: 06:00-10:00,10:15-13:00 (cada tramo con el inicio antes del final; 24:00 vale como final)."""
+        for tramo in texto.split(','):
+            tramo = tramo.strip()
+            if not tramo:
+                continue
+            partes = tramo.split('-')
+            if len(partes) != 2:
+                return False
+            ini, fin = partes[0].strip(), partes[1].strip()
+            if not self._hora_valida(ini) or not (self._hora_valida(fin) or fin == '24:00'):
+                return False
+            a = int(ini[:-3]) * 60 + int(ini[-2:])
+            b = int(fin[:-3]) * 60 + int(fin[-2:])
+            if a >= b:
+                return False
+        return True
 
     @api.model
     def _hora_valida(self, texto):

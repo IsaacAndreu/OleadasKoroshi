@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Parametros del informe (Ajustes KOROSHI). noupdate: al actualizar no se pisan.
+         koroshi_informe.destinatarios no se crea (vacio): se ponen en Ajustes KOROSHI. Sin destinatarios
+         no se manda nada. ultimo_* y cerrado_hasta los escribe el cron. -->
+    <data noupdate="1">
+        <record id="param_diario" model="ir.config_parameter">
+            <field name="key">koroshi_informe.diario</field>
+            <field name="value">1</field>
+        </record>
+        <record id="param_hora_diario" model="ir.config_parameter">
+            <field name="key">koroshi_informe.hora_diario</field>
+            <field name="value">17:00</field>
+        </record>
+        <record id="param_semanal" model="ir.config_parameter">
+            <field name="key">koroshi_informe.semanal</field>
+            <field name="value">1</field>
+        </record>
+        <record id="param_mensual" model="ir.config_parameter">
+            <field name="key">koroshi_informe.mensual</field>
+            <field name="value">1</field>
+        </record>
+        <record id="param_hora_resumen" model="ir.config_parameter">
+            <field name="key">koroshi_informe.hora_resumen</field>
+            <field name="value">08:00</field>
+        </record>
+        <record id="param_minutos_ranking" model="ir.config_parameter">
+            <field name="key">koroshi_informe.minutos_ranking</field>
+            <field name="value">60</field>
+        </record>
+        <!-- operarios de prueba (Isaac e Isaac2) -->
+        <record id="param_excluir" model="ir.config_parameter">
+            <field name="key">koroshi_informe.excluir</field>
+            <field name="value">OP9990001, OP9980001</field>
+        </record>
+        <record id="param_servidor" model="ir.config_parameter">
+            <field name="key">koroshi_informe.servidor</field>
+            <field name="value">NATH</field>
+        </record>
+    </data>
+</odoo>

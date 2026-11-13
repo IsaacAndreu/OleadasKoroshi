@@ -724,3 +724,16 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion.o_kp_color_c .o_kp_siguiente:not(.o_kp_vista_hecha) .o_kp_ko { -webkit-text-stroke: .9px #000; }
 .o_koroshi_preparacion .o_kp_m_c,
 .o_koroshi_preparacion .o_kp_m_f { font-weight: 900; -webkit-text-stroke: 1px #000; }
+
+/* v3.22: alarma de parado. Toda la pantalla parpadea en rojo; los toques pasan (pointer-events: none). */
+.o_koroshi_preparacion.o_kp_alarma::after {
+    content: ''; position: fixed; inset: 0; z-index: 1080; pointer-events: none; background: #e00000;
+    animation: o_kp_parpadeo .5s steps(1, end) infinite;
+}
+@keyframes o_kp_parpadeo { 0% { opacity: .85; } 50% { opacity: 0; } }
+.o_koroshi_preparacion .o_kp_alarma_aviso {
+    position: fixed; left: 8px; right: 8px; top: 38%; z-index: 1090; pointer-events: none;
+    background: #000; color: #fff; border: 4px solid #e00000; padding: 14px 12px; text-align: center;
+}
+.o_koroshi_preparacion .o_kp_alarma_titulo { font-size: 26px; font-weight: 900; line-height: 1.15; }
+.o_koroshi_preparacion .o_kp_alarma_texto { font-size: 18px; font-weight: bold; margin-top: 8px; }

@@ -37,6 +37,10 @@ PARAM_ACTIVA = 'koroshi_preparacion.activa'
 PARAM_EMPLEADOS = 'koroshi_preparacion.empleados'
 PARAM_AGRUPACIONES = 'koroshi_preparacion.agrupaciones'   # v3.15: '1' = las Z- también aquí; '0' = app de siempre
 PARAM_ORDEN = 'koroshi_preparacion.orden'   # v3.17: 'ubicacion' = como la app de código de barras; 'ruta' = ruta.py
+PARAM_ALARMA = 'koroshi_preparacion.minutos_alarma'   # v3.22: minutos sin leer con la OUT abierta -> alarma; 0 = sin
+ALARMA_DEFECTO = '4'
+PARAM_HORARIO_ALARMA = 'koroshi_preparacion.horario_alarma'   # v3.23: tramos HH:MM-HH:MM separados por comas
+HORARIO_DEFECTO = '06:00-10:00,10:15-13:00,14:00-17:00'   # sin la pausa de 10:00-10:15 ni la comida de 13 a 14
 
 
 class Ocupada(UserError):
@@ -71,6 +75,37 @@ class Lectura(models.Model):
     @api.model
     def _param(self, clave, defecto=''):
         return self.env['ir.config_parameter'].sudo().get_param(clave, defecto) or defecto
+
+    @api.model
+    def minutos_alarma(self):
+        """v3.22: minutos con la OUT abierta sin leer nada hasta que la PDA pita sin parar (0 = sin alarma)."""
+        try:
+            return max(0, int(float(self._param(PARAM_ALARMA, ALARMA_DEFECTO))))
+        except (TypeError, ValueError):
+            return int(ALARMA_DEFECTO)
+
+    @api.model
+    def horario_alarma(self):
+        """v3.23: tramos en que puede sonar la alarma, en minutos desde las 00:00: [[360, 600], [615, 780], [840, 1020]].
+        Vacío o mal escrito = el de por defecto."""
+        def leer(texto):
+            tramos = []
+            for t in (texto or '').split(','):
+                t = t.strip()
+                if not t:
+                    continue
+                ini, fin = t.split('-')
+                h1, m1 = [int(x) for x in ini.strip().split(':')]
+                h2, m2 = [int(x) for x in fin.strip().split(':')]
+                a, b = h1 * 60 + m1, h2 * 60 + m2
+                if not (0 <= a < b <= 24 * 60):
+                    raise ValueError(t)
+                tramos.append([a, b])
+            return tramos
+        try:
+            return leer(self._param(PARAM_HORARIO_ALARMA, HORARIO_DEFECTO)) or leer(HORARIO_DEFECTO)
+        except (TypeError, ValueError):
+            return leer(HORARIO_DEFECTO)
 
     @api.model
     def empleado_activo(self, employee):
@@ -427,6 +462,8 @@ class Lectura(models.Model):
             'faltantes_companero': self._faltantes_companero(picking, employee, grupo),
             'mias_sin_caja': round(mias_sin_caja),
             'otros_sin_caja': round(otros_sin_caja),
+            'alarma_min': self.minutos_alarma(),   # v3.22
+            'alarma_horario': self.horario_alarma(),   # v3.23
         }
 
     @api.model

@@ -22,6 +22,8 @@
                         <field name="prep_empleados" placeholder="*"/>
                         <field name="prep_agrupaciones"/>
                         <field name="prep_orden" widget="radio"/>
+                        <field name="prep_minutos_alarma"/>
+                        <field name="prep_horario_alarma" placeholder="06:00-10:00,10:15-13:00,14:00-17:00"/>
                     </group>
                     <group string="Operarios y monitor">
                         <field name="ops_minutos_sin_leer"/>

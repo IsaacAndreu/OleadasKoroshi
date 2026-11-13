@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada 15 min: guarda el resumen por operario de los dias acabados y manda lo que toque:
+         el diario a partir de su hora, el semanal los lunes y el mensual el dia 1 (a la hora del resumen).
+         Sin correos en Ajustes KOROSHI no manda nada. -->
+    <record id="cron_koroshi_informe" model="ir.cron">
+        <field name="name">KOROSHI Informe: correo de productividad</field>
+        <field name="model_id" ref="model_koroshi_informe"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_informe()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>
