@@ -446,6 +446,34 @@ class KoroshiOperarioAsignacion(models.Model):
                                    ('motivo_id.destino', '=', 'libre'), ('fecha_salto', '>=', desde)])
 
     @api.model
+    def _dejada_por_otros(self, asig, employee):
+        """v2.11: otros operarios que hoy ya han dejado este pedido (u agrupación) con «Dejar este pedido»."""
+        desde = fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        dom = [('estado', '=', 'quitada'), ('motivo_id.destino', '=', 'libre'), ('fecha_salto', '>=', desde),
+               ('employee_id', '!=', employee.id), ('id', '!=', asig.id)]
+        if asig.tipo == 'agrupacion':
+            dom += [('tipo', '=', 'agrupacion'), ('batch_id', '=', asig.batch_id.id)]
+        else:
+            dom += [('tipo', '=', 'out'), ('picking_id', '=', asig.picking_id.id)]
+        return self.sudo().search(dom).mapped('employee_id')
+
+    @api.model
+    def en_pausa(self):
+        """v2.11: quién está ahora en pausa (comer, café): su OUT sigue en cola con el motivo «pausa» de hoy y no ha
+        empezado nada desde entonces. [(asignación, hora de la pausa)]"""
+        desde = fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        asigs = self.sudo().search([('estado', '=', 'cola'), ('motivo_id.destino', '=', 'pausa'),
+                                    ('fecha_salto', '>=', desde)], order='fecha_salto asc')
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        res = []
+        for a in asigs:
+            if Tarea.search_count([('employee_id', '=', a.employee_id.id), '|', ('estado', '=', 'curso'),
+                                   ('inicio', '>', a.fecha_salto)]):
+                continue   # ya ha vuelto (o ha empezado otra cosa)
+            res.append(a)
+        return res
+
+    @api.model
     def _intentos(self, dia, employee):
         """Por donde buscar segun el modo: [('pasillos', tramo), ('auto', None)]."""
         if dia.modo == 'manual':
@@ -656,12 +684,18 @@ class KoroshiOperarioAsignacion(models.Model):
             vals['estado'] = 'oficina'
         elif motivo.destino == 'libre':
             vals['estado'] = 'quitada'   # v2.10: libre para otro; _candidatos no se la vuelve a dar a este
+            otros = self._dejada_por_otros(actual, employee)
+            if otros:
+                # v2.11: ya la dejó otro hoy: algo le pasa al pedido -> a expediciones, que lo revisen
+                nombres = ', '.join(otros.mapped('name') + [employee.name])
+                vals.update({'estado': 'oficina',
+                             'nota': ('Dejado por %s. %s' % (nombres, vals.get('nota') or '')).strip()})
         elif motivo.destino == 'final':
             vals.update({'estado': 'cola', 'secuencia': self._ultima_secuencia(employee)})
         else:
             vals.update({'estado': 'cola', 'secuencia': self._primera_secuencia(employee)})
         actual.write(vals)
-        return actual, motivo.destino
+        return actual, ('oficina' if vals.get('estado') == 'oficina' else motivo.destino)
 
     @api.model
     def leida_a_mano(self, employee, tipo, picking, lote):

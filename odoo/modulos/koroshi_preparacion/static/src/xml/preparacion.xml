@@ -176,6 +176,8 @@
                         <button type="button" class="o_kp_imprimir">Imprimir etiqueta o albarán</button>
                         <!-- v3.21: cada operario elige el color de la franja de la ubicación -->
                         <button type="button" class="o_kp_menu_color">Color de la ubicación</button>
+                        <!-- v3.26: pausa (comer, café) sin salir antes a Lecturas -->
+                        <button type="button" class="o_kp_menu_pausa">⏸ Pausa (comer, café)</button>
                         <button type="button" class="o_kp_boton o_kp_blanco o_kp_menu_cerrar">Cerrar</button>
                     </div>
                     <div class="o_kp_hoja_color" style="display: none;">

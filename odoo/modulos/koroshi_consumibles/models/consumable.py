@@ -30,6 +30,11 @@ class KoroshiConsumableItem(models.Model):
         string='Mínimo de aviso', digits=(16, 2), default=0.0,
         help='Si el stock actual baja hasta este valor, aparece como bajo mínimo.',
     )
+    # v1.3: correo cuando baja al mínimo o se agota
+    aviso_emails = fields.Char(
+        string='Avisar por correo a',
+        help='Correos separados por comas. Llega un correo cuando el stock baja al mínimo de aviso y otro si se agota '
+             '(una vez cada vez que cruza; si se repone y vuelve a bajar, otra vez).')
     company_id = fields.Many2one(
         'res.company', string='Compañía', required=True,
         default=lambda self: self.env.user.company_id, index=True,
@@ -110,6 +115,37 @@ class KoroshiConsumableItem(models.Model):
                 item.stock_status = 'low'
             else:
                 item.stock_status = 'ok'
+
+    def _avisar_si_cruza(self, antes):
+        """v1.3: si con este consumo el stock cruza el mínimo de aviso (o llega a 0), correo a aviso_emails. Nunca
+        para el consumo (ni el cierre de la caja en la PDA)."""
+        self.ensure_one()
+        try:
+            correos = [c.strip() for c in (self.aviso_emails or '').replace(';', ',').split(',') if c.strip()]
+            if not correos:
+                return False
+            ahora = self.current_qty
+            if antes > 0 >= ahora:
+                que = 'se ha AGOTADO'
+            elif self.minimum_qty and antes > self.minimum_qty >= ahora:
+                que = 'está bajo el mínimo'
+            else:
+                return False
+            nombre = self.display_name
+            cuerpo = ('<p><b>%s</b> %s.</p><p>Stock actual: <b>%s</b> · mínimo de aviso: %s.</p>'
+                      '<p>Inventario &gt; Consumibles. Cuando llegue más, regístralo como entrada.</p>') % (
+                nombre, que, round(ahora, 2), round(self.minimum_qty, 2))
+            with self.env.cr.savepoint():
+                self.env['mail.mail'].sudo().create({
+                    'subject': 'Consumibles: %s %s (quedan %s)' % (nombre, que, round(ahora, 2)),
+                    'body_html': cuerpo,
+                    'email_to': ', '.join(correos),
+                    'auto_delete': True,
+                })
+            return True
+        except Exception:
+            _logger.exception('KOROSHI Consumibles: no se ha podido avisar de %s', self.display_name)
+            return False
 
     @api.depends('largo_mm', 'ancho_mm', 'alto_mm')
     def _compute_volumen(self):
@@ -294,7 +330,11 @@ class KoroshiConsumableMove(models.Model):
                 'item': item.display_name,
                 'available': item.current_qty,
             })
-        return super(KoroshiConsumableMove, self).create(vals)
+        antes = item.current_qty if item else 0.0
+        move = super(KoroshiConsumableMove, self).create(vals)
+        if item and move_type == 'consumption':
+            item._avisar_si_cruza(antes)   # v1.3
+        return move
 
     def write(self, vals):
         for move in self:

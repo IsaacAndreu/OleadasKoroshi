@@ -87,8 +87,11 @@ Una zona con alguna OUT cogida suelta no se da entera en automatico. Sin tarjeta
 v2.10.0 (13/11/2026): boton «Pausa (comer, cafe)» en la PDA: el tiempo se para, la PDA queda libre y al leer la tarjeta
 sale la misma OUT la primera (destino pausa). En Saltar, «Dejar este pedido (que lo haga otro)» (destino libre): queda
 libre para otro y a quien la deja no se le vuelve a dar en el dia. Motivos nuevos en data/motivos_v2100.xml.
+v2.11.0 (13/11/2026): en Lecturas, «Cogiendo ahora» enseña quien esta en pausa y desde que hora. Si un pedido lo
+deja un segundo operario el mismo dia («Dejar este pedido»), va a expediciones con la nota «Dejado por X, Y».
+Pausa tambien desde el menu de la preparacion (koroshi_preparacion 3.26).
 """,
-    'version': '13.0.2.10.0',
+    'version': '13.0.2.11.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

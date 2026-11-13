@@ -168,8 +168,10 @@ v3.24.3 (13/11/2026): cerrar caja con tipo también sin conexión; la caja cerra
 Ninguna 3.24.x anterior se instaló.
 v3.25.0 (13/11/2026): una OUT de una zona (Z-) se prepara sola cuando se lee la OUT (koroshi_operarios 2.9). Se valida
 como en la agrupación (sin el «se valida desde la agrupación» de Faltantes). La zona entera, leyendo la Z-.
+v3.26.0 (13/11/2026): «⏸ Pausa (comer, café)» en el menú ☰ (dos toques): guarda lo leído, para el tiempo (motivo
+pausa de koroshi_operarios 2.10+) y vuelve a Lecturas sin operario. Al volver, tarjeta y sale la misma OUT.
 """,
-    'version': '13.0.3.25.0',
+    'version': '13.0.3.26.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -1,8 +1,17 @@
-# KOROSHI Operarios (v2.10.0, 13/11/2026)
+# KOROSHI Operarios (v2.11.0, 13/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.11.0: quién está en pausa y pedidos que deja más de uno (13/11/2026)
+
+- En Lecturas, «Cogiendo ahora» enseña también quién está **en pausa**: «⏸ Nombre · en pausa · OUT · desde 13:02».
+  Desaparece cuando vuelve (lee su tarjeta y empieza).
+- Si un pedido lo deja **un segundo operario** el mismo día con «Dejar este pedido», ya no queda libre: va a
+  **expediciones** con la nota «Dejado por X, Y», para que lo revisen.
+- La pausa también se puede hacer desde el menú ☰ de la preparación (koroshi_preparacion 3.26).
+- El tiempo de pausa no cuenta como trabajado: la pausa cierra la tarea.
 
 ## v2.10.0: Pausa y «Dejar este pedido» (13/11/2026)
 
