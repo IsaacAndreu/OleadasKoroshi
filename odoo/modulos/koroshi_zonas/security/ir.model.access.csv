@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_zonas_ejecucion_user,koroshi.zonas.ejecucion usuario,model_koroshi_zonas_ejecucion,stock.group_stock_user,1,1,1,0
+access_koroshi_zonas_ejecucion_manager,koroshi.zonas.ejecucion responsable,model_koroshi_zonas_ejecucion,stock.group_stock_manager,1,1,1,1
+access_koroshi_zonas_ejecucion_out_user,koroshi.zonas.ejecucion.out usuario,model_koroshi_zonas_ejecucion_out,stock.group_stock_user,1,1,1,0
+access_koroshi_zonas_ejecucion_out_manager,koroshi.zonas.ejecucion.out responsable,model_koroshi_zonas_ejecucion_out,stock.group_stock_manager,1,1,1,1
+access_koroshi_zonas_config_user,koroshi.zonas.config usuario,model_koroshi_zonas_config,stock.group_stock_user,1,0,0,0
+access_koroshi_zonas_config_manager,koroshi.zonas.config responsable,model_koroshi_zonas_config,stock.group_stock_manager,1,1,1,0

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Fase 3: la configuracion con los valores de la v12f (si no existe) y, UNA sola vez, los litros por tipo de
+         la v12f en la tabla de koroshi_kpi (decision del 11/11/2026, opcion C). -->
+    <function model="koroshi.zonas.config" name="obtener"/>
+    <function model="koroshi.zonas.config" name="aplicar_litros_v12f"/>
+</odoo>

@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_zonas_config_form" model="ir.ui.view">
+        <field name="name">koroshi.zonas.config.form</field>
+        <field name="model">koroshi.zonas.config</field>
+        <field name="arch" type="xml">
+            <form string="Configuración del reparto por zonas" create="false" delete="false">
+                <sheet>
+                    <div class="oe_title"><h1><field name="name"/></h1></div>
+                    <div class="alert alert-info" role="alert">
+                        Valores iniciales = los de la acción 1883 (v12f): con ellos el reparto es el mismo.
+                        Los litros por tipo de prenda están en KOROSHI KPI &gt; Pesos y litros por tipo (una sola tabla).
+                    </div>
+                    <group string="Cron del reparto">
+                        <field name="modo_cron" widget="radio"/>
+                        <field name="canal"/>
+                        <field name="correo_destinatarios"/>
+                        <field name="company_id" groups="base.group_multi_company"/>
+                    </group>
+                    <group>
+                        <group string="Equipo y horario">
+                            <field name="personas"/>
+                            <field name="zonas"/>
+                            <field name="hora_inicio"/>
+                            <field name="hora_fin"/>
+                            <field name="una_ronda"/>
+                            <field name="rendimiento"/>
+                            <field name="seg_lectura"/>
+                            <field name="seg_lineal"/>
+                        </group>
+                        <group string="Cajas y mínimos">
+                            <field name="litros_caja"/>
+                            <field name="cierre_min"/>
+                            <field name="min_uds_pedido"/>
+                            <field name="min_uds_zonas"/>
+                            <field name="peso_carga"/>
+                            <field name="iter_equilibrio"/>
+                            <field name="tiendas_48h"/>
+                            <field name="ver_out"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_zonas_config" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: configuración</field>
+        <field name="model_id" ref="model_koroshi_zonas_config"/>
+        <field name="state">code</field>
+        <field name="code">action = {'type': 'ir.actions.act_window', 'name': 'Configuración del reparto por zonas',
+          'res_model': 'koroshi.zonas.config', 'view_mode': 'form', 'res_id': model.obtener().id,
+          'target': 'current'}</field>
+    </record>
+
+    <!-- Lista de albaranes: seleccionar OUT > Accion -->
+    <record id="action_koroshi_zonas_etiquetas" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: etiquetas de zona</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="state">code</field>
+        <field name="code">action = env['koroshi.zonas.etiquetas'].imprimir(records.ids, 'REAL')</field>
+    </record>
+
+    <record id="action_koroshi_zonas_etiquetas_diag" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: etiquetas de zona (ver sin imprimir)</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="state">code</field>
+        <field name="code">action = env['koroshi.zonas.etiquetas'].imprimir(records.ids, 'DIAGNOSTICO')</field>
+    </record>
+
+    <record id="action_koroshi_zonas_probar_seleccion" model="ir.actions.server">
+        <field name="name">KOROSHI Zonas: diagnóstico sin guardar de las OUT seleccionadas</field>
+        <field name="model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="state">code</field>
+        <field name="code">action = env['koroshi.zonas.ejecucion'].accion_probar_ids(records.ids)</field>
+    </record>
+
+    <menuitem id="menu_koroshi_zonas_config" name="Configuración" parent="menu_koroshi_zonas_root"
+              action="action_koroshi_zonas_config" sequence="95" groups="stock.group_stock_manager"/>
+</odoo>

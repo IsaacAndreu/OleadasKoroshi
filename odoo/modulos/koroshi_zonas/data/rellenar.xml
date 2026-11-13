@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1.1: al instalar o actualizar, rellena lo que la v1.1.0 dejo vacio (nombre de la ejecucion; dia,
+         compania, diferencia y causa de las filas). Solo escribe en las tablas del modulo; si ya esta, no hace nada -->
+    <function model="koroshi.zonas.ejecucion" name="_rellenar_campos"/>
+</odoo>
