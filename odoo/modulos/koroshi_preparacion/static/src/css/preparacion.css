@@ -768,3 +768,6 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 
 /* v3.26: pausa en el menú ☰; al primer toque pide confirmar */
 .o_koroshi_preparacion .o_kp_menu_pausa.o_kp_confirmar_pausa { background: #111; color: #facc15; font-weight: 900; }
+
+/* v3.27: Zalando / About You: segundo toque para validar incompleto */
+.o_koroshi_preparacion .o_kp_validar.o_kp_incompleto { background: #d97706; border-color: #d97706; color: #fff; }

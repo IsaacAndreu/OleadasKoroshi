@@ -186,7 +186,7 @@ class KoroshiPreparacion(http.Controller):
 
     @http.route('/koroshi/preparacion/validar', type='json', auth='user')
     def validar(self, picking_id=False, employee_id=False, pedido_pendiente=False, lote_id=False, tipo_caja=False,
-                **kw):
+                incompleto=False, **kw):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
@@ -195,7 +195,7 @@ class KoroshiPreparacion(http.Controller):
             if lote_id:
                 res = self._agrupacion().validar(lote, emp, pp)
             else:
-                res = self._lectura().validar(picking, emp, pp, tipo_caja)   # v3.24
+                res = self._lectura().validar(picking, emp, pp, tipo_caja, bool(incompleto))   # v3.24, v3.27
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'que': 'no_validada', 'msg': _msg(e)}
         return self._con_estado(picking, res, emp, lote=lote)
