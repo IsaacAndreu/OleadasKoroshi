@@ -381,3 +381,6 @@ body.o_ko_bloqueado .o_main_navbar { display: none !important; }
 
 /* v2.10: botón de pausa, debajo de Faltante / Saltar */
 .o_koroshi_operarios .o_ko_pausa { width: 100%; margin-top: 10px; min-height: 52px; font-size: 19px; }
+
+/* v2.11: quien está en pausa, en «Cogiendo ahora» */
+.o_koroshi_operarios .o_ko_fila_pausa { color: #6b7280; font-style: italic; }

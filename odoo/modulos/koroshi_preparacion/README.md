@@ -1,8 +1,15 @@
-# KOROSHI Preparación en Lecturas (v3.25.0, 13/11/2026)
+# KOROSHI Preparación en Lecturas (v3.26.0, 13/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
+
+## v3.26.0: pausa desde la preparación (13/11/2026)
+
+- En el menú ☰, **«⏸ Pausa (comer, café)»**. Primer toque: «Toca otra vez para la pausa»; segundo: se guarda lo leído,
+  se para el tiempo y se vuelve a Lecturas sin operario («⏸ Pausa, Nombre…»). Al volver, lee su tarjeta y sale la
+  misma OUT la primera. Es la misma pausa del botón de Lecturas (koroshi_operarios 2.10 o más).
+- Si prepara a dos (ayudante), solo se para su tiempo.
 
 ## v3.25.0: OUT de una zona, sola (13/11/2026)
 

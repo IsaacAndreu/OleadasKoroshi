@@ -1,4 +1,10 @@
-# KOROSHI Consumibles (v1.2.1, 13/11/2026)
+# KOROSHI Consumibles (v1.3.0, 13/11/2026)
+
+## v1.3.0: aviso por correo (13/11/2026)
+
+- Campo **«Avisar por correo a»** en cada consumible (correos separados por comas). Llega un correo cuando el stock baja
+  al **mínimo de aviso** y otro cuando se **agota**. Vale también para las cajas que resta la PDA al cerrar una caja.
+- Sin correos puestos, no se avisa (como antes). Hay que poner el mínimo y los correos en cada caja.
 
 ## v1.2.1
 

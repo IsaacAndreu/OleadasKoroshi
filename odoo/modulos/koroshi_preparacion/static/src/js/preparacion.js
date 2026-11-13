@@ -1,6 +1,7 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.26: «⏸ Pausa (comer, café)» en el menú ☰ (dos toques): como la pausa de Lecturas, sin salir antes.
  * v3.24.1: se lee la CJ y luego se toca qué caja es (o al revés); ninguna marcada de entrada. Botones grandes.
  * v3.24: tipo de caja (Consumibles): al cerrar una caja el operario elige Grande / 60x40x40 / Mediana / Online…
  * (se recuerda por operario). Odoo pone ese «Tipo de paquete» a la caja y resta 1 en Consumibles. Zalando / About
@@ -109,6 +110,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_menu_btn': '_onMenu',
         'click .o_kp_pack_seguir': '_onPackSeguir',      // v3.20
         'click .o_kp_l_editar': '_onEditarCaja',         // v3.21: ✎ en una línea ya en caja
+        'click .o_kp_menu_pausa': '_onMenuPausa',        // v3.26: pausa (comer, café)
         'click .o_kp_menu_color': '_onMenuColor',        // v3.21: color de la franja de la ubicación
         'click .o_kp_color_op': '_onElegirColor',
         'click .o_kp_color_cerrar': '_cerrarHoja',
@@ -1831,6 +1833,52 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja').show();
     },
 
+    // v3.26: pausa (comer, café) desde el menú ☰. Primer toque: pide confirmar; segundo: lo leído se guarda, Odoo
+    // cierra el tiempo (motivo «Pausa» de Operarios: la OUT sigue suya y la primera) y se vuelve a Lecturas, que
+    // queda sin operario. Al volver, lee su tarjeta y sale esta misma OUT.
+    _onMenuPausa: function (ev) {
+        var self = this;
+        var $b = $(ev.currentTarget);
+        if (!this.operario) { return this._aviso('Sin tarjeta no hay pausa: pulsa ← para salir.', 'warn'); }
+        if (this.sinRed) { return this._aviso('Sin conexión: espera a que vuelva para la pausa.', 'mal'); }
+        if (!$b.hasClass('o_kp_confirmar_pausa')) {
+            $b.addClass('o_kp_confirmar_pausa').text('⏸ Toca otra vez para la pausa');
+            clearTimeout(this.timerPausa);
+            this.timerPausa = setTimeout(function () {
+                $b.removeClass('o_kp_confirmar_pausa').text('⏸ Pausa (comer, café)');
+            }, 5000);
+            return;
+        }
+        clearTimeout(this.timerPausa);
+        $b.removeClass('o_kp_confirmar_pausa').text('⏸ Pausa (comer, café)');
+        if (this.cola.length) {
+            this._cerrarHoja();
+            return this._aviso('Espera: guardando ' + this._textoPendientes() + '… y vuelve a pulsar Pausa.', 'warn');
+        }
+        var emp = this.operario.id;
+        var nombre = this.operario.nombre;
+        this._cerrarHoja();
+        this._aviso('Pausa…', 'info');
+        return this._rpc({route: '/koroshi/operarios/motivos', params: {}}).then(function (r) {
+            var m = r && r.ok && _.findWhere(r.motivos || [], {destino: 'pausa'});
+            if (!m) { throw {msg: 'No se ha podido cargar la pausa.'}; }
+            return self._rpc({route: '/koroshi/operarios/saltar', params: {employee_id: emp, motivo_id: m.id, nota: ''}});
+        }).then(function (r) {
+            if (r && r.ok) { return r.msg; }
+            // a dos (ayudante): no tiene la OUT asignada; solo se cierra su tiempo
+            return self._rpc({route: '/koroshi/operarios/dejar', params: {employee_id: emp}}).then(function (d) {
+                if (!d || !d.ok) { throw {msg: (r && r.msg) || (d && d.msg) || 'Error'}; }
+                return 'Tu tiempo queda parado';
+            });
+        }).then(function (msg) {
+            window.koroshiPausaHecha = {nombre: nombre, msg: msg};   // Lecturas (abajo) quita el operario y lo dice
+            self.trigger_up('history_back');
+        }).guardedCatch(function (e) {
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            self._aviso('No se ha podido hacer la pausa' + (e && e.msg ? ': ' + e.msg : '') + '. Vuelve a probar.', 'mal');
+        });
+    },
+
     _onMenuLineas: function () {
         this._cerrarHoja();
         this._onVerLineas();
@@ -2363,6 +2411,18 @@ var PRECARGA_MS = 90000;
 var accionPreparar = null;
 
 Operarios.include({
+    /** v3.26: vuelve de la preparación tras la pausa: la PDA queda libre (como la pausa de Lecturas). */
+    on_attach_callback: function () {
+        var p = window.koroshiPausaHecha;
+        if (p) {
+            window.koroshiPausaHecha = null;
+            this._olvidarOperario();
+        }
+        var res = this._super.apply(this, arguments);
+        if (p) { this._aviso('⏸ Pausa, ' + p.nombre + '. ' + p.msg + '.', 'info'); }
+        return res;
+    },
+
     /** v3.14: con la OUT que toca a la vista, se carga ya en segundo plano (pantalla y OUT): Continuar abre al momento. */
     _precargar: function (obj) {
         var self = this;
