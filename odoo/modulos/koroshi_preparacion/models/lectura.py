@@ -889,7 +889,9 @@ class Lectura(models.Model):
         """Pasa n uds de una línea ya en caja a otra caja de la misma OUT (o a una nueva): «la caja va muy llena,
         esta chaqueta a la otra». destino = nombre de una caja de la OUT, una etiqueta CJ (nueva o de la OUT) o
         'NUEVA' (Zalando / About You: paquete PACK... nuevo). Igual que Odoo al cerrar caja: si no se mueve la línea
-        entera, se parte en dos (copia con las uds movidas y la original con el resto)."""
+        entera, se parte en dos (copia con las uds movidas y la original con el resto).
+        v3.28: destino 'FUERA' = sacar de la caja: las uds vuelven a «por poner» (fuera de caja, del operario que las
+        leyó) y entran en la caja siguiente al cerrarla."""
         self._comprobar(picking)
         if not self._con_caja(picking):
             return {'ok': False, 'msg': _('Esta OUT no va en cajas.')}
@@ -910,7 +912,9 @@ class Lectura(models.Model):
         self._bloquear(picking)
         try:
             with self.env.cr.savepoint():
-                if destino == 'NUEVA':
+                if destino == 'FUERA':   # v3.28
+                    paquete = Paquete.browse()
+                elif destino == 'NUEVA':
                     if not self._pack_auto(picking):
                         raise UserError(_('Lee la etiqueta CJ de la caja nueva.'))
                     vals = {}
@@ -928,28 +932,33 @@ class Lectura(models.Model):
                         if 'company_id' in Paquete._fields:
                             vals['company_id'] = picking.company_id.id
                         paquete = Paquete.create(vals)
-                if paquete == origen:
+                if paquete and paquete == origen:
                     raise UserError(_('Ya está en la caja %s.') % origen.name)
                 nueva = ml
                 if n < hechas or float_compare(ml.qty_done, ml.product_uom_qty, precision_digits=3) != 0:
                     # lo mismo que put_in_pack de Odoo: copia con 0 pedidas y las hechas, y luego se reparte
-                    nueva = ml.copy({'product_uom_qty': 0, 'qty_done': n, 'result_package_id': paquete.id})
+                    nueva = ml.copy({'product_uom_qty': 0, 'qty_done': n, 'result_package_id': paquete.id or False})
                     ml.write({'product_uom_qty': max(ml.product_uom_qty - n, 0), 'qty_done': ml.qty_done - n})
                     nueva.write({'product_uom_qty': n})
                 else:
-                    ml.write({'result_package_id': paquete.id})
+                    ml.write({'result_package_id': paquete.id or False})
                 # las lecturas de esas uds pasan a la caja nueva (lo de cada operario sigue cuadrando)
                 lecturas = self.sudo().search([('picking_id', '=', picking.id), ('en_caja', '=', origen.name),
                                                ('move_line_id', '=', ml.id), ('tipo', '=', 'leer'),
                                                ('resultado', '=', 'ok'), ('deshecha', '=', False)], limit=n)
-                lecturas.write({'en_caja': paquete.name, 'move_line_id': nueva.id})
+                lecturas.write({'en_caja': paquete.name or False, 'move_line_id': nueva.id})
         except (UserError, ValidationError) as e:
             msg = e.name if hasattr(e, 'name') else str(e)
             return {'ok': False, 'msg': msg}
-        msg = _('%s %s: de %s a %s.') % (n, n == 1 and _('ud') or _('uds'), origen.name, paquete.name)
+        if not paquete:   # v3.28: sacada de la caja
+            msg = _('%s %s fuera de %s: van a la caja siguiente.') % (n, n == 1 and _('ud') or _('uds'), origen.name)
+            if not picking.move_line_ids.filtered(lambda l: l.result_package_id == origen):
+                msg += ' ' + _('%s queda vacía.') % origen.name
+        else:
+            msg = _('%s %s: de %s a %s.') % (n, n == 1 and _('ud') or _('uds'), origen.name, paquete.name)
         msg = '%s · %s' % (self._corto(ml.product_id), msg)
-        self._apuntar(picking, employee, 'mover', paquete.name, 'ok', msg, ml=nueva, cantidad=n)
-        return {'ok': True, 'msg': msg, 'caja': paquete.name, 'origen': origen.name, 'uds': n}
+        self._apuntar(picking, employee, 'mover', paquete.name or _('fuera de caja'), 'ok', msg, ml=nueva, cantidad=n)
+        return {'ok': True, 'msg': msg, 'caja': paquete.name or False, 'origen': origen.name, 'uds': n}
 
     # ------------------------------------------------------------------ validar
     @api.model
