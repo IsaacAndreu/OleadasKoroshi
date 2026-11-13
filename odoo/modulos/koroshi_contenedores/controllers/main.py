@@ -23,6 +23,12 @@ def _msg(e):
     return e.args[0] if e.args else str(e)
 
 
+def _literal(texto):
+    """v1.4: el texto tal cual para un =ilike: en ILIKE «_» es «cualquier letra» y «%» «cualquier cosa», y los nombres
+    son KO_110626_032 (con «_»): sin escaparlos, KO_110626_032 también encontraba p. ej. KOX110626X032."""
+    return (texto or '').replace('\\', '\\\\').replace('%', '\\%').replace('_', '\\_')
+
+
 class KoroshiContenedores(http.Controller):
 
     def _comprobar_usuario(self):
@@ -177,7 +183,7 @@ class KoroshiContenedores(http.Controller):
                     return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
             if _es_contenedor_nombre(codigo):
                 loc = Loc.search([('usage', '=', 'internal'), '|',
-                                  ('name', '=ilike', codigo), ('barcode', '=ilike', codigo)])
+                                  ('name', '=ilike', _literal(codigo)), ('barcode', '=ilike', _literal(codigo))])
                 loc = loc.filtered(lambda l: _es_contenedor_nombre(l.name))
                 if not loc:
                     raise UserError('No encuentro el contenedor %s (o está archivado).' % codigo)
