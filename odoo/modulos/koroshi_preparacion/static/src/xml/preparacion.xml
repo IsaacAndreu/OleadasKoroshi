@@ -124,7 +124,7 @@
                             <span class="o_kp_mv_cant"/>
                             <button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_mas" aria-label="Una más">+</button>
                         </div>
-                        <div class="o_kp_mv_etq">¿A qué caja?</div>
+                        <div class="o_kp_mv_etq">¿Dónde va?</div>
                         <div class="o_kp_mv_destinos"/>
                         <p class="o_kp_mv_cj">O lee la etiqueta CJ de otra caja.</p>
                         <div class="o_kp_hoja_aviso o_kp_mv_aviso" role="alert"/>

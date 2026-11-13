@@ -6,6 +6,16 @@ entera sin salir a la app de código de barras: leer productos, cerrar cajas con
 
 
 
+
+## v3.28.0: sacar de la caja (13/11/2026)
+
+- En la lista de líneas, **✎** en una línea ya en caja tiene ahora **«↩ Sacar de la caja (va a la siguiente)»**: se
+  elige cuántas uds y vuelven a estar fuera de caja («por poner»). Al cerrar la caja siguiente entran en ella con lo
+  demás. Ejemplo: se leen 3, la caja se cierra y solo caben 2 → ✎, 1 ud, Sacar de la caja.
+- Ya no sale **«+ Caja nueva»** (Zalando / About You): hacía un PACK aparte con solo esas uds.
+- Siguen las otras cajas de la OUT y, en las de tienda, leer otra etiqueta CJ.
+- Si la caja de la que se saca se queda vacía, lo dice (el paquete vacío no estorba).
+
 ## v3.27.1: línea cogida, en verde el fondo (13/11/2026)
 
 - Al leer una prenda y completar la línea, la franja de la ubicación ya no se pone verde oscura (no se leía bien):

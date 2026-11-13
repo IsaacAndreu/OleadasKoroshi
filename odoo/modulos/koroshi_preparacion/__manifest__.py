@@ -176,8 +176,11 @@ valida lo leído y lo que falta queda en una OUT pendiente (aunque pedido_pendie
 dos para revisar si se han hecho menos cajas. El resto de pedidos, como antes (léelas o «Faltante»).
 v3.27.1 (13/11/2026): línea ya cogida: la franja de la ubicación (y el KO) se queda con su color y se lee bien;
 lo que se pone verde es el fondo de la tarjeta.
+v3.28.0 (13/11/2026): ✎ en una línea ya en caja: «↩ Sacar de la caja (va a la siguiente)». Las uds vuelven a
+fuera de caja y entran en la caja siguiente al cerrarla. Sustituye a «+ Caja nueva» (Zalando / About You), que
+hacía un PACK con solo esas uds.
 """,
-    'version': '13.0.3.27.1',
+    'version': '13.0.3.28.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -1174,16 +1174,15 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_mv_cant_fila').toggle(l.leidas > 1);
         this.$('.o_kp_mv_cant').text('1');
         var $d = this.$('.o_kp_mv_destinos').empty();
+        // v3.28: sacar de la caja: vuelve a «por poner» y entra en la caja siguiente (antes «+ Caja nueva»)
+        $('<button type="button" class="o_kp_boton o_kp_mv_destino o_kp_mv_fuera"/>').attr('data-destino', 'FUERA')
+            .text('↩ Sacar de la caja (va a la siguiente)').appendTo($d);
         _.each((this.estado.cajas || []), function (c) {
             if (c.nombre === l.caja) { return; }
             $('<button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_destino"/>').attr('data-destino', c.nombre)
                 .text(c.nombre + ' (' + c.uds + (c.uds === 1 ? ' ud)' : ' uds)')).appendTo($d);
         });
         var auto = this._out() && this._out().pack_auto;
-        if (auto) {
-            $('<button type="button" class="o_kp_boton o_kp_mv_destino"/>').attr('data-destino', 'NUEVA')
-                .text('+ Caja nueva').appendTo($d);
-        }
         this.$('.o_kp_mv_cj').toggle(!auto);
         this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso').text('');
         this.$('.o_kp_hoja_mover').show();
