@@ -1,6 +1,10 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.24.1: se lee la CJ y luego se toca qué caja es (o al revés); ninguna marcada de entrada. Botones grandes.
+ * v3.24: tipo de caja (Consumibles): al cerrar una caja el operario elige Grande / 60x40x40 / Mediana / Online…
+ * (se recuerda por operario). Odoo pone ese «Tipo de paquete» a la caja y resta 1 en Consumibles. Zalando / About
+ * You: «Caja» enseña los tipos y tocar uno cierra la caja.
  * v3.22: «Caja» también sin red: la caja se cierra en la PDA (lo leído pasa a ella) y va a la cola, en su sitio, con
  * las lecturas; Odoo la cierra al volver la conexión. Zalando / About You: «S<n>» para apuntar y luego su PACK.
  * v3.15: también una agrupación de zona (Z-) entera, en un solo recorrido: las líneas de todas sus OUT en el orden de
@@ -75,6 +79,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_lector': '_onTocar',
         'click .o_kp_volver': '_onVolver',
         'click .o_kp_caja': '_onCaja',
+        'click .o_kp_tipo_caja': '_onTipoCaja',          // v3.24
         'click .o_kp_cancelar_caja': '_salirDeCaja',
         'click .o_kp_hoja_fondo': '_onFondoHoja',
         'click .o_kp_validar': '_onValidar',
@@ -467,7 +472,11 @@ var Pantalla = AbstractAction.extend({
         });
         var cajas = (e.cajas || []).slice();
         var ya = _.findWhere(cajas, {nombre: nombre});
-        if (ya) { ya.uds += uds; } else { cajas.push({nombre: nombre, uds: uds, sin_red: true}); }
+        // v3.24.3: la caja cerrada sin red también enseña su tipo
+        var tipo = item.tipoCaja && _.findWhere(e.tipos_caja || [], {id: item.tipoCaja});
+        if (ya) { ya.uds += uds; } else {
+            cajas.push({nombre: nombre, uds: uds, sin_red: true, tipo: tipo ? tipo.nombre : false});
+        }
         e.cajas = cajas;
         this._recalcular(e);
         return uds;
@@ -491,7 +500,8 @@ var Pantalla = AbstractAction.extend({
             return i.tipo === 'leer' || i.tipo === 'cantidad' || i.tipo === 'caja';
         }).map(function (i) {
             return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
-                    lineaId: i.lineaId, n: i.n, outId: i.outId, provisional: i.provisional};
+                    lineaId: i.lineaId, n: i.n, outId: i.outId, provisional: i.provisional,
+                    tipoCaja: i.tipoCaja};
         });
         if (lecturas.length) { todo[clave] = lecturas; } else { delete todo[clave]; }
         this._escribirMemoria(todo);
@@ -511,6 +521,7 @@ var Pantalla = AbstractAction.extend({
                 if (item.tipo === 'caja') {   // v3.22: la caja cerrada sin red (mismo id: Odoo no la cierra dos veces)
                     item.outId = i.outId;
                     item.provisional = i.provisional;
+                    item.tipoCaja = i.tipoCaja;   // v3.24
                     item.local = true;
                     self._cajaLocal(self.estado, item);
                     self.cola.push(item);
@@ -587,6 +598,7 @@ var Pantalla = AbstractAction.extend({
         }
         if (esLote && item.tipo === 'leer' && item.lineaId) { p.linea_id = item.lineaId; }   // v3.15: la que se ve
         if (esLote && item.tipo === 'caja' && item.outId) { p.out_id = item.outId; }          // v3.15: CJ sin tienda
+        if (item.tipo === 'caja' && item.tipoCaja) { p.tipo_caja = item.tipoCaja; }           // v3.24
         return p;
     },
 
@@ -644,7 +656,7 @@ var Pantalla = AbstractAction.extend({
         if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
         this.ultima = {codigo: codigo, t: ahora};
         if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
-        if (this.modo === 'menu' || this.modo === 'color') { this._cerrarHoja(); }   // v3.11, v3.21: lo cierra y cuenta
+        if (this.modo === 'menu' || this.modo === 'color' || this.modo === 'caja_auto') { this._cerrarHoja(); }   // v3.11, v3.21: lo cierra y cuenta
         if (this.modo === 'mover') {   // v3.21: con «Cambiar de caja» abierto, leer una CJ es la caja de destino
             if (RE_CJ.test(codigo.toUpperCase())) { return this._moverA(codigo.toUpperCase()); }
             this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
@@ -667,8 +679,15 @@ var Pantalla = AbstractAction.extend({
         var tipo = this.modo === 'caja' ? 'caja' : 'leer';
         // v3.15: en una agrupación, leer una CJ es cerrar la caja de esa tienda (su etiqueta dice de qué OUT es)
         if (tipo === 'leer' && this._esLote() && RE_CJ.test(codigo)) { tipo = 'caja'; }
+        // v3.24.1: con tipos de caja, se lee la CJ y luego se dice qué caja es (no se cierra con un tipo supuesto)
+        if (tipo === 'caja' && !this.tipoHoja && RE_CJ.test(codigo.toUpperCase()) &&
+                ((this.estado && this.estado.tipos_caja) || []).length) {
+            if (this.modo !== 'caja') { this._hojaCaja(false); }   // agrupación: CJ leída sin pulsar «Caja»
+            return this._pedirTipo(codigo.toUpperCase());
+        }
         var item = {tipo: tipo, codigo: codigo, id: this._nuevoId(), t: ahora,
                     employee_id: this.operario ? this.operario.id : false};
+        if (tipo === 'caja') { item.tipoCaja = this.tipoHoja || this._tipoCaja(); }   // v3.24
         if (tipo === 'caja' && this._esLote()) {
             // v3.15: si la CJ no es de ninguna tienda, va a la tienda de la línea que se ve
             var vista = this.estado && _.findWhere(this.estado.lineas, {id: this._idVisto()});
@@ -830,17 +849,109 @@ var Pantalla = AbstractAction.extend({
             return this._foco();
         }
         if (!this._esLote() && this.estado.out && this.estado.out.pack_auto) {
-            // v3.19: Zalando / About You: sin etiqueta CJ. Odoo crea el paquete (PACK...) y se sigue leyendo
-            var auto = {tipo: 'caja', codigo: '', id: this._nuevoId(), t: Date.now(),
-                        employee_id: this.operario ? this.operario.id : false};
-            if (this.sinRed) { return this._cajaSinRed(auto); }   // v3.22
-            this._aviso('Cerrando caja…', 'info');
-            this.cola.push(auto);
-            this._guardarCola();
-            this._enviar();
+            // v3.24: con tipos de caja, primero se elige (tocar uno la cierra); sin tipos, como antes
+            if ((this.estado.tipos_caja || []).length) { return this._hojaCaja(true); }
+            return this._cerrarAuto();
+        }
+        return this._hojaCaja(false);
+    },
+
+    // v3.19: Zalando / About You: sin etiqueta CJ. Odoo crea el paquete (PACK...) y se sigue leyendo
+    _cerrarAuto: function () {
+        var auto = {tipo: 'caja', codigo: '', id: this._nuevoId(), t: Date.now(),
+                    employee_id: this.operario ? this.operario.id : false, tipoCaja: this._tipoCaja()};
+        if (this.modo === 'caja_auto') { this._cerrarHoja(); }
+        if (this.sinRed) { return this._cajaSinRed(auto); }   // v3.22
+        this._aviso('Cerrando caja…', 'info');
+        this.cola.push(auto);
+        this._guardarCola();
+        this._enviar();
+        return this._foco();
+    },
+
+    // ------------------------------------------------------------ v3.24: tipo de caja
+    _claveTipoCaja: function () {
+        return 'koroshi_preparacion_tipo_caja_' + (this.operario ? this.operario.id : 'pda');
+    },
+
+    /** El tipo elegido (id de Consumibles), si sigue en la lista; si no, el primero. false si no hay tipos. */
+    _tipoCaja: function () {
+        var tipos = (this.estado && this.estado.tipos_caja) || [];
+        if (!tipos.length) { return false; }
+        var id = this.tipoCajaId;
+        if (!id) {
+            try { id = parseInt(window.localStorage.getItem(this._claveTipoCaja()) || '0', 10); } catch (e) { id = 0; }
+        }
+        return _.findWhere(tipos, {id: id}) ? id : tipos[0].id;
+    },
+
+    _pintarTipos: function (auto) {
+        var tipos = (this.estado && this.estado.tipos_caja) || [];
+        var actual = this.tipoHoja;   // v3.24.1: sin ninguno marcado hasta que lo toquen
+        var $c = this.$('.o_kp_tipos_caja').empty().toggle(!!tipos.length);
+        tipos.forEach(function (t) {
+            $('<button type="button" class="o_kp_tipo_caja"/>').attr('data-id', t.id)
+                .toggleClass('o_kp_tipo_elegido', !auto && !!actual && t.id === actual)
+                .append($('<b/>').text(t.nombre))
+                .append(t.medidas ? $('<small/>').text(t.medidas) : null)
+                .appendTo($c);
+        });
+        this.$('.o_kp_tipos_titulo').toggle(!!tipos.length)
+            .text(auto ? '¿Qué caja cierras? Toca el tipo:' : 'Lee la CJ y toca qué caja es:');
+    },
+
+    // v3.24.1: CJ leída sin tipo: la hoja la enseña y espera a que toquen qué caja es
+    _pedirTipo: function (codigo) {
+        this.cjPendiente = codigo;
+        this.$('.o_kp_hoja_caja .o_kp_hoja_titulo').text(codigo);
+        if (!this._esLote() && this.estado) {
+            this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
+                                            ' a esta caja.');
+        }
+        this.$('.o_kp_tipos_titulo').text('¿Qué caja es? Toca el tipo:');
+        this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_ok')
+            .text('✓ Etiqueta leída. Ahora toca el tipo de caja.');
+        this._pitido(true);
+        return this._foco();
+    },
+
+    _onTipoCaja: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (!id) { return; }
+        this.tipoCajaId = id;
+        try { window.localStorage.setItem(this._claveTipoCaja(), String(id)); } catch (e) { /* sin memoria */ }
+        if (this.modo === 'caja_auto') { return this._cerrarAuto(); }   // Zalando / About You: tocar = cerrar
+        this.tipoHoja = id;   // v3.24.1
+        this.$('.o_kp_tipo_caja').each(function () {
+            $(this).toggleClass('o_kp_tipo_elegido', parseInt($(this).data('id'), 10) === id);
+        });
+        if (this.cjPendiente) {   // v3.24.1: ya se había leído la CJ: se cierra la caja con este tipo
+            var cj = this.cjPendiente;
+            this.cjPendiente = null;
+            this.ultima = {codigo: '', t: 0};
+            return this._leer(cj);
+        }
+        this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('Ahora lee la etiqueta CJ.');
+        this._foco();
+    },
+
+    // la hoja de cerrar caja: CJ (leer la etiqueta) o, auto = Zalando / About You, solo el tipo
+    _hojaCaja: function (auto) {
+        this.modo = auto ? 'caja_auto' : 'caja';
+        this.tipoHoja = null;      // v3.24.1: cada caja, su tipo (tocado a propósito)
+        this.cjPendiente = null;
+        this._pintarTipos(auto);
+        this.$('.o_kp_hoja_caja .o_kp_hoja_titulo').text(auto ? 'Cerrar caja' : 'Escanea la caja');
+        if (auto) {
+            this.$('.o_kp_hoja_tiendas').empty().hide();
+            this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
+                                            ' a esta caja. Odoo le pone el número (PACK).');
+            this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso').text('');
+            this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante').hide();
+            this.$('.o_kp_hoja_caja').show();
+            this.$('.o_kp_hoja').show();
             return this._foco();
         }
-        this.modo = 'caja';
         var $t = this.$('.o_kp_hoja_tiendas').empty().hide();
         if (this._esLote()) {
             // v3.15: cada tienda tiene su caja: la etiqueta CJ dice de qué tienda es
@@ -982,7 +1093,8 @@ var Pantalla = AbstractAction.extend({
         cajas.forEach(function (c) {
             $('<li/>').toggleClass('o_kp_pack_nueva', c.nombre === nombre)
                 .append($('<b/>').text(c.nombre))
-                .append($('<span/>').text(' · ' + c.uds + (c.uds === 1 ? ' ud' : ' uds') +
+                .append($('<span/>').text((c.tipo ? ' · ' + c.tipo : '') +   // v3.24
+                                          ' · ' + c.uds + (c.uds === 1 ? ' ud' : ' uds') +
                                           (mapa[c.nombre] ? ' · era ' + mapa[c.nombre] : '') +   // v3.22
                                           (c.sin_red ? ' · sin guardar aún' : '')))
                 .appendTo($l);
@@ -1147,13 +1259,16 @@ var Pantalla = AbstractAction.extend({
     _onFondoHoja: function () {
         if (this.modo === 'pack') { return this._onPackSeguir(); }   // v3.20
         if (this.modo === 'mover' || this.modo === 'color') { return this._cerrarHoja(); }      // v3.21
-        if (this.modo === 'caja') { this._salirDeCaja(); } else if (this.modo === 'pregunta') { this._cerrarHoja(); }
+        if (this.modo === 'caja' || this.modo === 'caja_auto') { this._salirDeCaja(); }   // v3.24
+        else if (this.modo === 'pregunta') { this._cerrarHoja(); }
         else if (this.modo === 'faltante') { this._cerrarFaltante(); }
         else if (this.modo === 'cantidad' || this.modo === 'imprimir' || this.modo === 'menu') { this._cerrarHoja(); }
     },
 
     _cerrarHoja: function () {
         this.modo = 'leer';
+        this.tipoHoja = null;      // v3.24.1
+        this.cjPendiente = null;
         this.$('.o_kp_hoja').hide();
         this.$('.o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu, .o_kp_hoja_pack, .o_kp_hoja_mover, ' +
                '.o_kp_hoja_color').hide();   // v3.7, v3.11, v3.20, v3.21
@@ -1180,6 +1295,7 @@ var Pantalla = AbstractAction.extend({
         return this._rpc({route: '/koroshi/preparacion/validar', params: _.extend(this._obj(out.id), {
             employee_id: this.operario ? this.operario.id : false,
             pedido_pendiente: pedidoPendiente || false,
+            tipo_caja: this._tipoCaja() || false,   // v3.24: la última caja de Zalando / About You
         })}).then(function (r) {
             if (r && r.estado) { self._aplicar(r.estado); }
             if (r && r.ok && r.que === 'validada' && r.caja_auto) {

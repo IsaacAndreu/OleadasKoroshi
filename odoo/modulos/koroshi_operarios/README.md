@@ -1,8 +1,24 @@
-# KOROSHI Operarios (v2.8.0, 12/11/2026)
+# KOROSHI Operarios (v2.10.0, 13/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.10.0: Pausa y «Dejar este pedido» (13/11/2026)
+
+- Botón **«Pausa (comer, café)»** debajo de Saltar: el tiempo de la OUT se para, la PDA queda libre y, al volver y
+  leer la tarjeta, la misma OUT sale la primera. Es como «Fin de turno» pero sin el «Hasta mañana».
+- En **Saltar**, motivo nuevo **«Dejar este pedido (que lo haga otro)»**: la OUT queda libre para otro operario y a quien
+  la deja no se le vuelve a dar en todo el día (si la lee a mano, sí la puede coger).
+- Los motivos se cambian en Inventario > KOROSHI Operarios > Motivos para saltar (destinos nuevos «libre» y «pausa»).
+
+## v2.9.0: leer una OUT de una zona abre solo esa OUT (13/11/2026)
+
+- Si se lee una OUT que está en una agrupación de zona (Z-), se abre **solo esa OUT** (antes se abría la zona entera).
+  Para hacer la zona entera, se lee el nombre de la Z-.
+- Si otro operario está haciendo ahora la zona entera, no deja: «OUT… es de la zona Z-… y la está haciendo X».
+- Una zona con alguna OUT cogida suelta ya no se da entera en automático.
+- Sin tarjeta, igual: la OUT sola.
 
 ## v2.8.0: «¿Unirte a X?» solo si X la está haciendo ahora (12/11/2026)
 

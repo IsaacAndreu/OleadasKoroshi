@@ -65,6 +65,8 @@ class KoroshiOperarioMotivo(models.Model):
         ('oficina', 'Expediciones (no se da a nadie hasta revisarla)'),
         ('final', 'Final de su cola'),
         ('suya', 'Sigue suya y la primera (fin de turno)'),
+        ('libre', 'Libre para otro (a quien la deja no le vuelve a salir hoy)'),   # v2.10
+        ('pausa', 'Pausa: sigue suya y la primera (comer, café)'),                  # v2.10
     ], 'Adonde va', required=True, default='oficina')
     pide_nota = fields.Boolean('Pide texto', help='Al elegirlo en la PDA se pide escribir el motivo')
     active = fields.Boolean('Activo', default=True)
@@ -407,8 +409,9 @@ class KoroshiOperarioAsignacion(models.Model):
         """OUT (y agrupaciones Z- si esta encendido) libres, de la mas antigua a la mas nueva."""
         Picking = self.env['stock.picking'].sudo()
         cogidas = self.sudo().search([('estado', 'in', VIVAS), ('tipo', '=', 'out')]).mapped('picking_id')
+        dejadas = self._dejadas_hoy(employee)   # v2.10: «Dejar este pedido»: a este operario no se le vuelve a dar
         dom = [('picking_type_code', '=', 'outgoing'), ('company_id', '=', dia.company_id.id),
-               ('id', 'not in', cogidas.ids)]
+               ('id', 'not in', (cogidas | dejadas.mapped('picking_id')).ids)]
         dom += [('state', '=', 'assigned')] if dia.solo_preparadas else [('state', 'in', ('assigned', 'confirmed'))]
         # OUT sueltas: sin agrupacion de zonas (las de una Z- solo se dan con la agrupacion entera)
         sueltas = Picking.search(dom, order='scheduled_date asc, id asc', limit=CANDIDATOS).filtered(
@@ -420,15 +423,27 @@ class KoroshiOperarioAsignacion(models.Model):
         if dia.agrupaciones and not tramo:
             Batch = self.env['stock.picking.batch'].sudo()
             cogidos = self.sudo().search([('estado', 'in', VIVAS), ('tipo', '=', 'agrupacion')]).mapped('batch_id')
+            cogidos |= dejadas.filtered(lambda a: a.tipo == 'agrupacion').mapped('batch_id')   # v2.10
             lotes = Batch.search([('name', '=like', 'Z-%'), ('state', 'in', ('draft', 'in_progress')),
                                   ('company_id', '=', dia.company_id.id), ('id', 'not in', cogidos.ids)],
                                  order='create_date asc, id asc', limit=50)
             for b in lotes:
                 vivas = b.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel'))
+                if vivas & cogidas:   # v2.9: alguien hace una OUT de esta zona suelta: la zona no se da entera
+                    continue
                 if vivas and (not dia.solo_preparadas or any(p.state == 'assigned' for p in vivas)):
                     lista.append((b.create_date, 'agrupacion', b))
         lista.sort(key=lambda x: (x[0] or datetime.datetime.max, x[2].id))
         return lista
+
+    @api.model
+    def _dejadas_hoy(self, employee):
+        """v2.10: lo que este operario ha dejado hoy con «Dejar este pedido» (motivo con destino libre)."""
+        if not employee:
+            return self.browse()
+        desde = fields.Datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        return self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'quitada'),
+                                   ('motivo_id.destino', '=', 'libre'), ('fecha_salto', '>=', desde)])
 
     @api.model
     def _intentos(self, dia, employee):
@@ -639,6 +654,8 @@ class KoroshiOperarioAsignacion(models.Model):
                 'fecha_salto': fields.Datetime.now(), 'tarea_id': False}
         if motivo.destino == 'oficina':
             vals['estado'] = 'oficina'
+        elif motivo.destino == 'libre':
+            vals['estado'] = 'quitada'   # v2.10: libre para otro; _candidatos no se la vuelve a dar a este
         elif motivo.destino == 'final':
             vals.update({'estado': 'cola', 'secuencia': self._ultima_secuencia(employee)})
         else:
@@ -654,6 +671,14 @@ class KoroshiOperarioAsignacion(models.Model):
         if viva and viva.estado == 'oficina':
             raise UserError(_('%s esta en oficina (%s). Que la libere el responsable.')
                             % (viva.name, viva.motivo_id.name or ''))
+        zona = picking.batch_id if tipo == 'out' and picking else None
+        if zona and (zona.name or '').startswith(PREFIJOS_ZONA):
+            # v2.9: OUT de una zona leída sola: no si otro está haciendo ahora la zona entera
+            ahora = self._tareas_de_otros(employee, 'agrupacion', picking, zona).filtered(
+                lambda t: t._trabajando_ahora())
+            if ahora:
+                raise UserError(_('%s es de la zona %s y la esta haciendo %s')
+                                % (picking.name, zona.name, ', '.join(ahora.mapped('employee_id.name'))))
         if viva and viva.employee_id and viva.employee_id != employee:
             # v2.8: si otro la esta haciendo AHORA (ha leido hace poco), sigue siendo suya. Si nadie la esta haciendo
             # (la dejo, se paro o aun no la habia empezado), se la queda quien la lee, sin preguntar nada.

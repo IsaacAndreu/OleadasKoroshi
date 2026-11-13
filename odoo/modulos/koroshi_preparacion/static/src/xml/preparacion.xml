@@ -5,7 +5,7 @@
         <div class="o_koroshi_preparacion">
             <div class="o_kp_offline" role="alert" style="display: none;">
                 <span role="presentation">⚠</span>
-                <span>Sin conexión con Odoo. Puedes seguir leyendo y cerrar cajas: se guarda en la PDA y se manda al volver. Solo Validar espera.</span>
+                <span>Sin conexión · se guarda en la PDA</span>
             </div>
             <!-- v3.22: alarma de parado (no tapa los toques: ← y los botones siguen funcionando) -->
             <div class="o_kp_alarma_aviso" role="alert" style="display: none;">
@@ -107,6 +107,9 @@
                         <p class="o_kp_hoja_texto"/>
                         <!-- v3.15: agrupación Z-: las tiendas con algo leído fuera de caja -->
                         <ul class="o_kp_hoja_tiendas" style="display: none;"/>
+                        <!-- v3.24: tipo de caja (Consumibles) -->
+                        <div class="o_kp_tipos_titulo" style="display: none;"/>
+                        <div class="o_kp_tipos_caja" style="display: none;"/>
                         <div class="o_kp_hoja_aviso" role="alert"/>
                         <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
                     </div>

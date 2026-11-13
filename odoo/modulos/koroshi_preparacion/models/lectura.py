@@ -127,7 +127,8 @@ class Lectura(models.Model):
         """OUT que se puede preparar aquí: salida de la company 8, sin agrupación de zona, ni hecha ni cancelada.
         v3.14: también las INT que salen del stock (las de web, de EFFEC/Stock a SORTER). Las que salen de otro sitio
         (p. ej. la ronda de faltantes, desde FALTANTE) siguen en la app de código de barras.
-        v3.15: en_lote=True (pantalla de la agrupación entera) acepta también las OUT de una agrupación Z-."""
+        v3.15: en_lote=True (pantalla de la agrupación entera) acepta también las OUT de una agrupación Z-.
+        v3.25: una OUT de una zona Z- también se prepara sola (se leyó la OUT, no la zona)."""
         if not picking or picking.company_id.id != COMPANY_ID:
             return False
         if picking.picking_type_code == 'internal':
@@ -139,7 +140,7 @@ class Lectura(models.Model):
         if picking.state in ('done', 'cancel', 'draft'):
             return False
         if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
-            return bool(en_lote) and picking.picking_type_code == 'outgoing' and self.agrupaciones_activas()
+            return picking.picking_type_code == 'outgoing'   # v3.25: sola o con la zona entera
         return True
 
     # ------------------------------------------------------------------ estado de la OUT
@@ -418,6 +419,7 @@ class Lectura(models.Model):
         for ml in picking.move_line_ids.filtered('result_package_id'):
             cajas.setdefault(ml.result_package_id.name, 0)
             cajas[ml.result_package_id.name] += ml.qty_done
+        tipos = self._tipos_de_paquetes(picking.move_line_ids.mapped('result_package_id'))   # v3.24
         con_caja = self._con_caja(picking)   # v3.14: INT sin caja
         sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if con_caja else 0
         pedidas = sum(picking.move_line_ids.mapped('product_uom_qty'))
@@ -427,9 +429,7 @@ class Lectura(models.Model):
         mias_sin_caja = sum(v[0] for v in reparto.values())
         otros_sin_caja = sum(v[1] for v in reparto.values())
         companeros = [e.name for e in equipo if not employee or e != employee]
-        zona = ''
-        if picking.batch_id and not (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
-            zona = picking.batch_id.name or ''
+        zona = picking.batch_id.name or ''   # v3.25: también la Z- (la OUT de una zona hecha sola)
         todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
         return {
             'ligero': ligero,
@@ -449,7 +449,8 @@ class Lectura(models.Model):
             'lineas': lineas,
             'siguiente_id': siguiente,
             'sin_caja': round(sin_caja),
-            'cajas': [{'nombre': k, 'uds': round(v)} for k, v in sorted(cajas.items())],
+            'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
+            'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
             'pedidas': round(pedidas),
             'leidas': round(leidas),
             'todo_leido': todo_leido,
@@ -772,7 +773,7 @@ class Lectura(models.Model):
 
     # ------------------------------------------------------------------ cerrar caja
     @api.model
-    def caja(self, picking, employee, codigo, id_lectura=False):
+    def caja(self, picking, employee, codigo, id_lectura=False, tipo_caja=False):
         codigo = (codigo or '').strip().upper()
         previa = self._repetida(id_lectura)
         if previa:
@@ -831,9 +832,56 @@ class Lectura(models.Model):
             else:
                 dominio += ['|', ('employee_id', '=', False), ('employee_id', '=', titular.id)]
         self.sudo().search(dominio).write({'en_caja': codigo})
+        # v3.24: el tipo de caja que ha elegido el operario (Consumibles): se pone a la caja y resta 1 si es nueva
+        tipo = self._poner_tipo_caja(picking, employee, codigo, tipo_caja,
+                                     nueva=codigo not in antes.mapped('name'))
         msg = _('Caja %s cerrada con %s uds.') % (codigo, round(uds))
+        if tipo:
+            msg = _('Caja %s (%s) cerrada con %s uds.') % (codigo, tipo, round(uds))
         self._apuntar(picking, employee, 'caja', codigo, 'ok', msg, cantidad=uds, id_lectura=id_lectura)
         return {'ok': True, 'msg': msg, 'caja': codigo, 'uds': round(uds)}   # v3.20: la PDA enseña el número
+
+    # ------------------------------------------------------------------ v3.24: tipo de caja
+    @api.model
+    def tipos_caja(self, company=None):
+        """Las cajas de Consumibles para elegir en la PDA: [{id, nombre, medidas}]."""
+        try:
+            return self.env['koroshi.consumable.item'].cajas_pda(company)
+        except Exception:
+            _logger.exception('KOROSHI Preparación: no se han podido leer los tipos de caja')
+            return []
+
+    @api.model
+    def _tipos_de_paquetes(self, paquetes):
+        """{nombre de la caja: nombre corto de su tipo} para la lista de cajas de la PDA."""
+        con_tipo = paquetes.filtered('packaging_id')
+        if not con_tipo:
+            return {}
+        items = self.env['koroshi.consumable.item'].sudo().with_context(active_test=False).search(
+            [('packaging_id', 'in', con_tipo.mapped('packaging_id').ids)])
+        corto = dict((i.packaging_id.id, i.nombre_pda or i.name) for i in items)
+        return dict((p.name, corto.get(p.packaging_id.id, p.packaging_id.name)) for p in con_tipo)
+
+    @api.model
+    def _poner_tipo_caja(self, picking, employee, nombre, tipo_caja, nueva=True):
+        """Pone a la caja recién cerrada el «Tipo de paquete» de la caja elegida y, si la caja es nueva en esta OUT,
+        resta 1 en Consumibles. Nunca para el cierre de la caja. Devuelve el nombre corto del tipo ('' si no hay)."""
+        if not tipo_caja or not nombre:
+            return ''
+        item = self.env['koroshi.consumable.item'].sudo().browse(int(tipo_caja or 0)).exists()
+        if not item or not item.es_caja:
+            return ''
+        try:
+            with self.env.cr.savepoint():
+                paquetes = picking.move_line_ids.mapped('result_package_id').filtered(lambda p: p.name == nombre)
+                if item.packaging_id and paquetes:
+                    paquetes.sudo().write({'packaging_id': item.packaging_id.id})
+        except Exception:
+            _logger.exception('KOROSHI Preparación: no se ha podido poner el tipo a la caja %s', nombre)
+        if nueva:
+            item.consumir_caja(item.id, '%s · %s%s' % (picking.name, nombre,
+                                                      (' · %s' % employee.name) if employee else ''))
+        return item.nombre_pda or item.name
 
     # ------------------------------------------------------------------ v3.21: mover de caja
     @api.model
@@ -905,7 +953,18 @@ class Lectura(models.Model):
 
     # ------------------------------------------------------------------ validar
     @api.model
-    def validar(self, picking, employee, pedido_pendiente=None):
+    def _validar_out_de_zona(self, Faltante, picking, pedido_pendiente):
+        """v3.25: OUT de una zona (Z-) hecha sola: la validación de koroshi_faltantes sin su «se valida desde la
+        agrupación» (lo mismo que hace models/agrupacion.py con cada OUT de la zona)."""
+        pendientes = Faltante.lineas_pendientes(picking)
+        if pendientes:
+            return {'estado': 'pendientes', 'n': len(pendientes)}
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            raise UserError(_('En %s no hay nada leído.') % picking.name)
+        return Faltante._todo_o_nada(Faltante._validar_out, picking, pedido_pendiente)
+
+    @api.model
+    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
         {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}."""
         self._comprobar(picking)
@@ -914,7 +973,7 @@ class Lectura(models.Model):
             # v3.19: Zalando / About You: lo leído fuera de caja (lo de este operario) va solo a un paquete nuevo
             reparto = self._reparto_sin_caja(picking, employee)
             if sum(v[0] for v in reparto.values()) > 0:
-                r = self.caja(picking, employee, '')
+                r = self.caja(picking, employee, '', tipo_caja=tipo_caja)   # v3.24: con el tipo elegido
                 if not r.get('ok'):
                     return {'ok': False, 'que': 'sin_caja', 'msg': r.get('msg')}
                 caja_auto = {'caja_auto': r.get('caja'), 'caja_uds': r.get('uds')}   # v3.20: la PDA la enseña
@@ -935,7 +994,10 @@ class Lectura(models.Model):
             pedido_pendiente = fijo if fijo in ('si', 'no') else None
         Faltante = self.env['koroshi.faltante']
         try:
-            r = Faltante.validar_out(picking, pedido_pendiente)
+            if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+                r = self._validar_out_de_zona(Faltante, picking, pedido_pendiente)   # v3.25
+            else:
+                r = Faltante.validar_out(picking, pedido_pendiente)
         except (UserError, ValidationError) as e:
             msg = e.name if hasattr(e, 'name') else str(e)
             self._apuntar(picking, employee, 'validar', picking.name, 'error', msg)

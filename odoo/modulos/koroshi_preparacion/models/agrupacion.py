@@ -122,6 +122,7 @@ class Agrupacion(models.AbstractModel):
         for ml in mls.filtered('result_package_id'):
             cajas.setdefault(ml.result_package_id.name, 0)
             cajas[ml.result_package_id.name] += ml.qty_done
+        tipos = L._tipos_de_paquetes(mls.mapped('result_package_id'))   # v3.24
         todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
         return {
             'ligero': ligero,
@@ -142,7 +143,8 @@ class Agrupacion(models.AbstractModel):
             'lineas': lineas,
             'siguiente_id': siguiente,
             'sin_caja': round(sin_caja),
-            'cajas': [{'nombre': k, 'uds': round(v)} for k, v in sorted(cajas.items())],
+            'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
+            'tipos_caja': L.tipos_caja(lote.company_id or None),   # v3.24
             'pedidas': round(sum(mls.mapped('product_uom_qty'))),
             'leidas': round(sum(mls.mapped('qty_done'))),
             'todo_leido': todo_leido,
@@ -277,7 +279,7 @@ class Agrupacion(models.AbstractModel):
         return self.env['stock.picking'].sudo().search([('name', '=', nota[len(NOTA_ETIQUETA):].strip())], limit=1)
 
     @api.model
-    def caja(self, lote, employee, codigo, id_lectura=False, out_id=False):
+    def caja(self, lote, employee, codigo, id_lectura=False, out_id=False, tipo_caja=False):
         """La CJ leída dice la tienda (su etiqueta de zona): en esa caja va lo leído de SU OUT y aún sin caja.
         Si la etiqueta no es de ninguna OUT (CJ suelta): la OUT de la línea que se ve, o la única con algo leído."""
         L = self._l()
@@ -312,7 +314,7 @@ class Agrupacion(models.AbstractModel):
         info = self._info(destino)
         if destino not in con_algo:
             return {'ok': False, 'msg': _('%s: no hay nada leído fuera de caja para esta tienda.') % self._destino(info)}
-        res = L.caja(destino, employee, codigo, id_lectura)
+        res = L.caja(destino, employee, codigo, id_lectura, tipo_caja)   # v3.24: con el tipo elegido
         res['out_id'] = destino.id
         if res.get('ok'):
             res['msg'] = '%s: %s' % (self._destino(info), res.get('msg') or '')

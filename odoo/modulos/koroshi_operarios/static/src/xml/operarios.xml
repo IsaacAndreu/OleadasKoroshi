@@ -90,6 +90,10 @@
                             <span class="o_ko_icono" role="presentation">⤼</span> Saltar
                         </button>
                     </div>
+                    <!-- v2.10: pausa (comer, café): el tiempo se para y al volver sigue la misma -->
+                    <button class="o_ko_pausa o_ko_boton o_ko_gris" type="button">
+                        <span class="o_ko_icono" role="presentation">⏸</span> Pausa (comer, café)
+                    </button>
                 </div>
 
                 <div class="o_ko_entrada">

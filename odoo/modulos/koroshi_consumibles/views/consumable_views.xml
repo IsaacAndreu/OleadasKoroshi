@@ -26,6 +26,11 @@
             <tree string="Totales iniciales" editable="bottom" decoration-danger="stock_status == 'empty'" decoration-warning="stock_status == 'low'">
                 <field name="name"/>
                 <field name="code"/>
+                <field name="es_caja"/>
+                <field name="en_lecturas"/>
+                <field name="largo_mm"/>
+                <field name="ancho_mm"/>
+                <field name="alto_mm"/>
                 <field name="category"/>
                 <field name="uom"/>
                 <field name="initial_qty" string="Total conocido por Betty"/>
@@ -60,6 +65,17 @@
                             <field name="uom"/>
                             <field name="company_id" groups="base.group_multi_company"/>
                             <field name="active"/>
+                        </group>
+                        <group string="Caja (PDA)">
+                            <field name="es_caja"/>
+                            <field name="en_lecturas" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="nombre_pda" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="secuencia" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="largo_mm" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="ancho_mm" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="alto_mm" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="volumen_m3" attrs="{'invisible': [('es_caja', '=', False)]}"/>
+                            <field name="packaging_id" attrs="{'invisible': [('es_caja', '=', False)]}"/>
                         </group>
                         <group string="Stock">
                             <field name="initial_qty" string="Total inicial conocido"/>

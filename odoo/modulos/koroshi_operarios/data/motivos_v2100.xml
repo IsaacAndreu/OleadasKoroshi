@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v2.10.0 (13/11/2026): «Dejar este pedido» (libre para otro; a quien lo deja no le vuelve a salir hoy) y la
+         pausa (comer, café: botón «Pausa» de la PDA; no sale en la lista de Saltar). Se cambian en
+         Inventario > KOROSHI Operarios > Motivos para saltar. -->
+    <record id="motivo_dejar" model="koroshi.operario.motivo">
+        <field name="name">Dejar este pedido (que lo haga otro)</field>
+        <field name="sequence">15</field>
+        <field name="destino">libre</field>
+    </record>
+    <record id="motivo_pausa" model="koroshi.operario.motivo">
+        <field name="name">Pausa (comer, café)</field>
+        <field name="sequence">90</field>
+        <field name="destino">pausa</field>
+    </record>
+</odoo>

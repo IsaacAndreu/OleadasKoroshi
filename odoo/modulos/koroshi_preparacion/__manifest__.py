@@ -154,12 +154,27 @@ fuera de caja y, en una agrupación, de qué tienda es la CJ (el estado trae aho
 Zalando / About You: sin red la caja sale como «S<n>» para apuntarla; al volver la conexión sale su PACK y en la lista
 «era S<n>». Si Odoo no acepta una caja guardada así, avisa y lo leído queda fuera de caja para cerrarla otra vez.
 Validar sigue necesitando conexión.
+v3.24.0 (13/11/2026): TIPO DE CAJA. Al cerrar una caja el operario elige el tipo (las cajas de Consumibles
+marcadas «Es una caja»: Grande 590x390x400, 60x40x40, Mediana, Online 280x280x120). Se recuerda por operario.
+Odoo pone a la caja su «Tipo de paquete» y resta 1 en Consumibles (solo si la caja es nueva en la OUT; nunca para
+el cierre). Zalando / About You: «Caja» enseña los tipos y tocar uno cierra la caja; la última caja al validar va
+con el último tipo elegido. En la lista de cajas sale el tipo. Depende de koroshi_consumibles (v1.2).
+v3.24.1 (13/11/2026): se lee la CJ y luego se toca qué caja es (también al revés). Ninguna sale marcada: la caja
+no se cierra hasta que digan el tipo (también la CJ leída en una agrupación). Botones más grandes y legibles.
+La 3.24.0 no se instaló.
+v3.24.2 (13/11/2026): el aviso de sin conexión en una línea y más corto («Sin conexión · se guarda en la PDA»).
+Las 3.24.0 y 3.24.1 no se instalaron.
+v3.24.3 (13/11/2026): cerrar caja con tipo también sin conexión; la caja cerrada sin red enseña su tipo en la lista.
+Ninguna 3.24.x anterior se instaló.
+v3.25.0 (13/11/2026): una OUT de una zona (Z-) se prepara sola cuando se lee la OUT (koroshi_operarios 2.9). Se valida
+como en la agrupación (sin el «se valida desde la agrupación» de Faltantes). La zona entera, leyendo la Z-.
 """,
-    'version': '13.0.3.23.0',
+    'version': '13.0.3.25.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_operarios', 'koroshi_faltantes'],
+    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_operarios', 'koroshi_faltantes',
+                'koroshi_consumibles'],
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',
