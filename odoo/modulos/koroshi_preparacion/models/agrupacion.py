@@ -12,6 +12,7 @@
 # koroshi.preparacion.lectura. Sin campos nuevos en las tablas de stock; nunca cancela ni fuerza disponibilidad.
 # =============================================================================
 import json
+import logging
 import re
 
 from werkzeug.urls import url_quote
@@ -23,6 +24,9 @@ from .lectura import COMPANY_ID, PREFIJOS_ZONA, RE_CJ, Ocupada
 
 RE_CAJA_NOTA = re.compile(r'\|\s*CAJA\s+(\d+)\b')   # 'Z-2210-D3 | CAJA 05 | K34 ...' ('CAJAS 3' no)
 NOTA_ETIQUETA = 'ETQ ZONA '                          # zebra.label reservada por las etiquetas de zona
+MEMO = 'kp_memo'   # v3.29: clave del contexto con lo calculado una vez por petición (las OUT vivas de la agrupación)
+
+_logger = logging.getLogger(__name__)
 
 
 class Agrupacion(models.AbstractModel):
@@ -35,9 +39,29 @@ class Agrupacion(models.AbstractModel):
 
     # ------------------------------------------------------------------ qué se prepara aquí
     @api.model
+    def con_memo(self):
+        """v3.29: la agrupación con un memo para la petición: las OUT vivas se calculan una vez (antes 4-5 veces por
+        lectura: comprobar, ¿es propia?, leer y el estado; cada vez leyendo la nota de cada OUT)."""
+        return self.with_context(**{MEMO: {}})
+
+    @api.model
+    def _olvidar(self):
+        """v3.29: tras validar, las OUT vivas han cambiado."""
+        memo = self.env.context.get(MEMO)
+        if memo is not None:
+            memo.clear()
+
+    @api.model
     def _vivas(self, lote):
-        return lote.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel')).sorted(
+        memo = self.env.context.get(MEMO)
+        clave = ('vivas', lote.id)
+        if memo is not None and clave in memo:
+            return self.env['stock.picking'].browse(memo[clave])
+        vivas = lote.picking_ids.filtered(lambda p: p.state not in ('done', 'cancel')).sorted(
             lambda p: (self._caja_tienda(p) or '99999', p.name or ''))
+        if memo is not None:
+            memo[clave] = vivas.ids
+        return vivas
 
     @api.model
     def lote_propio(self, lote):
@@ -124,8 +148,30 @@ class Agrupacion(models.AbstractModel):
             cajas[ml.result_package_id.name] += ml.qty_done
         tipos = L._tipos_de_paquetes(mls.mapped('result_package_id'))   # v3.24
         todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
-        return {
+        res = {
             'ligero': ligero,
+            'out_estado': 'done' if not vivas else (lote.state or ''),   # v3.29: el ligero no trae 'out'
+            'outs': outs,
+            'lineas': lineas,
+            'siguiente_id': siguiente,
+            'sin_caja': round(sin_caja),
+            'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
+            'pedidas': round(sum(mls.mapped('product_uom_qty'))),
+            'leidas': round(sum(mls.mapped('qty_done'))),
+            'todo_leido': todo_leido,
+            # sin preparar a dos en las agrupaciones (la tarea es de toda la agrupación y de un operario)
+            'a_dos': False,
+            'rol': 'solo',
+            'companeros': [],
+            'mitad': '',
+            'aviso_equipo': '',
+            'faltantes_companero': [],
+            'mias_sin_caja': round(sin_caja),
+            'otros_sin_caja': 0,
+        }
+        if ligero:
+            return res   # v3.29: lo fijo, solo en /cargar entero
+        res.update({
             'out': {
                 'id': lote.id,
                 'name': lote.name,
@@ -139,27 +185,11 @@ class Agrupacion(models.AbstractModel):
                 'propia': self.lote_propio(lote),
                 'nota': '',
             },
-            'outs': outs,
-            'lineas': lineas,
-            'siguiente_id': siguiente,
-            'sin_caja': round(sin_caja),
-            'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
             'tipos_caja': L.tipos_caja(lote.company_id or None),   # v3.24
-            'pedidas': round(sum(mls.mapped('product_uom_qty'))),
-            'leidas': round(sum(mls.mapped('qty_done'))),
-            'todo_leido': todo_leido,
-            # sin preparar a dos en las agrupaciones (la tarea es de toda la agrupación y de un operario)
-            'a_dos': False,
-            'rol': 'solo',
-            'companeros': [],
-            'mitad': '',
-            'aviso_equipo': '',
-            'faltantes_companero': [],
-            'mias_sin_caja': round(sin_caja),
-            'otros_sin_caja': 0,
             'alarma_min': L.minutos_alarma(),   # v3.22
             'alarma_horario': L.horario_alarma(),   # v3.23
-        }
+        })
+        return res
 
     # ------------------------------------------------------------------ leer un producto
     @api.model
@@ -170,8 +200,7 @@ class Agrupacion(models.AbstractModel):
         codigo = (codigo or '').strip()
         previa = L._repetida(id_lectura)
         if previa:
-            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'linea_id': previa.move_line_id.id,
-                    'que': 'repetida'}
+            return L._respuesta_repetida(previa)   # v3.29
         self._comprobar(lote)
         if RE_CJ.match(codigo):
             return {'ok': False, 'que': 'es_caja', 'msg': _('Es una caja: pulsa «Caja» antes de leerla.')}
@@ -233,7 +262,11 @@ class Agrupacion(models.AbstractModel):
 
     # ------------------------------------------------------------------ deshacer / cantidad
     @api.model
-    def deshacer(self, lote, employee):
+    def deshacer(self, lote, employee, id_lectura=False):
+        L = self._l()
+        previa = L._repetida(id_lectura)   # v3.29: la PDA reintenta con el mismo id: no se deshace otra
+        if previa:
+            return L._respuesta_repetida(previa)
         self._comprobar(lote)
         dominio = [('picking_id', 'in', self._vivas(lote).ids), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
                    ('deshecha', '=', False), ('en_caja', '=', False)]
@@ -242,7 +275,7 @@ class Agrupacion(models.AbstractModel):
         ultima = self.env['koroshi.preparacion.lectura'].sudo().search(dominio, limit=1)
         if not ultima or not ultima.move_line_id:
             return {'ok': False, 'msg': _('No hay ninguna lectura tuya que deshacer en %s.') % lote.name}
-        return self._l().deshacer(ultima.picking_id, employee)
+        return L.deshacer(ultima.picking_id, employee, id_lectura)
 
     @api.model
     def poner_cantidad(self, lote, employee, linea_id, cantidad, id_lectura=False):
@@ -286,7 +319,7 @@ class Agrupacion(models.AbstractModel):
         codigo = (codigo or '').strip().upper()
         previa = L._repetida(id_lectura)
         if previa:
-            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'que': 'repetida'}
+            return L._respuesta_repetida(previa)   # v3.29
         self._comprobar(lote)
         if not RE_CJ.match(codigo):
             return {'ok': False, 'msg': _('%s no es una etiqueta de caja (CJ + 9 cifras). Lee la etiqueta de la caja.')
@@ -324,9 +357,14 @@ class Agrupacion(models.AbstractModel):
     @api.model
     def validar(self, lote, employee, pedido_pendiente=None):
         """Todo leído (o en faltantes) y en caja -> cada OUT con su validación normal (button_validate, todo o nada
-        por OUT). Si Odoo pregunta por el pedido pendiente, se pregunta una vez y vale para las que quedan."""
+        por OUT). Si Odoo pregunta por el pedido pendiente, se pregunta una vez y vale para las que quedan.
+        v3.29: sin OUT por hacer = ya validada (la PDA reintenta si no le llegó la respuesta). La agrupación se
+        bloquea: dos validaciones a la vez no pueden pasar (la segunda espera y vuelve a probar)."""
         L = self._l()
+        if lote and not self._vivas(lote):
+            return {'ok': True, 'que': 'validada', 'msg': _('%s ya no tiene OUT por hacer.') % lote.name}
         self._comprobar(lote)
+        self._bloquear_lote(lote)
         vivas = self._vivas(lote)
         fuera = [(p, sum(L._sin_caja(p).mapped('qty_done'))) for p in vivas]
         fuera = [(p, n) for p, n in fuera if float_compare(n, 0, precision_digits=3) > 0]
@@ -358,6 +396,7 @@ class Agrupacion(models.AbstractModel):
                 errores.append('%s: %s' % (self._destino(info), msg))
                 continue
             if r['estado'] == 'preguntar':
+                self._olvidar()
                 self._cerrar_tareas()
                 txt = _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')
                 if validadas:
@@ -365,6 +404,7 @@ class Agrupacion(models.AbstractModel):
                 return {'ok': True, 'que': 'preguntar', 'msg': txt}
             L._apuntar(p, employee, 'validar', p.name, 'ok', _('%s validada (agrupación %s).') % (p.name, lote.name))
             validadas.append(p)
+        self._olvidar()   # v3.29: el estado de la respuesta, con las OUT que quedan de verdad
         self._cerrar_tareas()
         if errores:
             txt = (_('%s OUT validadas. ') % len(validadas) if validadas else '') + _('Sin validar: ') + '; '.join(errores)
@@ -378,7 +418,16 @@ class Agrupacion(models.AbstractModel):
             with self.env.cr.savepoint():
                 self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
         except Exception:
-            pass
+            _logger.exception('KOROSHI Preparación: no se han podido cerrar las tareas tras validar una agrupación')
+
+    @api.model
+    def _bloquear_lote(self, lote):
+        """v3.29: una sola validación a la vez de la misma agrupación."""
+        try:
+            with self.env.cr.savepoint():
+                self.env.cr.execute('SELECT id FROM stock_picking_batch WHERE id = %s FOR UPDATE NOWAIT', (lote.id,))
+        except Exception:
+            raise Ocupada(_('Otra PDA está validando %s. Se vuelve a probar sola.') % lote.name)
 
     # ------------------------------------------------------------------ imprimir
     @api.model

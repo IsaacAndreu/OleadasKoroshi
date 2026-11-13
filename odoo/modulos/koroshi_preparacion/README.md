@@ -1,12 +1,29 @@
-# KOROSHI Preparación en Lecturas (v3.26.0, 13/11/2026)
+# KOROSHI Preparación en Lecturas (v3.29.0, 13/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
+## v3.29.0: robustez (13/11/2026)
 
-
-
-
+- **Caja cerrada sin conexión que Odoo no acepta**: la cola de la PDA **se para**. Antes seguía, y lo leído después
+  y la caja siguiente se llevaban las uds de la rechazada. Ahora sale la hoja «La caja X no se ha cerrado en Odoo»:
+  leer **otra etiqueta CJ**, **Probar otra vez con la misma** o **Dejar lo leído fuera de caja** (entra en la caja
+  siguiente que se cierre). Hasta decidirlo no se guarda nada más ni se puede validar. Se puede salir con ←: al volver
+  a abrir la OUT, sale otra vez la hoja.
+- **Mover de caja, Deshacer y Validar** van con id y tiempo máximo. Si Odoo tarda, la PDA vuelve a mandar lo mismo con
+  el mismo id (hasta 8 veces) y Odoo no lo hace dos veces. Validar espera hasta 90 s y, si la OUT ya está validada,
+  contesta «validada» en lugar de un error. Mientras valida, la OUT (o la agrupación) queda bloqueada para otra PDA.
+- **Al volver la conexión**, si la OUT ya la han validado (p. ej. desde Faltantes) se vuelve a Lecturas.
+- **Lecturas rechazadas de cola** (menú de Operarios, grupo Productividad): lo que la PDA mandó desde su memoria (sin
+  conexión o al volver a abrir) y Odoo no aplicó: OUT ya validada o cancelada, caja rechazada, error de Odoo o más de
+  24 h en la PDA (antes se tiraba sin decir nada). El operario no lo vio en el momento: lo revisa el encargado.
+- **OUT a dos**: una sola fila por OUT, titular y ayudante (restricción única). La migración borra antes las repetidas
+  (el 13/11 había una: EFFEC/OUT/24410). Si dos PDA la crean a la vez, la segunda usa la de la primera.
+- Los errores que antes se tragaban (`except: pass`) quedan en el log de Odoo.
+- **Más ligero**: tras cada lectura el estado solo trae líneas, totales y lo de a dos; lo fijo (datos de la OUT,
+  notas, tipos de caja, alarma) solo al cargar. En las agrupaciones Z- las OUT vivas se calculan una vez por petición.
+- **Tests**: `tests/test_ruta.py` (sin base de datos: `python tests/test_ruta.py`) y `tests/test_idempotencia.py`
+  (en una base de pruebas con `--test-enable --test-tags /koroshi_preparacion`).
 
 ## v3.28.1: ✎ en la tarjeta (13/11/2026)
 

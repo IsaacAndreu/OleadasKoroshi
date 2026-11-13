@@ -13,6 +13,7 @@ import logging
 import re
 
 import json
+import psycopg2
 from werkzeug.urls import url_quote
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
@@ -70,6 +71,10 @@ class Lectura(models.Model):
     deshecha = fields.Boolean('Deshecha')
     en_caja = fields.Char('Cerrada en la caja', index=True,
                           help='v3.3: la caja CJ donde ha ido esta lectura. Vacío = leída y aún fuera de caja.')
+    diferida = fields.Boolean('De la cola de la PDA', index=True,
+                              help='v3.29: llegó de la memoria de la PDA (leída sin conexión o guardada al volver a '
+                                   'abrir), no en el momento. Si es un error, el operario no lo vio: lo revisa el '
+                                   'encargado en «Lecturas rechazadas de cola».')
 
     # ------------------------------------------------------------------ parámetros
     @api.model
@@ -282,9 +287,21 @@ class Lectura(models.Model):
             ml.qty_done, ml.product_uom_qty, precision_digits=3) < 0]
         corte = pendientes[len(pendientes) // 2] if pendientes else False
         clave = self._clave(corte) if corte else (u'￿', '', 0)
-        return Equipo.create({'picking_id': picking.id, 'titular_id': equipo[0].id, 'ayudante_id': equipo[1].id,
-                              'corte_ubicacion': clave[0], 'corte_ref': clave[1], 'corte_id': clave[2],
-                              'lineas_pendientes': len(pendientes)})
+        vals = {'picking_id': picking.id, 'titular_id': equipo[0].id, 'ayudante_id': equipo[1].id,
+                'corte_ubicacion': clave[0], 'corte_ref': clave[1], 'corte_id': clave[2],
+                'lineas_pendientes': len(pendientes)}
+        try:
+            # v3.29: las dos PDA piden el estado a la vez y las dos crean el registro (EFFEC/OUT/24410, 11/11, dos
+            # iguales en el mismo segundo). Con la restricción única la segunda falla aquí y usa el de la primera.
+            with self.env.cr.savepoint():
+                return Equipo.create(vals)
+        except psycopg2.Error:
+            # la otra petición lo acaba de crear. Si esta ya lo ve, ese; si no (empezó antes de que se guardara), uno
+            # sin guardar con el mismo corte para pintar esta vez: la próxima petición ya lee el bueno.
+            Equipo.invalidate_cache()
+            g = Equipo.search([('picking_id', '=', picking.id), ('titular_id', '=', equipo[0].id),
+                               ('ayudante_id', '=', equipo[1].id)], limit=1)
+            return g or Equipo.new(vals)
 
     @api.model
     def _equipo(self, picking):
@@ -302,8 +319,8 @@ class Lectura(models.Model):
     def _faltantes_companero(self, picking, employee, grupo):
         """v3.4: lo que el compañero ha mandado a faltantes o cambiado de ubicación desde que trabajan a dos.
         La PDA avisa una vez de cada uno (para no ir a buscar algo que ya no está)."""
-        if not grupo or not employee or 'koroshi.faltante' not in self.env:
-            return []
+        if not grupo or not employee or 'koroshi.faltante' not in self.env or not grupo.create_date:
+            return []   # v3.29: sin create_date = el de _grupo sin guardar (lo creó otra PDA a la vez)
         otro = grupo.ayudante_id if employee == grupo.titular_id else grupo.titular_id
         res = []
         for f in self.env['koroshi.faltante'].sudo().search([('picking_id', '=', picking.id),
@@ -429,28 +446,14 @@ class Lectura(models.Model):
         mias_sin_caja = sum(v[0] for v in reparto.values())
         otros_sin_caja = sum(v[1] for v in reparto.values())
         companeros = [e.name for e in equipo if not employee or e != employee]
-        zona = picking.batch_id.name or ''   # v3.25: también la Z- (la OUT de una zona hecha sola)
         todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
-        return {
+        res = {
             'ligero': ligero,
-            'out': {
-                'id': picking.id,
-                'name': picking.name,
-                'con_caja': con_caja,   # v3.14: False en las INT (sin botón Caja)
-                'pack_auto': con_caja and self._pack_auto(picking),   # v3.19: Zalando / About You
-                'tipo': 'INT' if picking.picking_type_code == 'internal' else 'OUT',
-                'tienda': picking.partner_id.name or '',
-                'origen': picking.origin or '',
-                'estado': picking.state,
-                'agrupacion': zona,
-                'propia': self.picking_propio(picking),
-                'nota': self._nota(picking),   # v3.7: las notas de la OUT, arriba
-            },
+            'out_estado': picking.state,   # v3.29: el ligero no trae 'out'; la PDA mira si ya está hecha
             'lineas': lineas,
             'siguiente_id': siguiente,
             'sin_caja': round(sin_caja),
             'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
-            'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
             'pedidas': round(pedidas),
             'leidas': round(leidas),
             'todo_leido': todo_leido,
@@ -463,9 +466,30 @@ class Lectura(models.Model):
             'faltantes_companero': self._faltantes_companero(picking, employee, grupo),
             'mias_sin_caja': round(mias_sin_caja),
             'otros_sin_caja': round(otros_sin_caja),
+        }
+        if ligero:
+            # v3.29: tras cada lectura y en el refresco a dos, solo lo que cambia (líneas, totales y lo de a dos). Lo
+            # fijo (datos de la OUT, notas, tipos de caja, alarma) va solo en /cargar entero: la PDA se lo queda.
+            return res
+        res.update({
+            'out': {
+                'id': picking.id,
+                'name': picking.name,
+                'con_caja': con_caja,   # v3.14: False en las INT (sin botón Caja)
+                'pack_auto': con_caja and self._pack_auto(picking),   # v3.19: Zalando / About You
+                'tipo': 'INT' if picking.picking_type_code == 'internal' else 'OUT',
+                'tienda': picking.partner_id.name or '',
+                'origen': picking.origin or '',
+                'estado': picking.state,
+                'agrupacion': picking.batch_id.name or '',   # v3.25: también la Z- (la OUT de una zona hecha sola)
+                'propia': self.picking_propio(picking),
+                'nota': self._nota(picking),   # v3.7: las notas de la OUT, arriba
+            },
+            'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
             'alarma_min': self.minutos_alarma(),   # v3.22
             'alarma_horario': self.horario_alarma(),   # v3.23
-        }
+        })
+        return res
 
     @api.model
     def _fotos(self, productos):
@@ -580,13 +604,41 @@ class Lectura(models.Model):
             'resultado': resultado,
             'mensaje': (mensaje or '')[:250],
             'id_lectura': id_lectura or False,
+            'diferida': bool(self.env.context.get('kp_diferida')),   # v3.29
         })
+
+    @api.model
+    def apuntar_rechazo(self, picking, employee, tipo, codigo, mensaje, id_lectura=False, cantidad=0):
+        """v3.29: lo que la PDA mandó y Odoo no aceptó queda SIEMPRE apuntado (antes, si fallaba _comprobar o era una
+        caja o una tarjeta, no quedaba nada y una lectura de la cola se perdía sin rastro). Solo si no está ya (la
+        lógica de leer apunta muchos de sus errores ella misma). Nunca rompe la respuesta."""
+        if id_lectura and self._repetida(id_lectura):
+            return False
+        try:
+            with self.env.cr.savepoint():
+                return self._apuntar(picking if picking and picking.exists() else False, employee, tipo, codigo,
+                                     'error', mensaje, cantidad=cantidad, id_lectura=id_lectura)
+        except Exception:
+            _logger.exception('KOROSHI Preparación: no se ha podido apuntar el rechazo de %s (%s)', codigo, tipo)
+            return False
 
     @api.model
     def _repetida(self, id_lectura):
         if not id_lectura:
             return False
         return self.sudo().search([('id_lectura', '=', id_lectura)], limit=1)
+
+    @api.model
+    def _respuesta_repetida(self, previa):
+        """v3.29: la respuesta de una petición que ya llegó (la PDA no recibió la respuesta y la vuelve a mandar con el
+        mismo id). Lleva lo que la PDA necesita según el tipo: la caja y sus uds, o que la OUT está validada."""
+        res = {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'que': 'repetida',
+               'linea_id': previa.move_line_id.id or False}
+        if previa.tipo == 'caja' and previa.resultado == 'ok':
+            res.update({'caja': previa.codigo, 'uds': round(previa.cantidad or 0)})
+        elif previa.tipo == 'validar' and previa.resultado == 'ok':
+            res['que'] = 'validada'
+        return res
 
     @api.model
     def _comprobar(self, picking):
@@ -607,8 +659,7 @@ class Lectura(models.Model):
         codigo = (codigo or '').strip()
         previa = self._repetida(id_lectura)
         if previa:
-            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'linea_id': previa.move_line_id.id,
-                    'que': 'repetida'}
+            return self._respuesta_repetida(previa)   # v3.29
         self._comprobar(picking)
         if RE_CJ.match(codigo):
             return {'ok': False, 'que': 'es_caja', 'msg': _('Es una caja: pulsa «Caja» antes de leerla.')}
@@ -685,7 +736,11 @@ class Lectura(models.Model):
 
     # ------------------------------------------------------------------ deshacer la última
     @api.model
-    def deshacer(self, picking, employee):
+    def deshacer(self, picking, employee, id_lectura=False):
+        """v3.29: con id_lectura, si la PDA la vuelve a mandar (no le llegó la respuesta) no se deshace otra."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
         self._comprobar(picking)
         self._bloquear(picking)
         dominio = [('picking_id', '=', picking.id), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
@@ -706,7 +761,8 @@ class Lectura(models.Model):
         ml.write({'qty_done': ml.qty_done - n})
         ultima.deshecha = True
         msg = _('Deshecha: %s (−%s)') % (self._corto(ml.product_id), n)
-        self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-n)
+        self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-n,
+                      id_lectura=id_lectura)
         return {'ok': True, 'msg': msg, 'linea_id': ml.id}
 
     # ------------------------------------------------------------------ v3.7: cantidad a mano
@@ -716,8 +772,7 @@ class Lectura(models.Model):
         menos una ud de esa línea (el producto está comprobado) y sin pasar de lo que falta."""
         previa = self._repetida(id_lectura)
         if previa:
-            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'linea_id': previa.move_line_id.id,
-                    'que': 'repetida'}
+            return self._respuesta_repetida(previa)   # v3.29
         self._comprobar(picking)
         try:
             n = int(cantidad)
@@ -777,7 +832,7 @@ class Lectura(models.Model):
         codigo = (codigo or '').strip().upper()
         previa = self._repetida(id_lectura)
         if previa:
-            return {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'que': 'repetida'}
+            return self._respuesta_repetida(previa)   # v3.29
         self._comprobar(picking)
         auto = not codigo and self._pack_auto(picking)   # v3.19: Zalando / About You: paquete de Odoo sin etiqueta
         if not auto and not RE_CJ.match(codigo):
@@ -885,13 +940,17 @@ class Lectura(models.Model):
 
     # ------------------------------------------------------------------ v3.21: mover de caja
     @api.model
-    def mover_caja(self, picking, employee, linea_id, cantidad, destino):
+    def mover_caja(self, picking, employee, linea_id, cantidad, destino, id_lectura=False):
         """Pasa n uds de una línea ya en caja a otra caja de la misma OUT (o a una nueva): «la caja va muy llena,
         esta chaqueta a la otra». destino = nombre de una caja de la OUT, una etiqueta CJ (nueva o de la OUT) o
         'NUEVA' (Zalando / About You: paquete PACK... nuevo). Igual que Odoo al cerrar caja: si no se mueve la línea
         entera, se parte en dos (copia con las uds movidas y la original con el resto).
         v3.28: destino 'FUERA' = sacar de la caja: las uds vuelven a «por poner» (fuera de caja, del operario que las
-        leyó) y entran en la caja siguiente al cerrarla."""
+        leyó) y entran en la caja siguiente al cerrarla.
+        v3.29: con id_lectura (la PDA reintenta con el mismo si no le llega la respuesta): no se mueve dos veces."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
         self._comprobar(picking)
         if not self._con_caja(picking):
             return {'ok': False, 'msg': _('Esta OUT no va en cajas.')}
@@ -957,7 +1016,8 @@ class Lectura(models.Model):
         else:
             msg = _('%s %s: de %s a %s.') % (n, n == 1 and _('ud') or _('uds'), origen.name, paquete.name)
         msg = '%s · %s' % (self._corto(ml.product_id), msg)
-        self._apuntar(picking, employee, 'mover', paquete.name or _('fuera de caja'), 'ok', msg, ml=nueva, cantidad=n)
+        self._apuntar(picking, employee, 'mover', paquete.name or _('fuera de caja'), 'ok', msg, ml=nueva, cantidad=n,
+                      id_lectura=id_lectura)
         return {'ok': True, 'msg': msg, 'caja': paquete.name or False, 'origen': origen.name, 'uds': n}
 
     # ------------------------------------------------------------------ validar
@@ -998,18 +1058,29 @@ class Lectura(models.Model):
                         _('Pendiente de %s, validada incompleta en la PDA por %s. Revisar antes de prepararla.')
                         % (picking.name, quien)))
         except Exception:
-            pass
+            _logger.exception('KOROSHI Preparación: no se ha podido poner la nota de validada incompleta en %s',
+                              picking.name)
         r['resto'] = ', '.join(resto.mapped('name'))
         r['faltan'] = faltan
         return r
 
     @api.model
-    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False, incompleto=False):
+    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False, incompleto=False, id_lectura=False):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
         {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}.
         v3.27: Zalando / About You con líneas sin leer: 'quedan' con 'incompleto': True (la PDA pide confirmar) y,
-        con incompleto=True, se valida lo leído y lo que falta va a una OUT pendiente."""
+        con incompleto=True, se valida lo leído y lo que falta va a una OUT pendiente.
+        v3.29: la PDA manda un id_lectura y, si no le llega la respuesta (Odoo tarda), vuelve a mandar el mismo: si ya
+        se validó, contesta «validada» (antes decía «ya está validada» como error y el operario no sabía qué había
+        pasado). Una OUT ya hecha también contesta «validada». La OUT se bloquea: dos validaciones a la vez de la
+        misma OUT no pueden pasar (la segunda espera y vuelve a probar)."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
+        if picking and picking.state == 'done':
+            return {'ok': True, 'que': 'validada', 'msg': _('%s ya estaba validada.') % picking.name}
         self._comprobar(picking)
+        self._bloquear(picking)   # v3.29: Ocupada -> la PDA vuelve a probar con el mismo id
         Faltante = self.env['koroshi.faltante']
         if self._con_caja(picking) and self._pack_auto(picking) and Faltante.lineas_pendientes(picking):
             if not incompleto:
@@ -1074,13 +1145,13 @@ class Lectura(models.Model):
         if incompleto:   # v3.27
             msg = _('%s validada incompleta (faltan %s uds): lo que falta, en %s.') % (
                 picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
-        self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg)
+        self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg, id_lectura=id_lectura)
         try:
             # cierra ya la tarea del operario (lo mismo que hace koroshi_faltantes al validar)
             with self.env.cr.savepoint():
                 self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
         except Exception:
-            pass
+            _logger.exception('KOROSHI Preparación: no se han podido cerrar las tareas tras validar %s', picking.name)
         res = {'ok': True, 'que': 'validada', 'msg': msg, 'incompleta': bool(incompleto)}
         res.update(caja_auto)
         return res
@@ -1100,6 +1171,13 @@ class Equipo(models.Model):
     corte_id = fields.Integer('Línea del corte')
     lineas_pendientes = fields.Integer('Líneas pendientes al unirse')
     avisado_titular = fields.Boolean('Titular avisado')
+
+    # v3.29: una sola pareja por OUT (la misma OUT puede tener otra pareja más tarde: entra otro ayudante). Los
+    # duplicados que ya había los quita migrations/13.0.3.29.0/pre-migrate.py antes de crear la restricción.
+    _sql_constraints = [
+        ('pareja_unica', 'unique(picking_id, titular_id, ayudante_id)',
+         'Esta OUT ya tiene registrada esta pareja de titular y ayudante.'),
+    ]
 
     def _clave_corte(self):
         self.ensure_one()

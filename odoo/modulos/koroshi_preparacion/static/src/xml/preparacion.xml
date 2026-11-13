@@ -111,6 +111,11 @@
                         <div class="o_kp_tipos_titulo" style="display: none;"/>
                         <div class="o_kp_tipos_caja" style="display: none;"/>
                         <div class="o_kp_hoja_aviso" role="alert"/>
+                        <!-- v3.29: caja cerrada sin conexión que Odoo no acepta: la cola se para hasta decidir -->
+                        <div class="o_kp_rechazada_botones" style="display: none;">
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_rech_reintentar">↻ Probar otra vez con la misma</button>
+                            <button type="button" class="o_kp_boton o_kp_rojo o_kp_rech_fuera">Dejar lo leído fuera de caja</button>
+                        </div>
                         <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
                     </div>
                     <!-- v3.21: mover uds de una caja cerrada a otra (✎ en la lista de líneas) -->

@@ -180,8 +180,21 @@ v3.28.0 (13/11/2026): ✎ en una línea ya en caja: «↩ Sacar de la caja (va a
 fuera de caja y entran en la caja siguiente al cerrarla. Sustituye a «+ Caja nueva» (Zalando / About You), que
 hacía un PACK con solo esas uds.
 v3.28.1 (13/11/2026): ✎ también en la tarjeta, al lado de «En la caja X» (sin entrar en la lista).
+v3.29.0 (13/11/2026): ROBUSTEZ (auditoría del 13/11). Una caja cerrada SIN CONEXIÓN que Odoo no acepta PARA la cola de
+la PDA: antes seguía y la caja siguiente se llevaba sus uds. Ahora pide otra etiqueta CJ, «Probar otra vez» o «Dejar lo
+leído fuera de caja». Mover de caja, Deshacer y Validar llevan id_lectura, tiempo máximo y reintentos con el mismo id:
+no se hacen dos veces; Validar contesta «validada» si la OUT ya lo está y bloquea la OUT (y la agrupación) mientras
+valida. Al volver la conexión, si la OUT ya está hecha, vuelta a Lecturas. Lo que la PDA manda desde su cola y Odoo no
+aplica (OUT ya validada, caja rechazada, error de Odoo, más de 24 h en la PDA) queda SIEMPRE apuntado: menú
+«Lecturas rechazadas de cola» para el encargado (campo nuevo «diferida» en koroshi.preparacion.lectura, tabla propia).
+Restricción única (OUT, titular, ayudante) en koroshi.preparacion.equipo: la migración borra antes los repetidos
+(EFFEC/OUT/24410, ids 4 y 5) y, si dos PDA lo crean a la vez, la segunda usa el de la primera. Los «except: pass»
+dejan el error en el log. Estado ligero (tras cada lectura y el refresco a dos): solo líneas, totales y lo de a dos;
+lo fijo (OUT, notas, tipos de caja, alarma) solo en /cargar. Agrupaciones Z-: las OUT vivas una vez por petición.
+Tests: tests/test_ruta.py (sin base de datos) y tests/test_idempotencia.py (TransactionCase). Sin campos nuevos en
+tablas de stock.
 """,
-    'version': '13.0.3.28.1',
+    'version': '13.0.3.29.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

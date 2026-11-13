@@ -15,6 +15,7 @@
                 <field name="resultado"/>
                 <field name="mensaje"/>
                 <field name="deshecha"/>
+                <field name="diferida" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -29,6 +30,7 @@
                 <field name="codigo"/>
                 <filter name="hoy" string="Hoy" domain="[('fecha', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter name="errores" string="Errores" domain="[('resultado', '=', 'error')]"/>
+                <filter name="diferidas" string="De la cola de la PDA" domain="[('diferida', '=', True)]"/>
                 <separator/>
                 <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
                 <filter name="g_out" string="OUT" context="{'group_by': 'picking_id'}"/>
@@ -44,6 +46,21 @@
         <field name="context">{'search_default_hoy': 1}</field>
     </record>
 
+    <!-- v3.29: lo que la PDA mandó desde su cola (sin conexión o al volver a abrir) y Odoo no aplicó. El operario no
+         lo vio en el momento: lo revisa el encargado (caja sin cerrar, lectura de una OUT ya validada, caducada...). -->
+    <record id="action_koroshi_preparacion_rechazadas_cola" model="ir.actions.act_window">
+        <field name="name">Lecturas rechazadas de cola</field>
+        <field name="res_model">koroshi.preparacion.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('diferida', '=', True), ('resultado', '=', 'error')]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ninguna lectura de la cola de la PDA rechazada.</p>
+            <p>Aquí sale lo que una PDA guardó sin conexión (o al volver a abrir una OUT) y Odoo no aplicó: el operario
+               no lo vio en el momento.</p>
+        </field>
+    </record>
+
     <!-- pantalla de preparación (la abre Lecturas; no tiene menú propio) -->
     <record id="action_koroshi_preparacion_pantalla" model="ir.actions.client">
         <field name="name">Preparar</field>
@@ -53,5 +70,9 @@
     <menuitem id="menu_koroshi_preparacion_lecturas" name="Lecturas de preparación"
               parent="koroshi_operarios.menu_koroshi_operarios_root"
               action="action_koroshi_preparacion_lectura" sequence="90"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_preparacion_rechazadas_cola" name="Lecturas rechazadas de cola"
+              parent="koroshi_operarios.menu_koroshi_operarios_root"
+              action="action_koroshi_preparacion_rechazadas_cola" sequence="91"
               groups="koroshi_operarios.grupo_productividad"/>
 </odoo>
