@@ -6,7 +6,7 @@
         <field name="model">koroshi.ajustes</field>
         <field name="inherit_id" ref="koroshi_menu.view_koroshi_ajustes_form"/>
         <field name="arch" type="xml">
-            <xpath expr="//group[@string='KPI']" position="after">
+            <xpath expr="//field[@name='kpi_dias_falta_repetida']/.." position="after">
                 <group string="Informe de productividad (correo)">
                     <field name="inf_destinatarios" placeholder="responsable@..., jefe.almacen@..."/>
                     <field name="inf_diario"/>

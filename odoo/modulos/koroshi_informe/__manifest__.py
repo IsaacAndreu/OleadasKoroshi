@@ -19,8 +19,10 @@ solo en su tabla, sus parametros y el correo; antes del diario recalcula la fich
 que el boton Recalcular de la ficha).
 
 v1.0.0 (12/11/2026): primera version.
+v1.0.1 (13/11/2026): la vista de Ajustes se engancha al campo de KPI (Odoo 13 no deja usar string en un xpath; la
+1.0.0 no se instalaba).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
