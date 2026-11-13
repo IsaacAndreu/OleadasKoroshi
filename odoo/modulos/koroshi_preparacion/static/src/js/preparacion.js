@@ -1,6 +1,12 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.29: ROBUSTEZ. Una caja cerrada sin conexión que Odoo no acepta PARA la cola (antes la caja siguiente se llevaba
+ * sus uds): la PDA pide otra etiqueta, «Probar otra vez» o «Dejar lo leído fuera de caja». Mover, deshacer y validar
+ * van con id y tiempo máximo y se reintentan solos (no se hacen dos veces); validar contesta «validada» si ya lo
+ * estaba. Lo de la cola que Odoo rechaza o lleva más de 24 h en la PDA queda apuntado para el encargado. Al volver la
+ * conexión, si la OUT ya está hecha se vuelve a Lecturas. El estado ligero ya no trae lo fijo (se mezcla con el que
+ * hay).
  * v3.26: «⏸ Pausa (comer, café)» en el menú ☰ (dos toques): como la pausa de Lecturas, sin salir antes.
  * v3.24.1: se lee la CJ y luego se toca qué caja es (o al revés); ninguna marcada de entrada. Botones grandes.
  * v3.24: tipo de caja (Consumibles): al cerrar una caja el operario elige Grande / 60x40x40 / Mediana / Online…
@@ -58,7 +64,10 @@ var LENTO_MS = 5000;            // v3.6: Odoo tarda más de 5 s -> «Odoo va len
 var TIEMPO_MAX_MS = 20000;      // v3.6: sin respuesta en 20 s -> se vuelve a mandar (mismo id)
 var OCUPADA_MS = 1500;          // v3.6: la OUT la está guardando otra petición -> se vuelve a probar
 var CLAVE_COLA = 'koroshi_preparacion_cola';   // v3.6: lecturas pendientes en la memoria de la PDA
-var COLA_HORAS = 24;            // v3.6: las pendientes de más de un día no se mandan
+var COLA_HORAS = 24;            // v3.6: las pendientes de más de un día no se mandan (v3.29: se apuntan como caducadas)
+var CLAVE_CADUCADAS = 'koroshi_preparacion_caducadas';   // v3.29: caducadas pendientes de apuntar en Odoo
+var VALIDAR_MAX_MS = 90000;     // v3.29: validar una OUT grande puede tardar: más tiempo antes de reintentar
+var REINTENTOS_MAX = 8;         // v3.29: mover / deshacer / validar: reintentos con el mismo id (lento u ocupada)
 var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 // v3.22: ALARMA DE PARADO. Con la OUT abierta y X min sin leer ninguna prenda (parámetro
@@ -82,6 +91,8 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_caja': '_onCaja',
         'click .o_kp_tipo_caja': '_onTipoCaja',          // v3.24
         'click .o_kp_cancelar_caja': '_salirDeCaja',
+        'click .o_kp_rech_reintentar': '_onRechazadaReintentar',   // v3.29: caja sin conexión rechazada
+        'click .o_kp_rech_fuera': '_onRechazadaFuera',
         'click .o_kp_hoja_fondo': '_onFondoHoja',
         'click .o_kp_validar': '_onValidar',
         'click .o_kp_pendiente_si': '_onPendienteSi',
@@ -310,9 +321,11 @@ var Pantalla = AbstractAction.extend({
             l.caja = d[3];
             l.completa = d[4];
         });
-        var e = _.extend({}, nuevo);
+        // v3.29: el ligero solo trae lo que cambia; lo fijo (out, tipos de caja, alarma) se queda el que había
+        var e = _.extend({}, viejo, nuevo);
         e.lineas = lineas;
         e.ligero = false;
+        if (nuevo.out_estado && viejo.out) { e.out = _.extend({}, viejo.out, {estado: nuevo.out_estado}); }
         this.estado = e;
         this._reaplicarPendientes();   // v3.6
         return true;
@@ -503,7 +516,7 @@ var Pantalla = AbstractAction.extend({
         }).map(function (i) {
             return {tipo: i.tipo, codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
                     lineaId: i.lineaId, n: i.n, outId: i.outId, provisional: i.provisional,
-                    tipoCaja: i.tipoCaja};
+                    tipoCaja: i.tipoCaja, diferida: i.diferida, rechazo: i.rechazo};   // v3.29
         });
         if (lecturas.length) { todo[clave] = lecturas; } else { delete todo[clave]; }
         this._escribirMemoria(todo);
@@ -515,11 +528,23 @@ var Pantalla = AbstractAction.extend({
         var clave = this._claveMemoria();
         var todo = this._leerMemoria();
         var limite = Date.now() - COLA_HORAS * 3600000;
+        // v3.29: lo de más de 24 h ya no se aplica, pero se apunta en Odoo (antes se tiraba sin decir nada)
+        var caducadas = this._leerCaducadas();
+        Object.keys(todo).forEach(function (k) {
+            var viejas = (todo[k] || []).filter(function (i) { return (i.t || 0) < limite; });
+            if (viejas.length) {
+                caducadas[k] = (caducadas[k] || []).concat(viejas);
+                todo[k] = (todo[k] || []).filter(function (i) { return (i.t || 0) >= limite; });
+            }
+        });
+        this._escribirCaducadas(caducadas);
+        this._escribirMemoria(todo);
+        this._mandarCaducadas();
         if (out && todo[clave]) {
             todo[clave].forEach(function (i) {
-                if ((i.t || 0) < limite) { return; }
+                // v3.29: lo que vuelve de la memoria es diferido (el operario no lo vio guardarse)
                 var item = {tipo: i.tipo || 'leer', codigo: i.codigo, id: i.id, t: i.t, employee_id: i.employee_id,
-                            lineaId: i.lineaId, n: i.n};
+                            lineaId: i.lineaId, n: i.n, diferida: true, rechazo: i.rechazo};
                 if (item.tipo === 'caja') {   // v3.22: la caja cerrada sin red (mismo id: Odoo no la cierra dos veces)
                     item.outId = i.outId;
                     item.provisional = i.provisional;
@@ -546,7 +571,10 @@ var Pantalla = AbstractAction.extend({
                 self.cola.push(item);
             });
             var n = this.cola.length;
-            if (n) {
+            if (n && this.cola[0].rechazo) {
+                this._pintar();
+                this._hojaRechazada();   // v3.29: una caja que Odoo no aceptó: antes de seguir, otra etiqueta
+            } else if (n) {
                 this._aviso('Guardando ' + this._textoPendientes() + ' que quedaron en la PDA…', 'info');
                 this._pintar();
                 this._enviar();
@@ -557,8 +585,7 @@ var Pantalla = AbstractAction.extend({
         // las de otras OUT (se cerró la app antes de guardarlas): se mandan solas, en segundo plano
         Object.keys(todo).forEach(function (pid) {
             if (out && clave === pid) { return; }
-            var items = (todo[pid] || []).filter(function (i) { return (i.t || 0) >= limite; });
-            self._vaciarOtra(pid, items);
+            self._vaciarOtra(pid, todo[pid] || []);
         });
     },
 
@@ -573,14 +600,76 @@ var Pantalla = AbstractAction.extend({
         var id = parseInt(esLote ? String(clave).slice(1) : clave, 10);
         if (!id) { return; }
         var i = items[0];
-        return this._post(this._ruta(i), this._params(i, id, esLote))
+        // v3.29: una caja que Odoo no aceptó para la cola de esa OUT: se decide al abrirla (otra etiqueta)
+        if (i.rechazo) { return; }
+        var parar = function (msg) {
+            var resto = items.slice();
+            resto[0] = _.extend({}, i, {rechazo: msg || 'Error de Odoo'});
+            self._vaciarOtra(clave, resto);
+        };
+        return this._post(this._ruta(i), _.extend(this._params(i, id, esLote), {diferida: true}))
             .then(function (r) {
                 if (r && r.que === 'ocupada') {
                     setTimeout(function () { self._vaciarOtra(clave, items); }, OCUPADA_MS);
                     return;
                 }
+                // v3.29: Odoo ya la ha apuntado si no la acepta. Una caja rechazada (con la OUT abierta) para la cola:
+                // si siguiera, la caja siguiente se llevaría sus uds.
+                if (i.tipo === 'caja' && !(r && r.ok) && !(r && r.que === 'out_cerrada')) { return parar(r && r.msg); }
                 self._vaciarOtra(clave, items.slice(1));
-            }, function () { /* sin red / Odoo lento: se queda en la memoria para la próxima vez */ });
+            }, function (err) {
+                // sin red / Odoo lento: se queda en la memoria para la próxima vez
+                if (!(err && err.msg)) { return; }
+                // v3.29: error de Odoo con esta petición (no queda nada apuntado): se apunta aparte
+                if (i.tipo === 'caja') { return parar(err.msg); }
+                self._apuntarRechazo(clave, i, err.msg);
+                self._vaciarOtra(clave, items.slice(1));
+            });
+    },
+
+    // v3.29: lo de la cola que Odoo no ha podido ni apuntar (error de Odoo) o que ha caducado: a «rechazadas»
+    _apuntarRechazo: function (clave, item, motivo) {
+        var esLote = String(clave).charAt(0) === 'L';
+        var id = parseInt(esLote ? String(clave).slice(1) : clave, 10);
+        if (!id) { return; }
+        return this._post('/koroshi/preparacion/rechazadas', _.extend(this._obj(id, esLote), {
+            lecturas: [this._paraRechazo(item)], motivo: motivo})).then(null, function () { /* sin red: nada */ });
+    },
+
+    _paraRechazo: function (i) {
+        return {tipo: i.tipo, codigo: i.codigo || i.provisional || '', id: i.id, employee_id: i.employee_id, n: i.n};
+    },
+
+    _leerCaducadas: function () {
+        try { return JSON.parse(window.localStorage.getItem(CLAVE_CADUCADAS) || '{}') || {}; } catch (e) { return {}; }
+    },
+
+    _escribirCaducadas: function (todo) {
+        try { window.localStorage.setItem(CLAVE_CADUCADAS, JSON.stringify(todo)); } catch (e) { /* sin memoria */ }
+    },
+
+    // v3.29: las caducadas se apuntan en Odoo («Lecturas rechazadas de cola») y solo entonces se borran de la PDA
+    _mandarCaducadas: function () {
+        var self = this;
+        var pend = this._leerCaducadas();
+        Object.keys(pend).forEach(function (clave) {
+            var items = pend[clave] || [];
+            var esLote = String(clave).charAt(0) === 'L';
+            var id = parseInt(esLote ? String(clave).slice(1) : clave, 10);
+            if (!items.length || !id) {
+                var p0 = self._leerCaducadas();
+                delete p0[clave];
+                return self._escribirCaducadas(p0);
+            }
+            self._post('/koroshi/preparacion/rechazadas', _.extend(self._obj(id, esLote), {
+                lecturas: items.map(self._paraRechazo), motivo: ''})).then(function (r) {
+                if (r && r.ok) {
+                    var p = self._leerCaducadas();
+                    delete p[clave];
+                    self._escribirCaducadas(p);
+                }
+            }, function () { /* sin red: la próxima vez */ });
+        });
     },
 
     // v3.7: ruta y parámetros de cada cosa de la cola
@@ -601,14 +690,15 @@ var Pantalla = AbstractAction.extend({
         if (esLote && item.tipo === 'leer' && item.lineaId) { p.linea_id = item.lineaId; }   // v3.15: la que se ve
         if (esLote && item.tipo === 'caja' && item.outId) { p.out_id = item.outId; }          // v3.15: CJ sin tienda
         if (item.tipo === 'caja' && item.tipoCaja) { p.tipo_caja = item.tipoCaja; }           // v3.24
+        if (item.diferida) { p.diferida = true; }   // v3.29: si Odoo no la acepta, la ve el encargado
         return p;
     },
 
     // llamada JSON a Odoo con tiempo máximo. Si falla, rechaza con {lento} (no contesta o está reiniciando),
     // {sinRed}, {sesion} (sesión caducada) o {msg} (error de Odoo con esta petición).
-    _post: function (ruta, params) {
+    _post: function (ruta, params, maxMs) {
         var ctrl = window.AbortController ? new window.AbortController() : null;
-        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, TIEMPO_MAX_MS) : null;
+        var timer = ctrl ? setTimeout(function () { ctrl.abort(); }, maxMs || TIEMPO_MAX_MS) : null;
         var opciones = {
             method: 'POST', credentials: 'same-origin', headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({jsonrpc: '2.0', method: 'call', params: params, id: Date.now()}),
@@ -634,6 +724,35 @@ var Pantalla = AbstractAction.extend({
             }
             return j ? j.result : null;
         });
+    },
+
+    // v3.29: una petición que no puede hacerse dos veces (mover, deshacer, validar): lleva id_lectura y, si Odoo no
+    // contesta a tiempo o la OUT está ocupada, se vuelve a mandar IGUAL (mismo id) hasta REINTENTOS_MAX veces. Odoo
+    // contesta lo mismo que la primera vez si ya la hizo. Sin red o sesión caducada: rechaza enseguida.
+    _llamar: function (ruta, params, maxMs) {
+        var self = this;
+        var intento = 0;
+        var esperar = function () { return new Promise(function (ok) { setTimeout(ok, OCUPADA_MS); }); };
+        var vivo = function () { return !(self.isDestroyed && self.isDestroyed()); };
+        var probar = function () {
+            intento += 1;
+            return self._post(ruta, params, maxMs).then(function (r) {
+                if (r && r.que === 'ocupada' && intento < REINTENTOS_MAX && vivo()) { return esperar().then(probar); }
+                return r;
+            }, function (err) {
+                if (err && err.lento && intento < REINTENTOS_MAX && vivo()) { return esperar().then(probar); }
+                throw err;
+            });
+        };
+        return probar();
+    },
+
+    // v3.29: el texto de un fallo de _post / _llamar
+    _textoFallo: function (err) {
+        if (err && err.sinRed) { return 'Sin conexión. Prueba otra vez cuando vuelva.'; }
+        if (err && err.sesion) { return 'La sesión de Odoo ha caducado: vuelve a entrar.'; }
+        if (err && err.lento) { return 'Odoo no contesta. Prueba otra vez en un momento.'; }
+        return (err && err.msg) || 'Error de Odoo';
     },
 
     // ------------------------------------------------------------ lecturas
@@ -665,6 +784,14 @@ var Pantalla = AbstractAction.extend({
                 .text('✖ Eso no es una etiqueta de caja. Elige una caja o lee su etiqueta CJ.');
             return this._pitido(false);
         }
+        if (this.modo === 'rechazada') {   // v3.29: la caja que Odoo no aceptó espera otra etiqueta
+            if (RE_CJ.test(codigo.toUpperCase()) && this.cola[0] && this.cola[0].codigo) {
+                return this._reintentarRechazada(codigo.toUpperCase());
+            }
+            this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal')
+                .text('✖ Eso no es una etiqueta de caja. Lee otra etiqueta CJ o elige abajo.');
+            return this._pitido(false);
+        }
         if (this.modo === 'pack') {   // v3.20: leer con el número de caja a la vista lo cierra y cuenta
             if (this.packVolver) { return; }
             this._cerrarHoja();
@@ -689,6 +816,7 @@ var Pantalla = AbstractAction.extend({
         }
         var item = {tipo: tipo, codigo: codigo, id: this._nuevoId(), t: ahora,
                     employee_id: this.operario ? this.operario.id : false};
+        if (this.sinRed) { item.diferida = true; }   // v3.29: leída sin conexión
         if (tipo === 'caja') { item.tipoCaja = this.tipoHoja || this._tipoCaja(); }   // v3.24
         if (tipo === 'caja' && this._esLote()) {
             // v3.15: si la CJ no es de ninguna tienda, va a la tienda de la línea que se ve
@@ -739,6 +867,7 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         if (this.enviando || this.sinRed || !this.cola.length || !this._out()) { return; }
         var item = this.cola[0];
+        if (item.rechazo) { return; }   // v3.29: parada hasta que el operario decida qué hace con esa caja
         this.enviando = true;
         clearTimeout(this.timerOtra);
         clearTimeout(this.timerLento);
@@ -757,6 +886,13 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.sesionCaducada = false;
+            if (item.tipo === 'caja' && item.local && !(r && r.ok) && !(r && r.que === 'out_cerrada')) {
+                // v3.29: caja cerrada sin red que Odoo no acepta: se PARA la cola. Si siguiera, lo leído después y la
+                // caja siguiente se llevarían las uds de esta. El operario lee otra etiqueta o decide.
+                if (r && r.estado) { self._aplicar(r.estado); }
+                return self._pararCola(item, (r && r.msg) || 'Error');
+            }
+            if (r && r.que === 'out_cerrada') { self.outCerrada = true; }   // v3.29: lo que queda, apuntado y fuera
             self.cola.shift();
             self._guardarCola();
             var cuadra = !(r && r.estado) || self._aplicar(r.estado);
@@ -764,6 +900,10 @@ var Pantalla = AbstractAction.extend({
             if (item.tipo === 'caja') { self._trasCaja(r, item); } else { self._trasLeer(r, item); }
             self._pintar();
             self._enviar();
+            if (!self.cola.length && self.outCerrada) {   // v3.29: la OUT ya estaba hecha: vuelta a Lecturas
+                self.outCerrada = false;
+                self._recargar();
+            }
         }, function (err) {
             clearTimeout(self.timerLento);
             self.enviando = false;
@@ -779,7 +919,13 @@ var Pantalla = AbstractAction.extend({
                 self._aviso('La sesión de Odoo ha caducado: vuelve a entrar. Lo leído está guardado en la PDA.', 'mal');
                 return self._pitido(false);
             }
+            if (item.tipo === 'caja' && item.local) {
+                // v3.29: lo mismo que si la rechaza: se para la cola hasta que el operario decida
+                return self._pararCola(item, (err && err.msg) || 'Error de Odoo');
+            }
             // error de Odoo con esta lectura: se quita y se carga la OUT tal como está en Odoo
+            // v3.29: y se apunta (con el error de Odoo la petición no ha dejado nada)
+            self._apuntarRechazo(self._claveMemoria(), item, (err && err.msg) || 'Error de Odoo');
             self.cola.shift();
             self._guardarCola();
             self._aviso((item.optimista ? 'No se ha guardado ' + item.codigo + ': ' : '') +
@@ -844,7 +990,7 @@ var Pantalla = AbstractAction.extend({
 
     // ------------------------------------------------------------ caja
     _onCaja: function () {
-        if (!this._out()) { return; }
+        if (!this._out() || this.modo === 'rechazada') { return; }
         if (this.modo === 'pack') { this._cerrarHoja(); }
         if (!this.estado.sin_caja) {
             this._aviso('No hay nada leído fuera de caja.', 'info');
@@ -1004,6 +1150,7 @@ var Pantalla = AbstractAction.extend({
         }
         if (!item.codigo) { item.provisional = 'S' + ((e.cajas || []).length + 1); }
         item.local = true;
+        item.diferida = true;   // v3.29: cerrada sin conexión
         var uds = this._cajaLocal(e, item);
         this._actividad();   // v3.22: cerrar caja también para la alarma de parado
         this.cola.push(item);
@@ -1020,6 +1167,74 @@ var Pantalla = AbstractAction.extend({
         this._aviso('Caja ' + item.codigo + ' cerrada en la PDA con ' + udsTxt + '. Se guarda en Odoo cuando vuelva ' +
                     'la conexión. Puedes seguir leyendo.', 'ok', true);
         return this._foco();
+    },
+
+    // v3.29: caja cerrada sin red que Odoo no acepta. Se queda la primera de la cola (con el motivo) y no se manda
+    // nada más hasta que el operario lea otra etiqueta, pruebe otra vez o deje lo leído fuera de caja.
+    _pararCola: function (item, msg) {
+        item.rechazo = msg;
+        this._guardarCola();
+        this._pitido(false);
+        this._pintar();
+        this._hojaRechazada();
+    },
+
+    _hojaRechazada: function () {
+        var item = this.cola[0];
+        if (!item || !item.rechazo) { return; }
+        this.modo = 'rechazada';
+        var nombre = item.codigo || item.provisional || '';
+        var resto = this.cola.length - 1;
+        this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu, ' +
+               '.o_kp_hoja_pack, .o_kp_hoja_mover, .o_kp_hoja_color').hide();
+        this.$('.o_kp_hoja_tiendas').empty().hide();
+        this.$('.o_kp_tipos_titulo, .o_kp_tipos_caja, .o_kp_cancelar_caja').hide();
+        this.$('.o_kp_hoja_caja .o_kp_hoja_titulo').text('La caja ' + nombre + ' no se ha cerrado en Odoo');
+        this.$('.o_kp_hoja_texto').text(item.rechazo + ' ' + (resto ? 'Lo leído después (' + resto +
+            (resto === 1 ? ' cosa' : ' cosas') + ') espera en la PDA. ' : '') +
+            (item.codigo ? 'Lee OTRA etiqueta CJ para esta caja, o elige abajo.' : 'Elige abajo.'));
+        this.$('.o_kp_hoja_caja .o_kp_hoja_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mal')
+            .text('✖ La cola está parada: no se guarda nada más hasta decidirlo.');
+        this.$('.o_kp_rechazada_botones').show();
+        this.$('.o_kp_hoja_caja').show();
+        this.$('.o_kp_hoja').show();
+        this._foco();
+    },
+
+    // otra etiqueta (codigo) o la misma: va con un id NUEVO (el de antes ya está apuntado como rechazado)
+    _reintentarRechazada: function (codigo) {
+        var item = this.cola[0];
+        if (!item || !item.rechazo) { return this._cerrarHoja(); }
+        var viejo = item.codigo || item.provisional || '';
+        if (codigo) { item.codigo = codigo; }
+        item.id = this._nuevoId();
+        delete item.rechazo;
+        var nuevo = item.codigo || item.provisional || '';
+        if (this.estado && nuevo !== viejo) {   // la caja de la PDA se llama ya como la etiqueta nueva
+            (this.estado.lineas || []).forEach(function (l) { if (l.caja === viejo) { l.caja = nuevo; } });
+            (this.estado.cajas || []).forEach(function (c) { if (c.nombre === viejo) { c.nombre = nuevo; } });
+        }
+        this._guardarCola();
+        this._cerrarHoja();
+        this._aviso('Cerrando la caja ' + nuevo + ' en Odoo…', 'info');
+        this._enviar();
+    },
+
+    _onRechazadaReintentar: function () {
+        if (this.modo !== 'rechazada') { return; }
+        this._reintentarRechazada(false);
+    },
+
+    _onRechazadaFuera: function () {
+        var item = this.cola[0];
+        if (this.modo !== 'rechazada' || !item || !item.rechazo) { return; }
+        this.cola.shift();
+        this._guardarCola();
+        this._cerrarHoja();
+        this._aviso('Lo de la caja ' + (item.codigo || item.provisional || '') + ' sigue fuera de caja: entra en la ' +
+                    'próxima caja que cierres.', 'warn', true);
+        this._recargar();   // lo que tiene Odoo, con lo que queda en la cola sumado
+        this._enviar();
     },
 
     _trasCaja: function (r, item) {
@@ -1212,10 +1427,14 @@ var Pantalla = AbstractAction.extend({
         if (!this.mover || !out || !destino || this.moviendo) { return; }
         this.moviendo = true;
         this.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso').text('Cambiando de caja…');
-        return this._rpc({route: '/koroshi/preparacion/mover_caja', params: _.extend(this._obj(out.id), {
+        // v3.29: un id por movimiento (mismo destino y uds): si se vuelve a tocar tras un fallo, no se mueve dos veces
+        var clave = destino + '|' + this.mover.n;
+        this.mover.ids = this.mover.ids || {};
+        this.mover.ids[clave] = this.mover.ids[clave] || this._nuevoId();
+        return this._llamar('/koroshi/preparacion/mover_caja', _.extend(this._obj(out.id), {
             linea_id: this.mover.linea.id, cantidad: this.mover.n, destino: destino,
-            employee_id: this.operario ? this.operario.id : false,
-        })}).then(function (r) {
+            employee_id: this.operario ? this.operario.id : false, id_lectura: this.mover.ids[clave],
+        })).then(function (r) {
             self.moviendo = false;
             if (r && r.estado) { self._aplicar(r.estado); }
             if (r && r.ok) {
@@ -1230,12 +1449,12 @@ var Pantalla = AbstractAction.extend({
             self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
                 .text('✖ ' + ((r && r.msg) || 'No se ha podido cambiar de caja.'));
             self._pitido(false);
-        }).guardedCatch(function (e) {
+        }, function (err) {
             self.moviendo = false;
-            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
             self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
-                .text('✖ ' + (self._esSinConexion(e) ? 'Sin conexión. Prueba otra vez.' : self._mensajeError(e)));
+                .text('✖ ' + self._textoFallo(err));
             self._pitido(false);
+            if (err && err.sinRed) { self._sinConexion(); }
         });
     },
 
@@ -1258,6 +1477,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _onFondoHoja: function () {
+        if (this.modo === 'rechazada') { return; }   // v3.29: hay que decidir
         if (this.modo === 'pack') { return this._onPackSeguir(); }   // v3.20
         if (this.modo === 'mover' || this.modo === 'color') { return this._cerrarHoja(); }      // v3.21
         if (this.modo === 'caja' || this.modo === 'caja_auto') { this._salirDeCaja(); }   // v3.24
@@ -1267,6 +1487,10 @@ var Pantalla = AbstractAction.extend({
     },
 
     _cerrarHoja: function () {
+        if (this.modo === 'rechazada') {   // v3.29: la hoja de caja vuelve a ser la de siempre
+            this.$('.o_kp_rechazada_botones').hide();
+            this.$('.o_kp_cancelar_caja').show();
+        }
         this.modo = 'leer';
         this.tipoHoja = null;      // v3.24.1
         this.cjPendiente = null;
@@ -1308,12 +1532,15 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja').hide();
         this.modo = 'validando';
         this._capa('Validando ' + out.name + '…', false);
-        return this._rpc({route: '/koroshi/preparacion/validar', params: _.extend(this._obj(out.id), {
+        // v3.29: con id y tiempo máximo; si Odoo no contesta se vuelve a mandar igual (no se valida dos veces y, si ya
+        // está validada, contesta «validada»)
+        return this._llamar('/koroshi/preparacion/validar', _.extend(this._obj(out.id), {
             employee_id: this.operario ? this.operario.id : false,
             pedido_pendiente: pedidoPendiente || false,
             tipo_caja: this._tipoCaja() || false,   // v3.24: la última caja de Zalando / About You
             incompleto: incompleto || false,   // v3.27
-        })}).then(function (r) {
+            id_lectura: this._nuevoId(),
+        }), VALIDAR_MAX_MS).then(function (r) {
             if (r && r.estado) { self._aplicar(r.estado); }
             var titulo = '✓ ' + out.name + (r && r.incompleta ? ' validada INCOMPLETA' : ' validada');   // v3.27
             if (r && r.ok && r.que === 'validada' && r.caja_auto) {
@@ -1342,12 +1569,12 @@ var Pantalla = AbstractAction.extend({
             self._pintar();
             self._aviso((r && r.msg) || 'No se ha podido validar.', r && r.que === 'quedan' ? 'warn' : 'mal');
             self._pitido(false);
-        }).guardedCatch(function (e) {
+        }, function (err) {
             self._ocultarCapa();
             self.modo = 'leer';
-            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            if (self._esSinConexion(e)) { return self._sinConexion(); }
-            self._aviso(self._mensajeError(e), 'mal');
+            if (err && err.sinRed) { return self._sinConexion(); }   // al volver, si ya está validada, a Lecturas
+            self._aviso(err && err.lento ? 'Odoo no contesta al validar. Pulsa Validar otra vez: si ya está validada, ' +
+                        'lo dirá.' : self._textoFallo(err), 'mal');
             self._pitido(false);
         });
     },
@@ -1384,9 +1611,10 @@ var Pantalla = AbstractAction.extend({
         if (this.sinRed) { this._aviso('Sin conexión: espera a que vuelva para deshacer.', 'warn'); return; }
         if (this.cola.length || this.enviando) { this._aviso('Un momento: guardando lo leído…', 'info'); return; }
         this.enviando = true;
-        return this._rpc({route: '/koroshi/preparacion/deshacer', params: _.extend(this._obj(this._out().id), {
-            employee_id: this.operario ? this.operario.id : false,
-        })}).then(function (r) {
+        // v3.29: con id y reintentos: si Odoo tarda, se vuelve a mandar igual y no se deshace otra lectura
+        return this._llamar('/koroshi/preparacion/deshacer', _.extend(this._obj(this._out().id), {
+            employee_id: this.operario ? this.operario.id : false, id_lectura: this._nuevoId(),
+        })).then(function (r) {
             self.enviando = false;
             if (r && r.que === 'ocupada') { return self._aviso('Odoo está guardando: pulsa otra vez.', 'warn'); }
             if (r && r.estado && !self._aplicar(r.estado)) { self._recargar(); }   // v3.5: ligero
@@ -1395,11 +1623,12 @@ var Pantalla = AbstractAction.extend({
             self._aviso((r && r.msg) || 'Error', r && r.ok ? 'info' : 'mal');
             self._pitido(!!(r && r.ok));
             self._foco();
-        }).guardedCatch(function (e) {
+        }, function (err) {
             self.enviando = false;
-            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            if (self._esSinConexion(e)) { return self._sinConexion(); }
-            self._aviso(self._mensajeError(e), 'mal');
+            if (err && err.sinRed) { return self._sinConexion(); }
+            self._aviso(self._textoFallo(err) + (err && err.lento ? ' Mira la línea antes de deshacer otra vez.' : ''),
+                        'mal');
+            self._recargar();   // lo que hay de verdad en Odoo
         });
     },
 
@@ -1423,10 +1652,12 @@ var Pantalla = AbstractAction.extend({
 
     _onVolver: function () {
         if (this.modo === 'validando') { return; }
+        if (this.modo === 'rechazada') { this.$('.o_kp_rechazada_botones').hide(); this.$('.o_kp_cancelar_caja').show(); }
         if (this.modo === 'faltante') { return this._cerrarFaltante(); }
         // v3.6: con red, se espera a que lo leído llegue a Odoo (sin red o sin sesión, se queda en la PDA y se manda
         // al volver a abrir la preparación)
-        if (this.cola.length && !this.sinRed && !this.sesionCaducada) {
+        var parada = this.cola.length && this.cola[0].rechazo;   // v3.29: se decide al volver a abrirla
+        if (this.cola.length && !this.sinRed && !this.sesionCaducada && !parada) {
             return this._aviso('Espera: guardando ' + this._textoPendientes() + '…', 'warn');   // v3.22
         }
         this.trigger_up('history_back');
@@ -1440,12 +1671,7 @@ var Pantalla = AbstractAction.extend({
             .then(function (r) {
                 if (!r || !r.ok) { return; }
                 if (!self._aplicar(r.estado)) { return self._recargar(despues); }   // v3.5: no cuadra -> entera
-                if (self.estado.out.estado === 'done' || self.estado.out.estado === 'cancel') {
-                    // validada desde Faltante: vuelta a Lecturas («¡Hecho!» y la siguiente)
-                    self._capa('✓ ' + self.estado.out.name + (self.estado.out.estado === 'done' ? ' validada' : ' cancelada'), true);
-                    self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
-                    return;
-                }
+                if (self._outTerminada()) { return; }   // validada desde Faltante: vuelta a Lecturas
                 if (despues) { despues(); }
                 self._pintar();
             }).guardedCatch(function (e) {
@@ -1949,8 +2175,9 @@ var Pantalla = AbstractAction.extend({
     _probarConexion: function () {
         var self = this;
         if (!this.sinRed || !this._out()) { return; }
-        return this._rpc({route: '/koroshi/preparacion/cargar', params: _.extend(this._obj(this._out().id), {
-            employee_id: this.operario ? this.operario.id : false})}, {shadow: true})
+        // v3.29: con tiempo máximo (_post) y mirando si mientras tanto la OUT se ha validado
+        return this._post('/koroshi/preparacion/cargar', _.extend(this._obj(this._out().id), {
+            employee_id: this.operario ? this.operario.id : false}))
             .then(function (r) {
                 if (!r || !r.ok) { return self._sinConexion(); }
                 clearTimeout(self.timerReintento);
@@ -1959,14 +2186,36 @@ var Pantalla = AbstractAction.extend({
                 self._estadoLector();
                 self.$el.removeClass('o_kp_sin_red');
                 self._aplicar(r.estado);   // v3.6: con lo pendiente sumado
+                if (self._outTerminada()) { return; }   // v3.29
                 self._pintar();
                 self._aviso('Conexión recuperada.' + (self.cola.length ? ' Guardando lo leído…' : ' Ya puedes leer.'), 'ok');
                 self._pitido(true);
                 self._enviar();   // la lectura que se quedó a medias (mismo id: no cuenta dos veces)
-            }).guardedCatch(function (e) {
-                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            }, function (err) {
+                if (err && err.sesion) {
+                    self.sesionCaducada = true;
+                    self._aviso('La sesión de Odoo ha caducado: vuelve a entrar. Lo leído está guardado en la PDA.', 'mal');
+                }
                 self._sinConexion();
             });
+    },
+
+    // v3.29: la OUT (o la agrupación) ya está validada o cancelada: «✓ … validada» y vuelta a Lecturas. Lo que
+    // quedaba en la cola se manda igual (Odoo lo apunta como rechazado de cola) desde la memoria, en segundo plano.
+    _outTerminada: function () {
+        var self = this;
+        var out = this.estado && this.estado.out;
+        if (!out || (out.estado !== 'done' && out.estado !== 'cancel')) { return false; }
+        clearTimeout(this.timerReintento);
+        if (this.cola.length) {
+            var clave = this._claveMemoria();
+            var items = (this._leerMemoria()[clave] || []).map(function (i) { return _.omit(i, 'rechazo'); });
+            this.cola = [];
+            this._vaciarOtra(clave, items);
+        }
+        this._capa('✓ ' + out.name + (out.estado === 'done' ? ' validada' : ' cancelada'), true);
+        this.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
+        return true;
     },
 
     _onEnLinea: function () {
