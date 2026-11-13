@@ -737,3 +737,31 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 }
 .o_koroshi_preparacion .o_kp_alarma_titulo { font-size: 26px; font-weight: 900; line-height: 1.15; }
 .o_koroshi_preparacion .o_kp_alarma_texto { font-size: 18px; font-weight: bold; margin-top: 8px; }
+
+/* v3.24: tipo de caja al cerrar una caja (Consumibles) */
+.o_koroshi_preparacion .o_kp_tipos_titulo { font-weight: bold; font-size: 14px; margin: 6px 0 4px; color: #374151; }
+.o_koroshi_preparacion .o_kp_tipos_caja { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px;
+    margin-bottom: 10px; }
+.o_koroshi_preparacion .o_kp_tipo_caja { min-height: 56px; border: 2px solid #9ca3af; background: #fff; color: #111;
+    border-radius: 6px; padding: 6px 4px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; line-height: 1.15; }
+.o_koroshi_preparacion .o_kp_tipo_caja b { font-size: 18px; }
+.o_koroshi_preparacion .o_kp_tipo_caja small { font-size: 12px; color: #4b5563; }
+.o_koroshi_preparacion .o_kp_tipo_caja.o_kp_tipo_elegido { border-color: #111; background: #facc15;
+    box-shadow: inset 0 0 0 2px #111; }
+
+/* v3.24.1: tipos de caja grandes y legibles */
+.o_koroshi_preparacion .o_kp_tipos_titulo { font-size: 17px; font-weight: 900; color: #111; margin: 8px 0 6px; }
+.o_koroshi_preparacion .o_kp_tipos_caja { gap: 10px; }
+.o_koroshi_preparacion .o_kp_tipo_caja { min-height: 86px; border: 3px solid #111; border-radius: 8px; padding: 8px 4px; }
+.o_koroshi_preparacion .o_kp_tipo_caja b { font-size: 26px; font-weight: 900; letter-spacing: .3px; }
+.o_koroshi_preparacion .o_kp_tipo_caja small { font-size: 15px; font-weight: bold; color: #374151; margin-top: 2px; }
+.o_koroshi_preparacion .o_kp_tipo_caja:active { transform: scale(.97); }
+.o_koroshi_preparacion .o_kp_tipo_caja.o_kp_tipo_elegido { background: #111; color: #facc15; box-shadow: none; }
+.o_koroshi_preparacion .o_kp_tipo_caja.o_kp_tipo_elegido small { color: #facc15; }
+.o_koroshi_preparacion .o_kp_tipo_caja.o_kp_tipo_elegido b::before { content: "✓ "; }
+.o_koroshi_preparacion .o_kp_hoja_caja .o_kp_hoja_aviso.o_kp_ok { color: #166534; font-weight: bold; }
+
+/* v3.24.1: aviso de sin conexión en una sola línea, más pequeño */
+.o_koroshi_preparacion .o_kp_offline { font-size: 14px; padding: 5px 10px; gap: 6px; align-items: center;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }

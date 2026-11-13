@@ -378,3 +378,6 @@ body.o_ko_bloqueado .o_main_navbar { display: none !important; }
 .o_koroshi_operarios .o_ko_motivo.o_ko_elegido { border-color: var(--ko-naranja); }
 .o_koroshi_operarios .o_ko_nota { border-radius: 4px; }
 .o_koroshi_operarios .o_ko_confirmar_texto .o_ko_warn_txt { border-radius: 0; border-left: 6px solid #e0a800; }
+
+/* v2.10: botón de pausa, debajo de Faltante / Saltar */
+.o_koroshi_operarios .o_ko_pausa { width: 100%; margin-top: 10px; min-height: 52px; font-size: 19px; }

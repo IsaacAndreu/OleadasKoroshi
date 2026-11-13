@@ -26,7 +26,6 @@ var core = require('web.core');
 var session = require('web.session');
 
 var REPETIDA_MS = 700;       // la misma lectura dos veces seguidas (bus + campo) cuenta una
-var PREFIJOS_ZONA = ['Z-'];  // agrupaciones que se abren enteras (igual que models/tarea.py)
 var AVISO_OK_MS = 4000;      // los avisos verdes se van solos
 var REINTENTO_MS = 5000;     // sin conexion: reintento
 var CUENTA_HECHO = 3;        // segundos antes de abrir la siguiente
@@ -34,7 +33,8 @@ var MENU_LARGO_MS = 2000;    // pulsacion larga del menu en tarjeta obligatoria
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';
 var PLACEHOLDER = 'Escribir tarjeta o pedido y Enter';
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
-var DESTINOS = {oficina: 'Queda en expediciones', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno'};
+var DESTINOS = {oficina: 'Queda en expediciones', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno',
+                libre: 'Lo hace otro: no te vuelve a salir', pausa: 'Sigue siendo tuyo: pausa'};   // v2.10
 
 var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_operarios.Pantalla',
@@ -47,6 +47,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_ko_lector': '_onTocarBloqueo',
         'click .o_ko_continuar': '_onContinuar',
         'click .o_ko_saltar': '_onSaltar',
+        'click .o_ko_pausa': '_onPausa',                 // v2.10
         'click .o_ko_motivo': '_onMotivo',
         'click .o_ko_confirmar_salto': '_onConfirmarSalto',
         'click .o_ko_cancelar_salto': '_onCancelarSalto',
@@ -421,19 +422,13 @@ var Pantalla = AbstractAction.extend({
                     return self.do_action(accion);
                 });
         };
-        var esZona = function (nombre) {
-            return PREFIJOS_ZONA.some(function (p) { return (nombre || '').indexOf(p) === 0; });
-        };
         // v2.3.1: los operarios no ven nada de productividad
         this._aviso('Sin tarjeta: abriendo ' + codigo + '. Lee tu tarjeta la próxima vez.', 'warn');
         this._mostrarAbriendo(codigo, '');
         var prom = this._rpc({model: 'stock.picking', method: 'search_read',
                               args: [[['name', '=', codigo]], ['name', 'batch_id']], kwargs: {limit: 1}})
             .then(function (pk) {
-                if (pk.length && pk[0].batch_id && esZona(pk[0].batch_id[1])) {
-                    return abrirLote(pk[0].batch_id[0]);
-                }
-                if (pk.length) {
+                if (pk.length) {   // v2.9: una OUT es solo esa OUT, aunque sea de una zona (Z-)
                     return self._rpc({route: '/stock_barcode/scan_from_main_menu', params: {barcode: pk[0].name}});
                 }
                 return self._rpc({model: 'stock.picking.batch', method: 'search_read',
@@ -536,6 +531,7 @@ var Pantalla = AbstractAction.extend({
         var $m = this.$('.o_ko_salto_motivos').empty();
         this.motivoElegido = null;
         this.motivos.forEach(function (m) {
+            if (m.destino === 'pausa') { return; }   // v2.10: la pausa tiene su botón
             var $b = $('<button type="button" class="o_ko_motivo"/>').attr('data-id', m.id);
             $('<span class="o_ko_marca" role="presentation"/>').appendTo($b);
             $('<span class="o_ko_motivo_txt"/>').text(m.nombre)
@@ -553,6 +549,20 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_ko_salto').show();
         this._pintarBotonSalto();
         this._abrirHoja();
+    },
+
+    // v2.10: pausa (comer, café). Como «Fin de turno»: el tiempo se para, la PDA queda libre y al leer la tarjeta
+    // la misma OUT sale la primera.
+    _onPausa: function () {
+        var self = this;
+        if (!this.actual || this.ocupado || this.sinRed) { return; }
+        var buscar = this.motivos.length ? Promise.resolve() : this._cargarMotivos();
+        return buscar.then(function () {
+            var m = _.findWhere(self.motivos, {destino: 'pausa'});
+            if (!m) { return self._aviso('No se ha podido cargar la pausa. Vuelve a probar.', 'mal'); }
+            self._confirmar('¿Pausa?', self.actual.ref + ' sigue siendo tuyo. Al volver, lee tu tarjeta y sale el primero.',
+                            '⏸ Sí, pausa', 'No, volver', function () { return self._saltar(m, ''); });
+        });
     },
 
     _onMotivo: function (ev) {
@@ -613,11 +623,12 @@ var Pantalla = AbstractAction.extend({
                     return;
                 }
                 self._pitido(true);
-                if (r.destino === 'suya') {
-                    // fin de turno: la PDA queda libre para el siguiente
+                if (r.destino === 'suya' || r.destino === 'pausa') {
+                    // fin de turno (v2.10: o pausa): la PDA queda libre para el siguiente
                     var nombre = self.operario.nombre;
                     self._olvidarOperario();
-                    self._aviso(r.msg + '. Hasta mañana, ' + nombre + '.', 'info');
+                    self._aviso(r.destino === 'pausa' ? '⏸ Pausa, ' + nombre + '. ' + r.msg + '.' :
+                                r.msg + '. Hasta mañana, ' + nombre + '.', 'info');
                     return;
                 }
                 return self._trasSiguiente(r, 'abrir', r.msg_salto);

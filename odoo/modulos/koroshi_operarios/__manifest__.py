@@ -81,8 +81,14 @@ o se fue sin dejarla, o estaba en la cola de otro sin empezar), quien la lee se 
 parada del otro se cierra como dejada («La siguio otro operario») a la hora de su ultima lectura, y la asignacion pasa a
 quien la lee. Las de Expediciones siguen bloqueadas. Agrupaciones: si otro la esta haciendo ahora, «X la esta haciendo».
 Metodos _ultima_actividad, _minutos_sin_leer y _trabajando_ahora para el monitor (alarma de bloqueo).
+v2.9.0 (13/11/2026): leer una OUT que es de una zona (Z-) abre SOLO esa OUT (antes, la zona entera). La zona entera,
+leyendo el nombre de la Z-. Si otro esta haciendo ahora la zona entera: «OUT es de la zona Z- y la esta haciendo X».
+Una zona con alguna OUT cogida suelta no se da entera en automatico. Sin tarjeta, igual: la OUT sola.
+v2.10.0 (13/11/2026): boton «Pausa (comer, cafe)» en la PDA: el tiempo se para, la PDA queda libre y al leer la tarjeta
+sale la misma OUT la primera (destino pausa). En Saltar, «Dejar este pedido (que lo haga otro)» (destino libre): queda
+libre para otro y a quien la deja no se le vuelve a dar en el dia. Motivos nuevos en data/motivos_v2100.xml.
 """,
-    'version': '13.0.2.8.0',
+    'version': '13.0.2.10.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -93,6 +99,7 @@ Metodos _ultima_actividad, _minutos_sin_leer y _trabajando_ahora para el monitor
         'data/categoria.xml',
         'data/motivos.xml',
         'data/motivos_v221.xml',
+        'data/motivos_v2100.xml',
         'data/cron.xml',
         'data/parametros.xml',
         'data/informe.xml',

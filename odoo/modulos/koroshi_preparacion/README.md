@@ -1,7 +1,47 @@
-# KOROSHI Preparación en Lecturas (v3.23.0, 12/11/2026)
+# KOROSHI Preparación en Lecturas (v3.25.0, 13/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
+
+
+## v3.25.0: OUT de una zona, sola (13/11/2026)
+
+- Si se lee una OUT que es de una zona (Z-), se prepara **solo esa OUT** en esta pantalla (con Operarios 2.9). Para la
+  zona entera, se lee el nombre de la Z-.
+- Se valida igual que dentro de la agrupación (la validación de Faltantes sin su «se valida desde la agrupación»).
+- Arriba sale la zona de la OUT.
+
+## v3.24.3: tipo de caja sin conexión (13/11/2026)
+
+- Sin conexión se cierra la caja igual: «Caja», leer la CJ y tocar el tipo. La caja queda cerrada en la PDA con su
+  tipo y Odoo la guarda (tipo de paquete y consumo) cuando vuelve la conexión. En la lista sale el tipo.
+- La caja Online no sale en la PDA (Consumibles 1.2.1): en pedidos de tiendas y Zalando solo Grande, 60x40x40 y Mediana.
+
+## v3.24.2: aviso de sin conexión más corto (13/11/2026)
+
+- El aviso rojo de arriba, en una línea y más pequeño: «Sin conexión · se guarda en la PDA».
+- Las 3.24.0 y 3.24.1 no se instalaron.
+
+## v3.24.1: primero la CJ, luego el tipo (13/11/2026)
+
+- Se lee la etiqueta CJ y la hoja dice «CJ… · ¿Qué caja es?»: la caja se cierra al tocar el tipo. También vale tocar
+  primero el tipo y luego leer la CJ. Ningún tipo sale marcado: no se cierra ninguna caja con un tipo supuesto.
+- En una agrupación (Z-), una CJ leída sin pulsar «Caja» también pregunta el tipo.
+- Botones de tipo más grandes (letra de 26 px, borde negro grueso); el elegido en negro con letra amarilla y ✓.
+- La 3.24.0 no se instaló.
+
+## v3.24.0: tipo de caja (13/11/2026)
+
+- Al pulsar «Caja», encima de «Escanea la caja» salen los tipos de caja de **Consumibles** (los artículos marcados «Es
+  una caja»): Grande 590x390x400, 60x40x40, Mediana y Online 280x280x120. Se elige y se lee la CJ. El tipo se recuerda
+  por operario (la próxima vez sale marcado).
+- Zalando / About You: «Caja» enseña los tipos y **tocar uno cierra la caja** (sin CJ, como antes). La última caja que
+  se cierra sola al validar va con el último tipo elegido.
+- Odoo pone a la caja (`stock.quant.package`) su «Tipo de paquete» y resta 1 en Consumibles con un consumo «OUT · caja
+  · operario». Si la caja ya existía en la OUT (se vuelve a abrir), no resta otra vez. Nunca para el cierre de la caja.
+- También sin conexión: la caja va a la cola con su tipo.
+- En la lista de cajas («N cajas») sale el tipo de cada caja.
+- Depende de `koroshi_consumibles` v1.2.0, que hay que actualizar a la vez.
 
 ## v3.23.0: alarma de parado + caja sin internet (12/11/2026)
 

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.2: las cajas de KOROSHI que se eligen en la PDA (Lecturas) al cerrar una caja. Una sola vez al instalar o
+         actualizar (noupdate): lo que Betty cambie después no se pisa. La mediana va sin medidas: las pone Betty. -->
+    <data noupdate="1">
+        <function model="koroshi.consumable.item" name="_cajas_koroshi_iniciales"/>
+    </data>
+</odoo>

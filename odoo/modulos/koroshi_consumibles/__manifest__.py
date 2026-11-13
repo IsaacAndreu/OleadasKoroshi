@@ -9,15 +9,25 @@ consumo, entrada o corrección con usuario, fecha y observaciones.
 
 El stock actual se calcula a partir del total inicial y del histórico de
 movimientos. No modifica stock.quant, albaranes ni productos de Odoo.
+
+v1.2.0 (13/11/2026): CAJAS PARA LA PDA. Campos nuevos en el artículo: «Es una caja», nombre en la PDA, orden y
+medidas (mm). Cada caja tiene su «Tipo de paquete» de Odoo (product.packaging, se crea solo). Al instalar se
+marcan/crean las cajas de KOROSHI: Grande 590x390x400 (la que ya había), 600x400x400, Mediana (sin medidas: las
+pone Betty) y Online 280x280x120. La preparación en Lecturas (koroshi_preparacion 3.24) las enseña al cerrar
+una caja y cada caja cerrada resta 1 (consumo con la OUT, la caja y el operario). Si no hay stock, el consumo de
+la PDA se apunta igual y el artículo queda «Agotado» (no para el cierre de la caja).
+v1.2.1 (13/11/2026): «Se elige en Lecturas». La caja Online no sale en la PDA: lo online va por INT al SORTER y no
+cierra caja en Lecturas (las OUT web no llevan caja). La 1.2.0 no se instaló.
 """,
-    'version': '13.0.1.1.20261102',
+    'version': '13.0.1.2.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['base', 'stock', 'koroshi_warehouse_map'],
+    'depends': ['base', 'stock', 'delivery', 'koroshi_warehouse_map'],
     'data': [
         'security/ir.model.access.csv',
         'views/consumable_views.xml',
+        'data/cajas.xml',
     ],
     'installable': True,
     'application': False,

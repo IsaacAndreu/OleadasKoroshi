@@ -204,8 +204,10 @@ class KoroshiOperarios(http.Controller):
             return _error(e)
         texto = {'oficina': '%s queda en expediciones' % asig.name,
                  'final': '%s va al final de tu cola' % asig.name,
-                 'suya': '%s sigue siendo tuya: la primera al volver' % asig.name}[destino]
-        if destino == 'suya':
+                 'suya': '%s sigue siendo tuya: la primera al volver' % asig.name,
+                 'libre': '%s la hará otro: no te vuelve a salir' % asig.name,          # v2.10
+                 'pausa': '%s sigue siendo tuya: la primera al volver' % asig.name}[destino]
+        if destino in ('suya', 'pausa'):
             # fin de turno: no se abre nada mas
             return {'ok': True, 'que': 'saltada', 'destino': destino, 'msg': texto, 'cola': self._cola_json(emp)}
         res = self._siguiente(emp)

@@ -115,15 +115,15 @@ class KoroshiPreparacion(http.Controller):
 
     @http.route('/koroshi/preparacion/caja', type='json', auth='user')
     def caja(self, picking_id=False, codigo='', employee_id=False, id_lectura=False, lote_id=False, out_id=False,
-             **kw):
+             tipo_caja=False, **kw):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
         try:
             if lote_id:
-                res = self._agrupacion().caja(lote, emp, codigo, id_lectura, out_id)
+                res = self._agrupacion().caja(lote, emp, codigo, id_lectura, out_id, tipo_caja)
             else:
-                res = self._lectura().caja(picking, emp, codigo, id_lectura)
+                res = self._lectura().caja(picking, emp, codigo, id_lectura, tipo_caja)   # v3.24
         except Ocupada as e:
             # v3.6: la PDA lo vuelve a mandar en un momento (mismo id_lectura): no se pierde
             return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
@@ -185,7 +185,8 @@ class KoroshiPreparacion(http.Controller):
         return {'ok': True, 'impresos': self._lectura().impresos(picking)}
 
     @http.route('/koroshi/preparacion/validar', type='json', auth='user')
-    def validar(self, picking_id=False, employee_id=False, pedido_pendiente=False, lote_id=False, **kw):
+    def validar(self, picking_id=False, employee_id=False, pedido_pendiente=False, lote_id=False, tipo_caja=False,
+                **kw):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
@@ -194,7 +195,7 @@ class KoroshiPreparacion(http.Controller):
             if lote_id:
                 res = self._agrupacion().validar(lote, emp, pp)
             else:
-                res = self._lectura().validar(picking, emp, pp)
+                res = self._lectura().validar(picking, emp, pp, tipo_caja)   # v3.24
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'que': 'no_validada', 'msg': _msg(e)}
         return self._con_estado(picking, res, emp, lote=lote)

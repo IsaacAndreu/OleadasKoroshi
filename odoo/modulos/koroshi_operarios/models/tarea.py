@@ -19,7 +19,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 ZONA_HORARIA = 'Europe/Madrid'
-PREFIJOS_ZONA = ('Z-',)     # OUT de estas agrupaciones -> la tarea es de toda la agrupacion
+PREFIJOS_ZONA = ('Z-',)     # agrupaciones de zona. v2.9: leer su nombre = la zona entera; leer una OUT = solo esa OUT
 VENTANA_TARJETA = 90        # segundos que vale la tarjeta leida para leer el pedido despues
 # v2.8: una tarea en curso sin leer nada en estos minutos ya no cuenta como «la esta haciendo ahora» (parametro
 # koroshi_operarios.minutos_sin_leer). Quien lee esa OUT se la queda sin preguntar; el monitor la marca en rojo.
@@ -220,9 +220,7 @@ class KoroshiOperarioTarea(models.Model):
         Batch = self.env['stock.picking.batch'].sudo()
         picking = Picking.search([('name', '=', codigo)], limit=1)
         if picking:
-            lote = picking.batch_id
-            if lote and (lote.name or '').startswith(PREFIJOS_ZONA):
-                return 'agrupacion', picking, lote
+            # v2.9: una OUT leída es solo esa OUT, aunque sea de una zona (Z-). La zona entera, leyendo la Z-.
             return 'out', picking, Batch
         lote = Batch.search([('name', '=', codigo)], limit=1)
         if lote:
