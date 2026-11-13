@@ -2054,7 +2054,12 @@ var Pantalla = AbstractAction.extend({
             var $c = this.$('.o_kp_cuantas').empty();
             $('<span class="o_kp_n"/>').text(sig.leidas).appendTo($c);
             $('<span class="o_kp_de"/>').text('de ' + sig.pedidas + (sig.completa ? ' ✓' : '')).appendTo($c);
-            if (sig.caja) { $('<span class="o_kp_cuantas_caja"/>').text('En la caja ' + sig.caja).appendTo($c); }
+            if (sig.caja) {
+                var $cc = $('<span class="o_kp_cuantas_caja"/>').text('En la caja ' + sig.caja).appendTo($c);
+                // v3.28.1: ✎ aquí mismo (sacar de la caja / otra caja), sin entrar en la lista
+                $('<button type="button" class="o_kp_l_editar o_kp_editar_tarjeta" aria-label="Cambiar de caja"/>')
+                    .attr('data-id', sig.id).text('✎').toggle(this.modo === 'leer').appendTo($cc);
+            }
             var $s = this.$('.o_kp_segmentos').empty();
             if (sig.pedidas > 1 && sig.pedidas <= 20) {
                 for (var k = 0; k < sig.pedidas; k++) {

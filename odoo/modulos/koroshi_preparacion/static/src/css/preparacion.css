@@ -782,3 +782,7 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 
 /* v3.28: ✎ «Sacar de la caja» */
 .o_koroshi_preparacion .o_kp_mv_destino.o_kp_mv_fuera { background: #facc15; color: #111; font-weight: bold; }
+
+/* v3.28.1: ✎ al lado de «En la caja X» en la tarjeta */
+.o_koroshi_preparacion .o_kp_cuantas_caja { display: inline-flex; align-items: center; justify-content: center; gap: 10px; }
+.o_koroshi_preparacion .o_kp_cuantas_caja .o_kp_editar_tarjeta { flex: 0 0 48px; width: 48px; height: 48px; background: #fff; }
