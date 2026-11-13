@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada hora: registra las OUT de las agrupaciones Z- de hoy y lee el "CAJAS n" de la nota antes de que
+         otro proceso la pise. Solo escribe en koroshi.zonas.ejecucion y koroshi.zonas.ejecucion.out -->
+    <record id="cron_koroshi_zonas_capturar" model="ir.cron">
+        <field name="name">KOROSHI Zonas: registrar las OUT de hoy</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_capturar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Cada noche: mide las cajas reales de los ultimos 7 dias. Solo escribe en sus propias tablas -->
+    <record id="cron_koroshi_zonas_medir" model="ir.cron">
+        <field name="name">KOROSHI Zonas: medir cajas reales</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_medir()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(DateTime.now().replace(hour=22, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Fase 3. El reparto. Modo sombra (por defecto): DIAGNOSTICO a las 03:50 UTC, antes del cron 202 (04:00);
+         no parte nada, solo escribe en las tablas del modulo y publica en el canal. Modo real: parte (con el cron 202
+         desactivado; si no, no hace nada y avisa). Se lanza como el usuario del cron 202 (Departament IT).
+         La primera vez, manana: nunca se lanza al instalar. -->
+    <record id="cron_koroshi_zonas_partir" model="ir.cron">
+        <field name="name">KOROSHI Zonas: partir OUT (sombra o real)</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_partir()</field>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="((DateTime.now() + timedelta(days=1)).replace(hour=3, minute=50, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Fase 3. Modo sombra: a las 04:30 UTC compara lo que ha partido el cron 202 con el calculo del modulo.
+         Solo escribe en koroshi.zonas.ejecucion y publica el resultado en el canal. -->
+    <record id="cron_koroshi_zonas_comparar" model="ir.cron">
+        <field name="name">KOROSHI Zonas: comparar con el cron 202 (sombra)</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_comparar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="((DateTime.now() + timedelta(days=1)).replace(hour=4, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+
+    <!-- Fase 3. Correo de las zonas del dia (antes la accion 1868, con su cron 201 desactivado desde el 27/10).
+         DESACTIVADO: activarlo cuando se quiera, con los destinatarios en la configuracion. -->
+    <record id="cron_koroshi_zonas_correo" model="ir.cron">
+        <field name="name">KOROSHI Zonas: correo de las zonas del día</field>
+        <field name="model_id" ref="model_koroshi_zonas_correo"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_enviar()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="((DateTime.now() + timedelta(days=1)).replace(hour=5, minute=0, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="False"/>
+    </record>
+</odoo>
