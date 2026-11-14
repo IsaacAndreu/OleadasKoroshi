@@ -108,9 +108,19 @@ class KoroshiActividadRegistro(models.Model):
     def abierto_de(self, employee):
         return self.search([('employee_id', '=', employee.id), ('estado', '=', 'curso')], order='inicio desc', limit=1)
 
+    def init(self):
+        # v1.1.0 (auditoría 13/11, fase 2.8): un solo tramo abierto por persona, también con dos toques a la vez
+        self.env.cr.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS koroshi_actividad_registro_uno_abierto
+            ON koroshi_actividad_registro (employee_id) WHERE estado = 'curso'
+        """)
+
     def _cerrar(self, motivo, fin=None):
+        Caja = self.env['koroshi.inversa.caja']
         for r in self:
-            r.write({'estado': 'cerrado', 'motivo_fin': motivo, 'fin': max(fin or fields.Datetime.now(), r.inicio)})
+            fin_r = max(fin or fields.Datetime.now(), r.inicio)
+            r.write({'estado': 'cerrado', 'motivo_fin': motivo, 'fin': fin_r})
+            Caja.cerrar_por_tramo(r, motivo, fin_r)    # v1.1.0: la caja de inversa abierta se cierra a la vez
 
     @api.model
     def estado_de(self, employee):
@@ -128,7 +138,14 @@ class KoroshiActividadRegistro(models.Model):
             situacion = 'pausa'
         else:
             situacion = 'terminado'
+        # v1.1.0: inversa (cajas de hoy; la caja abierta solo si está trabajando en una actividad que lee matrículas)
+        pide = bool(situacion == 'trabajando' and ultimo.actividad_id.pide_matricula)
+        Caja = self.env['koroshi.inversa.caja']
+        inversa = Caja.resumen(employee) if (pide or Caja.search_count(
+            [('employee_id', '=', employee.id), ('dia', '=', hoy)])) else False
         return {
+            'pide_matricula': pide,
+            'inversa': inversa,
             'employee_id': employee.id,
             'nombre': employee.name,
             'situacion': situacion,
@@ -152,6 +169,7 @@ class KoroshiActividadRegistro(models.Model):
         if abierto and abierto.actividad_id == actividad:
             return abierto    # ya está en esa actividad: no se parte el tramo
         abierto._cerrar('cambio')
+        self.flush()    # el cierre va a la base antes de crear el nuevo (índice: un solo tramo abierto por persona)
         return self.create({'employee_id': employee.id, 'actividad_id': actividad.id,
                             'company_id': actividad.company_id.id or self.env.company.id})
 
@@ -206,9 +224,11 @@ class KoroshiActividadRegistro(models.Model):
             elif cierre and inicio < cierre <= ahora:
                 r._cerrar('fin_auto', a_utc(cierre))
             elif dia < ahora.date():
-                # empezó después del cierre (o sin hora de cierre): se cierra a medianoche de su día
-                medianoche = _tz().localize(datetime.datetime.combine(dia, datetime.time(23, 59, 59)))
-                r._cerrar('fin_auto', a_utc(medianoche))
+                # v1.1.0 (auditoría 13/11, fase 2.8): empezó después del cierre (o sin hora de cierre) y nadie lo
+                # paró. Antes se cerraba a las 23:59 y sumaba horas que no se trabajaron: ahora cuenta 0 minutos y
+                # queda marcado para corregirlo a mano en «Tramos de tiempo».
+                r._cerrar('fin_auto', r.inicio)
+                r.nota = _('Olvidado abierto: revisar la hora de fin a mano.')
         return True
 
     def action_cerrar_a_mano(self):

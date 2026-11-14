@@ -1,4 +1,4 @@
-/* KOROSHI Actividades v1.0.0 - pantalla del portátil (letra grande, contraste alto).
+/* KOROSHI Actividades v1.1.0 - pantalla del portátil (letra grande, contraste alto).
    Todo dentro de .o_koroshi_actividades para no tocar el resto de Odoo. Sin librerías externas.
    Nada de aria-hidden (en Odoo 13 hay una regla global que lo oculta): role="presentation". */
 .o_koroshi_actividades {
@@ -136,3 +136,24 @@
 .o_koroshi_actividades .o_ka_fila_extra { color: var(--ka-suave); font-size: 14px; }
 .o_koroshi_actividades .o_ka_fila_min { font-variant-numeric: tabular-nums; min-width: 90px; text-align: right; }
 .o_koroshi_actividades .o_ka_vacio { color: var(--ka-suave); }
+
+/* ---------------------------------------------------------------- v1.1.0: inversa */
+.o_koroshi_actividades .o_ka_fijo { font-size: 13px; color: #8a5300; font-weight: bold; }
+.o_koroshi_actividades .o_ka_inversa { margin-top: 14px; }
+.o_koroshi_actividades .o_ka_caja {
+    border: 3px solid #8a5300; border-radius: 12px; padding: 12px 14px; background: #fff8ec;
+}
+.o_koroshi_actividades .o_ka_caja_vacia { text-align: center; font-size: 20px; font-weight: bold; color: #8a5300; border-style: dashed; }
+.o_koroshi_actividades .o_ka_caja_cab { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.o_koroshi_actividades .o_ka_caja_mat { font-size: 30px; font-weight: bold; letter-spacing: .5px; font-variant-numeric: tabular-nums; }
+.o_koroshi_actividades .o_ka_caja_tiempo { font-size: 26px; font-weight: bold; color: #8a5300; font-variant-numeric: tabular-nums; }
+.o_koroshi_actividades .o_ka_caja_uds { font-size: 20px; margin-top: 4px; }
+.o_koroshi_actividades .o_ka_fams { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.o_koroshi_actividades .o_ka_fam { background: #fff; border: 2px solid var(--ka-borde); border-radius: 8px; padding: 3px 9px; font-size: 17px; }
+.o_koroshi_actividades .o_ka_fam_dest { color: var(--ka-verde); font-weight: bold; }
+.o_koroshi_actividades .o_ka_ultimas { margin-top: 8px; font-size: 14px; color: var(--ka-suave); }
+.o_koroshi_actividades .o_ka_ultima { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; padding: 2px 0; border-bottom: 1px solid #eee; font-variant-numeric: tabular-nums; }
+.o_koroshi_actividades .o_ka_anular {
+    margin-top: 10px; font-size: 15px; padding: 6px 12px; border: 2px solid var(--ka-borde); border-radius: 8px;
+    background: #fff; color: var(--ka-rojo); cursor: pointer;
+}

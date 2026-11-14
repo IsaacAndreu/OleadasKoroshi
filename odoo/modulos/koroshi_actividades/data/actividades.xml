@@ -29,6 +29,8 @@
             <field name="name">Inversa</field>
             <field name="sequence">50</field>
             <field name="color">#8a5300</field>
+            <field name="nota">Lee la matrícula de cada caja</field>
+            <field name="pide_matricula" eval="True"/>
         </record>
         <record id="actividad_bolsas" model="koroshi.actividad">
             <field name="name">Bolsas y etiquetas</field>

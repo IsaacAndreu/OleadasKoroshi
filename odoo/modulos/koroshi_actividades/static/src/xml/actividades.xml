@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <templates xml:space="preserve">
-    <!-- KOROSHI Actividades v1.0.0: pantalla del portátil. Lo de dentro (persona y lista) lo pinta actividades.js. -->
+    <!-- KOROSHI Actividades v1.1.0: pantalla del portátil. Lo de dentro (persona y lista) lo pinta actividades.js. -->
     <t t-name="koroshi_actividades.Pantalla">
         <div class="o_koroshi_actividades">
             <div class="o_ka_offline" role="alert">Sin conexión con Odoo: reintentando…</div>
@@ -8,10 +8,11 @@
                 <div>
                     <div class="o_ka_titulo">Actividades · manipulaciones</div>
                     <div class="o_ka_horario"/>
+                    <div class="o_ka_fijo"/>
                 </div>
                 <label class="o_ka_campo">
                     <span>Tarjeta</span>
-                    <input type="text" class="o_ka_codigo" autocomplete="off" placeholder="Pasa la tarjeta o escribe tu código y Enter"/>
+                    <input type="text" class="o_ka_codigo" autocomplete="off" placeholder="Tarjeta o matrícula (o escribe el código y Enter)"/>
                 </label>
                 <div class="o_ka_reloj"/>
             </header>

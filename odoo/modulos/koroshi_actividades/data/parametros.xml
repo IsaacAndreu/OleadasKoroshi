@@ -17,5 +17,12 @@
             <field name="key">koroshi_actividades.sin_tarjeta</field>
             <field name="value">0</field>
         </record>
+        <!-- v1.1.0: inversa. Palet de la mesa de sorter de cada familia (2 letras del código), para enseñarlo en
+             la pantalla al leer la matrícula. Varias familias separadas por espacio; '*' = el resto.
+             Propuesta del teórico del 12/11 (bin/versiones/teorico-inversa-KOROSHI_2026-11-12_1658_...). -->
+        <record id="parametro_inversa_destinos" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.inversa_destinos</field>
+            <field name="value">JA=JA, PT=PT, TR=TR, ML=ML, XC ZC UN WA ZT ZB HA ZA BI ZN SG ZF HS=ACC, *=RESTO</field>
+        </record>
     </data>
 </odoo>

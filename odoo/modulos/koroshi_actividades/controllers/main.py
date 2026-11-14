@@ -95,6 +95,46 @@ class KoroshiActividades(http.Controller):
             return _error(e)
         return self._respuesta(emp, '%s: sigues con %s' % (emp.name, reg.actividad_id.name))
 
+    # ------------------------------------------------------------------ v1.1.0: inversa
+    @http.route('/koroshi/actividades/fijo', type='json', auth='user')
+    def fijo(self, employee_id=False, **kw):
+        """Al recargar la pantalla de una estación de inversa: vuelve a abrir a la persona que estaba leyendo
+        matrículas, solo si sigue trabajando en una actividad que lee matrículas."""
+        try:
+            emp = self._persona(employee_id)
+        except UserError as e:
+            return _error(e)
+        tramo = self._registro().abierto_de(emp)
+        if not tramo or not tramo.actividad_id.pide_matricula:
+            return {'ok': False, 'msg': '', 'suelto': True}
+        return self._respuesta(emp)
+
+    @http.route('/koroshi/actividades/matricula', type='json', auth='user')
+    def matricula(self, employee_id=False, codigo='', forzar=False, **kw):
+        Caja = request.env['koroshi.inversa.caja'].sudo()
+        try:
+            emp = self._persona(employee_id)
+            caja, aviso = Caja.leer(emp, codigo, forzar=bool(forzar))
+        except UserError as e:
+            return _error(e)
+        if not caja:
+            # ya leída antes: la pantalla pregunta si se cuenta otra vez
+            return {'ok': False, 'repetida': aviso, 'codigo': aviso['matricula'],
+                    'msg': '%s ya la leyó %s.' % (aviso['matricula'], aviso['quien'])}
+        res = self._respuesta(emp, aviso or '%s · %s uds' % (caja.name, caja.uds))
+        res['aviso_tipo'] = 'warn' if aviso else 'ok'
+        return res
+
+    @http.route('/koroshi/actividades/anular', type='json', auth='user')
+    def anular(self, employee_id=False, **kw):
+        Caja = request.env['koroshi.inversa.caja'].sudo()
+        try:
+            emp = self._persona(employee_id)
+            caja = Caja.anular_ultima(emp)
+        except UserError as e:
+            return _error(e)
+        return self._respuesta(emp, '%s anulada: no cuenta.' % caja.name)
+
     @http.route('/koroshi/actividades/fin', type='json', auth='user')
     def fin(self, employee_id=False, **kw):
         try:

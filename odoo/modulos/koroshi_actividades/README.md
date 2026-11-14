@@ -29,6 +29,7 @@ Parámetros del sistema (no se pisan al actualizar):
 | `koroshi_actividades.hora_pausa` | `13:00` | pausa automática ('' = no) |
 | `koroshi_actividades.hora_cierre` | `17:00` | cierre automático ('' = no) |
 | `koroshi_actividades.sin_tarjeta` | `0` | `1` = abrir a una persona tocando su nombre en la lista |
+| `koroshi_actividades.inversa_destinos` | `JA=JA, PT=PT, TR=TR, ML=ML, ...=ACC, *=RESTO` | palet de cada familia en la inversa |
 
 ## Informes (grupo «KOROSHI Operarios: ver productividad»)
 
@@ -40,15 +41,34 @@ Parámetros del sistema (no se pisan al actualizar):
 
 ## Qué toca
 
-Solo sus tablas: `koroshi.actividad`, `koroshi.actividad.registro` y la vista `koroshi.actividad.jornada`.
+Solo sus tablas: `koroshi.actividad`, `koroshi.actividad.registro`, `koroshi.inversa.caja` y la vista
+`koroshi.actividad.jornada`. Lee `s4t.matricula` si existe.
 No añade campos a albaranes, movimientos, tipos de operación ni empleados. Depende de `koroshi_operarios` (tarjetas
 y grupo de productividad).
 
+## Inversa (v1.1.0)
+
+En las actividades con «Lee matrículas» (de partida, **Inversa**):
+
+1. La persona pasa su tarjeta y toca **Inversa**. Queda como persona de esa pantalla (PDA o portátil de la estación):
+   desde ahí no hace falta volver a pasar la tarjeta.
+2. Cada vez que abre una caja de tienda, lee su **matrícula** (CJ + 9 cifras). No cuenta ni lee uds.
+3. En pantalla: la caja abierta, su tiempo, las uds del teórico por familia y a qué palet va cada familia
+   (`koroshi_actividades.inversa_destinos`, p. ej. `JA=JA, PT=PT, TR=TR, ML=ML, XC ZC ...=ACC, *=RESTO`), y las
+   cajas y uds de hoy.
+4. **Anular última lectura** si se ha leído una por error. Una matrícula ya leída pregunta si se cuenta otra vez.
+   Una CJ665… (caja nuestra de salida) no se acepta.
+
+Tiempo de una caja = desde que se lee hasta la siguiente matrícula, la pausa o el fin (también las automáticas).
+El teórico sale de `s4t.matricula` (importación del Excel «EAN | CAJA», módulo de Effective); solo se lee. Si la
+matrícula aún no está importada, la caja cuenta igual y un cron pone sus uds cuando aparece (últimos 14 días).
+Informe: **Inversa: cajas leídas** (tabla dinámica persona × día: recuento de cajas, uds y minutos).
+
 ## Pendiente
 
-- Inversa: leer la matrícula de cada caja dentro de la actividad «Inversa» (cajas, tiempo por caja y uds del
-  teórico). Diseño en `bin/versiones/diseno-lectura-matriculas-inversa_2026-11-12_1705.md`.
+- Confirmar con Betty que el teórico de las matrículas llegará por `s4t.matricula`.
 
 ## Versiones
 
 - v1.0.0 (13/11/2026): primera versión.
+- v1.1.0 (14/11/2026): inversa (matrículas) y fase 2.8 de la auditoría (tramos olvidados, un solo tramo abierto).

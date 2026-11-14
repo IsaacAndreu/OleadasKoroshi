@@ -17,3 +17,7 @@ class KoroshiActividad(models.Model):
     active = fields.Boolean('Activa', default=True)
     company_id = fields.Many2one('res.company', 'Empresa', default=lambda self: self.env.company)
     nota = fields.Char('Qué incluye', help='Texto pequeño debajo del nombre en el botón (opcional)')
+    # v1.1.0: inversa
+    pide_matricula = fields.Boolean('Lee matrículas (inversa)',
+                                    help='Mientras se está en esta actividad, cada caja que se abre se lee (CJ + 9 '
+                                         'cifras): cajas por persona, tiempo de cada caja y uds del teórico.')

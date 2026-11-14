@@ -19,13 +19,21 @@ Sustituye la hoja donde se apuntaba a mano la hora de empezar y de acabar.
 - No cuenta uds: solo tiempo. Informes: tramos (lista, tabla dinámica, gráfico) y jornada por persona y día
   (entrada, salida, horas trabajadas, pausas).
 
-Solo escribe en sus propias tablas (koroshi.actividad, koroshi.actividad.registro). No añade campos a albaranes,
+Solo escribe en sus propias tablas (koroshi.actividad, koroshi.actividad.registro, koroshi.inversa.caja). No añade campos a albaranes,
 movimientos, tipos de operación ni empleados. Depende de koroshi_operarios solo para las tarjetas y el grupo
 «KOROSHI Operarios: ver productividad».
 
 v1.0.0 (13/11/2026): primera versión.
+v1.1.0 (14/11/2026): inversa. Las actividades con «Lee matrículas» (Inversa) piden leer la matrícula (CJ + 9 cifras)
+de cada caja de tienda al abrirla: cajas por persona y día, tiempo de cada caja (hasta la siguiente lectura, la pausa
+o el fin) y uds del teórico (s4t.matricula, solo lectura; si aún no está importada, un cron lo completa). La pantalla
+enseña la caja abierta con sus familias y su palet (parámetro koroshi_actividades.inversa_destinos), avisa de las CJ665
+(cajas nuestras) y de las matrículas ya leídas, y deja anular la última lectura. Quien está en Inversa queda como
+persona de esa pantalla: sus matrículas no piden tarjeta. Tabla nueva koroshi.inversa.caja e informe «Inversa: cajas
+leídas». Auditoría 13/11 (fase 2.8): un tramo olvidado de otro día ya no se cierra a las 23:59 (cuenta 0 min y queda
+marcado para revisar) y un índice único impide dos tramos abiertos de la misma persona.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

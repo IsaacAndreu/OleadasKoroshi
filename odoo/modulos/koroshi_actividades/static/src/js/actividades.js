@@ -1,12 +1,19 @@
 odoo.define('koroshi_actividades.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Actividades v1.0.0 - pantalla del portátil de manipulaciones (acción de cliente).
+/* KOROSHI Actividades v1.1.0 - pantalla del portátil de manipulaciones (acción de cliente).
  *
  * - Izquierda: «Pasa tu tarjeta» (lector o escribir el código + Enter). Con la persona: sus botones de actividad
  *   (tocar = empezar o cambiar), Pausar / Seguir / Fin. Se cierra sola a los 20 s sin tocar nada.
  * - Derecha: quién está trabajando ahora (por actividad), en pausa y terminado hoy, con su tiempo.
  * - Varias personas a la vez: cada una pasa su tarjeta cuando quiere; la lista es de todas.
  * Sin librerías externas. Todo dentro de .o_koroshi_actividades para no tocar el resto de Odoo.
+ *
+ * v1.1.0 (inversa): en una actividad con «Lee matrículas», cada caja que se abre se lee (CJ + 9 cifras).
+ * - La persona que empieza Inversa queda como «persona de esta pantalla» (se guarda en el navegador): sus
+ *   matrículas se leen sin volver a pasar la tarjeta y su panel no se cierra solo. Si otra persona pasa su tarjeta,
+ *   se abre la suya; una matrícula va a quien tenga el panel abierto si está en Inversa, si no a la de la pantalla.
+ * - Panel de inversa: caja abierta (uds del teórico, familias y su palet), tiempo de la caja, cajas y uds de hoy,
+ *   últimas cajas y «Anular última lectura». Matrícula ya leída: pregunta si se cuenta otra vez.
  */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
@@ -16,6 +23,8 @@ var CERRAR_PERSONA_MS = 20000;  // panel de la persona sin tocar nada -> se cier
 var CERRAR_TRAS_ACCION_MS = 3500;
 var REFRESCO_MS = 30000;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
+var RE_MATRICULA = /^CJ\d{9}$/i;          // matrícula de caja (igual que koroshi_preparacion)
+var CLAVE_FIJO = 'koroshi_actividades_fijo';
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
 
@@ -47,6 +56,9 @@ var Pantalla = AbstractAction.extend({
         'click .o_ka_fila_clic': '_onFila',
         'click .o_ka_confirmar_si': '_onConfirmarSi',
         'click .o_ka_confirmar_no': '_onConfirmarNo',
+        'click .o_ka_anular': '_onAnular',
+        'click .o_ka_repetida_si': '_onRepetidaSi',
+        'click .o_ka_repetida_no': '_onRepetidaNo',
         'click': '_onClicFondo',
         'pointerdown': '_marcarActividad',
         'keydown': '_marcarActividad',
@@ -64,7 +76,48 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = false;
         this.ultima = {codigo: '', t: 0};
         this.ultimaActividad = Date.now();
-        this.confirmar = null;
+        this.confirmar = null;     // 'fin' | 'anular' | null
+        this.repetida = null;      // {codigo, quien, cuando}: matrícula ya leída, pendiente de confirmar
+        this.fijo = this._leerFijo();   // v1.1.0: persona de esta pantalla (inversa) {id, nombre}
+    },
+
+    // ------------------------------------------------------------------ v1.1.0: persona de esta pantalla
+    _leerFijo: function () {
+        try {
+            var v = window.localStorage.getItem(CLAVE_FIJO);
+            return v ? JSON.parse(v) : null;
+        } catch (e) {
+            return null;
+        }
+    },
+
+    _actualizarFijo: function (p) {
+        if (!p) {
+            return;
+        }
+        if (p.pide_matricula) {
+            this.fijo = {id: p.employee_id, nombre: p.nombre};
+        } else if (this.fijo && this.fijo.id === p.employee_id) {
+            this.fijo = null;
+        } else {
+            return;
+        }
+        try {
+            if (this.fijo) {
+                window.localStorage.setItem(CLAVE_FIJO, JSON.stringify(this.fijo));
+            } else {
+                window.localStorage.removeItem(CLAVE_FIJO);
+            }
+        } catch (e) { /* nada */ }
+        this._pintarFijo();
+    },
+
+    _pintarFijo: function () {
+        this.$('.o_ka_fijo').text(this.fijo ? 'Inversa en esta pantalla: ' + this.fijo.nombre : '');
+    },
+
+    _esFijo: function (p) {
+        return !!(p && this.fijo && this.fijo.id === p.employee_id && p.pide_matricula);
     },
 
     start: function () {
@@ -75,6 +128,17 @@ var Pantalla = AbstractAction.extend({
             self.timerLista = setInterval(self._refrescar.bind(self), REFRESCO_MS);
             self.timerReloj = setInterval(self._tic.bind(self), 1000);
             self._foco();
+            self._pintarFijo();
+            if (self.fijo) {
+                // v1.1.0: al recargar, vuelve a abrir a quien estaba leyendo matrículas aquí
+                self._rpc({route: '/koroshi/actividades/fijo', params: {employee_id: self.fijo.id}}).then(function (r) {
+                    if (r && r.ok) {
+                        self._abrirPersona(r.persona);
+                    } else if (r && r.suelto) {
+                        self._actualizarFijo({employee_id: self.fijo.id, pide_matricula: false});
+                    }
+                });
+            }
         });
     },
 
@@ -126,11 +190,71 @@ var Pantalla = AbstractAction.extend({
         }
         this.ultima = {codigo: codigo, t: t};
         this.$('.o_ka_codigo').val('');
+        if (RE_MATRICULA.test(codigo)) {
+            return this._leerMatricula(codigo.toUpperCase(), false);
+        }
         return this._llamar('/koroshi/actividades/tarjeta', {codigo: codigo}).then(function (r) {
             if (r) {
                 self._abrirPersona(r.persona);
             }
         });
+    },
+
+    // ------------------------------------------------------------------ v1.1.0: matrículas
+    _paraMatricula: function () {
+        if (this.persona && this.persona.pide_matricula) {
+            return this.persona.employee_id;
+        }
+        return this.fijo ? this.fijo.id : null;
+    },
+
+    _leerMatricula: function (codigo, forzar) {
+        var self = this;
+        var id = this._paraMatricula();
+        if (!id) {
+            this._aviso('warn', codigo + ': primero pasa tu tarjeta y toca «Inversa».');
+            return Promise.resolve();
+        }
+        return this._llamar('/koroshi/actividades/matricula', {employee_id: id, codigo: codigo, forzar: !!forzar})
+            .then(function (r) {
+                if (!r) {
+                    return;
+                }
+                if (r.repetida) {
+                    self.repetida = {codigo: r.codigo, quien: r.repetida.quien, cuando: r.repetida.cuando};
+                    if (!self.persona || self.persona.employee_id !== id) {
+                        return self._llamar('/koroshi/actividades/fijo', {employee_id: id}).then(function (r2) {
+                            if (r2) {
+                                self._abrirPersona(r2.persona, true);
+                            }
+                        });
+                    }
+                    self._pintarPersona();
+                    return;
+                }
+                self.repetida = null;
+                self._despuesDeAccion(r, r.aviso_tipo || 'ok');
+            });
+    },
+
+    _onRepetidaSi: function () {
+        var codigo = this.repetida && this.repetida.codigo;
+        this.repetida = null;
+        if (codigo) {
+            this.ultima = {codigo: '', t: 0};
+            return this._leerMatricula(codigo, true);
+        }
+    },
+
+    _onRepetidaNo: function () {
+        this.repetida = null;
+        this._pintarPersona();
+        this._aviso('info', 'No se ha contado.');
+    },
+
+    _onAnular: function () {
+        this.confirmar = 'anular';
+        this._pintarPersona();
     },
 
     _onFila: function (ev) {
@@ -155,6 +279,9 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = true;
         return this._rpc({route: ruta, params: params}).then(function (r) {
             self.ocupado = false;
+            if (r && r.repetida) {
+                return r;      // v1.1.0: matrícula ya leída: lo decide quien llama
+            }
             if (!r || !r.ok) {
                 self._aviso('mal', (r && r.msg) || 'No se ha podido hacer.');
                 return null;
@@ -194,8 +321,12 @@ var Pantalla = AbstractAction.extend({
     },
 
     // ------------------------------------------------------------------ persona
-    _abrirPersona: function (p) {
+    _abrirPersona: function (p, mantenerRepetida) {
+        if (!mantenerRepetida) {
+            this.repetida = null;
+        }
         this.persona = p;
+        this._actualizarFijo(p);
         this.leidaEn = Date.now();
         this.confirmar = null;
         clearTimeout(this.timerAviso);
@@ -217,6 +348,9 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         clearTimeout(this.timerCerrar);
         this.timerCerrar = setTimeout(function () {
+            if (self._esFijo(self.persona)) {
+                return;    // v1.1.0: el panel de quien lee matrículas en esta pantalla no se cierra solo
+            }
             if (Date.now() - self.ultimaActividad >= ms - 50) {
                 self._cerrarPersona();
             } else {
@@ -235,17 +369,21 @@ var Pantalla = AbstractAction.extend({
             return;
         }
         return this._llamar(ruta, _.extend({employee_id: this.persona.employee_id}, params || {})).then(function (r) {
-            if (!r) {
-                return;
+            if (r) {
+                self._despuesDeAccion(r, 'ok', despues);
             }
-            self.persona = r.persona;
-            self.leidaEn = Date.now();
-            self._aviso('ok', r.msg);
-            self._pintarPersona();
-            self._refrescar();
-            self._marcarActividad();
-            self._programarCierre(despues || CERRAR_TRAS_ACCION_MS);
         });
+    },
+
+    _despuesDeAccion: function (r, tipo, despues) {
+        this.persona = r.persona;
+        this.leidaEn = Date.now();
+        this._actualizarFijo(r.persona);
+        this._aviso(tipo || 'ok', r.msg);
+        this._pintarPersona();
+        this._refrescar();
+        this._marcarActividad();
+        this._programarCierre(despues || CERRAR_TRAS_ACCION_MS);
     },
 
     _onActividad: function (ev) {
@@ -272,7 +410,11 @@ var Pantalla = AbstractAction.extend({
     },
 
     _onConfirmarSi: function () {
+        var que = this.confirmar;
         this.confirmar = null;
+        if (que === 'anular') {
+            return this._accion('/koroshi/actividades/anular');
+        }
         return this._accion('/koroshi/actividades/fin');
     },
 
@@ -317,13 +459,32 @@ var Pantalla = AbstractAction.extend({
             _hm(this._minutosPersona(p, this.leidaEn)) + '</b>' +
             (p.entrada ? ' · entrada ' + _hora(p.entrada) : '') + '</div></div>' +
             '<button type="button" class="o_ka_listo">Listo</button></div>';
-        if (this.confirmar === 'fin') {
-            html += '<div class="o_ka_confirmar"><p>¿Acabas la jornada, ' + _e(p.nombre.split(' ')[0]) + '?</p>' +
+        if (this.confirmar) {
+            var pregunta = this.confirmar === 'anular' ?
+                '¿Anular la última matrícula leída? No contará.' :
+                '¿Acabas la jornada, ' + _e(p.nombre.split(' ')[0]) + '?';
+            html += '<div class="o_ka_confirmar"><p>' + pregunta + '</p>' +
                 '<div class="o_ka_fila_botones">' +
-                '<button type="button" class="o_ka_boton o_ka_rojo o_ka_confirmar_si">Sí, fin</button>' +
+                '<button type="button" class="o_ka_boton o_ka_rojo o_ka_confirmar_si">' +
+                (this.confirmar === 'anular' ? 'Sí, anular' : 'Sí, fin') + '</button>' +
                 '<button type="button" class="o_ka_boton o_ka_gris o_ka_confirmar_no">No</button></div></div>';
             $p.html(html);
             return;
+        }
+        if (this.repetida) {
+            html += '<div class="o_ka_confirmar"><p>' + _e(this.repetida.codigo) + ' ya la leyó ' +
+                _e(this.repetida.quien) + ' a las ' + _hora(this.repetida.cuando) + '.</p><p>¿La cuentas otra vez?</p>' +
+                '<div class="o_ka_fila_botones">' +
+                '<button type="button" class="o_ka_boton o_ka_ambar o_ka_repetida_si">Sí, contarla</button>' +
+                '<button type="button" class="o_ka_boton o_ka_gris o_ka_repetida_no">No</button></div></div>';
+            $p.html(html);
+            return;
+        }
+        if (p.pide_matricula) {
+            html += this._htmlInversa(p.inversa || {});
+        } else if (p.inversa && p.inversa.cajas) {
+            html += '<div class="o_ka_hoy">Inversa hoy: <b>' + p.inversa.cajas + ' cajas</b> · ' + p.inversa.uds +
+                ' uds</div>';
         }
         html += '<div class="o_ka_titulo_bloque">' + (p.situacion === 'trabajando' ? 'Cambiar a…' : '¿Qué vas a hacer?') +
             '</div><div class="o_ka_actividades">';
@@ -347,6 +508,43 @@ var Pantalla = AbstractAction.extend({
         }
         html += '</div>';
         $p.html(html);
+    },
+
+    _htmlFamilias: function (fams) {
+        return _.map(fams || [], function (f) {
+            return '<span class="o_ka_fam"><b>' + _e(f.fam) + '</b> ' + _e(f.uds) +
+                (f.destino ? ' <span class="o_ka_fam_dest">→ ' + _e(f.destino) + '</span>' : '') + '</span>';
+        }).join('');
+    },
+
+    _htmlInversa: function (inv) {
+        var c = inv.abierta;
+        var html = '<div class="o_ka_inversa">';
+        if (c) {
+            html += '<div class="o_ka_caja"><div class="o_ka_caja_cab"><span class="o_ka_caja_mat">' +
+                _e(c.matricula) + '</span><span class="o_ka_caja_tiempo" data-inicio="' + _e(c.inicio) + '"></span></div>' +
+                (c.teorico ?
+                    '<div class="o_ka_caja_uds"><b>' + c.uds + ' uds</b> · ' + c.skus + ' SKU</div>' +
+                    '<div class="o_ka_fams">' + this._htmlFamilias(c.familias) + '</div>' :
+                    '<div class="o_ka_caja_uds o_ka_auto">Sin teórico todavía: cuenta la caja igual.</div>') +
+                '</div>';
+        } else {
+            html += '<div class="o_ka_caja o_ka_caja_vacia">Lee la matrícula de la caja que abres (CJ…).</div>';
+        }
+        html += '<div class="o_ka_hoy">Hoy: <b>' + (inv.cajas || 0) + ' cajas</b> · ' + (inv.uds || 0) + ' uds' +
+            (inv.min_media ? ' · ' + String(inv.min_media).replace('.', ',') + ' min/caja' : '') +
+            (inv.sin_teorico ? ' · <span class="o_ka_auto">' + inv.sin_teorico + ' sin teórico</span>' : '') + '</div>';
+        if (inv.ultimas && inv.ultimas.length) {
+            html += '<div class="o_ka_ultimas">' + _.map(inv.ultimas, function (u) {
+                return '<div class="o_ka_ultima"><span>' + _e(u.matricula) + '</span><span>' +
+                    (u.teorico ? u.uds + ' uds' : 'sin teórico') + '</span><span>' +
+                    String(u.minutos).replace('.', ',') + ' min</span></div>';
+            }).join('') + '</div>';
+        }
+        if (inv.cajas) {
+            html += '<button type="button" class="o_ka_anular">Anular última lectura</button>';
+        }
+        return html + '</div>';
     },
 
     _pintarLista: function () {
@@ -378,7 +576,8 @@ var Pantalla = AbstractAction.extend({
             html += '<div class="o_ka_grupo" style="--ka-color:' + _e(a.color) + '"><div class="o_ka_grupo_cab">' +
                 _e(a.nombre) + ' <span>' + gente.length + '</span></div>';
             _.each(gente, function (p) {
-                html += fila(p, 'desde ' + _hora(p.desde));
+                html += fila(p, (p.inversa && p.inversa.cajas ? p.inversa.cajas + ' cajas · ' : '') +
+                    'desde ' + _hora(p.desde));
             });
             html += '</div>';
         });
@@ -425,6 +624,12 @@ var Pantalla = AbstractAction.extend({
         });
         if (this.persona) {
             this.$('.o_ka_minutos_persona').text(_hm(this._minutosPersona(this.persona, this.leidaEn)));
+            var $t = this.$('.o_ka_caja_tiempo');
+            var ini = _fecha($t.data('inicio'));
+            if (ini) {
+                var seg = Math.max(0, Math.round((Date.now() + this.desfase - ini.getTime()) / 1000));
+                $t.text(Math.floor(seg / 60) + ':' + ('0' + (seg % 60)).slice(-2));
+            }
         }
         if (!this.persona) {
             self._foco();

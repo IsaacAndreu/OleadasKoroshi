@@ -13,6 +13,8 @@
               action="action_koroshi_actividad_jornada" sequence="20" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_actividades_horas" name="Horas por actividad" parent="menu_koroshi_actividades_root"
               action="action_koroshi_actividad_horas" sequence="30" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_actividades_inversa" name="Inversa: cajas leídas" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_inversa_caja" sequence="35" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_actividades_tramos" name="Tramos de tiempo" parent="menu_koroshi_actividades_root"
               action="action_koroshi_actividad_registro" sequence="40" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_actividades_config" name="Configuración: actividades"

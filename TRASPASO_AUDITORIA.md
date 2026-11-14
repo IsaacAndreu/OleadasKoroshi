@@ -53,6 +53,7 @@ decirlo antes de empezar.
 7. Reparto (reparto.py:417): filtrar zonas Z- y tramo en el dominio antes del limit=400; no llamar _lineal dos veces
    por OUT.
 8. Actividades (registro.py ~208): un tramo olvidado no puede cerrarse a las 23:59; un solo tramo abierto por persona.
+   HECHO en koroshi_actividades 1.1.0 (14/11, sin instalar): 0 min + nota para revisar, e índice único.
 9. Hoja de carga (hoja_carga.py:30): usar el campo de koroshi_delegacion en vez del diccionario fijo.
 
 **FASE 3 — Integraciones y permisos**
