@@ -1,0 +1,5 @@
+# Fase 6 auditoria 13/11 (14/11/2026): finales de linea fijos.
+# Los .sh van al servidor Linux: con CRLF bash falla ($'\r': command not found).
+*.sh text eol=lf
+# Los modulos de Odoo, en LF (los ZIP salen de git con git archive). text=auto: las imagenes siguen siendo binarias.
+odoo/modulos/** text=auto eol=lf

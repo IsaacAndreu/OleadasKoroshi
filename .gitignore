@@ -18,3 +18,14 @@ odoo/modulos/_prueba_*
 
 # Ficheros temporales de depuracion (assets descargados de Odoo, etc.)
 .tmp_*
+
+# Fase 6 auditoria 13/11 (14/11/2026): binarios fuera de git. Los ficheros siguen en el disco.
+# - ZIP de modulos: se generan desde la etiqueta con bin/empaquetar.py (no se versionan).
+# - APK de la PDA: a una release de GitHub con su etiqueta.
+# - Fotos de producto: fuera del repositorio (pendiente decidir donde).
+bin/*.zip
+bin/versiones/*.zip
+bin/builds/
+*.apk
+*.idsig
+bin/versiones/*imagenes*/
