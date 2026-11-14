@@ -30,7 +30,8 @@ módulos en [README.md](README.md): leerlos antes de empezar.
 | 3. Integraciones y permisos | HECHA, SIN INSTALAR (14/11). xpo_bultos 1.2.0, s4t_envios 1.2.0 (sigue en diagnóstico), s4t_traspasos 1.1.0, operarios 2.13.0, actividades 1.2.0, monitor 1.27.0, kpi 1.7.0, menu 2.2.0; script `bin/instalar_koroshi_fase3_auditoria_2026-11-14.sh` (después del de la fase 2). queue_job valorado y descartado. |
 | 4. Mapa de almacén | HECHA, SIN INSTALAR (14/11). koroshi_warehouse_map 0.1.20261114.45 (incluye la .44 nunca instalada); script `bin/instalar_koroshi_warehouse_map_v0.1.20261114.45_2026-11-14.sh`. |
 | 5. Motor de zonas | HECHA, SIN INSTALAR (14/11). Análisis en `bin/versiones/fase5-zonas-analisis_2026-11-14.md` (lista de acciones/crons a borrar al pasar a real; no se ha borrado nada). koroshi_zonas 1.3.0: OUT de días anteriores (7 días), orden por urgencia si no cabe todo, aviso de hora de fin; la sombra sigue calculando como la 1883. Script `bin/instalar_koroshi_zonas_v1.3.0_2026-11-14.sh`. |
-| 6 a 7 | Sin empezar. |
+| 6. Repositorio | PROPUESTA (14/11), esperando decisiones: `bin/versiones/fase6-repositorio-propuesta_2026-11-14.md`. Hecho solo `bin/desplegar.sh` (sin estrenar). No se ha sacado nada de git ni creado etiquetas ni koroshi_base. |
+| 7 | Sin empezar. |
 
 Versiones en el servidor el 13/11 (leídas en nath.tuctuc.com): preparacion 3.28.1, contenedores 1.2.0,
 operarios 2.11.1, informe 1.0.1, kpi 1.5.0, monitor 1.24.0, menu 2.1.0, zonas 1.2.0, warehouse_map
