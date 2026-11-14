@@ -20,8 +20,11 @@ v1.3.0 (13/11/2026): «Avisar por correo a» en cada consumible: correo cuando e
 y cuando se agota (también con las cajas que resta la PDA).
 v1.2.1 (13/11/2026): «Se elige en Lecturas». La caja Online no sale en la PDA: lo online va por INT al SORTER y no
 cierra caja en Lecturas (las OUT web no llevan caja). La 1.2.0 no se instaló.
+v1.4.0 (14/11/2026): auditoría 13/11, fase 2. El stock de cada artículo se suma con una consulta agrupada en la base
+(antes cada caja cerrada en la PDA leía todo el histórico de movimientos). Si dos PDA restan la misma caja a la vez, el
+choque ya no se traga (la caja se cerraba sin restar): Odoo repite la petición.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

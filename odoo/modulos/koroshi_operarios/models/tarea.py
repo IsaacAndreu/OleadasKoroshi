@@ -9,9 +9,18 @@
 #   - cuando el mismo operario empieza otro pedido                            -> dejada
 #   - a medianoche, si sigue abierta                                          -> sin cerrar
 # Uds de la tarea = uds leidas (qty_done) del pedido al cerrar - uds leidas al empezar.
+# v2.12 (auditoria 13/11, fase 2): UNA sola cifra de productividad para todo (tarea, Productividad, correo de
+# koroshi_informe, KPI y PDA):
+#   minutos   = de que lee la OUT a que se cierra la tarea (si sigue abierta, hasta ahora)
+#   parado    = huecos de koroshi_operarios.minutos_sin_leer min (15) o mas sin leer en Preparacion entre la
+#               primera lectura y el cierre; si sigue abierta, tambien lo que lleva ahora sin hacer nada
+#   efectivo  = minutos - parado
+#   u/h       = uds * 60 / efectivo                        -> uds_hora_de()
+# La calculan huecos_de() y _medir(); resumen_operario_dia() la suma por operario y dia.
 # Solo escribe en esta tabla: lee albaranes, lineas y agrupaciones sin cambiarlos.
 # =============================================================================
 import datetime
+import re
 
 import pytz
 
@@ -24,6 +33,37 @@ VENTANA_TARJETA = 90        # segundos que vale la tarjeta leida para leer el pe
 # v2.8: una tarea en curso sin leer nada en estos minutos ya no cuenta como «la esta haciendo ahora» (parametro
 # koroshi_operarios.minutos_sin_leer). Quien lee esa OUT se la queda sin preguntar; el monitor la marca en rojo.
 MINUTOS_SIN_LEER = 15
+RE_OP = re.compile(r'^([A-Za-z]+)0*(\d+)$')
+
+
+def codigo_corto(barcode):
+    """OP0007 -> OP7 (estaba en informe.py; v2.12 aqui para resumen_operario_dia)."""
+    m = RE_OP.match((barcode or '').strip())
+    return m and '%s%s' % (m.group(1).upper(), m.group(2)) or (barcode or '?')
+
+
+def uds_hora_de(uds, efectivo):
+    """v2.12: LA formula de u/h (uds por hora de tiempo efectivo). Menos de 1 minuto efectivo = 0."""
+    return efectivo >= 1 and (uds or 0.0) * 60.0 / efectivo or 0.0
+
+
+def huecos_de(marcas, inicio, fin, umbral, cerrada):
+    """v2.12: huecos sin leer de una tarea [(desde, hasta, minutos)]. marcas = horas de sus lecturas en Preparacion.
+    Cuenta de inicio a la primera lectura y entre lecturas; si esta cerrada, tambien de la ultima lectura al cierre.
+    Sin lecturas (la hizo con la app de codigo de barras) no hay detalle: ningun hueco."""
+    if not marcas or not inicio:
+        return []
+    marcas = [inicio] + sorted(marcas)
+    res = []
+    for a, b in zip(marcas, marcas[1:]):
+        m = (b - a).total_seconds() / 60.0
+        if m >= umbral:
+            res.append((a, b, m))
+    if cerrada and fin and fin > marcas[-1]:
+        m = (fin - marcas[-1]).total_seconds() / 60.0
+        if m >= umbral:
+            res.append((marcas[-1], fin, m))
+    return res
 
 
 class KoroshiOperarioTarea(models.Model):
@@ -67,8 +107,14 @@ class KoroshiOperarioTarea(models.Model):
     uds = fields.Float('Uds', compute='_compute_resultado', store=True, digits=(16, 0), group_operator='sum')
     minutos = fields.Float('Minutos', compute='_compute_resultado', store=True, digits=(16, 1),
                            group_operator='sum')
+    # v2.12: tiempo parado y efectivo (tabla propia). u/h sobre el efectivo y sin media al agrupar (una media de
+    # ratios no es la u/h del grupo: la del grupo es la suma de uds entre la suma de efectivo)
+    parado = fields.Float('Min parado', compute='_compute_resultado', store=True, digits=(16, 1), group_operator='sum',
+                          help='Huecos de koroshi_operarios.minutos_sin_leer minutos o mas sin leer en Preparacion')
+    efectivo = fields.Float('Min efectivos', compute='_compute_resultado', store=True, digits=(16, 1),
+                            group_operator='sum', help='Minutos - parado')
     uds_hora = fields.Float('Uds/hora', compute='_compute_resultado', store=True, digits=(16, 1),
-                            group_operator='avg')
+                            group_operator=False, help='Uds * 60 / minutos efectivos')
     nota = fields.Char('Nota')
     # v2.5: preparar a dos (lo rellena koroshi_preparacion al cerrar la tarea)
     a_dos = fields.Boolean('A dos', index=True, help='La OUT la ha preparado con otro operario a la vez')
@@ -96,15 +142,135 @@ class KoroshiOperarioTarea(models.Model):
 
     @api.depends('inicio', 'fin', 'uds_inicio', 'uds_fin', 'estado')
     def _compute_resultado(self):
+        cerradas = self.filtered(lambda x: x.fin and x.inicio and isinstance(x.id, int))
+        marcas = cerradas._marcas_preparacion()
+        umbral = self._minutos_sin_leer_max()
         for t in self:
             if t.fin and t.inicio:
-                t.minutos = max(0.0, (t.fin - t.inicio).total_seconds() / 60.0)
+                minutos = max(0.0, (t.fin - t.inicio).total_seconds() / 60.0)
+                parado = sum(h[2] for h in huecos_de(marcas.get(t.id), t.inicio, t.fin, umbral, True))
+                t.minutos = minutos
                 t.uds = max(0.0, t.uds_fin - t.uds_inicio)
-                t.uds_hora = t.minutos >= 1 and t.uds * 60.0 / t.minutos or 0.0
+                t.parado = min(parado, minutos)
+                t.efectivo = max(minutos - t.parado, 0.0)
+                t.uds_hora = uds_hora_de(t.uds, t.efectivo)
             else:
                 t.minutos = 0.0
                 t.uds = 0.0
+                t.parado = 0.0
+                t.efectivo = 0.0
                 t.uds_hora = 0.0
+
+    # ------------------------------------------------------------------ v2.12: una sola cifra de productividad
+    def _marcas_preparacion(self, ahora=None):
+        """{tarea.id: [horas de las lecturas de su operario en sus OUT entre inicio y fin (o ahora)]}, con una sola
+        busqueda para todas. Sin koroshi_preparacion, todo vacio."""
+        res = dict((t.id, []) for t in self)
+        if not self or 'koroshi.preparacion.lectura' not in self.env:
+            return res
+        ahora = ahora or fields.Datetime.now()
+        por_clave = {}
+        for t in self:
+            for pid in t._pickings().ids:
+                por_clave.setdefault((t.employee_id.id, pid), []).append(t)
+        if not por_clave:
+            return res
+        desde = min(t.inicio for t in self)
+        hasta = max((t.fin or ahora) for t in self)
+        for l in self.env['koroshi.preparacion.lectura'].sudo().search([
+                ('employee_id', 'in', list(set(k[0] for k in por_clave))),
+                ('picking_id', 'in', list(set(k[1] for k in por_clave))),
+                ('fecha', '>=', desde), ('fecha', '<=', hasta)]):
+            for t in por_clave.get((l.employee_id.id, l.picking_id.id), []):
+                if t.inicio <= l.fecha <= (t.fin or ahora):
+                    res[t.id].append(l.fecha)
+        return res
+
+    def _medir(self, ahora, marcas, umbral):
+        """Uds, minutos, parado y efectivo de una tarea (cerrada o abierta hasta ahora), con huecos_de(). Igual que
+        los campos guardados de las cerradas; en las abiertas suma ademas lo que lleva ahora sin hacer nada."""
+        self.ensure_one()
+        en_curso = self.estado == 'curso'
+        fin_t = ahora if en_curso else (self.fin or self.inicio)
+        huecos = huecos_de(marcas, self.inicio, fin_t, umbral, not en_curso)
+        parado = sum(h[2] for h in huecos)
+        parado_ahora = None
+        if en_curso:
+            # lo que lleva sin leer ahora (Preparacion o una linea del pedido con la app de codigo de barras)
+            ultima = self._ultima_actividad() or self.inicio
+            m = max((ahora - ultima).total_seconds() / 60.0, 0.0)
+            if m >= umbral:
+                parado += m
+                parado_ahora = (ultima, m)
+            uds = self._uds_hasta_ahora()
+            minutos = max((ahora - self.inicio).total_seconds() / 60.0, 0.0)
+        else:
+            uds = self.uds or 0.0
+            minutos = self.minutos or 0.0
+        parado = min(parado, minutos)
+        efectivo = max(minutos - parado, 0.0)
+        return {'uds': uds, 'minutos': minutos, 'parado': parado, 'efectivo': efectivo, 'fin': fin_t,
+                'huecos': huecos, 'parado_ahora': parado_ahora, 'uds_hora': uds_hora_de(uds, efectivo),
+                'sin_detalle': not marcas and not en_curso and minutos >= 1}
+
+    @api.model
+    def resumen_operario_dia(self, dia, ahora=None):
+        """v2.12: resumen por operario de las tareas de ese dia (lo abierto, hasta ahora). LA cifra que usan
+        Productividad, el correo y la ficha de koroshi_informe, el KPI y la PDA. No escribe nada.
+        Devuelve (ops, huecos, parados_ahora):
+          ops = {employee_id: {employee_id, codigo, nombre, tareas, acabadas, dejadas, sin_cerrar, curso, uds,
+                               minutos, parado, efectivo, uds_hora, sin_detalle, inicio, fin}}
+          huecos = [{codigo, nombre, desde, hasta, min, ref}]       (los parados de 15 min o mas)
+          parados_ahora = [{codigo, nombre, ref, desde, min, uds_total, leidas}]"""
+        Tarea = self.sudo()
+        ahora = ahora or fields.Datetime.now()
+        umbral = Tarea._minutos_sin_leer_max()
+        tareas = Tarea.search([('dia', '=', dia)], order='inicio asc')
+        marcas = tareas._marcas_preparacion(ahora)
+        ops = {}
+        huecos = []
+        parados_ahora = []
+        for t in tareas:
+            e = t.employee_id
+            cod = codigo_corto(e.barcode)
+            o = ops.setdefault(e.id, {
+                'employee_id': e.id, 'codigo': cod, 'nombre': e.name or '', 'tareas': 0, 'acabadas': 0,
+                'dejadas': 0, 'sin_cerrar': 0, 'curso': 0, 'uds': 0.0, 'minutos': 0.0, 'parado': 0.0,
+                'sin_detalle': 0, 'inicio': None, 'fin': None,
+            })
+            med = t._medir(ahora, marcas.get(t.id), umbral)
+            ref = ((t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name) or t.referencia or '')
+            ref = ref.replace('EFFEC/', '')
+            for a, b, m in med['huecos']:
+                huecos.append({'codigo': cod, 'nombre': e.name, 'desde': a, 'hasta': b, 'min': m, 'ref': ref})
+            if med['parado_ahora']:
+                pickings = t._pickings()
+                parados_ahora.append({
+                    'codigo': cod, 'nombre': e.name, 'ref': ref, 'desde': med['parado_ahora'][0],
+                    'min': med['parado_ahora'][1], 'uds_total': t.uds_total or 0.0,
+                    'leidas': Tarea._uds_leidas(pickings)})
+            if med['sin_detalle']:
+                o['sin_detalle'] += 1
+            if t.estado == 'curso':
+                o['curso'] += 1
+            elif t.estado == 'acabada':
+                o['acabadas'] += 1
+            elif t.estado == 'dejada':
+                o['dejadas'] += 1
+            else:
+                o['sin_cerrar'] += 1
+            o['tareas'] += 1
+            o['uds'] += med['uds']
+            o['minutos'] += med['minutos']
+            o['parado'] += med['parado']
+            if not o['inicio'] or t.inicio < o['inicio']:
+                o['inicio'] = t.inicio
+            if not o['fin'] or med['fin'] > o['fin']:
+                o['fin'] = med['fin']
+        for o in ops.values():
+            o['efectivo'] = max(o['minutos'] - o['parado'], 0.0)
+            o['uds_hora'] = uds_hora_de(o['uds'], o['efectivo'])
+        return ops, huecos, parados_ahora
 
     # ------------------------------------------------------------------ helpers
     def _pickings(self):

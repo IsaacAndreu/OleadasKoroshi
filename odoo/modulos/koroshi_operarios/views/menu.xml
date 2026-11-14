@@ -22,8 +22,6 @@
               action="action_koroshi_operarios_empleados" sequence="50" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_operarios_crear" name="Crear operarios" parent="menu_koroshi_operarios_root"
               action="action_koroshi_crear_operarios" sequence="60" groups="koroshi_operarios.grupo_productividad"/>
-    <menuitem id="menu_koroshi_operarios_informe" name="Enviar informe de hoy ahora" parent="menu_koroshi_operarios_root"
-              action="action_koroshi_operarios_enviar_informe" sequence="70" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_operarios_motivos" name="Motivos para saltar" parent="menu_koroshi_operarios_root"
               action="action_koroshi_operario_motivos" sequence="80" groups="koroshi_operarios.grupo_productividad"/>
 </odoo>

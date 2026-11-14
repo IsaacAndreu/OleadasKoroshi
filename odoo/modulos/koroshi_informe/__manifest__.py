@@ -21,8 +21,12 @@ que el boton Recalcular de la ficha).
 v1.0.0 (12/11/2026): primera version.
 v1.0.1 (13/11/2026): la vista de Ajustes se engancha al campo de KPI (Odoo 13 no deja usar string en un xpath; la
 1.0.0 no se instalaba).
+v1.1.0 (14/11/2026): auditoria 13/11, fase 2. La u/h de los operarios sale de koroshi_operarios 2.12
+(resumen_operario_dia: la misma cifra en todas partes). Es el unico correo diario (el de koroshi_operarios se ha
+quitado). Sin media de u/h al agrupar la tabla por operario y dia. «Horas estimadas» sale de la fuente de horas de la
+ficha KPI (koroshi_kpi 1.6). Necesita koroshi_operarios 2.12 y koroshi_kpi 1.6.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

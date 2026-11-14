@@ -5,4 +5,15 @@
         <field name="key">koroshi_kpi.dias_falta_repetida</field>
         <field name="value">3</field>
     </record>
+    <!-- v1.6: con esta cobertura (% de las uds del dia en tareas de operario) o mas, las horas de picking salen del
+         tiempo efectivo de los operarios; por debajo, de las cajas -->
+    <record id="param_cobertura_minima" model="ir.config_parameter">
+        <field name="key">koroshi_kpi.cobertura_minima</field>
+        <field name="value">80</field>
+    </record>
+    <!-- v1.6: al actualizar el modulo solo se recalculan las fichas de estos ultimos dias -->
+    <record id="param_dias_recalcular" model="ir.config_parameter">
+        <field name="key">koroshi_kpi.dias_recalcular</field>
+        <field name="value">7</field>
+    </record>
 </odoo>

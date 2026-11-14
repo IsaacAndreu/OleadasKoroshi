@@ -247,14 +247,15 @@ class KoroshiOperarios(http.Controller):
             return 0
 
     def _contador_dia(self, emp):
-        """v2.3: pedidos y uds de hoy del operario, igual que Productividad (informe._datos): uds de las tareas
-        cerradas + lo leido desde que empezo en la abierta; pedidos = tareas acabadas (validadas)."""
+        """v2.3: pedidos y uds de hoy del operario: uds de las tareas cerradas + lo leido desde que empezo en la
+        abierta; pedidos = tareas acabadas (validadas). v2.12: las uds de la abierta con _uds_hasta_ahora(), lo mismo
+        que resumen_operario_dia() (asi cuenta bien la OUT a dos de koroshi_preparacion)."""
         Tarea = request.env['koroshi.operario.tarea'].sudo()
         hoy = datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).date()
         pedidos, uds = 0, 0.0
         for t in Tarea.search([('dia', '=', hoy), ('employee_id', '=', emp.id)]):
             if t.estado == 'curso':
-                uds += max(Tarea._uds_leidas(t._pickings()) - (t.uds_inicio or 0.0), 0.0)
+                uds += t._uds_hasta_ahora()
             else:
                 uds += t.uds or 0.0
                 if t.estado == 'acabada':

@@ -8,6 +8,25 @@ horas y personas de cada fase, y **segundos por prenda** de picking (andando y l
   y **Pesos y litros por tipo**.
 - Solo escribe en sus tablas (`koroshi.kpi.dia`, `koroshi.kpi.peso.tipo`): no toca albaranes, stock ni productos.
 
+
+## v1.6.0 (14/11/2026, auditoría 13/11, fase 2)
+
+- **Horas de picking**: si nadie las apunta a mano, salen del **tiempo efectivo de las tareas de operario**
+  (koroshi_operarios 2.12, la misma cifra que la u/h por operario) cuando los operarios cubren al menos el
+  **80 %** de las uds del día (parámetro `koroshi_kpi.cobertura_minima`). Las horas se llevan a todas las uds del día
+  (horas ÷ cobertura). Por debajo, como antes: estimadas por las cajas. La ficha dice de dónde salen
+  (**«Horas de picking de»**: a mano, operarios, cajas) y enseña la cobertura.
+- Los ratios (s/ud, uds/hora-persona, uds/caja...) ya no hacen la media al agrupar: una media de ratios engaña.
+- **Faltas**: «No cogido» ya no desaparece al validar la OUT. Lo que el operario marcó como faltante en la PDA
+  (koroshi_faltantes: no estaba en el hueco y Odoo tenía stock) cuenta como «no cogido» en vez de pedido pendiente,
+  cancelado o sin stock. Cada noche se recalculan también las faltas de los días anteriores (hasta 14) con OUT aún
+  abiertas o validadas ese día.
+- Al **actualizar el módulo** solo se recalculan las fichas de los últimos **7 días** (`koroshi_kpi.dias_recalcular`);
+  antes, todas, y cada vez tardaba más. Las más viejas, con el botón Recalcular de la ficha.
+- **Hoja de carga XPO**: la delegación sale del campo del albarán de **koroshi_delegacion** (etiqueta «Delegación ...»
+  de la tienda) si ese módulo está instalado; si no, o si la tienda no la tiene, de la lista fija de siempre. El
+  14/11 koroshi_delegacion **no está instalado**: hasta que se instale, sale lo mismo que antes.
+
 ## De dónde sale cada dato
 
 | Dato | Cómo |

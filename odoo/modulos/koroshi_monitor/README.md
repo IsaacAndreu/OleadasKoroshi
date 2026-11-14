@@ -31,6 +31,15 @@ capa inventada ni ralentice el seguimiento.
 
 
 
+
+## v1.26.0: la u/h de siempre (14/11/2026, auditoría 13/11, fase 2)
+
+- En la tabla **Operarios** (vista por día), la **u/h** es la de koroshi_operarios 2.12 (`resumen_operario_dia`): uds
+  × 60 / minutos efectivos, sin los huecos de 15 min o más sin leer. Es la misma que Productividad, el correo de
+  koroshi_informe y el KPI. Antes era uds / minutos con el pedido abierto (más baja si alguien paraba).
+- En la vista de una agrupación sigue la cuenta de antes (solo las tareas de esa agrupación).
+- Con koroshi_operarios anterior a la 2.12, como antes.
+
 ## v1.25.0: quién tiene la alarma de parado (14/11/2026)
 
 - En la tabla **Operarios**, la fila entera en **rojo** con **«🔔 ALARMA · N min sin leer»** (parpadea) cuando a ese

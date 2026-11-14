@@ -25,8 +25,8 @@ módulos en [README.md](README.md): leerlos antes de empezar.
 | Fase | Estado |
 |---|---|
 | 0. Terreno | HECHA. Fusión de feat/koroshi-zonas (`ccfe2c10`), CLAUDE.md y README (`010e04e6`). Lista de contraseñas versionadas pasada al responsable (pendiente de rotar por él). |
-| 1. Robustez PDA | HECHA, SIN INSTALAR. koroshi_preparacion 3.29.0 (`7828ec25`) y koroshi_contenedores 1.4.0 (`663f268b`). ZIP y scripts en `bin/`. Pendiente: instalar, pasar `tests/test_idempotencia.py` en una base de pruebas y probar en PDA real. |
-| 2. Una sola cifra de productividad | SIGUIENTE. Sin empezar. |
+| 1. Robustez PDA | HECHA; preparacion 3.29.0 INSTALADA el 13/11 (contenedores 1.4.0 sin instalar). koroshi_preparacion 3.29.0 (`7828ec25`) y koroshi_contenedores 1.4.0 (`663f268b`). ZIP y scripts en `bin/`. Pendiente: instalar, pasar `tests/test_idempotencia.py` en una base de pruebas y probar en PDA real. |
+| 2. Una sola cifra de productividad | HECHA, SIN INSTALAR (14/11). koroshi_operarios 2.12.0, informe 1.1.0, kpi 1.6.0, consumibles 1.4.0 y monitor 1.26.0; un solo script en `bin/`. Punto 8 (actividades) NO hecho: koroshi_actividades lo está cambiando otra sesión y no está en el servidor. Punto 9: koroshi_delegacion no está instalado, la hoja de carga usa su campo solo cuando lo esté. |
 | 3 a 7 | Sin empezar. |
 
 Versiones en el servidor el 13/11 (leídas en nath.tuctuc.com): preparacion 3.28.1, contenedores 1.2.0,

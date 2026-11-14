@@ -405,6 +405,22 @@ class KoroshiOperarioAsignacion(models.Model):
         return min(numeros) if numeros else None
 
     @api.model
+    def _pickings_tramo(self, tramo, company):
+        """v2.12: ids de las OUT sin validar con alguna linea en una ubicacion del tramo (L40..L60), con una consulta
+        (hay mas de 100.000 ubicaciones con L: no se pueden leer todas cada vez). Mismo lineal que RE_LINEAL."""
+        self.env['stock.move.line'].flush(['picking_id', 'location_id'])
+        self.env.cr.execute("""
+            SELECT DISTINCT ml.picking_id
+              FROM stock_move_line ml
+              JOIN stock_picking p ON p.id = ml.picking_id
+              JOIN stock_location l ON l.id = ml.location_id
+             WHERE p.company_id = %s
+               AND p.state IN ('assigned', 'confirmed')
+               AND substring(l.complete_name from '\\mL([0-9]+)\\M')::int BETWEEN %s AND %s""",
+                            (company.id, tramo.lineal_desde, tramo.lineal_hasta))
+        return [r[0] for r in self.env.cr.fetchall()]
+
+    @api.model
     def _candidatos(self, dia, employee, tramo=None):
         """OUT (y agrupaciones Z- si esta encendido) libres, de la mas antigua a la mas nueva."""
         Picking = self.env['stock.picking'].sudo()
@@ -413,12 +429,20 @@ class KoroshiOperarioAsignacion(models.Model):
         dom = [('picking_type_code', '=', 'outgoing'), ('company_id', '=', dia.company_id.id),
                ('id', 'not in', (cogidas | dejadas.mapped('picking_id')).ids)]
         dom += [('state', '=', 'assigned')] if dia.solo_preparadas else [('state', 'in', ('assigned', 'confirmed'))]
-        # OUT sueltas: sin agrupacion de zonas (las de una Z- solo se dan con la agrupacion entera)
-        sueltas = Picking.search(dom, order='scheduled_date asc, id asc', limit=CANDIDATOS).filtered(
-            lambda p: not (p.batch_id and (p.batch_id.name or '').startswith(PREFIJOS_ZONA)))
+        # OUT sueltas: sin agrupacion de zonas (las de una Z- solo se dan con la agrupacion entera).
+        # v2.12: las Z- fuera EN EL DOMINIO, antes del limite (si no, 400 OUT de zonas llenaban el limite y no quedaba
+        # ninguna suelta)
+        for pref in PREFIJOS_ZONA:
+            dom += ['|', ('batch_id', '=', False), '!', ('batch_id.name', '=like', pref + '%')]
         if tramo:
-            sueltas = sueltas.filtered(
-                lambda p: self._lineal(p) is not None and tramo.lineal_desde <= self._lineal(p) <= tramo.lineal_hasta)
+            # v2.12: solo las que tienen alguna linea en el tramo (en el dominio, antes del limite); despues, el lineal
+            # mas bajo (el de siempre) calculado una sola vez por OUT
+            dom.append(('id', 'in', self._pickings_tramo(tramo, dia.company_id)))
+        sueltas = Picking.search(dom, order='scheduled_date asc, id asc', limit=CANDIDATOS)
+        if tramo:
+            con_lineal = [(p, self._lineal(p)) for p in sueltas]
+            sueltas = [p for p, lin in con_lineal
+                       if lin is not None and tramo.lineal_desde <= lin <= tramo.lineal_hasta]
         lista = [(p.scheduled_date or p.create_date, 'out', p) for p in sueltas]
         if dia.agrupaciones and not tramo:
             Batch = self.env['stock.picking.batch'].sudo()

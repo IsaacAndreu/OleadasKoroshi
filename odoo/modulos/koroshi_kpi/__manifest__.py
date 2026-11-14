@@ -29,8 +29,13 @@ que dan falta 3 o mas dias seguidos con actividad, con su ubicacion de mas stock
 no crea nada). Dias del parametro koroshi_kpi.dias_falta_repetida. Las dos son vistas SQL de solo lectura.
 
 Solo escribe en sus propias tablas: no cambia albaranes, stock ni productos.
+v1.6.0 (14/11/2026): auditoria 13/11, fase 2. Horas de picking del tiempo efectivo de los operarios (koroshi_operarios 2.12)
+cuando cubren el 80 % de las uds del dia (koroshi_kpi.cobertura_minima); si no, las de las cajas; la ficha dice de donde
+salen («Horas de picking de»). Ratios sin media al agrupar. «No cogido» ya no desaparece al validar la OUT (se cruza
+con los faltantes de la PDA) y cada noche se recalculan los dias con OUT abiertas. Al actualizar, solo se recalculan los
+ultimos 7 dias (koroshi_kpi.dias_recalcular). Hoja de carga: delegacion del campo de koroshi_delegacion si esta instalado.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

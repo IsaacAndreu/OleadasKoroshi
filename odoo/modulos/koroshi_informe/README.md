@@ -1,4 +1,17 @@
-# KOROSHI Informe de productividad (v1.0.1, 13/11/2026)
+# KOROSHI Informe de productividad (v1.1.0, 14/11/2026)
+
+
+## v1.1.0: la misma cifra que todo lo demás (14/11/2026, auditoría 13/11, fase 2)
+
+- La u/h de los operarios sale de **koroshi_operarios 2.12** (`resumen_operario_dia`): la misma que Productividad, el
+  KPI, el Monitor y la PDA. La fórmula no cambia (uds × 60 / minutos efectivos, sin parados), solo deja de estar
+  repetida aquí.
+- Es el **único correo diario**: el de koroshi_operarios se ha quitado.
+- La tabla por operario y día ya no hace la media de u/h al agrupar.
+- «Horas estimadas» sale de la fuente de horas de la ficha KPI (koroshi_kpi 1.6).
+- Necesita koroshi_operarios 2.12 y koroshi_kpi 1.6 (el script los instala juntos).
+- Al actualizar, su migración recalcula las tareas de operario que ya hay con la cifra nueva (va aquí porque necesita
+  las lecturas de koroshi_preparacion, que se carga después de koroshi_operarios).
 
 ## v1.0.1 (13/11/2026)
 

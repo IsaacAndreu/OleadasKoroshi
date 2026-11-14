@@ -196,18 +196,28 @@ class KoroshiKpiDia(models.Model):
     pick_personas_auto = fields.Integer('Personas picking (estimadas, máx. a la vez)', readonly=True)
     pack_hp_auto = fields.Float('Horas-persona U (estimadas)', readonly=True,
                                 help='Oleada: horas del puesto de U leyendo y cerrando cajas (1 persona)')
+    # v1.6 (auditoria 13/11, fase 2): horas del tiempo efectivo de las tareas de operario (koroshi_operarios 2.12)
+    pick_hp_operarios = fields.Float('Horas-persona picking (operarios)', readonly=True,
+                                     help='Tiempo efectivo de las tareas de operario de ese dia (sin los parados), '
+                                          'llevado a todas las uds del dia segun la cobertura')
+    cobertura_operarios = fields.Float('Cobertura de operarios (%)', readonly=True, digits=(16, 0), group_operator=False,
+                                       help='Uds del dia que estan en una tarea de operario (tarjeta + OUT)')
     recalculado = fields.Datetime('Recalculado el', readonly=True)
 
     # ---------------- KPI (se recalculan solos al cambiar lo de arriba) ----------------
     horas_estimadas = fields.Boolean('Horas estimadas', compute='_compute_kpi', store=True,
                                      help='Alguna fase usa las horas estimadas por las cajas porque no se han apuntado')
+    fuente_horas = fields.Selection([('manual', 'Apuntadas a mano'), ('operarios', 'Operarios (tiempo efectivo)'),
+                                     ('cajas', 'Estimadas por las cajas'), ('sin', 'Sin horas')],
+                                    'Horas de picking de', compute='_compute_kpi', store=True,
+                                    help='v1.6: de donde salen las horas-persona de picking')
     profundidad_sku = fields.Float('Profundidad por SKU (uds/SKU)', compute='_compute_kpi', store=True,
-                                   group_operator='avg', digits=(16, 2))
-    uds_caja = fields.Float('Uds por caja', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 1))
-    peso_ud = fields.Float('Peso medio por ud (g)', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 0))
-    volumen_ud = fields.Float('Volumen por ud (m³/ud)', compute='_compute_kpi', store=True, group_operator='avg',
+                                   group_operator=False, digits=(16, 2))
+    uds_caja = fields.Float('Uds por caja', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 1))
+    peso_ud = fields.Float('Peso medio por ud (g)', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 0))
+    volumen_ud = fields.Float('Volumen por ud (m³/ud)', compute='_compute_kpi', store=True, group_operator=False,
                               digits=(16, 5))
-    metros_ud = fields.Float('Metros por ud', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 2))
+    metros_ud = fields.Float('Metros por ud', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 2))
     hp_picking = fields.Float('Horas-persona picking', compute='_compute_kpi', store=True)
     hp_packing = fields.Float('Horas-persona packing / U', compute='_compute_kpi', store=True)
     hp_expedicion = fields.Float('Horas-persona expedición', compute='_compute_kpi', store=True)
@@ -216,17 +226,17 @@ class KoroshiKpiDia(models.Model):
                                     help='Si una persona hace dos fases cuenta dos veces')
     h_andando = fields.Float('Horas andando (picking)', compute='_compute_kpi', store=True)
     h_leyendo = fields.Float('Horas leyendo/cogiendo (picking)', compute='_compute_kpi', store=True)
-    s_ud_picking = fields.Float('s/ud picking', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 1))
-    s_ud_andando = fields.Float('s/ud andando', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 1))
-    s_ud_leyendo = fields.Float('s/ud leyendo', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 1))
-    s_ud_packing = fields.Float('s/ud packing / U', compute='_compute_kpi', store=True, group_operator='avg',
+    s_ud_picking = fields.Float('s/ud picking', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 1))
+    s_ud_andando = fields.Float('s/ud andando', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 1))
+    s_ud_leyendo = fields.Float('s/ud leyendo', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 1))
+    s_ud_packing = fields.Float('s/ud packing / U', compute='_compute_kpi', store=True, group_operator=False,
                                 digits=(16, 1))
-    s_ud_expedicion = fields.Float('s/ud expedición', compute='_compute_kpi', store=True, group_operator='avg',
+    s_ud_expedicion = fields.Float('s/ud expedición', compute='_compute_kpi', store=True, group_operator=False,
                                    digits=(16, 1))
-    s_ud_total = fields.Float('s/ud TOTAL', compute='_compute_kpi', store=True, group_operator='avg', digits=(16, 1))
-    uds_hora_persona = fields.Float('Uds por hora-persona', compute='_compute_kpi', store=True, group_operator='avg',
+    s_ud_total = fields.Float('s/ud TOTAL', compute='_compute_kpi', store=True, group_operator=False, digits=(16, 1))
+    uds_hora_persona = fields.Float('Uds por hora-persona', compute='_compute_kpi', store=True, group_operator=False,
                                     digits=(16, 0))
-    uds_persona = fields.Float('Uds por persona', compute='_compute_kpi', store=True, group_operator='avg',
+    uds_persona = fields.Float('Uds por persona', compute='_compute_kpi', store=True, group_operator=False,
                                digits=(16, 0))
 
     _sql_constraints = [('fecha_uniq', 'unique(fecha, metodo)', 'Ya hay una ficha para ese día y método.')]
@@ -239,8 +249,9 @@ class KoroshiKpiDia(models.Model):
 
     @api.depends('uds', 'skus', 'cajas', 'peso_total', 'volumen_total', 'metros_total', 'velocidad',
                  'pick_personas', 'pick_horas', 'pack_personas', 'pack_horas', 'exp_personas', 'exp_horas',
-                 'pick_hp_auto', 'pick_personas_auto', 'pack_hp_auto')
+                 'pick_hp_auto', 'pick_personas_auto', 'pack_hp_auto', 'pick_hp_operarios', 'cobertura_operarios')
     def _compute_kpi(self):
+        minima = self._cobertura_minima()
         for r in self:
             u = r.uds or 0.0
             r.profundidad_sku = r.skus and u / r.skus or 0.0
@@ -250,10 +261,19 @@ class KoroshiKpiDia(models.Model):
             r.metros_ud = u and r.metros_total / u or 0.0
             pick_manual = r.pick_personas * r.pick_horas
             pack_manual = r.pack_personas * r.pack_horas
-            r.hp_picking = pick_manual or r.pick_hp_auto
+            # v1.6: picking = lo apuntado; si no, el tiempo efectivo de los operarios si cubren bastante del dia
+            # (koroshi_kpi.cobertura_minima, 80 %); si no, lo estimado por las cajas
+            if pick_manual:
+                r.hp_picking, r.fuente_horas = pick_manual, 'manual'
+            elif r.pick_hp_operarios > 0 and r.cobertura_operarios >= minima:
+                r.hp_picking, r.fuente_horas = r.pick_hp_operarios, 'operarios'
+            elif r.pick_hp_auto:
+                r.hp_picking, r.fuente_horas = r.pick_hp_auto, 'cajas'
+            else:
+                r.hp_picking, r.fuente_horas = 0.0, 'sin'
             r.hp_packing = pack_manual or r.pack_hp_auto
             r.hp_expedicion = r.exp_personas * r.exp_horas
-            r.horas_estimadas = bool((not pick_manual and r.pick_hp_auto) or (not pack_manual and r.pack_hp_auto))
+            r.horas_estimadas = bool(r.fuente_horas == 'cajas' or (not pack_manual and r.pack_hp_auto))
             r.hp_total = r.hp_picking + r.hp_packing + r.hp_expedicion
             r.personas_total = ((pick_manual and r.pick_personas or r.pick_personas_auto) +
                                 (pack_manual and r.pack_personas or (r.pack_hp_auto and 1 or 0)) + r.exp_personas)
@@ -268,6 +288,40 @@ class KoroshiKpiDia(models.Model):
             r.s_ud_total = r.s_ud_picking + r.s_ud_packing + r.s_ud_expedicion
             r.uds_hora_persona = r.hp_total and u / r.hp_total or 0.0
             r.uds_persona = r.personas_total and u / r.personas_total or 0.0
+
+    @api.model
+    def _cobertura_minima(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param('koroshi_kpi.cobertura_minima', '80')
+        try:
+            return float(valor or 80)
+        except ValueError:
+            return 80.0
+
+    def _horas_operarios(self, uds_pick):
+        """v1.6: (horas-persona, cobertura %) de picking con el tiempo efectivo de las tareas de operario de ese dia
+        (koroshi_operarios 2.12: la misma cifra que la u/h por operario). uds_pick = {picking_id: uds de la ficha}.
+        Las horas se llevan a todas las uds de la ficha (horas / cobertura). Sin koroshi_operarios: (0, 0)."""
+        self.ensure_one()
+        if 'koroshi.operario.tarea' not in self.env or not uds_pick:
+            return 0.0, 0.0
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        if not hasattr(Tarea, '_medir'):
+            return 0.0, 0.0
+        tareas = Tarea.search([('dia', '=', self.fecha)]).filtered(lambda t: set(t._pickings().ids) & set(uds_pick))
+        if not tareas:
+            return 0.0, 0.0
+        ahora = fields.Datetime.now()
+        umbral = Tarea._minutos_sin_leer_max()
+        marcas = tareas._marcas_preparacion(ahora)
+        efectivo = sum(t._medir(ahora, marcas.get(t.id), umbral)['efectivo'] for t in tareas)
+        cubiertas = set()
+        for t in tareas:
+            cubiertas |= set(t._pickings().ids)
+        total = sum(uds_pick.values())
+        cubierto = sum(v for k, v in uds_pick.items() if k in cubiertas)
+        if not total or not cubierto:
+            return 0.0, 0.0
+        return efectivo / 60.0 * total / cubierto, 100.0 * cubierto / total
 
     # ---------------- Calculo de lo que sale de Odoo ----------------
     def _rango_utc(self):
@@ -309,6 +363,7 @@ class KoroshiKpiDia(models.Model):
             pedidos = set()
             outs = set()
             cajas = {}          # caja -> (hora, quien la cierra)
+            uds_pick = {}       # v1.6: picking -> uds (cobertura de las tareas de operario)
             huecos = {}         # picking -> [(lineal, posicion)] para los metros
             for ml in r._lineas_dia():
                 pk = ml.picking_id
@@ -329,6 +384,7 @@ class KoroshiKpiDia(models.Model):
                 productos.add(p.id)
                 pedidos.add(pk.origin or pk.name)
                 outs.add(pk.id)
+                uds_pick[pk.id] = uds_pick.get(pk.id, 0.0) + q
                 if ml.result_package_id:
                     if met == 'zonas':
                         quien = ('Z', pk.batch_id.name)
@@ -362,6 +418,12 @@ class KoroshiKpiDia(models.Model):
             pick_hp, pick_max = horas_persona(marcas_pick)
             u_hp = horas_persona(marcas_u)[0]
             horas = [c[0] for c in cajas.values()]
+            try:
+                with self.env.cr.savepoint():
+                    hp_op, cob_op = r._horas_operarios(uds_pick)
+            except Exception:
+                _logger.exception('KOROSHI KPI: no se han podido sacar las horas de operarios del %s', r.fecha)
+                hp_op, cob_op = 0.0, 0.0
             r.write({
                 'uds': uds, 'lineas': n_lineas, 'skus': len(productos), 'pedidos': len(pedidos), 'outs': len(outs),
                 'cajas': len(cajas), 'volumen_total': vol, 'uds_volumen_estimado': vol_est, 'peso_total': peso,
@@ -369,6 +431,7 @@ class KoroshiKpiDia(models.Model):
                 'primera_caja': horas and min(horas) or False, 'ultima_caja': horas and max(horas) or False,
                 'horas_reloj': horas and (max(horas) - min(horas)).total_seconds() / 3600.0 or 0.0,
                 'pick_hp_auto': pick_hp, 'pick_personas_auto': pick_max, 'pack_hp_auto': u_hp,
+                'pick_hp_operarios': hp_op, 'cobertura_operarios': cob_op,
                 'recalculado': fields.Datetime.now(),
             })
         # v1.3: el boton Recalcular de la ficha del dia completo saca tambien las faltas de ese dia
@@ -390,8 +453,10 @@ class KoroshiKpiDia(models.Model):
     @api.model
     def recalcular_todo(self):
         # Al instalar o actualizar el modulo: tabla de tipos al dia (solo filas aun 'estimadas') y fichas por
-        # metodo de todos los dias que ya tienen ficha, recalculadas. Si algo falla, se apunta en el registro y
+        # metodo de los dias que ya tienen ficha, recalculadas. Si algo falla, se apunta en el registro y
         # la actualizacion sigue (no se queda el modulo a medias).
+        # v1.6: solo los ultimos koroshi_kpi.dias_recalcular dias (7): antes eran todos los dias en cada
+        # actualizacion (cada vez mas largo, con Odoo parado). Los anteriores, con el boton Recalcular de la ficha.
         Tipo = self.env['koroshi.kpi.peso.tipo'].sudo()
         for codigo, (nombre, gramos, litros) in TIPOS.items():
             t = Tipo.search([('codigo', '=', codigo)], limit=1)
@@ -399,7 +464,12 @@ class KoroshiKpiDia(models.Model):
                 Tipo.create({'codigo': codigo, 'name': nombre, 'gramos': gramos, 'litros': litros})
             elif t.estimado:
                 t.write({'name': nombre, 'gramos': gramos, 'litros': litros})
-        for d in sorted(set(self.search([]).mapped('fecha'))):
+        try:
+            dias = max(int(self.env['ir.config_parameter'].sudo().get_param('koroshi_kpi.dias_recalcular', '7')), 0)
+        except ValueError:
+            dias = 7
+        desde = datetime.datetime.now(pytz.timezone(TZ)).date() - datetime.timedelta(days=dias)
+        for d in sorted(set(self.search([('fecha', '>=', desde)]).mapped('fecha'))):
             try:
                 with self.env.cr.savepoint():
                     self.crear_fichas(d).action_recalcular()        # v1.3: tambien las faltas del dia
@@ -413,4 +483,13 @@ class KoroshiKpiDia(models.Model):
         hoy = datetime.datetime.now(pytz.timezone(TZ)).date()
         for d in (hoy - datetime.timedelta(days=1), hoy):
             self.crear_fichas(d).action_recalcular()
+        # v1.6: las faltas de los dias anteriores con OUT aun abiertas o validadas hoy (cambian al cogerlas o validarlas)
+        Falta = self.env['koroshi.kpi.falta']
+        for d in Falta.dias_por_revisar():
+            if d < hoy - datetime.timedelta(days=1):
+                try:
+                    with self.env.cr.savepoint():
+                        Falta.recalcular_dia(d)
+                except Exception:
+                    _logger.exception('KOROSHI KPI: no se han podido recalcular las faltas del %s', d)
         return True

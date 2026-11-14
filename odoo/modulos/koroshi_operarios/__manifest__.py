@@ -93,8 +93,13 @@ Pausa tambien desde el menu de la preparacion (koroshi_preparacion 3.26).
 v2.11.1 (13/11/2026): quien esta en pausa ya no sale en Lecturas (sale en el Monitor, koroshi_monitor 1.24:
 asignacion.en_pausa()). Sin la ventana «Error de CORS desconocido» en las PDA (js/sin_error_cors.js:
 window.onOriginError); los errores con fichero y linea siguen saliendo.
+v2.12.0 (14/11/2026): auditoria 13/11, fase 2. Una sola cifra de productividad: resumen_operario_dia() (u/h = uds x 60 /
+minutos efectivos, sin los huecos de 15 min sin leer). La usan Productividad, koroshi_informe, koroshi_kpi y koroshi_monitor.
+Campos nuevos en la tabla propia de tareas: parado y efectivo (las 51 que hay las recalcula koroshi_informe 1.1.0). Sin media de u/h
+al agrupar. Fuera el correo diario de este modulo (cron 204, accion y menu «Enviar informe de hoy ahora»): queda
+el de koroshi_informe. Reparto: las OUT de zonas Z- y el tramo se filtran en la busqueda, antes del limite de 400.
 """,
-    'version': '13.0.2.11.1',
+    'version': '13.0.2.12.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

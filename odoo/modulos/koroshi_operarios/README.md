@@ -1,8 +1,30 @@
-# KOROSHI Operarios (v2.11.1, 13/11/2026)
+# KOROSHI Operarios (v2.12.0, 14/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+
+## v2.12.0: una sola cifra de productividad (14/11/2026, auditoría 13/11, fase 2)
+
+- Había cinco fórmulas de u/h distintas (la tarea, Productividad, el correo de koroshi_informe, el KPI, el Monitor):
+  unas contaban el tiempo parado y otras no. Ahora hay **una**: `koroshi.operario.tarea.resumen_operario_dia(dia)`.
+  - **minutos** = de que lee la OUT a que se cierra la tarea (si sigue abierta, hasta ahora).
+  - **parado** = huecos de `koroshi_operarios.minutos_sin_leer` minutos (15) o más sin leer en Preparación; si la tarea
+    sigue abierta, también lo que lleva ahora sin hacer nada.
+  - **efectivo** = minutos − parado. **u/h = uds × 60 / efectivo.**
+  - Las tareas hechas sin Preparación (app de código de barras) no tienen detalle: su parado es 0.
+- La tarea guarda **Min parado** y **Min efectivos** (campos nuevos en su propia tabla, no en albaranes). Al actualizar,
+  la migración de koroshi_informe 1.1.0 recalcula las tareas que ya hay (51 el 14/11): el parado sale de las
+  lecturas de koroshi_preparacion, que se carga después de este módulo.
+- **Uds/hora** ya no hace la media al agrupar (una media de ratios no es la u/h del grupo).
+- Fuera el **correo diario de este módulo** (cron «KOROSHI Operarios: informe diario por email», id 204, la acción y el
+  menú «Enviar informe de hoy ahora»): llegaban dos correos con cifras distintas. Queda el de **koroshi_informe**. Al
+  actualizar, Odoo borra el cron y la acción.
+- El contador de la PDA (pedidos y uds de hoy) cuenta la tarea abierta igual que el resto (también la OUT a dos).
+- Reparto automático / por pasillos: las OUT de agrupaciones **Z-** y las que no son del **tramo** se quitan en la
+  búsqueda, **antes** del límite de 400 (antes 400 OUT de zonas podían llenar el límite y no salía ninguna suelta). El
+  lineal de cada OUT se calcula una vez, no dos.
 
 ## v2.11.1: pausa al Monitor y sin «Error de CORS desconocido» (13/11/2026)
 

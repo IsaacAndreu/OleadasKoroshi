@@ -26,7 +26,10 @@ TZ = 'Europe/Madrid'
 CAJAS_PALET = 16            # el 23/10/2026: 355 bultos -> 32 palets, los que se cargaron
 RE_K = re.compile(r'\bK(\d+) - .*$')
 
-# Delegacion de transporte por tienda (la misma lista que la etiqueta de zona, 21/10/2026)
+# Delegacion de transporte por tienda (la misma lista que la etiqueta de zona, 21/10/2026).
+# v1.6: manda el campo koroshi_delegacion del albaran (modulo koroshi_delegacion: etiqueta «Delegación ...» del
+# contacto de la tienda), que se cambia en Odoo sin tocar codigo. Esta lista solo se usa si ese modulo no esta
+# instalado o la tienda aun no tiene la etiqueta.
 DELEGACIONES = {
     1: 'CASTELLBISBAL', 7: 'LEGANÉS', 8: 'PAMPLONA', 9: 'BILBAO', 10: 'BILBAO', 22: 'VITORIA', 24: 'VALLADOLID',
     26: 'FRANQUESES', 29: 'CORUÑA', 31: 'MURCIA', 33: 'ZARAGOZA', 34: 'CASTELLBISBAL', 37: 'SALAMANCA', 38: 'BILBAO',
@@ -71,13 +74,17 @@ class KoroshiHojaCarga(http.Controller):
             uds[g['picking_id'][0]] = g['qty_done']
         pedidos = {}
         negativos = []
+        con_campo = 'koroshi_delegacion' in env['stock.picking']._fields     # v1.6
         for p in outs:
             clave = p.origin or p.name
             nombre = p.partner_id.name or ''
             m = RE_K.search(nombre)
             tienda = m and m.group(0) or nombre.split(', ')[-1]
             knum = m and int(m.group(1)) or 0
-            d = pedidos.setdefault(clave, {'tienda': tienda, 'knum': knum, 'segs': set(), 'uds': 0.0, 'bultos': 0})
+            d = pedidos.setdefault(clave, {'tienda': tienda, 'knum': knum, 'segs': set(), 'uds': 0.0, 'bultos': 0,
+                                           'deleg_campo': ''})
+            if con_campo and p.koroshi_delegacion and not d['deleg_campo']:
+                d['deleg_campo'] = p.koroshi_delegacion
             if p.carrier_tracking_ref:
                 d['segs'].add(p.carrier_tracking_ref)
             d['uds'] += uds.get(p.id, 0.0)
@@ -86,7 +93,8 @@ class KoroshiHojaCarga(http.Controller):
                 negativos.append('%s %s (%d)' % (p.name.replace('EFFEC/OUT/', ''), tienda.split(' - ')[0],
                                                  p.number_of_packages))
         for clave, d in pedidos.items():
-            d['deleg'] = DELEGACIONES.get(d['knum']) or ('K%d (va sola)' % d['knum'] if d['knum'] else d['tienda'])
+            d['deleg'] = d['deleg_campo'] or DELEGACIONES.get(d['knum']) or \
+                ('K%d (va sola)' % d['knum'] if d['knum'] else d['tienda'])
         filas = sorted(pedidos.items(), key=lambda x: (x[1]['deleg'], x[1]['knum'], x[0]))
 
         salida = io.BytesIO()

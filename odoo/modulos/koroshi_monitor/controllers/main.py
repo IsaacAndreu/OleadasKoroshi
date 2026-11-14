@@ -18,12 +18,15 @@
 # Mismos calculos que las paginas estado-OUT-agrupaciones-Z-*.html de bin/versiones.
 # =============================================================================
 import datetime
+import logging
 import re
 
 import pytz
 
 from odoo import fields, http
 from odoo.http import request
+
+_logger = logging.getLogger(__name__)
 
 COMPANY_ID = 8          # EFFECTIVE LOGISTICS, S.L.
 N_PREFIJOS = 15         # agrupaciones que salen en el desplegable
@@ -326,7 +329,7 @@ class KoroshiMonitor(http.Controller):
             'sin_validar': sin_validar,
         }
 
-    def _operarios(self, env, dominio, filas_por_id):
+    def _operarios(self, env, dominio, filas_por_id, dia=None):
         """v1.18: quien coge cada OUT, con el modulo koroshi_operarios (si esta instalado; si no, nada).
         Solo codigos (OP1, OP2...), nunca nombres. Devuelve (por_picking, por_lote, resumen)."""
         if 'koroshi.operario.tarea' not in env.registry:
@@ -409,10 +412,23 @@ class KoroshiMonitor(http.Controller):
                         o['pausa_ref'] = (a.name or '').replace('EFFEC/OUT/', '')
             except Exception:
                 pass
+        # v1.26 (auditoria 13/11, fase 2): u/h = la de koroshi_operarios 2.12 (resumen_operario_dia: uds / minutos
+        # efectivos, sin los parados), la misma que Productividad, el correo y el KPI. Con operarios anteriores, como antes.
+        uh_unica = {}
+        Tarea = env['koroshi.operario.tarea'].sudo()
+        if dia and hasattr(Tarea, 'resumen_operario_dia'):     # solo la vista por dia (no la de una agrupacion)
+            try:
+                for r in Tarea.resumen_operario_dia(dia, ahora)[0].values():
+                    uh_unica[r['codigo']] = r['uds_hora']
+            except Exception:
+                _logger.exception('KOROSHI Monitor: no se ha podido sacar la u/h de resumen_operario_dia')
         resumen = []
         for cod in sorted(ops, key=lambda c: (int(re.sub(r'\D', '', c) or 0), c)):
             o = ops[cod]
-            o['uh'] = o['min'] > 1 and int(round(o['uds'] * 60.0 / o['min'])) or 0
+            if cod in uh_unica:
+                o['uh'] = int(round(uh_unica[cod]))
+            else:
+                o['uh'] = o['min'] > 1 and int(round(o['uds'] * 60.0 / o['min'])) or 0
             o['uds'] = int(round(o['uds']))
             o['min'] = int(round(o['min']))
             o['ini'] = self._hora(o['ini'])
@@ -599,7 +615,7 @@ class KoroshiMonitor(http.Controller):
                 if pendientes > 0 and equipo['uh'] > 0 and dia == self._hoy_local():
                     equipo['fin_previsto'] = self._hora(ahora + datetime.timedelta(hours=pendientes / equipo['uh']))
         # v1.18: operarios (codigos) del dia
-        pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas)
+        pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas, dia=dia)
         self._poner_ops(D, pp, pl)
         # v1.20.2: personas cogiendo ahora = operarios de Lecturas con una tarea abierta (OUT, INT o agrupacion) +
         # OUT de tiendas cogiendose sin operario de Lecturas (app de siempre). Cada persona cuenta UNA vez: la OUT

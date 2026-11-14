@@ -11,6 +11,11 @@
 #                cerrar caja hace mas de PARADA_MIN) o validadas: no encontrado en el hueco
 #   pendiente  = ya validada la OUT: lo que falto esta en su pedido pendiente (backorder) esperando stock
 #   cancelado  = ya validada la OUT sin pedido pendiente (o pendiente cancelado): no se sirve
+# v1.6 (auditoria 13/11, fase 2): «No cogido» ya no desaparece al validar la OUT. Antes, al validar, lo que no se
+# cogio pasaba a «pendiente» o «cancelado» y se perdia que SI habia stock. Ahora se cruza con koroshi.faltante
+# (koroshi_faltantes: lo que el operario marco como «no esta en el hueco»): esas uds cuentan como «no cogido» en vez
+# de pendiente / cancelado / sin stock. Y cada noche se recalculan tambien los dias anteriores con OUT aun abiertas o
+# validadas hoy (dias_por_revisar), no solo hoy y ayer.
 # Solo escribe en su tabla (koroshi.kpi.falta): no toca albaranes, stock ni productos.
 # =============================================================================
 import datetime
@@ -23,6 +28,7 @@ from .kpi import COMPANY_ID, TZ, tipo_producto
 
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # igual que el Monitor: sin cerrar caja en estos minutos = parada
+DIAS_REVISAR = 14       # v1.6: cada noche, dias anteriores (hasta estos) con OUT abiertas o validadas hoy
 
 
 class KoroshiKpiFalta(models.Model):
@@ -129,6 +135,30 @@ class KoroshiKpiFalta(models.Model):
             if falta > 0.001:
                 d['faltas'][motivo] = d['faltas'].get(motivo, 0.0) + falta
 
+        # v1.6: lo marcado como faltante en la PDA (no estaba en el hueco, habia stock en Odoo) es «no cogido»
+        if 'koroshi.faltante' in self.env and todos:
+            marcado = {}
+            for f in self.env['koroshi.faltante'].sudo().search([('picking_id', 'in', todos.ids)]):
+                clave = (raiz_de[f.picking_id.id], f.product_id.id)
+                marcado[clave] = marcado.get(clave, 0.0) + (f.cantidad or 0.0)
+            for clave, q in marcado.items():
+                d = datos.get(clave)
+                if not d:
+                    continue
+                ya = d['faltas'].get('no_cogido', 0.0)
+                resto = q - ya
+                for motivo in ('pendiente', 'cancelado', 'sin_stock'):
+                    if resto <= 0.001:
+                        break
+                    hay = d['faltas'].get(motivo, 0.0)
+                    pasa = min(hay, resto)
+                    if pasa > 0.001:
+                        d['faltas'][motivo] = hay - pasa
+                        if d['faltas'][motivo] <= 0.001:
+                            del d['faltas'][motivo]
+                        d['faltas']['no_cogido'] = d['faltas'].get('no_cogido', 0.0) + pasa
+                        resto -= pasa
+
         Falta.search([('fecha', '=', dia)]).unlink()
         vals = []
         cuando = fields.Datetime.now()
@@ -151,6 +181,20 @@ class KoroshiKpiFalta(models.Model):
         if vals:
             Falta.create(vals)
         return len(vals)
+
+    @api.model
+    def dias_por_revisar(self, dias=DIAS_REVISAR):
+        """v1.6: dias (hora de Madrid) de los ultimos `dias` con OUT de tienda (sin pedido pendiente de otra) aun
+        abiertas o validadas hoy: sus faltas cambian aunque el dia ya haya pasado."""
+        tz = pytz.timezone(TZ)
+        hoy = datetime.datetime.now(tz).date()
+        desde = self._rango_utc(hoy - datetime.timedelta(days=dias))[0]
+        hoy_ini = self._rango_utc(hoy)[0]
+        outs = self.env['stock.picking'].sudo().search([
+            ('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'), ('backorder_id', '=', False),
+            ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO), ('create_date', '>=', desde),
+            '|', ('state', 'not in', ('done', 'cancel')), ('date_done', '>=', hoy_ini)])
+        return sorted(set(pytz.utc.localize(p.create_date).astimezone(tz).date() for p in outs))
 
     @api.model
     def action_recalcular_hoy(self):

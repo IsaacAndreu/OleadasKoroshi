@@ -1,4 +1,13 @@
-# KOROSHI Consumibles (v1.3.0, 13/11/2026)
+# KOROSHI Consumibles (v1.4.0, 14/11/2026)
+
+
+## v1.4.0: más ligero y sin perder restas (14/11/2026, auditoría 13/11, fase 2)
+
+- El stock, el total consumido y el de entradas de cada artículo se suman con **una consulta agrupada** en la base.
+  Antes, cada caja cerrada en la PDA leía todos los movimientos del artículo (cada día más).
+- Si dos PDA cierran a la vez una caja del mismo tipo, PostgreSQL da un choque de concurrencia. Antes se tragaba: la
+  caja se cerraba y **no se restaba**. Ahora el error sube y Odoo repite la petición entera (hasta 5 veces), así la
+  resta no se pierde. Los demás errores siguen sin parar el cierre de la caja.
 
 ## v1.3.0: aviso por correo (13/11/2026)
 

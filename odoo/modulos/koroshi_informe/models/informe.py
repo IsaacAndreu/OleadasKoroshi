@@ -18,6 +18,8 @@
 # pedido abierto, y lo que lleva sin leer un pedido aun abierto. Las tareas hechas con la app de codigo de barras
 # (sin Preparacion) no tienen el detalle: su parado es 0 y se avisa.
 # u/h = uds x 60 / (minutos con el pedido abierto - parado).
+# v1.1.0 (auditoria 13/11, fase 2): ese calculo ya no esta aqui: es koroshi.operario.tarea.resumen_operario_dia()
+# (koroshi_operarios 2.12), la misma cifra que Productividad, el KPI, el Monitor y la PDA.
 # =============================================================================
 import datetime
 import html
@@ -30,7 +32,7 @@ from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from odoo.addons.koroshi_operarios.models.informe import codigo_corto, hm
-from odoo.addons.koroshi_operarios.models.tarea import ZONA_HORARIA
+from odoo.addons.koroshi_operarios.models.tarea import ZONA_HORARIA, uds_hora_de
 
 _logger = logging.getLogger(__name__)
 
@@ -98,7 +100,7 @@ class KoroshiInformeOperarioDia(models.Model):
     minutos = fields.Float('Minutos con pedido abierto', digits=(16, 1))
     parado = fields.Float('Minutos parado', digits=(16, 1))
     efectivo = fields.Float('Minutos trabajando', digits=(16, 1))
-    uds_hora = fields.Float('u/h', digits=(16, 0), group_operator='avg')
+    uds_hora = fields.Float('u/h', digits=(16, 0), group_operator=False)   # v1.1: sin media de ratios
     sin_detalle = fields.Integer('Tareas sin detalle de paradas',
                                  help='Hechas sin Preparación en Lecturas: no se sabe si hubo paradas')
     inicio = fields.Datetime('Empieza')
@@ -164,83 +166,8 @@ class KoroshiInforme(models.AbstractModel):
     @api.model
     def _operarios_dia(self, dia):
         """Resumen por operario de las tareas de ese dia. Devuelve (filas, huecos, parados_ahora).
-        filas: {employee_id: {...}}. No escribe nada."""
-        Tarea = self.env['koroshi.operario.tarea'].sudo()
-        ahora = fields.Datetime.now()
-        umbral = Tarea._minutos_sin_leer_max()
-        tareas = Tarea.search([('dia', '=', dia)], order='inicio asc')
-        lect = {}
-        if tareas and 'koroshi.preparacion.lectura' in self.env:
-            ini, fin = self._limites(dia)
-            for l in self.env['koroshi.preparacion.lectura'].sudo().search([
-                    ('employee_id', 'in', tareas.mapped('employee_id').ids), ('picking_id', '!=', False),
-                    ('fecha', '>=', ini), ('fecha', '<', fin + datetime.timedelta(hours=6))]):
-                lect.setdefault((l.employee_id.id, l.picking_id.id), []).append(l.fecha)
-        ops = {}
-        huecos = []
-        parados_ahora = []
-        for t in tareas:
-            e = t.employee_id
-            cod = codigo_corto(e.barcode)
-            o = ops.setdefault(e.id, {
-                'employee_id': e.id, 'codigo': cod, 'nombre': e.name or '', 'tareas': 0, 'acabadas': 0,
-                'uds': 0.0, 'minutos': 0.0, 'parado': 0.0, 'sin_detalle': 0, 'inicio': None, 'fin': None,
-                'curso': 0,
-            })
-            en_curso = t.estado == 'curso'
-            fin_t = ahora if en_curso else (t.fin or t.inicio)
-            pickings = t._pickings()
-            ref = (t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name) or t.referencia or ''
-            ref = ref.replace('EFFEC/', '')
-            marcas = []
-            for pid in pickings.ids:
-                marcas += [f for f in lect.get((e.id, pid), []) if t.inicio <= f <= fin_t]
-            parado = 0.0
-            if marcas:
-                marcas = [t.inicio] + sorted(marcas)
-                for a, b in zip(marcas, marcas[1:]):
-                    m = (b - a).total_seconds() / 60.0
-                    if m >= umbral:
-                        parado += m
-                        huecos.append({'codigo': cod, 'nombre': e.name, 'desde': a, 'hasta': b, 'min': m, 'ref': ref})
-                ultima = marcas[-1]
-                if not en_curso and t.fin and t.fin > ultima:
-                    m = (t.fin - ultima).total_seconds() / 60.0
-                    if m >= umbral:
-                        parado += m
-                        huecos.append({'codigo': cod, 'nombre': e.name, 'desde': ultima, 'hasta': t.fin, 'min': m,
-                                       'ref': ref})
-            elif not en_curso and (t.minutos or 0) >= 1:
-                o['sin_detalle'] += 1
-            if en_curso:
-                # lo que lleva sin leer ahora (Preparacion o una linea del pedido con la app de codigo de barras)
-                ultima = t._ultima_actividad() or t.inicio
-                m = max((ahora - ultima).total_seconds() / 60.0, 0.0)
-                if m >= umbral:
-                    parado += m
-                    parados_ahora.append({
-                        'codigo': cod, 'nombre': e.name, 'ref': ref, 'desde': ultima, 'min': m,
-                        'uds_total': t.uds_total or 0.0, 'leidas': Tarea._uds_leidas(pickings)})
-                o['curso'] += 1
-                uds = t._uds_hasta_ahora()
-                minutos = max((ahora - t.inicio).total_seconds() / 60.0, 0.0)
-            else:
-                uds = t.uds or 0.0
-                minutos = t.minutos or 0.0
-                if t.estado == 'acabada':
-                    o['acabadas'] += 1
-            o['tareas'] += 1
-            o['uds'] += uds
-            o['minutos'] += minutos
-            o['parado'] += min(parado, minutos)
-            if not o['inicio'] or t.inicio < o['inicio']:
-                o['inicio'] = t.inicio
-            if not o['fin'] or fin_t > o['fin']:
-                o['fin'] = fin_t
-        for o in ops.values():
-            o['efectivo'] = max(o['minutos'] - o['parado'], 0.0)
-            o['uds_hora'] = o['efectivo'] >= 1 and o['uds'] * 60.0 / o['efectivo'] or 0.0
-        return ops, huecos, parados_ahora
+        filas: {employee_id: {...}}. No escribe nada. v1.1: es resumen_operario_dia() de koroshi_operarios."""
+        return self.env['koroshi.operario.tarea'].sudo().resumen_operario_dia(dia)
 
     @api.model
     def _guardar_dia(self, dia, filas):
@@ -301,7 +228,7 @@ class KoroshiInforme(models.AbstractModel):
                 o[k] += f.get(k) or 0
             o['dias'].add(f['fecha'])
         for o in res.values():
-            o['uds_hora'] = o['efectivo'] >= 1 and o['uds'] * 60.0 / o['efectivo'] or 0.0
+            o['uds_hora'] = uds_hora_de(o['uds'], o['efectivo'])
             o['n_dias'] = len(o['dias'])
         return res
 
@@ -357,7 +284,7 @@ class KoroshiInforme(models.AbstractModel):
         uds = sum(f.uds for f in fichas)
         uds_h = sum(f.uds for f in fichas if f.hp_picking > 0)
         hp = sum(f.hp_picking for f in fichas if f.hp_picking > 0)
-        estimada = any((not (f.pick_personas * f.pick_horas)) and f.pick_hp_auto > 0 for f in fichas)
+        estimada = any(f.fuente_horas == 'cajas' for f in fichas)   # v1.1: koroshi_kpi 1.6
         return uds, hp, hp and uds_h / hp or 0.0, estimada
 
     @api.model

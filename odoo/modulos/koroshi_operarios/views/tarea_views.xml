@@ -20,6 +20,8 @@
                 <field name="companero_id"/>
                 <field name="uds" sum="Uds"/>
                 <field name="minutos" sum="Minutos"/>
+                <field name="parado" sum="Parado" optional="show"/>
+                <field name="efectivo" sum="Efectivos" optional="show"/>
                 <field name="uds_hora"/>
             </tree>
         </field>
@@ -63,6 +65,8 @@
                         </group>
                         <group string="Ritmo">
                             <field name="minutos"/>
+                            <field name="parado"/>
+                            <field name="efectivo"/>
                             <field name="uds_hora"/>
                             <field name="nota"/>
                         </group>

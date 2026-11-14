@@ -26,6 +26,8 @@
                 <field name="personas_total" sum="Personas"/>
                 <field name="horas_reloj" widget="float_time" optional="show"/>
                 <field name="hp_picking" sum="Horas picking" widget="float_time" optional="show"/>
+                <field name="fuente_horas" optional="show"/>
+                <field name="cobertura_operarios" optional="hide"/>
                 <field name="hp_packing" sum="Horas packing/U" widget="float_time" optional="hide"/>
                 <field name="hp_expedicion" sum="Horas expedición" widget="float_time" optional="hide"/>
                 <field name="hp_total" sum="Horas" widget="float_time"/>
@@ -57,7 +59,8 @@
                     </div>
                     <div class="alert alert-info" role="status" attrs="{'invisible': [('horas_estimadas', '=', False)]}">
                         Horas estimadas por las cajas cerradas (cuántas OUT o zonas cierran caja a la vez cada cuarto de hora).
-                        Si apuntas personas y horas a mano abajo, mandan las tuyas.
+                        Si apuntas personas y horas a mano abajo, mandan las tuyas. Si los operarios leen su tarjeta en
+                        bastantes pedidos del día (cobertura de koroshi_kpi.cobertura_minima, 80 %), mandan sus horas.
                     </div>
                     <field name="horas_estimadas" invisible="1"/>
                     <group>
@@ -75,6 +78,7 @@
                             <field name="hp_total" widget="float_time"/>
                             <field name="personas_total"/>
                             <field name="hp_picking" widget="float_time"/>
+                            <field name="fuente_horas"/>
                             <field name="h_andando" widget="float_time"/>
                             <field name="h_leyendo" widget="float_time"/>
                             <field name="hp_packing" widget="float_time"/>
@@ -86,6 +90,8 @@
                         <group>
                             <field name="pick_personas_auto"/>
                             <field name="pick_hp_auto" widget="float_time"/>
+                            <field name="pick_hp_operarios" widget="float_time"/>
+                            <field name="cobertura_operarios"/>
                         </group>
                         <group>
                             <field name="pack_hp_auto" widget="float_time"/>

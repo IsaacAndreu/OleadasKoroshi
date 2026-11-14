@@ -1,10 +1,19 @@
 # -*- coding: utf-8 -*-
 import logging
 
+from psycopg2 import OperationalError
+
 from odoo import api, fields, models, _
 from odoo.exceptions import ValidationError
+from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 
 _logger = logging.getLogger(__name__)
+
+
+def es_concurrencia(error):
+    """v1.4: dos PDA restando la misma caja a la vez. Este error no se traga: sube y Odoo repite la peticion entera
+    (cierre de caja incluido) hasta 5 veces, asi no se pierde la resta."""
+    return isinstance(error, OperationalError) and getattr(error, 'pgcode', None) in PG_CONCURRENCY_ERRORS_TO_RETRY
 
 
 class KoroshiConsumableItem(models.Model):
@@ -89,22 +98,40 @@ class KoroshiConsumableItem(models.Model):
          'El código interno debe ser único dentro de la compañía.'),
     ]
 
+    def _sumas_movimientos(self):
+        """v1.4 (auditoria 13/11, fase 2): {item_id: {tipo: suma, 'fecha': ultima}} con UNA consulta agrupada en la base,
+        en vez de leer todos los movimientos de cada articulo (cada caja cerrada en la PDA leia todo el historico)."""
+        ids = [i for i in self.ids if isinstance(i, int)]
+        res = dict((i, {}) for i in ids)
+        if not ids:
+            return res
+        self.env['koroshi.consumable.move'].flush(['item_id', 'movement_type', 'quantity', 'date'])
+        self.env.cr.execute("""
+            SELECT item_id, movement_type, COALESCE(SUM(quantity), 0), MAX(date)
+              FROM koroshi_consumable_move
+             WHERE item_id IN %s
+             GROUP BY item_id, movement_type""", (tuple(ids),))
+        for item_id, tipo, suma, fecha in self.env.cr.fetchall():
+            r = res[item_id]
+            r[tipo] = suma
+            if fecha and (not r.get('fecha') or fecha > r['fecha']):
+                r['fecha'] = fecha
+        return res
+
     @api.depends('initial_qty', 'minimum_qty', 'movement_ids.quantity',
                  'movement_ids.movement_type')
     def _compute_totals(self):
+        sumas = self._sumas_movimientos()
         for item in self:
-            consumed = sum(
-                move.quantity for move in item.movement_ids
-                if move.movement_type == 'consumption'
-            )
-            entries = sum(
-                move.quantity for move in item.movement_ids
-                if move.movement_type == 'entry'
-            )
-            corrections = sum(
-                move.quantity for move in item.movement_ids
-                if move.movement_type == 'adjustment'
-            )
+            if isinstance(item.id, int):
+                s = sumas.get(item.id, {})
+                consumed = s.get('consumption', 0.0)
+                entries = s.get('entry', 0.0)
+                corrections = s.get('adjustment', 0.0)
+            else:   # registro nuevo en pantalla (aun sin guardar): lo que hay en memoria
+                consumed = sum(m.quantity for m in item.movement_ids if m.movement_type == 'consumption')
+                entries = sum(m.quantity for m in item.movement_ids if m.movement_type == 'entry')
+                corrections = sum(m.quantity for m in item.movement_ids if m.movement_type == 'adjustment')
             current = item.initial_qty + entries - consumed + corrections
             item.total_consumed = consumed
             item.total_entries = entries
@@ -143,7 +170,9 @@ class KoroshiConsumableItem(models.Model):
                     'auto_delete': True,
                 })
             return True
-        except Exception:
+        except Exception as e:
+            if es_concurrencia(e):
+                raise       # v1.4
             _logger.exception('KOROSHI Consumibles: no se ha podido avisar de %s', self.display_name)
             return False
 
@@ -206,8 +235,13 @@ class KoroshiConsumableItem(models.Model):
                 self.env['koroshi.consumable.move'].sudo().with_context(koroshi_permitir_negativo=True).create({
                     'item_id': item.id, 'movement_type': 'consumption', 'quantity': 1.0,
                     'note': (nota or '')[:250], 'responsible_id': self.env.user.id})
+                # v1.4: el total del articulo se escribe aqui dentro (no al final de la peticion), para que un choque
+                # con otra PDA salte aqui y se repita la peticion
+                item.flush(['current_qty', 'total_consumed', 'stock_status', 'last_move_date'])
             return True
-        except Exception:
+        except Exception as e:
+            if es_concurrencia(e):
+                raise       # v1.4: no se traga: Odoo repite la peticion (antes la caja se cerraba sin restar)
             _logger.exception('KOROSHI Consumibles: no se ha podido restar la caja %s', item.display_name)
             return False
 
@@ -237,9 +271,13 @@ class KoroshiConsumableItem(models.Model):
 
     @api.depends('movement_ids.date')
     def _compute_last_move(self):
+        sumas = self._sumas_movimientos()      # v1.4: una consulta, no todo el historico
         for item in self:
-            dates = item.movement_ids.mapped('date')
-            item.last_move_date = max(dates) if dates else False
+            if isinstance(item.id, int):
+                item.last_move_date = sumas.get(item.id, {}).get('fecha') or False
+            else:
+                dates = item.movement_ids.mapped('date')
+                item.last_move_date = max(dates) if dates else False
 
     @api.constrains('initial_qty', 'minimum_qty')
     def _check_quantities(self):
