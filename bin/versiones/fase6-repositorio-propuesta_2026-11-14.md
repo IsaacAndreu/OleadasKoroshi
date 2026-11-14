@@ -37,6 +37,8 @@ que se apruebe.
    la copia de trabajo, donde 59 ficheros de `odoo/modulos` están en CRLF (por `core.autocrlf=true`). Odoo los acepta,
    pero LF es lo correcto en Linux. El `-c core.autocrlf=false` es obligatorio: sin él, `git archive` también los pasa
    a CRLF.
+   Por lo mismo, un `.gitattributes` con `*.sh text eol=lf` y `odoo/** text eol=lf`. Con `core.autocrlf=true`, un
+   `git checkout` deja los `.sh` en CRLF, y en Linux bash falla (`$'': command not found`).
 3. **Dejar de subir binarios** (`.gitignore` y `git rm --cached`, que conserva los ficheros en el disco):
    - `bin/*.zip` y `bin/builds/`: se regeneran desde la etiqueta.
    - `*.apk` e `*.idsig`: se adjuntan a una *release* de GitHub con su etiqueta (`pda/vX.Y.Z`).
