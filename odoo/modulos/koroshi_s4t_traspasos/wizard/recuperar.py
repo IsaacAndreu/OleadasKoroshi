@@ -15,8 +15,12 @@ class KoroshiS4tTraspasoRecuperar(models.TransientModel):
         Traspaso = self.env['koroshi.s4t.traspaso']
         nuevos = Traspaso.recuperar_por_fecha(self.tipo, fields.Date.to_string(self.fecha))
         Traspaso.search([('state', '=', 'nuevo')]).action_procesar()
+        # v1.1: Odoo 13 no tiene la accion display_notification: se abre la lista con el resultado en el titulo
         return {
-            'type': 'ir.actions.client', 'tag': 'display_notification',
-            'params': {'title': _('Traspasos S4T'), 'sticky': False,
-                       'message': _('%d traspasos nuevos guardados.') % nuevos},
+            'type': 'ir.actions.act_window',
+            'name': _('Traspasos S4T: %d nuevos guardados') % nuevos,
+            'res_model': 'koroshi.s4t.traspaso',
+            'view_mode': 'tree,form',
+            'domain': [('tipo', '=', self.tipo)],
+            'target': 'current',
         }

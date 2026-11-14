@@ -69,9 +69,13 @@ class KoroshiOperarioAsignar(models.TransientModel):
             if not Asig._crear_segura(vals):
                 raise UserError(_('%s acaba de cogerla otra PDA. Vuelve a intentarlo.') % obj.name)
             hechos += 1
+        # v2.13: Odoo 13 no tiene la accion display_notification (daba error despues de asignar): se abre la cola
+        # del operario con el resultado en el titulo
         return {
-            'type': 'ir.actions.client',
-            'tag': 'display_notification',
-            'params': {'title': _('Asignado'), 'sticky': False,
-                       'message': _('%s pedido(s) asignados a %s.') % (hechos, emp.name)},
+            'type': 'ir.actions.act_window',
+            'name': _('%s pedido(s) asignados a %s') % (hechos, emp.name),
+            'res_model': 'koroshi.operario.asignacion',
+            'view_mode': 'tree,form',
+            'domain': [('employee_id', '=', emp.id), ('estado', 'in', ('cola', 'curso'))],
+            'target': 'current',
         }

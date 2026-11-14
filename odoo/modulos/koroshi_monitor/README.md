@@ -32,6 +32,16 @@ capa inventada ni ralentice el seguimiento.
 
 
 
+
+## v1.27.0: permisos, caché y año de las zonas (14/11/2026, auditoría 13/11, fase 3)
+
+- Todas las rutas (monitor y consulta de envíos) piden el permiso de **Inventario** (`stock.group_stock_user`).
+- **Caché compartida**: con varias pantallas abiertas, cada una calculaba lo mismo cada minuto. Ahora se calcula una vez
+  a la vez y el resultado vale **20 s** para todas (como oriola_monitor). Los datos pueden ir hasta 20 s atrasados.
+- Con la **pestaña oculta** (otra pestaña, pantalla bloqueada) no pide nada; al volver, se refresca al momento.
+- **Z-ddmm-** no lleva año: solo salen las agrupaciones creadas de 7 días antes a 10 días después de ese día (el
+  26/10 se creó «Z-2210- SALE 26-10», 4 días después). Así, en 2027 no se mezclarán con las de 2026.
+
 ## v1.26.0: la u/h de siempre (14/11/2026, auditoría 13/11, fase 2)
 
 - En la tabla **Operarios** (vista por día), la **u/h** es la de koroshi_operarios 2.12 (`resumen_operario_dia`): uds

@@ -5,7 +5,7 @@
         <field name="name">koroshi.s4t.envio.tree</field>
         <field name="model">koroshi.s4t.envio</field>
         <field name="arch" type="xml">
-            <tree decoration-success="state == 'enviado'" decoration-danger="state == 'error'"
+            <tree decoration-success="state == 'enviado'" decoration-danger="state in ('error', 'rechazado')"
                   decoration-muted="state in ('omitido', 'diagnostico')" decoration-info="state == 'pendiente'">
                 <field name="sale_id"/>
                 <field name="carrier"/>
@@ -76,7 +76,8 @@
             <search>
                 <field name="sale_id"/>
                 <field name="tracking_number"/>
-                <filter name="f_error" string="Con error" domain="[('state', '=', 'error')]"/>
+                <filter name="f_error" string="Con error" domain="[('state', 'in', ('error', 'rechazado'))]"/>
+                <filter name="f_rechazado" string="Rechazados por S4T" domain="[('state', '=', 'rechazado')]"/>
                 <filter name="f_pendiente" string="Pendientes" domain="[('state', 'in', ('pendiente', 'diagnostico'))]"/>
                 <filter name="f_enviado" string="Enviados" domain="[('state', '=', 'enviado')]"/>
                 <separator/>

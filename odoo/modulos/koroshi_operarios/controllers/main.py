@@ -24,9 +24,29 @@ import pytz
 
 from odoo import fields, http
 from odoo.exceptions import UserError
+from odoo.exceptions import AccessError
 from odoo.http import request
 
 from ..models.tarea import ZONA_HORARIA
+
+
+# v2.13 (auditoria 13/11, fase 3): las rutas hacen sudo(), asi que antes cualquier usuario con sesion podia usarlas.
+# Ahora hace falta el permiso de Inventario (stock.group_stock_user; el 14/11 lo tienen los 6 usuarios de la empresa 8,
+# PDA incluidas). Mismo criterio que oriola_monitor.
+GRUPO_RUTAS = 'stock.group_stock_user'
+
+
+def _comprobar_grupo():
+    if not request.env.user.has_group(GRUPO_RUTAS):
+        raise AccessError('Hace falta el permiso de Inventario para usar esta pantalla.')
+
+
+def _empleado_valido(emp):
+    """v2.13 (auditoria 13/11, fase 3): el employee_id lo manda la PDA y no se puede dar por bueno: tiene que ser un
+    empleado activo, con tarjeta (ID de credencial) y de una empresa del usuario de la PDA."""
+    if not emp or not emp.active or not (emp.barcode or '').strip():
+        return False
+    return not emp.company_id or emp.company_id in request.env.user.company_ids
 
 
 def _hora(dt):
@@ -98,7 +118,7 @@ class KoroshiOperarios(http.Controller):
 
     def _empleado(self, employee_id):
         emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-        if not emp or not emp.active:
+        if not _empleado_valido(emp):           # v2.13
             raise UserError('Lee primero tu tarjeta')
         return emp
 
@@ -126,6 +146,7 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/leer', type='json', auth='user')
     def leer(self, codigo='', employee_id=False, ayudar=False, **kw):
+        _comprobar_grupo()   # v2.13
         codigo = (codigo or '').strip()
         if not codigo:
             return {'ok': False, 'msg': 'Codigo vacio'}
@@ -170,6 +191,7 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/operario', type='json', auth='user')
     def operario(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v2.13
         try:
             emp = self._empleado(employee_id)
         except UserError as e:
@@ -178,6 +200,7 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/siguiente', type='json', auth='user')
     def siguiente(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v2.13
         try:
             emp = self._empleado(employee_id)
             return self._siguiente(emp)
@@ -186,12 +209,14 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/motivos', type='json', auth='user')
     def motivos(self, **kw):
+        _comprobar_grupo()   # v2.13
         Motivo = request.env['koroshi.operario.motivo'].sudo()
         return {'ok': True, 'motivos': [{'id': m.id, 'nombre': m.name, 'destino': m.destino,
                                          'pide_nota': m.pide_nota} for m in Motivo.search([])]}
 
     @http.route('/koroshi/operarios/saltar', type='json', auth='user')
     def saltar(self, employee_id=False, motivo_id=False, nota='', **kw):
+        _comprobar_grupo()   # v2.13
         Asig = request.env['koroshi.operario.asignacion'].sudo()
         Motivo = request.env['koroshi.operario.motivo'].sudo()
         try:
@@ -216,6 +241,7 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/dejar', type='json', auth='user')
     def dejar(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v2.13
         Tarea = request.env['koroshi.operario.tarea'].sudo()
         try:
             emp = self._empleado(employee_id)
@@ -227,6 +253,7 @@ class KoroshiOperarios(http.Controller):
 
     @http.route('/koroshi/operarios/estado', type='json', auth='user')
     def estado(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v2.13
         Tarea = request.env['koroshi.operario.tarea'].sudo()
         abiertas = Tarea.search([('estado', '=', 'curso')], order='inicio asc', limit=200)
         res = {'ok': True, 'ahora': _hora(fields.Datetime.now()),

@@ -6,7 +6,27 @@
 # =============================================================================
 from odoo import fields, http
 from odoo.exceptions import UserError
+from odoo.exceptions import AccessError
 from odoo.http import request
+
+
+# v1.2 (auditoria 13/11, fase 3): las rutas hacen sudo(), asi que antes cualquier usuario con sesion podia usarlas.
+# Ahora hace falta el permiso de Inventario (stock.group_stock_user; el 14/11 lo tienen los 6 usuarios de la empresa 8,
+# PDA incluidas). Mismo criterio que oriola_monitor.
+GRUPO_RUTAS = 'stock.group_stock_user'
+
+
+def _comprobar_grupo():
+    if not request.env.user.has_group(GRUPO_RUTAS):
+        raise AccessError('Hace falta el permiso de Inventario para usar esta pantalla.')
+
+
+def _empleado_valido(emp):
+    """v1.2 (auditoria 13/11, fase 3): el employee_id lo manda la PDA y no se puede dar por bueno: tiene que ser un
+    empleado activo, con tarjeta (ID de credencial) y de una empresa del usuario de la PDA."""
+    if not emp or not emp.active or not (emp.barcode or '').strip():
+        return False
+    return not emp.company_id or emp.company_id in request.env.user.company_ids
 
 
 def _error(e):
@@ -20,7 +40,7 @@ class KoroshiActividades(http.Controller):
 
     def _persona(self, employee_id):
         emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-        if not emp:
+        if not _empleado_valido(emp):           # v1.2
             raise UserError('Pasa otra vez tu tarjeta.')
         return emp
 
@@ -34,6 +54,7 @@ class KoroshiActividades(http.Controller):
     @http.route('/koroshi/actividades/estado', type='json', auth='user')
     def estado(self, **kw):
         """Actividades para los botones y quién está trabajando o en pausa hoy."""
+        _comprobar_grupo()   # v1.2
         Reg = self._registro()
         hoy = Reg._hoy()
         emps = Reg.search([('dia', '=', hoy)]).mapped('employee_id')
@@ -46,17 +67,19 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/tarjeta', type='json', auth='user')
     def tarjeta(self, codigo='', **kw):
+        _comprobar_grupo()   # v1.2
         codigo = (codigo or '').strip()
         if not codigo:
             return {'ok': False, 'msg': 'Código vacío'}
         emp = request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
-        if not emp:
+        if not _empleado_valido(emp):           # v1.2
             return {'ok': False, 'msg': 'No conozco la tarjeta %s. Pide a tu responsable que te dé de alta.' % codigo}
         return self._respuesta(emp)
 
     @http.route('/koroshi/actividades/persona', type='json', auth='user')
     def persona(self, employee_id=False, **kw):
         """Solo con el parámetro sin_tarjeta = '1': abrir a una persona tocando su nombre en la lista."""
+        _comprobar_grupo()   # v1.2
         Reg = self._registro()
         if Reg._param('sin_tarjeta', '0') != '1':
             return {'ok': False, 'msg': 'Pasa tu tarjeta.'}
@@ -67,6 +90,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/empezar', type='json', auth='user')
     def empezar(self, employee_id=False, actividad_id=False, **kw):
+        _comprobar_grupo()   # v1.2
         try:
             emp = self._persona(employee_id)
             act = request.env['koroshi.actividad'].sudo().browse(int(actividad_id or 0)).exists()
@@ -79,6 +103,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/pausar', type='json', auth='user')
     def pausar(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v1.2
         try:
             emp = self._persona(employee_id)
             self._registro().pausar(emp)
@@ -88,6 +113,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/seguir', type='json', auth='user')
     def seguir(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v1.2
         try:
             emp = self._persona(employee_id)
             reg = self._registro().seguir(emp)
@@ -100,6 +126,7 @@ class KoroshiActividades(http.Controller):
     def fijo(self, employee_id=False, **kw):
         """Al recargar la pantalla de una estación de inversa: vuelve a abrir a la persona que estaba leyendo
         matrículas, solo si sigue trabajando en una actividad que lee matrículas."""
+        _comprobar_grupo()   # v1.2
         try:
             emp = self._persona(employee_id)
         except UserError as e:
@@ -111,6 +138,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/matricula', type='json', auth='user')
     def matricula(self, employee_id=False, codigo='', forzar=False, **kw):
+        _comprobar_grupo()   # v1.2
         Caja = request.env['koroshi.inversa.caja'].sudo()
         try:
             emp = self._persona(employee_id)
@@ -127,6 +155,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/anular', type='json', auth='user')
     def anular(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v1.2
         Caja = request.env['koroshi.inversa.caja'].sudo()
         try:
             emp = self._persona(employee_id)
@@ -137,6 +166,7 @@ class KoroshiActividades(http.Controller):
 
     @http.route('/koroshi/actividades/fin', type='json', auth='user')
     def fin(self, employee_id=False, **kw):
+        _comprobar_grupo()   # v1.2
         try:
             emp = self._persona(employee_id)
             self._registro().acabar(emp)

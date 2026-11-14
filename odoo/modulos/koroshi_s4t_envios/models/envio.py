@@ -12,6 +12,20 @@
 #
 # Seguridad: modo 'diagnostico' (parametro koroshi_s4t_envios.modo) -> nunca llama a S4T.
 # Reenviar el mismo order_number + tracking_number en S4T actualiza, no duplica.
+#
+# v1.2 (14/11/2026, auditoria 13/11 fase 3):
+#   - Una OUT pendiente ya no para el pedido entero: los trackings de las OUT hechas se mandan (sin is_final); el
+#     final solo cuando ya no queda ninguna OUT por hacer. Si el ultimo ya se mando sin is_final, se reenvia con
+#     is_final (S4T actualiza, no duplica).
+#   - Errores: 408, 409, 429, 5xx y red se reintentan (hasta MAX_INTENTOS); los demas 4xx son definitivos
+#     ('rechazado'): no se reintentan y se avisa (nota en el pedido y correo a koroshi_s4t_envios.avisar). Al agotar
+#     los intentos tambien se avisa.
+#   - Respuesta 200 con una lista en vez de un objeto: ya no rompe.
+#   - Cron: los pedidos rechazados o con los intentos agotados ya no ocupan sitio, y se recorren por turnos
+#     (koroshi_s4t_envios.cursor) para que los que esperan no tapen siempre a los mismos.
+#   - Bultos, peso y volumen: los de koroshi_xpo_bultos (bultos_de, valores_xpo), la misma cuenta que XPO.
+#   - Valorado queue_job (un job por pedido en root.s4t_sync): no hace falta con el cursor y los commits por pedido;
+#     ademas ese canal ya dio problemas (pedidos atascados por canal sin configurar).
 # =============================================================================
 import json
 import logging
@@ -21,12 +35,15 @@ import requests
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.koroshi_xpo_bultos.models.delivery_carrier import bultos_de, valores_xpo
+
 _logger = logging.getLogger(__name__)
 
 PARAM_MODO = 'koroshi_s4t_envios.modo'
 PARAM_DESDE = 'koroshi_s4t_envios.desde'
-PESO_BULTO = 15.0       # kg por caja (criterio XPO)
-VOLUMEN_BULTO = 0.09    # m3 por caja (criterio XPO)
+PARAM_CURSOR = 'koroshi_s4t_envios.cursor'      # v1.2: ultimo pedido mirado por el cron
+PARAM_AVISAR = 'koroshi_s4t_envios.avisar'      # v1.2: correos para los rechazos (separados por coma)
+REINTENTABLES = (408, 409, 429)                 # v1.2: y cualquier 5xx
 TIMEOUT = 30
 MAX_INTENTOS = 5
 MAX_PEDIDOS_CRON = 500
@@ -53,7 +70,8 @@ class KoroshiS4tEnvio(models.Model):
         ('diagnostico', 'Diagnostico (no enviado)'),
         ('pendiente', 'Pendiente de enviar'),
         ('enviado', 'Enviado'),
-        ('error', 'Error'),
+        ('error', 'Error (se reintenta)'),
+        ('rechazado', 'Rechazado por S4T (no se reintenta)'),
         ('omitido', 'Omitido'),
     ], string='Estado', default='diagnostico', readonly=True, index=True)
     intentos = fields.Integer(string='Intentos', readonly=True)
@@ -101,14 +119,17 @@ class KoroshiS4tEnvio(models.Model):
     @api.model
     def _calcular(self, order):
         """Devuelve (lista de valores por tracking, motivo si no se puede enviar)."""
-        picks = order.picking_ids.filtered(
+        todas = order.picking_ids.filtered(
             lambda p: p.picking_type_id.code == 'outgoing' and p.state != 'cancel')
-        if not picks:
+        if not todas:
             return [], 'sin OUT'
-        if any(p.state != 'done' for p in picks):
+        # v1.2: se mandan las OUT hechas; las que faltan no paran el pedido, solo el is_final
+        picks = todas.filtered(lambda p: p.state == 'done')
+        quedan = todas - picks
+        if not picks:
             return [], 'OUT pendientes'
         if picks.filtered(lambda p: not p.carrier_tracking_ref):
-            return [], 'alguna OUT sin etiqueta'
+            return [], 'alguna OUT hecha sin etiqueta'
         if order.x_s4t_status != 'READY':
             return [], 'en S4T no esta READY (%s)' % (order.x_s4t_status or 'vacio')
         if not order.s4t_order_number:
@@ -130,10 +151,10 @@ class KoroshiS4tEnvio(models.Model):
                 return [], '%s: transportista no es GLS/XPO' % ref
             if len(ref) > 50:
                 return [], '%s: tracking de mas de 50 caracteres' % ref
-            lineas = outs.mapped('move_line_ids').filtered(lambda ml: ml.qty_done > 0)
-            bultos = len(lineas.mapped('result_package_id'))
+            bultos = len(bultos_de(outs))            # v1.2: la misma cuenta que la expedicion XPO
             if bultos <= 0:
                 return [], '%s: 0 cajas' % ref
+            peso, volumen = valores_xpo(bultos)
             valores.append({
                 'name': '%s / %s %s' % (order.name, carrier, ref),
                 'sale_id': order.id,
@@ -141,9 +162,9 @@ class KoroshiS4tEnvio(models.Model):
                 'carrier': carrier,
                 'tracking_number': ref,
                 'packages': bultos,
-                'weight_kg': round(PESO_BULTO * bultos, 2),
-                'volume_m3': round(VOLUMEN_BULTO * bultos, 3),
-                'is_final': i == len(refs) - 1,
+                'weight_kg': peso,
+                'volume_m3': volumen,
+                'is_final': not quedan and i == len(refs) - 1,
                 'picking_ids': [(6, 0, outs.ids)],
             })
         return valores, ''
@@ -160,12 +181,18 @@ class KoroshiS4tEnvio(models.Model):
         for vals in valores:
             refs.append(vals['tracking_number'])
             rec = existentes.filtered(lambda r: r.tracking_number == vals['tracking_number'])
-            if rec and rec.state == 'enviado':
+            if rec and rec.state == 'rechazado':
+                nuevos |= rec               # v1.2: definitivo; solo se reintenta con «Enviar ahora»
+                continue
+            if rec and rec.state == 'enviado' and not (vals['is_final'] and not rec.is_final):
                 nuevos |= rec
                 continue
             vals = dict(vals)
-            if not rec or rec.state in ('diagnostico', 'omitido'):
+            if not rec or rec.state in ('diagnostico', 'omitido', 'enviado'):
+                # v1.2: 'enviado' aqui = se mando sin is_final y ahora es el ultimo: se reenvia con is_final
                 vals['state'] = 'pendiente' if modo == 'real' else 'diagnostico'
+                if rec and rec.state == 'enviado':
+                    vals['intentos'] = 0
             if rec:
                 rec.write(vals)
             else:
@@ -199,6 +226,13 @@ class KoroshiS4tEnvio(models.Model):
                 cuerpo = resp.json()
             except ValueError:
                 cuerpo = {'detail': (resp.text or '')[:500]}
+            if isinstance(cuerpo, list):
+                # v1.2: a veces llega una lista: se usa el primer objeto (y se guarda todo en la respuesta)
+                completo = cuerpo
+                cuerpo = dict(next((x for x in cuerpo if isinstance(x, dict)), {}))
+                cuerpo.setdefault('_lista', completo)
+            elif not isinstance(cuerpo, dict):
+                cuerpo = {'detail': cuerpo}
             if resp.status_code in (200, 201):
                 vals.update({
                     'state': 'enviado',
@@ -209,17 +243,44 @@ class KoroshiS4tEnvio(models.Model):
                 })
                 _logger.info('KOROSHI S4T ENVIOS: %s -> %s', self.name, vals['order_status'])
             else:
-                detalle = cuerpo.get('detail') if isinstance(cuerpo, dict) else cuerpo
+                detalle = cuerpo.get('detail', cuerpo)
+                reintentable = resp.status_code in REINTENTABLES or resp.status_code >= 500
                 vals.update({
-                    'state': 'error',
+                    'state': reintentable and 'error' or 'rechazado',
                     'error': 'HTTP %s: %s' % (resp.status_code, json.dumps(detalle, ensure_ascii=False)[:1000]),
                 })
-                _logger.warning('KOROSHI S4T ENVIOS: %s -> HTTP %s', self.name, resp.status_code)
+                _logger.warning('KOROSHI S4T ENVIOS: %s -> HTTP %s (%s)', self.name, resp.status_code,
+                                reintentable and 'se reintenta' or 'rechazado')
         except requests.exceptions.RequestException as e:
             vals.update({'state': 'error', 'error': 'Red: %s' % str(e)[:1000]})
             _logger.warning('KOROSHI S4T ENVIOS: %s -> error de red', self.name)
         self.write(vals)
+        if self.state == 'rechazado' or (self.state == 'error' and self.intentos >= MAX_INTENTOS):
+            self._avisar()
         return self.state == 'enviado'
+
+    def _avisar(self):
+        """v1.2: error definitivo (rechazado o intentos agotados): nota interna en el pedido y correo a los de
+        koroshi_s4t_envios.avisar. Nunca para el cron."""
+        self.ensure_one()
+        motivo = self.state == 'rechazado' and _('S4T lo ha rechazado') or \
+            _('%d intentos sin conseguirlo') % self.intentos
+        texto = _('Envio a S4T %s (tracking %s): %s. %s') % (self.name, self.tracking_number, motivo, self.error or '')
+        try:
+            with self.env.cr.savepoint():
+                self.sale_id.message_post(body=texto, subtype='mail.mt_note')
+                correos = [c.strip() for c in (self.env['ir.config_parameter'].sudo().get_param(PARAM_AVISAR) or '')
+                           .replace(';', ',').split(',') if c.strip()]
+                if correos:
+                    self.env['mail.mail'].sudo().create({
+                        'subject': _('S4T: envio de %s sin enviar') % (self.sale_id.name or ''),
+                        'body_html': '<p>%s</p><p>Inventario &gt; S4T &gt; Envios: revisarlo y «Enviar ahora».</p>'
+                                     % texto,
+                        'email_to': ', '.join(correos),
+                        'auto_delete': True,
+                    })
+        except Exception:
+            _logger.exception('KOROSHI S4T ENVIOS: no se ha podido avisar de %s', self.name)
 
     def _enviar_en_orden(self):
         """Envia los registros de UN pedido: primero los no finales; el final solo si los otros estan enviados."""
@@ -237,13 +298,27 @@ class KoroshiS4tEnvio(models.Model):
     def cron_enviar(self):
         modo = self._modo()
         terminados = self.search([('state', '=', 'enviado'), ('is_final', '=', True)]).mapped('sale_id').ids
-        pedidos = self.env['sale.order'].search([
+        # v1.2: los atascados (rechazados o con los intentos agotados) no ocupan sitio: se arreglan a mano
+        atascados = self.search(['|', ('state', '=', 'rechazado'),
+                                 '&', ('state', '=', 'error'), ('intentos', '>=', MAX_INTENTOS)]).mapped('sale_id').ids
+        dominio = [
             ('name', 'like', 'S-6665%'),
             ('state', 'in', ['sale', 'done']),
             ('x_s4t_status', '=', 'READY'),
             ('date_order', '>=', self._desde()),
-            ('id', 'not in', terminados),
-        ], order='date_order asc', limit=MAX_PEDIDOS_CRON)
+            ('id', 'not in', terminados + atascados),
+        ]
+        # v1.2: por turnos: desde el ultimo mirado; al llegar al final se vuelve a empezar
+        Param = self.env['ir.config_parameter'].sudo()
+        try:
+            cursor = int(Param.get_param(PARAM_CURSOR) or 0)
+        except ValueError:
+            cursor = 0
+        Pedido = self.env['sale.order']
+        pedidos = Pedido.search(dominio + [('id', '>', cursor)], order='id asc', limit=MAX_PEDIDOS_CRON)
+        if len(pedidos) < MAX_PEDIDOS_CRON:
+            pedidos |= Pedido.search(dominio + [('id', '<=', cursor), ('id', 'not in', pedidos.ids)],
+                                     order='id asc', limit=MAX_PEDIDOS_CRON - len(pedidos))
         listos = esperando = enviados = errores = 0
         for order in pedidos:
             try:
@@ -262,6 +337,10 @@ class KoroshiS4tEnvio(models.Model):
                 self.env.cr.rollback()
                 errores += 1
                 _logger.exception('KOROSHI S4T ENVIOS: error en %s: %s', order.name, e)
+        if pedidos:
+            ultimo = pedidos[-1].id if len(pedidos) >= MAX_PEDIDOS_CRON else 0
+            Param.set_param(PARAM_CURSOR, str(ultimo))
+            self.env.cr.commit()
         _logger.info('KOROSHI S4T ENVIOS (modo %s): %d pedidos mirados, %d listos, %d esperando, '
                      '%d envios OK, %d con error', modo, len(pedidos), listos, esperando, enviados, errores)
         return True
@@ -275,7 +354,8 @@ class KoroshiS4tEnvio(models.Model):
             raise UserError(_('Modo diagnostico: no se envia nada a S4T (parametro %s).') % PARAM_MODO)
         for order in self.mapped('sale_id'):
             todos = self.search([('sale_id', '=', order.id), ('state', '!=', 'omitido')])
-            todos.filtered(lambda r: r.state in ('diagnostico', 'error')).write({'state': 'pendiente', 'intentos': 0})
+            todos.filtered(lambda r: r.state in ('diagnostico', 'error', 'rechazado')).write(
+                {'state': 'pendiente', 'intentos': 0})
             todos._enviar_en_orden()
         return True
 

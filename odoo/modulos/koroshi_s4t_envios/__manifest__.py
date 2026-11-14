@@ -16,12 +16,16 @@ Para enviar de verdad hay que poner el modo a 'real' Y activar el cron (o usar "
 Usa la configuracion (host y X-Api-Key) del modulo api_s4t_batch_update_PROD. No anade campos a tablas
 existentes: guarda todo en su propio modelo koroshi.s4t.envio.
 v1.0 (12/11/2026). v1.1 (12/11/2026): peso y volumen por bulto (15 kg y 0,09 m3), como XPO.
+v1.2.0 (14/11/2026): auditoria 13/11, fase 3. Una OUT pendiente ya no para el pedido (se mandan las hechas; is_final
+cuando no queda ninguna). Errores reintentables (408, 409, 429, 5xx, red) separados de los definitivos ('rechazado',
+con aviso en el pedido y por correo a koroshi_s4t_envios.avisar). Respuesta 200 con lista protegida. El cron ya no se
+llena de atascados y va por turnos. Bultos con koroshi_xpo_bultos (depende de el). Sigue en modo diagnostico.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',
-    'depends': ['api_s4t_batch_update_PROD', 'delivery', 'sale_stock'],
+    'depends': ['api_s4t_batch_update_PROD', 'delivery', 'sale_stock', 'koroshi_xpo_bultos'],
     'data': [
         'security/ir.model.access.csv',
         'data/datos.xml',

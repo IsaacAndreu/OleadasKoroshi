@@ -20,10 +20,13 @@
 import datetime
 import logging
 import re
+import threading
+import time
 
 import pytz
 
 from odoo import fields, http
+from odoo.exceptions import AccessError
 from odoo.http import request
 
 _logger = logging.getLogger(__name__)
@@ -31,6 +34,12 @@ _logger = logging.getLogger(__name__)
 COMPANY_ID = 8          # EFFECTIVE LOGISTICS, S.L.
 N_PREFIJOS = 15         # agrupaciones que salen en el desplegable
 N_DIAS = 3              # dias de "Tiendas" que salen en el desplegable
+# v1.27 (auditoria 13/11, fase 3): cache compartida entre pantallas, como oriola_monitor. Con varias pantallas abiertas
+# (PC, tele, PDA) cada una calculaba lo mismo cada minuto. Ahora un solo calculo a la vez por agrupacion y el resultado
+# vale CACHE_SEG segundos para todas.
+CACHE_SEG = 20
+_cache = {}
+_lock = threading.Lock()
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # OUT en curso sin cerrar caja en estos minutos = parada (no cuenta como persona activa)
 PERSONA_INACTIVA_MIN = 5  # tiendas: una OUT sin lecturas/cajas durante este tiempo deja de contar como persona
@@ -41,6 +50,17 @@ RE_MU = re.compile(r'^(MU-\d+)')
 RE_TIENDA = re.compile(r'\bK\d+ - .*$')
 
 RE_OP = re.compile(r'^([A-Za-z]+)0*(\d+)$')
+
+
+# v1.27 (auditoria 13/11, fase 3): las rutas hacen sudo(), asi que antes cualquier usuario con sesion podia usarlas.
+# Ahora hace falta el permiso de Inventario (stock.group_stock_user; el 14/11 lo tienen los 6 usuarios de la empresa 8,
+# PDA incluidas). Mismo criterio que oriola_monitor.
+GRUPO_RUTAS = 'stock.group_stock_user'
+
+
+def _comprobar_grupo():
+    if not request.env.user.has_group(GRUPO_RUTAS):
+        raise AccessError('Hace falta el permiso de Inventario para usar esta pantalla.')
 
 
 def codigo_op(emp):
@@ -476,6 +496,21 @@ class KoroshiMonitor(http.Controller):
 
     @http.route('/koroshi_monitor/datos', type='json', auth='user')
     def datos(self, prefijo=None, **kw):
+        _comprobar_grupo()   # v1.27
+        # v1.27: si otra pantalla esta calculando lo mismo, se espera y se usa su resultado
+        clave = (request.env.cr.dbname, prefijo or '')
+        with _lock:
+            guardado = _cache.get(clave)
+            if guardado and time.time() - guardado[0] < CACHE_SEG:
+                return guardado[1]
+            res = self._calcular_datos(prefijo)
+            ahora = time.time()
+            _cache[clave] = (ahora, res)
+            for k in [k for k, v in _cache.items() if ahora - v[0] > 600]:
+                _cache.pop(k, None)
+        return res
+
+    def _calcular_datos(self, prefijo=None):
         env = request.env(context=dict(request.env.context, allowed_company_ids=[COMPANY_ID]))
         hoy = self._hoy_local()
         dias = []
@@ -501,12 +536,6 @@ class KoroshiMonitor(http.Controller):
                'sin_leer_min': self._sin_leer_min(env)}
 
         if res['modo'] == 'zonas':
-            picks = env['stock.picking'].sudo().search([('batch_id.name', '=like', prefijo + '%'),
-                                                        ('company_id', '=', COMPANY_ID)])
-            # v1.9: Z-ddmm- es la 1a ronda: sin las de las rondas siguientes (Z-ddmm-R2-...), que tienen su propia
-            # pantalla y empiezan otra vez en la caja 01
-            if re.match(r'^Z-\d{4}-$', prefijo):
-                picks = picks.filtered(lambda p: not re.match(r'^R\d+-', (p.batch_id.name or '')[len(prefijo):]))
             # Personas y horas: solo las cajas cerradas el dia de la agrupacion (Z-ddmm-), no las que se
             # tocaron despues (juntar cajas, validar dias mas tarde)
             z_ini = z_fin = None
@@ -521,6 +550,17 @@ class KoroshiMonitor(http.Controller):
                     z_fin = z_ini + datetime.timedelta(days=1)
                 except ValueError:
                     z_ini = z_fin = None
+            # v1.27: Z-ddmm- no lleva año: solo las agrupaciones creadas cerca de ese dia (antes, en 2027 saldrian
+            # tambien las Z-1411- de 2026). De 7 dias antes a 10 despues: el 26/10 se creo «Z-2210- SALE 26-10»)
+            dom_z = [('batch_id.name', '=like', prefijo + '%'), ('company_id', '=', COMPANY_ID)]
+            if z_ini:
+                dom_z += [('batch_id.create_date', '>=', z_ini - datetime.timedelta(days=7)),
+                          ('batch_id.create_date', '<', z_fin + datetime.timedelta(days=10))]
+            picks = env['stock.picking'].sudo().search(dom_z)
+            # v1.9: Z-ddmm- es la 1a ronda: sin las de las rondas siguientes (Z-ddmm-R2-...), que tienen su propia
+            # pantalla y empiezan otra vez en la caja 01
+            if re.match(r'^Z-\d{4}-$', prefijo):
+                picks = picks.filtered(lambda p: not re.match(r'^R\d+-', (p.batch_id.name or '')[len(prefijo):]))
             filas, por_hora, dia_z, por_hora_out = self._filas(env, picks, prefijo, z_ini, z_fin)
             D = []
             for f in filas.values():

@@ -9,6 +9,12 @@ horas y personas de cada fase, y **segundos por prenda** de picking (andando y l
 - Solo escribe en sus tablas (`koroshi.kpi.dia`, `koroshi.kpi.peso.tipo`): no toca albaranes, stock ni productos.
 
 
+
+## v1.7.0 (14/11/2026, auditoría 13/11, fase 3)
+
+- La **hoja de carga XPO** (`/koroshi_kpi/hoja_carga`) pide el permiso de Inventario (`stock.group_stock_user`).
+  Antes, con `sudo()`, la podía bajar cualquier usuario con sesión.
+
 ## v1.6.0 (14/11/2026, auditoría 13/11, fase 2)
 
 - **Horas de picking**: si nadie las apunta a mano, salen del **tiempo efectivo de las tareas de operario**

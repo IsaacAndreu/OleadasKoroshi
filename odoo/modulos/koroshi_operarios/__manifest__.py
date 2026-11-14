@@ -98,8 +98,11 @@ minutos efectivos, sin los huecos de 15 min sin leer). La usan Productividad, ko
 Campos nuevos en la tabla propia de tareas: parado y efectivo (las 51 que hay las recalcula koroshi_informe 1.1.0). Sin media de u/h
 al agrupar. Fuera el correo diario de este modulo (cron 204, accion y menu «Enviar informe de hoy ahora»): queda
 el de koroshi_informe. Reparto: las OUT de zonas Z- y el tramo se filtran en la busqueda, antes del limite de 400.
+v2.13.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. El employee_id que manda la PDA se comprueba (activo, con
+tarjeta y de una empresa del usuario). «Asignar a operario» ya no usa display_notification (no existe en Odoo 13:
+daba error despues de asignar): abre la cola del operario.
 """,
-    'version': '13.0.2.12.0',
+    'version': '13.0.2.13.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

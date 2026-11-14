@@ -105,8 +105,11 @@ v1.25.0 (14/11/2026): en la tabla de Operarios, la fila entera en rojo con «�
 la PDA le está pitando (mismos minutos y horario que la alarma de parado de koroshi_preparacion).
 v1.26.0 (14/11/2026): auditoria 13/11, fase 2. La u/h de la tabla de Operarios (vista por dia) es la de koroshi_operarios 2.12
 (resumen_operario_dia: sin los parados), la misma que Productividad, el correo y el KPI. Con operarios anteriores, como antes.
+v1.27.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. Cache compartida con candado (20 s) como oriola_monitor: un
+solo calculo a la vez. Con la pestana oculta no se refresca. Z-ddmm- sin ano: solo agrupaciones creadas de 7
+dias antes a 10 despues de ese dia.
 """,
-    'version': '13.0.1.26.0',
+    'version': '13.0.1.27.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

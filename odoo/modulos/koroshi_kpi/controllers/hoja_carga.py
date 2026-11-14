@@ -19,6 +19,7 @@ import pytz
 import xlsxwriter
 
 from odoo import http
+from odoo.exceptions import AccessError
 from odoo.http import request, content_disposition
 
 COMPANY_ID = 8
@@ -42,6 +43,17 @@ DELEGACIONES = {
 }
 
 
+# v1.7 (auditoria 13/11, fase 3): las rutas hacen sudo(), asi que antes cualquier usuario con sesion podia usarlas.
+# Ahora hace falta el permiso de Inventario (stock.group_stock_user; el 14/11 lo tienen los 6 usuarios de la empresa 8,
+# PDA incluidas). Mismo criterio que oriola_monitor.
+GRUPO_RUTAS = 'stock.group_stock_user'
+
+
+def _comprobar_grupo():
+    if not request.env.user.has_group(GRUPO_RUTAS):
+        raise AccessError('Hace falta el permiso de Inventario para usar esta pantalla.')
+
+
 class KoroshiHojaCarga(http.Controller):
 
     def _outs(self, env, ids, fecha):
@@ -62,6 +74,7 @@ class KoroshiHojaCarga(http.Controller):
 
     @http.route('/koroshi_kpi/hoja_carga', type='http', auth='user')
     def hoja_carga(self, ids=None, fecha=None, **kw):
+        _comprobar_grupo()   # v1.7
         env = request.env(context=dict(request.env.context, allowed_company_ids=[COMPANY_ID]))
         lista = [int(x) for x in (ids or '').split(',') if x.strip().isdigit()]
         dia = fecha and datetime.datetime.strptime(fecha, '%Y-%m-%d').date() or None

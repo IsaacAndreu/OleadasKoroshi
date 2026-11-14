@@ -3,6 +3,14 @@
 Desde la **v2.0.0** todo lo KOROSHI está en una **aplicación propia** (icono KOROSHI), fuera de Inventario y
 agrupado por temas. Antes cada tema estaba repartido entre la barra de Inventario, Informes y Configuración.
 
+
+## v2.2.0: solo el responsable guarda los Ajustes (14/11/2026, auditoría 13/11, fase 3)
+
+- **Ajustes KOROSHI › Guardar** solo funciona para el responsable de Inventario (`stock.group_stock_manager`, el mismo
+  grupo que ve el menú). Antes cualquier usuario podía cambiar los parámetros llamando al botón por RPC (el modelo es
+  transitorio y guarda con `sudo()`). A los demás les sale «Solo el responsable de Inventario puede cambiar los Ajustes
+  KOROSHI» y no se guarda nada (tampoco la parte de koroshi_informe).
+
 ## Pantalla de aplicaciones
 
 Lecturas (PDA) · Actividades · Contenedores (iconos de sus módulos) · **Monitor picking** · **KOROSHI** (iconos de

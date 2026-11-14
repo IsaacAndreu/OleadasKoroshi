@@ -15,8 +15,12 @@ S4T lo marque como descargado la primera vez que lo devuelve.
 SE INSTALA CON EL CRON ARCHIVADO. Primera descarga: "Ejecutar manualmente" el cron y revisar.
 Usa host y X-Api-Key de s4t.config (api_s4t_batch_update_PROD). No anade campos a tablas existentes.
 v1.0 (12/11/2026).
+v1.1.0 (14/11/2026): auditoria 13/11, fase 3. Cada traspaso en su savepoint, guardando antes el JSON crudo (uno
+raro ya no hace perder la pagina). Conciliacion diaria de hoy y ayer por fecha (koroshi_s4t_traspasos.
+hora_conciliacion, 06:00). Los que dan error se reintentan hasta 5 veces. «Recuperar por fecha» ya no usa
+display_notification (no existe en Odoo 13). Sigue sin instalar y con el cron archivado.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',

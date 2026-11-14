@@ -58,8 +58,11 @@ Inventario desaparecen (se conservan sus ids como secciones Hoy, Personas y Conf
 koroshi_contenedores. No llegó a instalarse.
 v2.1.0 (13/11/2026): archiva 25 iconos de aplicaciones que no se usan (models/apps.py, views/apps.xml). Incluye la
 v2.0.0.
+v2.2.0 (14/11/2026): auditoria 13/11, fase 3. «Guardar» de Ajustes KOROSHI solo para el responsable de Inventario
+(stock.group_stock_manager, el mismo grupo que ve el menu): el modelo es transitorio y escribe parametros con
+sudo(), asi que cualquier usuario podia cambiarlos por RPC.
 """,
-    'version': '13.0.2.1.0',
+    'version': '13.0.2.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

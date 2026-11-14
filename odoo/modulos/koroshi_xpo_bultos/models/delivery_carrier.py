@@ -14,6 +14,9 @@
 #   0,45 m3) y se quejaba de que recibia mal los m3 y kg (K80: 5 bultos, 5,63 m3, 20 kg). Ahora, en TODAS las
 #   expediciones de EFFEC, se mandan: bultos = cajas distintas, peso = 15 x bultos, volumen = 0,09 x bultos.
 #
+# v1.2 (14/11/2026, auditoria 13/11 fase 3): bultos_de() y valores_xpo() son LA cuenta de bultos, peso y volumen de
+#   KOROSHI: la usan esta expedicion XPO y koroshi_s4t_envios (antes cada uno contaba las cajas a su manera).
+#
 # No se copia el metodo de EFFEC: se cambian esos valores en la llamada a RegistraExpedicion a traves de un
 # envoltorio del cliente zeep. Referencia, etiquetas, tracking y cancelacion: igual que delivery_xpo.
 # =============================================================================
@@ -31,8 +34,17 @@ VOLUMEN_BULTO = 0.09                        # m3 por bulto (criterio de XPO)
 
 
 def valores_xpo(bultos):
-    """Peso (kg) y volumen (m3) que se declaran a XPO para N bultos."""
+    """Peso (kg) y volumen (m3) que se declaran a XPO (y a S4T) para N bultos."""
     return round(PESO_BULTO * bultos, 2), round(VOLUMEN_BULTO * bultos, 2)
+
+
+def bultos_de(pickings):
+    """v1.2: las cajas DISTINTAS (stock.quant.package) de unas OUT: las cajas destino de sus lineas con algo leido.
+    Una caja compartida por dos OUT cuenta una vez. Si ninguna linea tiene nada leido (aun sin validar), las cajas
+    destino de todas sus lineas (lo mismo que package_ids de Odoo)."""
+    lineas = pickings.mapped('move_line_ids')
+    cajas = lineas.filtered(lambda ml: ml.qty_done > 0).mapped('result_package_id')
+    return cajas or lineas.mapped('result_package_id')
 
 
 class _ServicioXPO(object):
@@ -82,7 +94,7 @@ class DeliveryCarrier(models.Model):
     def xpo_es_send_shipping(self, pickings):
         if pickings and all(p.company_id.id == COMPANY_ID for p in pickings):
             suma = sum(len(p.package_ids) for p in pickings)
-            cajas = pickings.mapped('package_ids')
+            cajas = bultos_de(pickings)          # v1.2: la misma cuenta que koroshi_s4t_envios
             distintas = len(cajas)
             if distintas and distintas != suma:
                 # Mismo minimo que delivery_xpo, pero con las cajas distintas
@@ -90,7 +102,7 @@ class DeliveryCarrier(models.Model):
                     raise UserError(_("XPO es para pedidos con 3 o más bultos - pedidos: %s, bultos totales: %s "
                                       "(cajas distintas; hay cajas en más de una OUT)")
                                     % (', '.join(pickings.mapped('name')), distintas))
-                repetidas = cajas.filtered(lambda k: len(pickings.filtered(lambda p: k in p.package_ids)) > 1)
+                repetidas = cajas.filtered(lambda k: len(pickings.filtered(lambda p: k in bultos_de(p))) > 1)
                 _logger.info('KOROSHI XPO BULTOS: %s: %d cajas distintas (suma por OUT %d; en varias OUT: %s)',
                              ', '.join(pickings.mapped('name')), distintas, suma,
                              ', '.join(repetidas.mapped('name')))

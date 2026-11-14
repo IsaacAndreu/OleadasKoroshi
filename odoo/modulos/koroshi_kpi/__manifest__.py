@@ -34,8 +34,9 @@ cuando cubren el 80 % de las uds del dia (koroshi_kpi.cobertura_minima); si no, 
 salen («Horas de picking de»). Ratios sin media al agrupar. «No cogido» ya no desaparece al validar la OUT (se cruza
 con los faltantes de la PDA) y cada noche se recalculan los dias con OUT abiertas. Al actualizar, solo se recalculan los
 ultimos 7 dias (koroshi_kpi.dias_recalcular). Hoja de carga: delegacion del campo de koroshi_delegacion si esta instalado.
+v1.7.0 (14/11/2026): auditoria 13/11, fase 3. La hoja de carga XPO pide el permiso de Inventario (hacia sudo()).
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

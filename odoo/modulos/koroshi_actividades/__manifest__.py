@@ -32,8 +32,10 @@ enseña la caja abierta con sus familias y su palet (parámetro koroshi_activida
 persona de esa pantalla: sus matrículas no piden tarjeta. Tabla nueva koroshi.inversa.caja e informe «Inversa: cajas
 leídas». Auditoría 13/11 (fase 2.8): un tramo olvidado de otro día ya no se cierra a las 23:59 (cuenta 0 min y queda
 marcado para revisar) y un índice único impide dos tramos abiertos de la misma persona.
+v1.2.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. La persona que manda la pantalla (employee_id o tarjeta) se
+comprueba: activa, con tarjeta y de una empresa del usuario.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

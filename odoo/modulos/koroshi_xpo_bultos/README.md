@@ -1,4 +1,4 @@
-# KOROSHI XPO bultos (v1.1, 12/11/2026)
+# KOROSHI XPO bultos (v1.2, 14/11/2026)
 
 En cada expedición XPO de EFFEC (empresa 8) se mandan a XPO:
 
@@ -7,6 +7,13 @@ En cada expedición XPO de EFFEC (empresa 8) se mandan a XPO:
 | `TotalUnidadesManipulacion` (bultos) | cajas **distintas** de todas las OUT de la expedición |
 | `Peso`, `PesoNeto`, `PesoBruto` | **15 kg × bultos** |
 | `VolumenNeto`, `VolumenOperacional` | **0,09 m3 × bultos** |
+
+
+## v1.2 (14/11/2026, auditoría 13/11, fase 3)
+
+- `bultos_de(pickings)` y `valores_xpo(bultos)` son **la** cuenta de bultos, peso y volumen de KOROSHI: cajas
+  distintas de las líneas con algo leído; 15 kg y 0,09 m³ por bulto. La usan la expedición XPO y koroshi_s4t_envios
+  (antes contaban las cajas cada uno a su manera).
 
 ## v1.1 (12/11/2026): peso y volumen por bulto
 

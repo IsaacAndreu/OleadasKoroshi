@@ -16,6 +16,7 @@
                 <field name="total_quantity" sum="Unidades"/>
                 <field name="picking_id"/>
                 <field name="state"/>
+                <field name="intentos" optional="hide"/>
             </tree>
         </field>
     </record>

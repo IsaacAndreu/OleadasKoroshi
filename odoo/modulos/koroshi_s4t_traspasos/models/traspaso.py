@@ -12,9 +12,21 @@
 #      - correccion -> solo se registra (tienda, articulos, +/-). No mueve stock.
 #   SKU Odoo (product.style_code) = article_id-color_id-size  (p. ej. 2512PT89-000030-38).
 #   Tienda = res.partner con barcode = destination_id (p. ej. 00000010 = K10).
+#
+# v1.1 (14/11/2026, auditoria 13/11 fase 3):
+#   - Cada traspaso se guarda en su propio savepoint y PRIMERO el JSON crudo: si uno trae algo raro, se queda guardado
+#     en 'error' con el JSON y el resto de la pagina sigue (antes fallaba la pagina entera, y S4T ya la habia marcado
+#     como descargada: se perdia).
+#   - Conciliacion diaria: una vez al dia (desde koroshi_s4t_traspasos.hora_conciliacion, 06:00) se vuelven a pedir
+#     por fecha los de hoy y ayer y se guardan los que falten.
+#   - Los que dan error se reintentan en cada pasada hasta MAX_INTENTOS veces.
 # =============================================================================
+import datetime
+import hashlib
 import json
 import logging
+
+import pytz
 
 import requests
 
@@ -27,6 +39,9 @@ COMPANY_ID = 8                     # EFFECTIVE LOGISTICS, S.L.
 TIMEOUT = 60
 LIMITE_PAGINA = 100
 MAX_PAGINAS = 50                   # proteccion: 5.000 traspasos por pasada como mucho
+MAX_INTENTOS = 5                   # v1.1: veces que se reintenta procesar uno con error
+TZ = 'Europe/Madrid'
+P = 'koroshi_s4t_traspasos.'
 ENDPOINTS = {
     'devolucion': '/transfers/return-ecommerce',
     'correccion': '/transfers/corrections',
@@ -61,6 +76,7 @@ class KoroshiS4tTraspaso(models.Model):
     ], string='Estado', default='nuevo', readonly=True, index=True)
     error = fields.Text(string='Error', readonly=True)
     datos = fields.Text(string='JSON recibido', readonly=True)
+    intentos = fields.Integer(string='Intentos', readonly=True, help='v1.1: veces que se ha intentado procesar')
 
     _sql_constraints = [
         ('traspaso_uniq', 'unique (name, tipo)', 'Este traspaso de S4T ya esta guardado.'),
@@ -82,50 +98,70 @@ class KoroshiS4tTraspaso(models.Model):
         resp = requests.get(host + ENDPOINTS[tipo], headers=cabeceras, params=params, timeout=TIMEOUT)
         if resp.status_code != 200:
             raise UserError(_('S4T %s: HTTP %s %s') % (ENDPOINTS[tipo], resp.status_code, (resp.text or '')[:300]))
-        return resp.json().get('transfers') or []
+        cuerpo = resp.json()
+        if isinstance(cuerpo, list):        # v1.1: por si llega la lista sola
+            return cuerpo
+        return (cuerpo or {}).get('transfers') or []
 
     # ------------------------------------------------------------------
     # Guardar
     # ------------------------------------------------------------------
     @api.model
     def _guardar(self, tipo, transfers):
-        """Crea los traspasos que no esten ya guardados. Devuelve cuantos son nuevos."""
+        """Crea los traspasos que no esten ya guardados. Devuelve cuantos son nuevos.
+        v1.1: uno a uno, cada uno en su savepoint. Si uno falla, se guarda igual con su JSON en 'error'."""
         nuevos = 0
         for t in transfers:
-            tid = (t.get('transfer_id') or '').strip()
-            if not tid or self.search_count([('name', '=', tid), ('tipo', '=', tipo)]):
+            crudo = json.dumps(t, ensure_ascii=False, default=str)
+            tid = (isinstance(t, dict) and str(t.get('transfer_id') or '').strip()) or \
+                'SIN_ID_%s' % hashlib.md5(crudo.encode('utf-8')).hexdigest()[:12]
+            if self.search_count([('name', '=', tid), ('tipo', '=', tipo)]):
                 continue
-            tienda_codigo = t.get('destination_id') if tipo == 'correccion' else t.get('origin_id')
-            tienda = self.env['res.partner'].sudo().search([('barcode', '=', tienda_codigo)], limit=1) \
-                if tienda_codigo else self.env['res.partner']
-            lineas = []
-            for l in t.get('lines') or []:
-                lineas.append((0, 0, {
-                    'line_number': l.get('line_number'),
-                    'article_id': l.get('article_id'),
-                    'color_id': l.get('color_id'),
-                    'size': l.get('size'),
-                    'quantity': l.get('quantity') or 0.0,
-                    'boxes': l.get('boxes') or 0.0,
-                }))
-            self.create({
-                'name': tid,
-                'tipo': tipo,
-                'transfer_type': t.get('transfer_type'),
-                'status': t.get('status'),
-                'transfer_date': t.get('transfer_date') or False,
-                'origin_id': t.get('origin_id'),
-                'destination_id': t.get('destination_id'),
-                'warehouse_id_s4t': t.get('warehouse_id'),
-                'operator_id': t.get('operator_id'),
-                'total_quantity': t.get('total_quantity') or 0.0,
-                'customer_viewed_at': t.get('customer_viewed_at') or False,
-                'tienda_id': tienda.id or False,
-                'line_ids': lineas,
-                'datos': json.dumps(t, ensure_ascii=False),
-            })
+            try:
+                with self.env.cr.savepoint():
+                    self.create(self._valores(tipo, tid, t, crudo))
+            except Exception as e:
+                _logger.exception('KOROSHI S4T TRASPASOS: %s %s no se ha podido guardar entero', tipo, tid)
+                with self.env.cr.savepoint():
+                    self.create({'name': tid, 'tipo': tipo, 'datos': crudo, 'state': 'error',
+                                 'intentos': MAX_INTENTOS,
+                                 'error': _('No se ha podido guardar (revisar el JSON): %s') % str(e)[:1500]})
             nuevos += 1
         return nuevos
+
+    @api.model
+    def _valores(self, tipo, tid, t, crudo):
+        if not isinstance(t, dict):
+            raise UserError(_('El traspaso no es un objeto JSON'))
+        tienda_codigo = t.get('destination_id') if tipo == 'correccion' else t.get('origin_id')
+        tienda = self.env['res.partner'].sudo().search([('barcode', '=', tienda_codigo)], limit=1) \
+            if tienda_codigo else self.env['res.partner']
+        lineas = []
+        for l in t.get('lines') or []:
+            lineas.append((0, 0, {
+                'line_number': l.get('line_number'),
+                'article_id': l.get('article_id'),
+                'color_id': l.get('color_id'),
+                'size': l.get('size'),
+                'quantity': l.get('quantity') or 0.0,
+                'boxes': l.get('boxes') or 0.0,
+            }))
+        return {
+            'name': tid,
+            'tipo': tipo,
+            'transfer_type': t.get('transfer_type'),
+            'status': t.get('status'),
+            'transfer_date': t.get('transfer_date') or False,
+            'origin_id': t.get('origin_id'),
+            'destination_id': t.get('destination_id'),
+            'warehouse_id_s4t': t.get('warehouse_id'),
+            'operator_id': t.get('operator_id'),
+            'total_quantity': t.get('total_quantity') or 0.0,
+            'customer_viewed_at': t.get('customer_viewed_at') or False,
+            'tienda_id': tienda.id or False,
+            'line_ids': lineas,
+            'datos': crudo,
+        }
 
     @api.model
     def descargar_nuevos(self, tipo):
@@ -211,11 +247,41 @@ class KoroshiS4tTraspaso(models.Model):
             try:
                 with self.env.cr.savepoint():
                     rec._procesar_uno()
+                    rec.write({'intentos': rec.intentos + 1})
                 hechos += 1
             except Exception as e:
-                rec.write({'state': 'error', 'error': str(e)[:2000]})
+                rec.write({'state': 'error', 'error': str(e)[:2000], 'intentos': rec.intentos + 1})
                 _logger.warning('KOROSHI S4T TRASPASOS: %s %s -> %s', rec.tipo, rec.name, e)
         return hechos
+
+    @api.model
+    def conciliar(self, forzar=False):
+        """v1.1: una vez al dia (desde koroshi_s4t_traspasos.hora_conciliacion) vuelve a pedir por fecha los de hoy y
+        ayer y guarda los que falten. Devuelve cuantos ha recuperado (None si hoy ya se habia hecho)."""
+        Param = self.env['ir.config_parameter'].sudo()
+        ahora = datetime.datetime.now(pytz.timezone(TZ))
+        hoy = ahora.date()
+        if not forzar:
+            if Param.get_param(P + 'ultima_conciliacion') == hoy.isoformat():
+                return None
+            try:
+                hh, mm = [int(x) for x in (Param.get_param(P + 'hora_conciliacion') or '06:00').split(':')]
+            except ValueError:
+                hh, mm = 6, 0
+            if (ahora.hour, ahora.minute) < (hh, mm):
+                return None
+        total = 0
+        for tipo in ('devolucion', 'correccion'):
+            for dia in (hoy - datetime.timedelta(days=1), hoy):
+                try:
+                    total += self.recuperar_por_fecha(tipo, dia.isoformat())
+                    self.env.cr.commit()
+                except Exception as e:
+                    self.env.cr.rollback()
+                    _logger.exception('KOROSHI S4T TRASPASOS: conciliacion %s %s: %s', tipo, dia, e)
+        Param.set_param(P + 'ultima_conciliacion', hoy.isoformat())
+        _logger.info('KOROSHI S4T TRASPASOS: conciliacion de hoy y ayer: %d recuperados', total)
+        return total
 
     # ------------------------------------------------------------------
     # Cron
@@ -229,10 +295,13 @@ class KoroshiS4tTraspaso(models.Model):
             except Exception as e:
                 self.env.cr.rollback()
                 _logger.exception('KOROSHI S4T TRASPASOS: error descargando %s: %s', tipo, e)
-        pendientes = self.search([('state', '=', 'nuevo')])
+        self.conciliar()                    # v1.1: una vez al dia
+        # v1.1: tambien los que dieron error, hasta MAX_INTENTOS veces
+        pendientes = self.search(['|', ('state', '=', 'nuevo'),
+                                  '&', ('state', '=', 'error'), ('intentos', '<', MAX_INTENTOS)])
         hechos = pendientes.action_procesar()
         self.env.cr.commit()
-        _logger.info('KOROSHI S4T TRASPASOS: %d procesados de %d nuevos', hechos, len(pendientes))
+        _logger.info('KOROSHI S4T TRASPASOS: %d procesados de %d nuevos o con error', hechos, len(pendientes))
         return True
 
 

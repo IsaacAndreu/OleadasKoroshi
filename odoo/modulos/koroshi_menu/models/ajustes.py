@@ -5,7 +5,7 @@
 # explicacion. Al abrir se leen; con «Guardar» se escriben solo los que han cambiado. No cambia nada mas.
 # =============================================================================
 from odoo import _, api, fields, models
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError
 
 # campo -> (clave del parametro, tipo, valor por defecto si no existe)
 PARAMETROS = {
@@ -101,6 +101,11 @@ class KoroshiAjustes(models.TransientModel):
 
     def action_guardar(self):
         self.ensure_one()
+        # v2.2 (auditoria 13/11, fase 3): es un modelo transitorio (cualquier usuario puede llamarlo por RPC) y escribe
+        # parametros con sudo(): solo el responsable de Inventario (el mismo grupo que ve el menu). Si no, AccessError
+        # y no se guarda nada (tampoco lo de koroshi_informe, que va en la misma transaccion).
+        if not self.env.user.has_group('stock.group_stock_manager'):
+            raise AccessError(_('Solo el responsable de Inventario puede cambiar los Ajustes KOROSHI.'))
         icp = self.env['ir.config_parameter'].sudo()
         if self.ops_informe_hora and not self._hora_valida(self.ops_informe_hora):
             raise UserError(_('La hora del informe tiene que ser HH:MM (por ejemplo 17:00).'))

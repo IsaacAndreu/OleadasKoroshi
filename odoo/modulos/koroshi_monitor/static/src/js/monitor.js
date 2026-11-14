@@ -143,12 +143,18 @@ var Monitor = AbstractAction.extend({
         return this._super.apply(this, arguments).then(function () {
             self.$el.html('<main><p class="km-sub">Cargando…</p></main>');
             self._cargar();
-            self.timer = setInterval(function () { self._cargar(); }, REFRESCO);
+            // v1.27: con la pestaña oculta (otra pestaña, pantalla bloqueada) no se pide nada; al volver, al momento
+            self.timer = setInterval(function () { if (!document.hidden) { self._cargar(); } }, REFRESCO);
+            self._alVolver = function () {
+                if (!document.hidden && Date.now() - (self._ultimaCarga || 0) > REFRESCO) { self._cargar(); }
+            };
+            document.addEventListener('visibilitychange', self._alVolver);
         });
     },
 
     destroy: function () {
         clearInterval(this.timer);
+        if (this._alVolver) { document.removeEventListener('visibilitychange', this._alVolver); }
         this._super.apply(this, arguments);
     },
 
@@ -279,6 +285,7 @@ var Monitor = AbstractAction.extend({
 
     _cargar: function () {
         var self = this;
+        this._ultimaCarga = Date.now();     // v1.27
         return this._rpc({route: '/koroshi_monitor/datos', params: {prefijo: this.prefijo}}).then(function (r) {
             self.prefijo = r.prefijo;
             var scroll = self.el.scrollTop;

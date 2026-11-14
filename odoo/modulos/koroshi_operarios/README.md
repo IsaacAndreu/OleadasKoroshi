@@ -1,9 +1,20 @@
-# KOROSHI Operarios (v2.12.0, 14/11/2026)
+# KOROSHI Operarios (v2.13.0, 14/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
 
+
+
+## v2.13.0: permisos (14/11/2026, auditoría 13/11, fase 3)
+
+- Las rutas de la PDA (`/koroshi/operarios/*`) piden el permiso de **Inventario** (`stock.group_stock_user`). Antes,
+  como hacen `sudo()`, cualquier usuario con sesión podía usarlas. El 14/11 tienen ese permiso los 6 usuarios de la
+  empresa 8 (PDA incluidas).
+- El operario que manda la PDA se comprueba en el servidor: empleado activo, con tarjeta y de una empresa del usuario.
+  Si no, «Lee primero tu tarjeta».
+- **Asignar a operario** (albaranes y agrupaciones) daba error al acabar (`display_notification` no existe en Odoo 13).
+  Ahora abre la cola del operario con «N pedido(s) asignados a X» en el título.
 
 ## v2.12.0: una sola cifra de productividad (14/11/2026, auditoría 13/11, fase 2)
 

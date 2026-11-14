@@ -3,6 +3,13 @@
 Sustituye la hoja donde las personas de manipulaciones apuntaban a mano la hora de empezar y de acabar.
 No cuenta unidades: solo **tiempo por persona y actividad**.
 
+
+## v1.2.0: permisos (14/11/2026, auditoría 13/11, fase 3)
+
+- Las rutas de la pantalla (`/koroshi/actividades/*`) piden el permiso de **Inventario** (`stock.group_stock_user`):
+  el usuario del portátil tiene que tenerlo (el 14/11 lo tienen todos los usuarios de la empresa 8).
+- La persona se comprueba en el servidor: empleado activo, con tarjeta y de una empresa del usuario.
+
 ## En el portátil
 
 App **Actividades** en la pantalla de inicio (o Inventario > KOROSHI Operarios > Actividades (manipulaciones) >

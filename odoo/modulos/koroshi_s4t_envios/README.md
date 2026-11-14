@@ -1,7 +1,25 @@
-# KOROSHI Envíos a S4T (v1.1, 12/11/2026)
+# KOROSHI Envíos a S4T (v1.2, 14/11/2026)
 
 Envía a S4T (`POST /shipments`) el transportista, el tracking, los bultos, el peso y el volumen de cada pedido
 S-6665. Con el último envío del pedido (`is_final=true`), S4T pasa la orden a `SHIPPED`.
+
+
+## v1.2.0 (14/11/2026, auditoría 13/11, fase 3; sigue en modo diagnóstico)
+
+- **Una OUT pendiente ya no para el pedido**: se mandan los trackings de las OUT hechas, sin `is_final`. El final va
+  cuando ya no queda ninguna OUT por hacer; si el último ya se había mandado sin `is_final`, se reenvía con él (S4T
+  actualiza, no duplica).
+- **Errores**: 408, 409, 429, 5xx y red se reintentan (hasta 5 veces). Los demás 4xx son definitivos: estado
+  **«Rechazado por S4T»**, no se reintentan y se avisa con una nota interna en el pedido y un correo a los de
+  `koroshi_s4t_envios.avisar` (parámetro, correos separados por coma; vacío = solo la nota). Al agotar los intentos,
+  también se avisa. «Enviar ahora» los vuelve a intentar.
+- Una respuesta 200 con una **lista** en vez de un objeto ya no rompe.
+- **Cron**: los pedidos rechazados o con los intentos agotados ya no ocupan sitio entre los 500, y los pedidos se
+  recorren por turnos (`koroshi_s4t_envios.cursor`), para que los que esperan no tapen siempre a los mismos.
+- Bultos, peso y volumen: `bultos_de` y `valores_xpo` de **koroshi_xpo_bultos** (la misma cuenta que la expedición
+  XPO). Nueva dependencia: koroshi_xpo_bultos (ya instalado).
+- Valorado `queue_job` (un job por pedido en `root.s4t_sync`): no hace falta con los turnos y el commit por pedido, y
+  ese canal ya dio problemas.
 
 ## Se instala DESACTIVADO
 
