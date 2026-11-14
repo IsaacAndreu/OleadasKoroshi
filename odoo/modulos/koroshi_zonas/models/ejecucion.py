@@ -405,17 +405,20 @@ class KoroshiZonasEjecucion(models.Model):
         return res
 
     @api.model
-    def lanzar(self, modo, contexto=None, sombra=False):
+    def lanzar(self, modo, contexto=None, sombra=False, como_1883=False):
         """Reparto de la v12f. modo: 'DIAGNOSTICO', 'SIMULAR' o 'REAL'. contexto: personas, hora_inicio,
         hora_fin, una_ronda, zonas, zonas_muelle, prueba_ids, prueba_agrupacion (como la accion 1883;
         con prueba_ids o prueba_agrupacion siempre es DIAGNOSTICO). Fase 3: los parametros salen de
-        koroshi.zonas.config (el contexto manda sobre ellos). Devuelve la ejecucion."""
+        koroshi.zonas.config (el contexto manda sobre ellos). Devuelve la ejecucion.
+        v1.3.0: como_1883 = sin lo nuevo de la 1.3.0 (modelo.COMO_1883), para comparar con el cron 202."""
         modo = (modo or '').upper()
         if modo not in ('DIAGNOSTICO', 'SIMULAR', 'REAL'):
             raise ValueError('Modo desconocido: %s' % modo)
         contexto = dict((k, v) for k, v in (contexto or {}).items() if k in CLAVES_CONTEXTO)
         cambios = self.env['koroshi.zonas.config'].obtener().cambios_motor()
         cambios['MODO'] = modo
+        if como_1883:
+            cambios.update(modelo.COMO_1883)
         p = modelo.parametros(cambios, contexto)
         ahora = datetime.datetime.now(pytz.timezone(p['ZONA_HORARIA']))
         datos = lector.datos_reparto(self.env, contexto, ahora, p)
@@ -551,7 +554,16 @@ class KoroshiZonasEjecucion(models.Model):
                 self.browse()._publicar(texto)
                 return False
             return self.lanzar('REAL')
-        return self.lanzar('DIAGNOSTICO', sombra=True)
+        # v1.3.0: la sombra que se compara con el 202 se calcula como la 1883 (si no, nunca saldria igual). Despues,
+        # un diagnostico con lo nuevo (OUT de dias anteriores, orden por urgencia, aviso de hora de fin) para ver
+        # que cambiaria al pasar a real. No se compara.
+        ej = self.lanzar('DIAGNOSTICO', sombra=True, como_1883=True)
+        try:
+            with self.env.cr.savepoint():
+                self.lanzar('DIAGNOSTICO')
+        except Exception:
+            _logger.exception('KOROSHI Zonas: diagnostico con lo nuevo de la 1.3.0')
+        return ej
 
     @api.model
     def cron_comparar(self):

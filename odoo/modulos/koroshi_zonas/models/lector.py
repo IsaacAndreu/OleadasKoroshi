@@ -23,7 +23,11 @@ def contexto_compania(env):
 def datos_reparto(env, contexto, ahora_local, p):
     """Datos planos para motor.v12f.repartir(), leidos como los lee la accion 1883 (lineas 109-317):
     mismo search, mismo orden de OUT y mismo orden de p.move_line_ids (el coste de cada linea depende
-    del orden). ahora_local: datetime con zona horaria (Europe/Madrid). p: parametros del motor."""
+    del orden). ahora_local: datetime con zona horaria (Europe/Madrid). p: parametros del motor.
+    v1.3.0 (auditoria 13/11, fase 5): con DIAS_ATRAS > 0 tambien son candidatas las OUT abiertas de los DIAS_ATRAS
+    dias anteriores (la 1883 solo miraba las creadas hoy y las de ayer ya no se partian nunca). Van marcadas con
+    'de_antes'. Las de dias anteriores que ya estan en la cola de un operario (koroshi_operarios) no se tocan."""
+    import datetime
     import pytz
     ctx = contexto_compania(env)
     Picking = env['stock.picking'].with_context(ctx)
@@ -31,6 +35,11 @@ def datos_reparto(env, contexto, ahora_local, p):
     tz = pytz.timezone(p['ZONA_HORARIA'])
     medianoche = tz.localize(ahora_local.replace(hour=0, minute=0, second=0, microsecond=0, tzinfo=None))
     desde = medianoche.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
+    dias_atras = max(int(p.get('DIAS_ATRAS') or 0), 0)
+    desde_busqueda = desde
+    if dias_atras:
+        antes = tz.localize(medianoche.replace(tzinfo=None) - datetime.timedelta(days=dias_atras))
+        desde_busqueda = antes.astimezone(pytz.utc).strftime('%Y-%m-%d %H:%M:%S')
     hoy = ahora_local.strftime('%d%m')
     sorter = env['stock.location'].with_context(ctx).search([('barcode', '=', 'SORTER'),
                                                              ('company_id', '=', p['COMPANY_ID'])], limit=1)
@@ -48,10 +57,26 @@ def datos_reparto(env, contexto, ahora_local, p):
             ('picking_type_code', '=', 'outgoing'),
             ('state', '=', 'assigned'),
             ('sale_id.s_order_type_id.name', '=', p['TIPO_PEDIDO']),
-            ('create_date', '>=', desde),
+            ('create_date', '>=', desde_busqueda),
         ], order='name asc')
+    # v1.3.0: de dias anteriores (solo sin prueba). Las que estan en la cola de un operario se quedan como estan.
+    de_antes = set()
+    en_cola = {}
+    if dias_atras and not prueba_ids and not prueba_agr:
+        de_antes = set(o.id for o in candidatas if o.create_date and
+                       o.create_date.strftime('%Y-%m-%d %H:%M:%S') < desde)
+        if de_antes and 'koroshi.operario.asignacion' in env:
+            for a in env['koroshi.operario.asignacion'].sudo().search_read(
+                    [('picking_id', 'in', list(de_antes)), ('tipo', '=', 'out'),
+                     ('estado', 'in', ('cola', 'curso', 'oficina'))], ['picking_id', 'employee_id']):
+                en_cola[a['picking_id'][0]] = a['employee_id'] and a['employee_id'][1] or ''
     outs = []
+    saltadas = []
     for o in candidatas:
+        if o.id in en_cola:
+            saltadas.append('%s (%s): de un dia anterior y en la cola de %s' % (
+                o.name, o.partner_id.name or '', en_cola[o.id] or 'un operario'))
+            continue
         demanda = 0.0
         for m in o.move_lines:
             if m.state not in ('done', 'cancel'):
@@ -89,11 +114,14 @@ def datos_reparto(env, contexto, ahora_local, p):
             'demanda': demanda,
             'lineas': lineas,
         })
+        if o.id in de_antes:
+            outs[-1]['de_antes'] = True     # v1.3.0
     return {
         'ahora': ahora_local.strftime('%Y-%m-%d %H:%M:%S'),
         'sorter_id': sorter.id or None,
         'lotes_existentes': Batch.search([('name', '=like', 'Z-%s-%%' % hoy)]).mapped('name'),
         'outs': outs,
+        'saltadas_lector': saltadas,        # v1.3.0
     }
 
 

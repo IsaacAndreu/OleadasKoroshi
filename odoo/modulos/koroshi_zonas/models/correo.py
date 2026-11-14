@@ -45,6 +45,10 @@ class KoroshiZonasCorreo(models.AbstractModel):
             return 'No hay ejecucion del reparto de hoy', ''
         primera = (ej.informe or '').split('\n')[0] or dict(ej._fields['estado'].selection).get(ej.estado, '')
         extra = ej.comparacion and (' | sombra: %s' % dict(ej._fields['comparacion'].selection)[ej.comparacion]) or ''
+        # v1.3.0: el aviso de hora de fin (y las OUT de dias anteriores), arriba del correo
+        for l in (ej.informe or '').split('\n'):
+            if l.startswith('AVISO:') or l.startswith('OUT de dias anteriores'):
+                extra += ' | %s' % l
         return '%s (%s)%s' % (primera, ej.name, extra), ej.informe or ''
 
     @api.model

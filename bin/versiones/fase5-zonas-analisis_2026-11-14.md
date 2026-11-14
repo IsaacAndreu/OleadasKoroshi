@@ -28,8 +28,10 @@ modo lectura, las acciones y crons de nath.tuctuc.com. **No se ha cambiado nada*
 - `lector.py:33` calcula `desde` = medianoche local de hoy en UTC y `lector.py:51` filtra
   `('create_date', '>=', desde)`. Igual que la 1883 (línea 288) y la v10 (línea 248).
 - Una OUT que no se partió el día que entró **no vuelve a ser candidata nunca**.
-- Dato real (14/11, solo lectura): hay **77 OUT de KOROSHI abiertas creadas antes de hoy y sin agrupación**: 71 del
-  13/11, 3 del 12/11, 1 del 10/11 y 2 del 26/06. Ninguna entrará en el reparto de mañana.
+- Dato real (14/11, solo lectura): hay 77 OUT de KOROSHI abiertas creadas antes de hoy y sin agrupación, pero
+  **corregido después**: 75 son PED. ONLINE / PED. MARKETPLACE (el reparto por zonas no las toca nunca) y solo **2 son
+  PED. TIENDAS**, las dos del 13/11 y ya con unidades leídas (y una en la cola de un operario). Hoy el fallo no deja
+  ninguna OUT de tienda sin partir; pasaría con pedidos de tienda que entren después del reparto de las 05:00.
 
 ### 1.3 Capacidad después de juntar trozos — no heredado
 
@@ -98,7 +100,7 @@ No van con koroshi_zonas: son otro método. Se listan porque salen en la misma b
 
 ## 3. Qué se propone arreglar (esperando visto bueno)
 
-1. **OUT de días anteriores** (lo más urgente; hay 77 ahora): que el lector coja también las OUT abiertas de días
+1. **OUT de días anteriores** (hoy solo 2 de tienda, ya empezadas): que el lector coja también las OUT abiertas de días
    anteriores sin agrupación Z-, con un límite de días (p. ej. 7) para no arrastrar las de junio.
 2. **Orden por urgencia**: ordenar primero las tiendas de `TIENDAS_48H` y las OUT más antiguas, después por número de
    tienda. Hoy no cambia el resultado (una ronda), pero sí el día que no quepa todo.

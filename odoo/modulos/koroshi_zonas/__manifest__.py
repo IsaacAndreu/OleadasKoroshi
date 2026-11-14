@@ -42,6 +42,13 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.3.0 (14/11/2026): auditoria 13/11, fase 5. Tres cosas que la 1883 no hacia, cada una con su ajuste:
+  OUT de dias anteriores: tambien se reparten las OUT abiertas de hasta 7 dias antes (dias_atras; antes, las
+  que no se partian el dia que entraban ya no se partian nunca); las que estan en la cola de un operario no se
+  tocan. Si no cabe todo (sin 'Todo en una ronda'), entran primero las de dias anteriores y las tiendas de 48 h
+  (orden_urgencia; antes, por numero de tienda y las de numero alto siempre se quedaban fuera). Con 'Todo en una
+  ronda', el informe y el correo avisan si se acaba despues de la hora de fin. En modo sombra se calcula como la
+  1883 (para comparar con el cron 202) y, ademas, un diagnostico con lo nuevo.
 v1.2.0 (11/11/2026): fase 3, configuracion, cron en sombra, etiquetas y correo dentro del modulo.
 v1.1.2 (11/11/2026): las agrupaciones que almacen crea a mano para imprimir lo del transportista ('Z-2210-SALIO
   22-10', 'Z-2710- SALE 28-10'...) ya no cuentan como zonas: cada OUT suya va al dia y la zona de su nota. Al
@@ -52,7 +59,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

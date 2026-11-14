@@ -62,17 +62,27 @@ class KoroshiZonasConfig(models.Model):
                               help='Fracción de la caja: 0,8 = la última caja llega al 80 %')
     peso_carga = fields.Float('Peso de la carga al cerrar cajas', default=2.0)
     iter_equilibrio = fields.Integer('Vueltas de equilibrio', default=4)
-    tiendas_48h = fields.Char('Tiendas de 48 h', help='Números de tienda (K7 = 7) separados por comas. Solo '
-                                                         'se marcan en el informe; no cambian el reparto')
+    tiendas_48h = fields.Char('Tiendas de 48 h', help='Números de tienda (K7 = 7) separados por comas. Se marcan '
+                                                         'en el informe y, si no cabe todo, entran antes (v1.3.0)')
+    # v1.3.0 (auditoria 13/11, fase 5)
+    dias_atras = fields.Integer('OUT de días anteriores', default=7,
+                                help='También se reparten las OUT abiertas creadas hasta estos días antes (sin '
+                                     'agrupación de zona y sin nada leído). 0 = solo las de hoy, como la acción 1883')
+    orden_urgencia = fields.Boolean('Si no cabe todo, primero lo urgente', default=True,
+                                    help='Sin "Todo en una ronda": entran primero las OUT de días anteriores y las '
+                                         'tiendas de 48 h; después, por número de tienda. Sin marcar: solo por '
+                                         'número de tienda, como la acción 1883')
     ver_out = fields.Integer('OUT que se listan en el informe', default=400)
 
     _sql_constraints = [('company_uniq', 'unique(company_id)', 'Ya hay una configuración para esta compañía.')]
 
-    @api.constrains('personas', 'zonas', 'litros_caja', 'cierre_min', 'hora_inicio', 'hora_fin')
+    @api.constrains('personas', 'zonas', 'litros_caja', 'cierre_min', 'hora_inicio', 'hora_fin', 'dias_atras')
     def _comprobar(self):
         for r in self:
             if r.personas < 1 or r.zonas < 1:
                 raise ValidationError('Personas y zonas tienen que ser al menos 1.')
+            if not 0 <= r.dias_atras <= 30:
+                raise ValidationError('OUT de días anteriores: de 0 a 30 días.')
             if r.litros_caja <= 0 or not 0 < r.cierre_min <= 1:
                 raise ValidationError('Litros por caja > 0 y "caja cerrada desde" entre 0 y 1.')
             for h, puede_ahora in ((r.hora_inicio, True), (r.hora_fin, False)):

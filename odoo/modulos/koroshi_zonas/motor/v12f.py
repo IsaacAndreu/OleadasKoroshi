@@ -5,6 +5,14 @@
 # (buscar OUT, partir, agrupar, nota) lo hacen models/lector.py y models/escritor.py.
 # Fase 2: tiene que dar EXACTAMENTE el mismo reparto (zona de cada linea) y el mismo informe que la 1883.
 # No arreglar nada aqui: lo que se cambie, en la fase 4 y fuera de este fichero.
+#
+# v1.3.0 (14/11/2026, auditoria 13/11 fase 5): tres cambios, todos con parametro. Con modelo.COMO_1883 el resultado
+# sigue siendo EXACTAMENTE el de la 1883 (tests/test_v12f_igual_1883.py):
+#   - ORDEN_URGENCIA: si no cabe todo (sin UNA_RONDA), entran primero las OUT de dias anteriores (la mas antigua
+#     antes) y las tiendas de 48 h; antes, siempre por numero de tienda y las de numero alto se quedaban fuera.
+#     Las que entran se montan y numeran por tienda como siempre (montar_una ya las ordena por tienda).
+#   - Las OUT de dias anteriores (las marca el lector con 'de_antes') salen contadas en el informe.
+#   - AVISO_HORA_FIN: con UNA_RONDA no se mira la capacidad; ahora el informe avisa si se acaba despues de HORA_FIN.
 # =============================================================================
 import datetime
 
@@ -81,7 +89,7 @@ def repartir(datos, cambios=None, contexto=None):
         PREFIJO_AGRUPACION = prueba_agr
     candidatas = datos['outs']
     validas = []
-    saltadas = []
+    saltadas = list(datos.get('saltadas_lector') or [])     # v1.3.0: las que el lector no ha pasado
     for p_ in candidatas:
         motivo = ''
         tipo = p_['tipo_pedido'] or ''
@@ -157,7 +165,18 @@ def repartir(datos, cambios=None, contexto=None):
         calc.zx_out[p_['id']] = zx
         calc.uds_out[p_['id']] = uds
         prio.append((knum, '', 0, p_['name'], p_['id']))
-    prio.sort()
+    if p['ORDEN_URGENCIA'] and not p['UNA_RONDA']:
+        # v1.3.0: primero las de dias anteriores (la mas antigua antes), despues las tiendas de 48 h, despues el
+        # resto; dentro de cada grupo, por tienda como antes. Con UNA_RONDA entran todas: se deja el orden de la 1883.
+        urg = []
+        for x in prio:
+            q = calc.out_rec[x[4]]
+            antes = q.get('de_antes') and (q.get('create_date') or '')[:10] or '9999-99-99'
+            urg.append((antes, x[0] not in p['TIENDAS_48H'] and 1 or 0) + x)
+        urg.sort()
+        prio = [x[2:] for x in urg]
+    else:
+        prio.sort()
     orden = []
     for x in prio:
         orden.append(x[4])
@@ -320,6 +339,11 @@ def repartir(datos, cambios=None, contexto=None):
         p['RENDIMIENTO'], p['SEG_LECTURA'], p['SEG_LINEAL']))
     lineas.append('OUT validas: %d (%d uds) | ENTRAN: %d (%d uds) | no entran (pendientes para otra tanda): %d (%d uds) | saltadas %d' % (
         len(orden), uds_entran + uds_fuera, len(entran), uds_entran, len(no_entran), uds_fuera, len(saltadas)))
+    n_antes = len([pid for pid in entran if calc.out_rec[pid].get('de_antes')])
+    if n_antes or len([pid for pid in no_entran if calc.out_rec[pid].get('de_antes')]):
+        # v1.3.0
+        lineas.append('OUT de dias anteriores (la 1883 ya no las cogia): entran %d | no entran %d' % (
+            n_antes, len([pid for pid in no_entran if calc.out_rec[pid].get('de_antes')])))
     lineas.append('Acaba previsto: %s (la zona mas larga; con la v9c seria %s) | agrupaciones %s<zona>' % (
         reloj(ini_min + R['fin'] / 60.0), reloj(ini_min + R['dur9'] / 60.0), prefijo))
     if R.get('pers'):
@@ -329,6 +353,12 @@ def repartir(datos, cambios=None, contexto=None):
         for zn in orden_zonas:
             reparto_txt.append('%s %d' % (zn, R['pers'][zn]))
         lineas.append('Personas por zona (todas empiezan a la vez): %s' % ', '.join(reparto_txt))
+    pasa_min = 0
+    if p['AVISO_HORA_FIN'] and p['UNA_RONDA'] and elegidas and R['fin'] > capacidad:
+        # v1.3.0: con todo en una ronda no se mira la capacidad; por lo menos, decirlo
+        pasa_min = int(round((R['fin'] - capacidad) / 60.0))
+        lineas.append('AVISO: con "Todo en una ronda" se acaba a las %s, %d min despues de la hora de fin (%s).' % (
+            reloj(ini_min + R['fin'] / 60.0), pasa_min, reloj(fin_min)))
     lineas.append('')
     lineas.append('CAJA CERRADA (cajas de %d L; una OUT esta en caja cerrada si su ultima caja llega al %d%%):' % (
         LITROS_CAJA, round(CIERRE_MIN * 100)))
@@ -412,6 +442,7 @@ def repartir(datos, cambios=None, contexto=None):
     R_out.ini_min = ini_min
     R_out.saltadas = saltadas
     R_out.no_entran = no_entran
+    R_out.pasa_hora_fin = pasa_min      # v1.3.0: minutos despues de HORA_FIN (0 = acaba a tiempo)
     R_out.calc = calc
     R_out.R = R
     if not elegidas:

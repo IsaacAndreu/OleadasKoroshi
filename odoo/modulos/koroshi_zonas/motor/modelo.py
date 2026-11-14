@@ -50,7 +50,15 @@ POR_DEFECTO = {
     'MUELLE_EQUIPO_PROPIO': True,
     'PREFIJO_AGRUPACION': 'TIENDA',
     'ZONA_HORARIA': 'Europe/Madrid',
+    # v1.3.0 (auditoria 13/11, fase 5): lo que la 1883 no hacia. COMO_1883 los deja como ella.
+    'DIAS_ATRAS': 7,            # OUT abiertas de hasta N dias antes tambien son candidatas (0 = solo las de hoy)
+    'ORDEN_URGENCIA': True,     # si no cabe todo: primero las de dias anteriores y las tiendas de 48 h
+    'AVISO_HORA_FIN': True,     # con UNA_RONDA, avisar en el informe si se acaba despues de HORA_FIN
 }
+
+# v1.3.0: con estos cambios el motor hace lo mismo que la accion 1883 (tests y calculo en sombra que se compara con
+# el cron 202).
+COMO_1883 = {'DIAS_ATRAS': 0, 'ORDEN_URGENCIA': False, 'AVISO_HORA_FIN': False}
 
 
 def parametros(cambios=None, contexto=None):
@@ -93,6 +101,8 @@ CAMPOS_CONFIG = {
     'iter_equilibrio': 'ITER_EQUILIBRIO',
     'una_ronda': 'UNA_RONDA',
     'ver_out': 'VER_OUT',
+    'dias_atras': 'DIAS_ATRAS',            # v1.3.0
+    'orden_urgencia': 'ORDEN_URGENCIA',    # v1.3.0
 }
 
 
@@ -151,6 +161,7 @@ class Reparto(object):
         self.lineas = []            # texto del informe, linea a linea
         self.saltadas = []
         self.no_entran = []
+        self.pasa_hora_fin = 0      # v1.3.0: minutos despues de la hora de fin (solo con UNA_RONDA)
 
     def cajas_zona(self):
         res = {}

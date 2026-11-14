@@ -15,6 +15,7 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.dirname(AQUI))
 sys.path.insert(0, AQUI)
 
+from motor import modelo  # noqa: E402
 from motor import v12f  # noqa: E402
 import arnes_1883  # noqa: E402
 import sintetico  # noqa: E402
@@ -48,7 +49,9 @@ class IgualQue1883(object):
             por_id = dict((o['id'], o) for o in datos['outs'])
             datos_m = dict(datos)
             datos_m['outs'] = [por_id[i] for i in contexto['prueba_ids'] if i in por_id]
-        cambios = modo and {'MODO': modo} or None
+        cambios = dict(modelo.COMO_1883)        # v1.3.0: sin lo nuevo, igual que la 1883
+        if modo:
+            cambios['MODO'] = modo
         rep = v12f.repartir(datos_m, cambios, contexto)
         if R_o is not None:
             self.assertEqual(rep.zona_fin, R_o['zona_fin'], 'zona final de cada linea distinta')
