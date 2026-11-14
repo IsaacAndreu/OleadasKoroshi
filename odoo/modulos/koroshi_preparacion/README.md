@@ -3,6 +3,20 @@
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
+
+## v3.30.0: pausa arriba (⏸ / ▶) y segunda ubicación en Faltante (14/11/2026)
+
+- **Pausa arriba**, al lado del ☰: **⏸** (dos toques: «¿Pausa?»). Odoo para el tiempo (motivo «Pausa» de Operarios) y la
+  pantalla se queda tapada con **«⏸ EN PAUSA · nombre · desde las HH:MM»** y un botón grande **«▶ Seguir»**. Arriba el
+  botón pasa a ▶ (verde). Al seguir, el tiempo vuelve a empezar con la misma OUT: sin salir ni leer la tarjeta.
+- En pausa no se lee (avisa «pulsa ▶ Seguir») y no suena la alarma de parado.
+- Si al seguir Odoo da otra OUT (la han quitado desde la oficina), vuelve a Lecturas, que enseña la que toca.
+- A dos (ayudante): como antes, se para su tiempo y vuelve a Lecturas.
+- Ya no está en el menú ☰ (allí salía pequeño).
+- **Faltante**: si la ubicación más cercana tiene pocas uds (menos de 3, o menos de las que faltan), la segunda también
+  sale en grande, en gris oscuro: «Si no, aquí · N uds».
+- Si la PDA se cierra en pausa: al volver a abrir, se lee la tarjeta como siempre y sale la misma OUT.
+
 ## v3.29.0: robustez (13/11/2026)
 
 - **Caja cerrada sin conexión que Odoo no acepta**: la cola de la PDA **se para**. Antes seguía, y lo leído después

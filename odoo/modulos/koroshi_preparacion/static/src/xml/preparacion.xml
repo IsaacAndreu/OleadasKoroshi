@@ -12,6 +12,13 @@
                 <div class="o_kp_alarma_titulo">¡LLEVAS <span class="o_kp_alarma_min"/> MIN SIN LEER!</div>
                 <div class="o_kp_alarma_texto">Lee una prenda para pararla, o pulsa ← para dejar la OUT aquí.</div>
             </div>
+            <!-- v3.30: en pausa: tapa la pantalla hasta pulsar ▶ Seguir -->
+            <div class="o_kp_pausa_capa" style="display: none;">
+                <div class="o_kp_pausa_titulo">⏸ EN PAUSA</div>
+                <div class="o_kp_pausa_texto"/>
+                <button type="button" class="o_kp_seguir">▶ Seguir</button>
+                <div class="o_kp_pausa_nota">Tu tiempo está parado. La OUT sigue siendo tuya.</div>
+            </div>
             <div class="o_kp_app">
                 <!-- cabecera: volver, OUT, tienda, operario -->
                 <div class="o_kp_cabecera">
@@ -21,6 +28,8 @@
                         <div class="o_kp_tienda"/>
                     </div>
                     <div class="o_kp_operario"/>
+                    <!-- v3.30: pausa arriba, al lado del menú: ⏸ para parar, ▶ para seguir -->
+                    <button type="button" class="o_kp_pausa_btn" aria-label="Pausa (comer, café)" style="display: none;">⏸</button>
                     <!-- v3.11: Ver líneas e Imprimir van en este menú (abajo solo queda el campo del código) -->
                     <button type="button" class="o_kp_menu_btn" aria-label="Más: ver líneas, imprimir">☰</button>
                 </div>
@@ -182,7 +191,6 @@
                         <!-- v3.21: cada operario elige el color de la franja de la ubicación -->
                         <button type="button" class="o_kp_menu_color">Color de la ubicación</button>
                         <!-- v3.26: pausa (comer, café) sin salir antes a Lecturas -->
-                        <button type="button" class="o_kp_menu_pausa">⏸ Pausa (comer, café)</button>
                         <button type="button" class="o_kp_boton o_kp_blanco o_kp_menu_cerrar">Cerrar</button>
                     </div>
                     <div class="o_kp_hoja_color" style="display: none;">

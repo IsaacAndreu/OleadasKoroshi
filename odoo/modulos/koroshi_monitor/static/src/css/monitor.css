@@ -151,3 +151,9 @@ body.km-tv .o_action_manager { height: 100vh; }
 
 /* v1.24: operario en pausa (comer, café) */
 .o_koroshi_monitor .km-pausa { color: #1d4ed8; font-weight: 700; }
+
+/* v1.25: la PDA le está pitando (alarma de parado): fila entera en rojo */
+.o_koroshi_monitor table.km-ops tr.km-op-alarma-fila td { background: #c62828; color: #fff; }
+.o_koroshi_monitor table.km-ops tr.km-op-alarma-fila .km-op.km-op-parado { background: #fff; color: #c62828; }
+.o_koroshi_monitor .km-alarma-txt { font-weight: 900; color: #fff; animation: km-alarma-parpadeo 1s steps(1, end) infinite; }
+@keyframes km-alarma-parpadeo { 50% { opacity: .35; } }

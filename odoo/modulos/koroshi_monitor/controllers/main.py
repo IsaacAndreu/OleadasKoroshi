@@ -332,6 +332,7 @@ class KoroshiMonitor(http.Controller):
         if 'koroshi.operario.tarea' not in env.registry:
             return {}, {}, []
         ahora = fields.Datetime.now()
+        alarma_min, alarma_ahora = self._alarma_pda(env)   # v1.25
         tareas = env['koroshi.operario.tarea'].sudo().search(dominio, order='inicio asc')
         por_picking, por_lote, ops = {}, {}, {}
         for t in tareas:
@@ -368,7 +369,7 @@ class KoroshiMonitor(http.Controller):
                     destino['parados'].append(cod)
             o = ops.setdefault(cod, {'op': cod, 'tareas': 0, 'acabadas': 0, 'dejadas': 0, 'uds': 0.0,
                                      'min': 0.0, 'ahora': '', 'desde': '', 'ini': None, 'ult': None,
-                                     'sin_leer': 0, 'parado': False, 'ahora_id': False})
+                                     'sin_leer': 0, 'parado': False, 'ahora_id': False, 'alarma': False})
             o['tareas'] += 1
             if t.estado == 'acabada' or fin_real:
                 o['acabadas'] += 1
@@ -389,6 +390,8 @@ class KoroshiMonitor(http.Controller):
                     o['desde'] = self._hora(t.inicio)
                     o['sin_leer'] = sin_leer
                     o['parado'] = parado
+                    # v1.25: la PDA ya le está pitando (mismos minutos y horario que la alarma de la preparación)
+                    o['alarma'] = bool(alarma_min and alarma_ahora and sin_leer >= alarma_min)
                     o['ahora_id'] = t.picking_id.id if t.tipo != 'agrupacion' else False
             else:
                 o['uds'] += t.uds or 0.0
@@ -424,6 +427,29 @@ class KoroshiMonitor(http.Controller):
             d['ops'] = a['ops'] + [x for x in b['ops'] if x not in a['ops']]
             d['ops_ahora'] = a['ahora'] + [x for x in b['ahora'] if x not in a['ahora']]
             d['ops_parados'] = a['parados'] + [x for x in b['parados'] if x not in a['parados']]   # v1.21
+
+    def _alarma_pda(self, env):
+        """v1.25: (minutos, ¿ahora suena?) de la alarma de parado de la PDA (koroshi_preparacion 3.22+):
+        koroshi_preparacion.minutos_alarma (0 = sin alarma) y koroshi_preparacion.horario_alarma
+        ('06:00-10:00,10:15-13:00,...', hora local). Sin el parámetro, (0, False): no se marca a nadie."""
+        Param = env['ir.config_parameter'].sudo()
+        try:
+            minutos = int(float(Param.get_param('koroshi_preparacion.minutos_alarma', '0') or 0))
+        except ValueError:
+            minutos = 0
+        if minutos <= 0:
+            return 0, False
+        horario = Param.get_param('koroshi_preparacion.horario_alarma', '') or ''
+        ahora = datetime.datetime.now(pytz.utc).astimezone(self._tz())
+        m = ahora.hour * 60 + ahora.minute
+        tramos = []
+        for t in horario.split(','):
+            r = re.match(r'^\s*(\d{1,2}):(\d{2})\s*-\s*(\d{1,2}):(\d{2})\s*$', t)
+            if r:
+                a, b, c, d = [int(x) for x in r.groups()]
+                tramos.append((a * 60 + b, c * 60 + d))
+        en_horario = not tramos or any(ini <= m < fin for ini, fin in tramos)
+        return minutos, en_horario
 
     def _sin_leer_min(self, env):
         """v1.21: minutos sin leer para la alarma de OUT parada (el mismo parametro que koroshi_operarios 2.8)."""

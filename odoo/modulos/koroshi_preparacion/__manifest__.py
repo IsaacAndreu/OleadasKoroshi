@@ -193,8 +193,13 @@ dejan el error en el log. Estado ligero (tras cada lectura y el refresco a dos):
 lo fijo (OUT, notas, tipos de caja, alarma) solo en /cargar. Agrupaciones Z-: las OUT vivas una vez por petición.
 Tests: tests/test_ruta.py (sin base de datos) y tests/test_idempotencia.py (TransactionCase). Sin campos nuevos en
 tablas de stock.
+v3.30.0 (14/11/2026): PAUSA ARRIBA. Botón ⏸ al lado del ☰ (dos toques): para el tiempo (motivo «Pausa» de
+Operarios) y la pantalla se queda tapada con «EN PAUSA»; ▶ Seguir vuelve a empezar el tiempo con la misma OUT sin
+leer la tarjeta ni salir. En pausa no se lee ni suena la alarma de parado. Sale del menú ☰. A dos (ayudante),
+como antes. FALTANTE: si la ubicación más cercana tiene pocas uds (menos de 3 o no llega), la segunda también
+sale en grande («Si no, aquí»).
 """,
-    'version': '13.0.3.29.0',
+    'version': '13.0.3.30.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -79,8 +79,10 @@ function tablaOperarios(ops, tv) {
         (tv ? '' : '<th class="r">Pedidos</th><th class="r">Acabados</th><th class="r">Dejados</th>') +
         '<th class="r">Uds</th><th class="r">Min</th><th class="r">u/h</th></tr></thead><tbody>';
     ops.forEach(function (o) {
-        h += '<tr' + (o.ahora ? ' class="km-op-activo' + (o.parado ? ' km-op-parado-fila' : '') + '"' : '') + '><td><b class="km-op' + (o.parado ? ' km-op-parado' : '') + '">' + e(o.op) + '</b></td><td class="m">' +
-            (o.ahora ? e(o.ahora) + (o.parado ? ' <span class="km-parado-txt">' + o.sin_leer + ' min sin leer</span>' : '') :
+        // v1.25: o.alarma = la PDA le está pitando (alarma de parado): la fila entera en rojo
+        h += '<tr' + (o.ahora ? ' class="km-op-activo' + (o.alarma ? ' km-op-alarma-fila' : (o.parado ? ' km-op-parado-fila' : '')) + '"' : '') + '><td><b class="km-op' + (o.parado || o.alarma ? ' km-op-parado' : '') + '">' + e(o.op) + '</b></td><td class="m">' +
+            (o.ahora ? e(o.ahora) + (o.alarma ? ' <span class="km-alarma-txt">🔔 ALARMA · ' + o.sin_leer + ' min sin leer</span>' :
+                                     (o.parado ? ' <span class="km-parado-txt">' + o.sin_leer + ' min sin leer</span>' : '')) :
              o.pausa ? '<span class="km-pausa">⏸ Pausa</span> ' + e(o.pausa_ref || '') :   // v1.24
              '<span class="km-muted">–</span>') +
             '</td><td>' + e(o.ahora ? o.desde : (o.pausa || o.desde)) + '</td>' +

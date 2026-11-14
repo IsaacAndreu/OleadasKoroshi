@@ -101,8 +101,10 @@ con el mismo numero de expedicion pero sin etiqueta no se registro en XPO: no su
 Solo lee pedidos y expediciones: lo unico que escribe son las OUT anadidas a mano (koroshi.envio.extra).
 v1.24.0 (13/11/2026): en la tabla de Operarios, quien esta en pausa (comer, cafe): «⏸ Pausa OUT» y la hora en
 Desde (con koroshi_operarios 2.11 o mas).
+v1.25.0 (14/11/2026): en la tabla de Operarios, la fila entera en rojo con «🔔 ALARMA · N min sin leer» cuando
+la PDA le está pitando (mismos minutos y horario que la alarma de parado de koroshi_preparacion).
 """,
-    'version': '13.0.1.24.0',
+    'version': '13.0.1.25.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

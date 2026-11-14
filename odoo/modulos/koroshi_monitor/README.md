@@ -30,6 +30,17 @@ capa inventada ni ralentice el seguimiento.
   solo lo que hay en stock. Al final de la pantalla, **lista de faltantes** por OUT y artículo.
 
 
+
+## v1.25.0: quién tiene la alarma de parado (14/11/2026)
+
+- En la tabla **Operarios**, la fila entera en **rojo** con **«🔔 ALARMA · N min sin leer»** (parpadea) cuando a ese
+  operario la PDA le está pitando: OUT abierta, en horario de la alarma y sin leer desde hace
+  `koroshi_preparacion.minutos_alarma` minutos (ahora 10). Lee los mismos parámetros que la PDA
+  (`minutos_alarma` y `horario_alarma`); en la pausa del café y la comida no se marca.
+- Los minutos sin leer son los de Operarios (última lectura). La PDA también cuenta como actividad cerrar caja,
+  poner cantidad o faltante, así que puede haber un desfase de un minuto o dos.
+- Sigue el aviso de antes (más de `koroshi_operarios.minutos_sin_leer` min, en rosa).
+
 ## v1.24.0: operarios en pausa (13/11/2026)
 
 - En la tabla **Operarios**, quien está en pausa (comer, café) sale con **«⏸ Pausa»**, su OUT y en «Desde» la hora en

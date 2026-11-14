@@ -121,7 +121,8 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_menu_btn': '_onMenu',
         'click .o_kp_pack_seguir': '_onPackSeguir',      // v3.20
         'click .o_kp_l_editar': '_onEditarCaja',         // v3.21: ✎ en una línea ya en caja
-        'click .o_kp_menu_pausa': '_onMenuPausa',        // v3.26: pausa (comer, café)
+        'click .o_kp_pausa_btn': '_onPausaBtn',          // v3.30: pausa arriba (⏸ / ▶)
+        'click .o_kp_seguir': '_onSeguir',               // v3.30: volver de la pausa sin salir
         'click .o_kp_menu_color': '_onMenuColor',        // v3.21: color de la franja de la ubicación
         'click .o_kp_color_op': '_onElegirColor',
         'click .o_kp_color_cerrar': '_cerrarHoja',
@@ -777,6 +778,7 @@ var Pantalla = AbstractAction.extend({
         if (!codigo || (codigo === this.ultima.codigo && ahora - this.ultima.t < REPETIDA_MS)) { return; }
         this.ultima = {codigo: codigo, t: ahora};
         if (!this._out()) { return this._aviso(this.errorCarga || 'No hay OUT cargada.', 'mal'); }
+        if (this.enPausa) { return this._aviso('En pausa: pulsa ▶ Seguir para volver a leer.', 'warn'); }   // v3.30
         if (this.modo === 'menu' || this.modo === 'color' || this.modo === 'caja_auto') { this._cerrarHoja(); }   // v3.11, v3.21: lo cierra y cuenta
         if (this.modo === 'mover') {   // v3.21: con «Cambiar de caja» abierto, leer una CJ es la caja de destino
             if (RE_CJ.test(codigo.toUpperCase())) { return this._moverA(codigo.toUpperCase()); }
@@ -1743,14 +1745,17 @@ var Pantalla = AbstractAction.extend({
                                        (lin.pendiente === 1 ? ' ud' : ' uds'));
         var alt = (lin.alternativas || []).slice(0, MAX_ALTERNATIVAS);
         var $ol = this.$('.o_kp_f_alternativas').empty();
+        // v3.30: la más cercana tiene pocas (menos de 3 o no llega para lo que falta): la segunda también en grande
+        var dos = alt.length > 1 && alt[0].libre < Math.max(lin.pendiente || 1, 3);
         alt.forEach(function (a, i) {
-            var $li = $('<li/>');
+            var $li = $('<li/>').toggleClass('o_kp_f_segunda', dos && i === 1);
             // v3.12: hueco y KO en la misma línea y del mismo tamaño, como en la tarjeta
             var partes = (a.nombre || '').split(' · ');
             var $u = $('<span class="o_kp_f_alt_ubi"/>').appendTo($li);
             $('<span class="o_kp_hueco"/>').text(partes[0] || '').appendTo($u);
             if (partes.length > 1) { $('<span class="o_kp_ko"/>').text(partes.slice(1).join(' · ')).appendTo($u); }
-            $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' : '') + a.libre +
+            $('<span class="o_kp_f_alt_libre"/>').text((i === 0 ? 'La más cercana · ' :
+                (dos && i === 1 ? 'Si no, aquí · ' : '')) + a.libre +
                 (a.libre === 1 ? ' ud' : ' uds')).appendTo($li);
             $ol.append($li);
         });
@@ -2076,32 +2081,33 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja').show();
     },
 
-    // v3.26: pausa (comer, café) desde el menú ☰. Primer toque: pide confirmar; segundo: lo leído se guarda, Odoo
-    // cierra el tiempo (motivo «Pausa» de Operarios: la OUT sigue suya y la primera) y se vuelve a Lecturas, que
-    // queda sin operario. Al volver, lee su tarjeta y sale esta misma OUT.
-    _onMenuPausa: function (ev) {
+    // v3.30: pausa (comer, café) con el botón de arriba, al lado del ☰. Primer toque: «¿Pausa?» (4 s); segundo: lo
+    // leído se guarda y Odoo para el tiempo (motivo «Pausa» de Operarios: la OUT sigue suya y la primera). La pantalla
+    // se queda tapada con «EN PAUSA» y ▶ Seguir: vuelve a empezar el tiempo con la misma OUT, sin leer la tarjeta.
+    // A dos (ayudante) no hay OUT suya que guardar: como antes, se para su tiempo y vuelve a Lecturas.
+    _onPausaBtn: function () {
         var self = this;
-        var $b = $(ev.currentTarget);
+        var $b = this.$('.o_kp_pausa_btn');
+        if (this.enPausa) { return this._onSeguir(); }
         if (!this.operario) { return this._aviso('Sin tarjeta no hay pausa: pulsa ← para salir.', 'warn'); }
         if (this.sinRed) { return this._aviso('Sin conexión: espera a que vuelva para la pausa.', 'mal'); }
+        if (this.modo !== 'leer' && this.modo !== 'menu') { return; }
         if (!$b.hasClass('o_kp_confirmar_pausa')) {
-            $b.addClass('o_kp_confirmar_pausa').text('⏸ Toca otra vez para la pausa');
+            $b.addClass('o_kp_confirmar_pausa').text('¿Pausa?');
             clearTimeout(this.timerPausa);
-            this.timerPausa = setTimeout(function () {
-                $b.removeClass('o_kp_confirmar_pausa').text('⏸ Pausa (comer, café)');
-            }, 5000);
+            this.timerPausa = setTimeout(function () { $b.removeClass('o_kp_confirmar_pausa').text('⏸'); }, 4000);
             return;
         }
         clearTimeout(this.timerPausa);
-        $b.removeClass('o_kp_confirmar_pausa').text('⏸ Pausa (comer, café)');
-        if (this.cola.length) {
-            this._cerrarHoja();
-            return this._aviso('Espera: guardando ' + this._textoPendientes() + '… y vuelve a pulsar Pausa.', 'warn');
+        $b.removeClass('o_kp_confirmar_pausa').text('⏸');
+        if (this.cola.length || this.enviando) {
+            return this._aviso('Espera: guardando ' + this._textoPendientes() + '… y vuelve a pulsar ⏸.', 'warn');
         }
         var emp = this.operario.id;
         var nombre = this.operario.nombre;
         this._cerrarHoja();
         this._aviso('Pausa…', 'info');
+        var ayudante = false;
         return this._rpc({route: '/koroshi/operarios/motivos', params: {}}).then(function (r) {
             var m = r && r.ok && _.findWhere(r.motivos || [], {destino: 'pausa'});
             if (!m) { throw {msg: 'No se ha podido cargar la pausa.'}; }
@@ -2109,16 +2115,76 @@ var Pantalla = AbstractAction.extend({
         }).then(function (r) {
             if (r && r.ok) { return r.msg; }
             // a dos (ayudante): no tiene la OUT asignada; solo se cierra su tiempo
+            ayudante = true;
             return self._rpc({route: '/koroshi/operarios/dejar', params: {employee_id: emp}}).then(function (d) {
                 if (!d || !d.ok) { throw {msg: (r && r.msg) || (d && d.msg) || 'Error'}; }
                 return 'Tu tiempo queda parado';
             });
         }).then(function (msg) {
-            window.koroshiPausaHecha = {nombre: nombre, msg: msg};   // Lecturas (abajo) quita el operario y lo dice
-            self.trigger_up('history_back');
+            if (ayudante) {
+                window.koroshiPausaHecha = {nombre: nombre, msg: msg};   // Lecturas (abajo) quita el operario y lo dice
+                return self.trigger_up('history_back');
+            }
+            self._ponerPausa(nombre);
         }).guardedCatch(function (e) {
             if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
             self._aviso('No se ha podido hacer la pausa' + (e && e.msg ? ': ' + e.msg : '') + '. Vuelve a probar.', 'mal');
+        });
+    },
+
+    _ponerPausa: function (nombre) {
+        var d = new Date();
+        var hora = ('0' + d.getHours()).slice(-2) + ':' + ('0' + d.getMinutes()).slice(-2);
+        this.enPausa = {desde: hora};
+        this._alarma(false);
+        this.modo = 'pausa';
+        this._aviso('', '');
+        this.$('.o_kp_pausa_texto').text((nombre || '') + ' · desde las ' + hora);
+        this.$('.o_kp_pausa_capa').show();
+        this.$('.o_kp_pausa_btn').text('▶').addClass('o_kp_en_pausa').attr('aria-label', 'Seguir');
+        this.$('.o_kp_codigo').blur();
+    },
+
+    _quitarPausa: function () {
+        this.enPausa = null;
+        this.modo = 'leer';
+        this.$('.o_kp_pausa_capa').hide();
+        this.$('.o_kp_pausa_btn').text('⏸').removeClass('o_kp_en_pausa').attr('aria-label', 'Pausa (comer, café)');
+    },
+
+    // ▶ Seguir: Odoo vuelve a empezar el tiempo con la primera de su cola (la de la pausa). Si por lo que sea es otra
+    // (se la han quitado desde la oficina), se vuelve a Lecturas, que la abre.
+    _onSeguir: function () {
+        var self = this;
+        if (!this.enPausa || this.siguiendo) { return; }
+        if (this.sinRed) { return this.$('.o_kp_pausa_texto').text('Sin conexión: espera a que vuelva y pulsa ▶.'); }
+        var out = this._out();
+        var mia = this._esLote() ? (this.lote && this.lote.name) : (out && out.name);
+        this.siguiendo = true;
+        this.$('.o_kp_seguir').prop('disabled', true).text('▶ …');
+        return this._rpc({route: '/koroshi/operarios/siguiente', params: {employee_id: this.operario.id}}).then(function (r) {
+            self.siguiendo = false;
+            self.$('.o_kp_seguir').prop('disabled', false).text('▶ Seguir');
+            var a = r && r.ok && r.asignacion;
+            if (!r || !r.ok) {
+                return self.$('.o_kp_pausa_texto').text((r && r.msg) || 'No se ha podido seguir. Vuelve a probar.');
+            }
+            if (a && (a.ref === mia || a.picking_name === mia)) {
+                self._quitarPausa();
+                self._actividad();   // la alarma de parado empieza de cero
+                self._recargar();
+                self._aviso('▶ Seguimos con ' + mia + '.', 'ok');
+                return self._foco();
+            }
+            // otra OUT (o ninguna): a Lecturas, que enseña la que toca
+            self._quitarPausa();
+            self.trigger_up('history_back');
+        }).guardedCatch(function (e) {
+            self.siguiendo = false;
+            self.$('.o_kp_seguir').prop('disabled', false).text('▶ Seguir');
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            self.$('.o_kp_pausa_texto').text(self._esSinConexion(e) ? 'Sin conexión: espera a que vuelva y pulsa ▶.' :
+                                             'No se ha podido seguir: ' + self._mensajeError(e));
         });
     },
 
@@ -2242,6 +2308,7 @@ var Pantalla = AbstractAction.extend({
             if (e.companeros && e.companeros.length) { quien += ' · con ' + e.companeros.join(', '); }
         }
         this.$('.o_kp_operario').text(quien);
+        this.$('.o_kp_pausa_btn').toggle(!!this.operario);   // v3.30
         this.$el.toggleClass('o_kp_a_dos', !!e.a_dos).toggleClass('o_kp_ayudante', e.rol === 'ayudante');
         this._avisosEquipo(e);
         // progreso
@@ -2602,11 +2669,13 @@ var Pantalla = AbstractAction.extend({
         var out = this._out();
         var abierta = !!out && out.estado !== 'done' && out.estado !== 'cancel';
         var toca = this.alarmaMin > 0 && abierta && this._visible() && this.modo !== 'validando' && !this.packVolver &&
-            enHorario;
+            enHorario && !this.enPausa;   // v3.30: en pausa no suena
         if (!toca) {
             this._alarma(false);
             // v3.23: fuera de horario (pausa, comida) tampoco cuenta: a las 10:15 o a las 14:00 empieza de cero
-            if (!this._visible() || this.modo === 'validando' || !enHorario) { this.ultimaActividad = Date.now(); }
+            if (!this._visible() || this.modo === 'validando' || !enHorario || this.enPausa) {
+                this.ultimaActividad = Date.now();
+            }
             return;
         }
         var parado = Date.now() - this.ultimaActividad;
