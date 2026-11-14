@@ -13,9 +13,11 @@ momento. El mapa de módulos y el despliegue están en [README.md](README.md).
 2. **Nunca sobrescribir una versión.** Cada cambio:
    - sube la versión del `__manifest__.py`,
    - añade su línea al historial del manifest (`vX.Y.Z (dd/mm/aaaa): qué cambia y por qué`),
-   - genera un ZIP nuevo con fecha en `bin/` (`AAAAMMDD_<modulo>_vX.Y.Z.zip`), **con Python (`zipfile`), no con
-     `Compress-Archive`** (rompe las rutas en Linux),
-   - y su script `bin/instalar_<modulo>_vX.Y.Z_AAAA-MM-DD.sh` (modo `check` e `install`).
+   - se commitea y se empaqueta con `python bin/empaquetar.py <modulo>`: etiqueta `<modulo>/vX.Y.Z` (anotada, **nunca
+     se mueve ni se borra**) y ZIP `bin/AAAAMMDD_<modulo>_vX.Y.Z.zip` sacado de la etiqueta con `git archive`. Nunca
+     con `Compress-Archive` (rompe las rutas en Linux). Los ZIP, APK y fotos no van en git (`.gitignore`).
+   - Se instala con `bin/desplegar.sh check|install <modulo> <version> ...`: ya no se escribe un script por versión
+     (desde el 14/11/2026, fase 6).
 3. **El servidor puede ir por delante del repo**: antes de sacar una versión, preguntar la `installed_version`
    real del módulo.
 4. **No se instala, ni se sube, ni se reinicia nada en el servidor.** Se dejan el ZIP y el script listos y se
@@ -25,14 +27,17 @@ momento. El mapa de módulos y el despliegue están en [README.md](README.md).
    decirlo antes de empezar.
 7. **Campos nuevos en tablas compartidas** (`stock.picking`, `stock.picking.type`, `stock.move.line`):
    prohibido sin preguntar. Ya tumbaron la PDA una vez (`no_overscan` en `stock.picking.type`, 03/11).
-8. **Trampas de Odoo 13**:
+8. **Lo común va en `koroshi_base`** (`from odoo.addons.koroshi_base import comun`): compañía, hora del almacén,
+   rangos de días en UTC y matrícula CJ. No copiar constantes nuevas en cada módulo. Los módulos que aún no lo usan
+   se pasan uno a uno, cada uno con su versión.
+9. **Trampas de Odoo 13**:
    - `aria-hidden="true"` oculta el elemento (regla global `display:none`): usar `role="presentation"`.
    - La acción cliente `display_notification` no existe.
    - Los `<function>` con `noupdate` solo corren al **instalar**, no al actualizar.
    - El `report_name` de un informe QWeb debe llevar punto (`modulo.plantilla`).
-9. **Antes de cambiar algo**, leer el código y confirmar que el fallo existe tal como se describe. Si no se
+10. **Antes de cambiar algo**, leer el código y confirmar que el fallo existe tal como se describe. Si no se
    puede confirmar, decirlo en vez de arreglarlo a ciegas.
-10. **Cada fase/entrega acaba con**: qué se ha cambiado (`archivo:línea`), cómo se ha probado, qué no se ha
+11. **Cada fase/entrega acaba con**: qué se ha cambiado (`archivo:línea`), cómo se ha probado, qué no se ha
     podido probar y qué hay que probar en una PDA real. Después, parar y esperar el visto bueno.
 
 ## Secretos

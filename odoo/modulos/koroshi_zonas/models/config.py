@@ -8,13 +8,14 @@ import logging
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
+from odoo.addons.koroshi_base import comun
 
 from ..motor import modelo
 from ..motor import volumen
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8
+COMPANY_ID = comun.COMPANY_ID     # v1.4.0: de koroshi_base
 PARAM_LITROS_V12F = 'koroshi_zonas.litros_v12f_aplicados'
 
 

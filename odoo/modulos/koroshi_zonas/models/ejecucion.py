@@ -16,6 +16,7 @@ import logging
 import pytz
 
 from odoo import api, fields, models
+from odoo.addons.koroshi_base import comun
 
 from ..motor import medir as motor_medir
 from ..motor import modelo
@@ -33,7 +34,7 @@ class _Deshacer(Exception):
 _logger = logging.getLogger(__name__)
 
 COMPANY_ID = lector.COMPANY_ID
-TZ = 'Europe/Madrid'
+TZ = comun.TZ                   # v1.4.0: de koroshi_base
 HISTORICO_DESDE = datetime.date(2026, 10, 22)
 DIAS_CRON = 7                   # el cron vuelve a medir los ultimos dias (OUT que se validan tarde)
 PARAM_REGLA_DUENO = 'koroshi_zonas.regla_dueno'
@@ -148,11 +149,7 @@ class KoroshiZonasEjecucion(models.Model):
     # ------------------------------------------------------------------ registrar OUT
     @api.model
     def _rango_utc(self, desde, hasta):
-        tz = pytz.timezone(TZ)
-        ini = tz.localize(datetime.datetime.combine(desde, datetime.time.min)).astimezone(pytz.utc)
-        fin = tz.localize(datetime.datetime.combine(hasta + datetime.timedelta(days=1),
-                                                    datetime.time.min)).astimezone(pytz.utc)
-        return ini.replace(tzinfo=None), fin.replace(tzinfo=None)
+        return comun.rango_dias_utc(desde, hasta)       # v1.4.0: la misma cuenta, en koroshi_base
 
     @api.model
     def registrar_rango(self, desde, hasta):
@@ -356,7 +353,7 @@ class KoroshiZonasEjecucion(models.Model):
     # ------------------------------------------------------------------ crons y acciones
     @api.model
     def _hoy(self):
-        return datetime.datetime.now(pytz.timezone(TZ)).date()
+        return comun.hoy_local()                        # v1.4.0
 
     @api.model
     def cron_capturar(self):

@@ -11,13 +11,14 @@ import logging
 import pytz
 
 from odoo import api, models
+from odoo.addons.koroshi_base import comun
 
 from . import lector
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8
-TZ = 'Europe/Madrid'
+COMPANY_ID = comun.COMPANY_ID     # v1.4.0: de koroshi_base
+TZ = comun.TZ
 COLORES = ['#2f7d4f', '#1f5fbf', '#b5562a', '#7a4bb0', '#b08a12', '#0e7c86', '#b03a6c', '#5b6b1e', '#6b6a65']
 
 

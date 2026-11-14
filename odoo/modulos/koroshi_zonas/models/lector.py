@@ -2,10 +2,12 @@
 # =============================================================================
 # Lector: lee de Odoo y construye los datos planos que recibe el motor. Solo lee.
 # =============================================================================
+from odoo.addons.koroshi_base import comun
+
 from ..motor import nombres
 from ..motor import volumen
 
-COMPANY_ID = 8                  # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID   # EFFECTIVE LOGISTICS, S.L. (v1.4.0: de koroshi_base)
 CAMPOS_LINEA = ['id', 'picking_id', 'result_package_id', 'qty_done', 'product_id']
 
 # v1.1.2: los nombres se leen con motor/nombres.py (con tests)

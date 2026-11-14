@@ -11,10 +11,11 @@ import datetime
 
 from odoo import api, models
 from odoo.exceptions import UserError
+from odoo.addons.koroshi_base import comun
 
 from ..motor import volumen
 
-COMPANY_ID = 8
+COMPANY_ID = comun.COMPANY_ID     # v1.4.0: de koroshi_base
 INFORME = 'koroshi.report_etiqueta_zona'
 NOTA = 'ETQ ZONA '
 MAX_CAJAS_OUT = 12

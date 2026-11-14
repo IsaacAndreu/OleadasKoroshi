@@ -42,6 +42,9 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.4.0 (14/11/2026): auditoria 13/11, fase 6. Primer modulo con koroshi_base: COMPANY_ID, la hora del almacen,
+  hoy y el rango de dias en UTC salen de koroshi_base.comun (antes, copiados aqui). Mismo comportamiento.
+  Nueva dependencia: koroshi_base (instalarlo antes).
 v1.3.0 (14/11/2026): auditoria 13/11, fase 5. Tres cosas que la 1883 no hacia, cada una con su ajuste:
   OUT de dias anteriores: tambien se reparten las OUT abiertas de hasta 7 dias antes (dias_atras; antes, las
   que no se partian el dia que entraban ya no se partian nunca); las que estan en la cola de un operario no se
@@ -59,11 +62,11 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['mail', 'stock', 'stock_picking_batch', 'koroshi_kpi'],
+    'depends': ['mail', 'stock', 'stock_picking_batch', 'koroshi_kpi', 'koroshi_base'],
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',
