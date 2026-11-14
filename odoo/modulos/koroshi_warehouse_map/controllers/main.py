@@ -1,16 +1,31 @@
 # -*- coding: utf-8 -*-
 import datetime
 import json
+import logging
 import re
+
+import pytz
+import werkzeug.utils
 
 from odoo import fields, http
 from odoo.http import request
+from odoo.modules.module import load_information_from_description_file
+
+_logger = logging.getLogger(__name__)
 
 
 COMPANY_ID = 8  # EFFECTIVE LOGISTICS, S.L.
 LINE_RE = re.compile(r'\bL(\d{1,3})\b', re.IGNORECASE)
 POSITION_RE = re.compile(r'\bP(\d{1,3})\b', re.IGNORECASE)
 LEVEL_RE = re.compile(r'\bC([1-4])\b', re.IGNORECASE)
+PLANNER = '/koroshi_warehouse_map/static/src/html/warehouse_planner_20261029_v1.html'
+DELTA_MAX_MIN = 10      # v.45: un 'since' mas viejo que esto = foto completa (para quitar lo que ya no esta)
+JSON_HDR = [('Content-Type', 'application/json; charset=utf-8'), ('Cache-Control', 'no-store')]
+
+
+def _json(valor, status=200):
+    return request.make_response(json.dumps(valor, default=str, ensure_ascii=False), status=status,
+                                 headers=JSON_HDR)
 
 
 class KoroshiWarehouseMapController(http.Controller):
@@ -471,66 +486,129 @@ class KoroshiWarehouseMapController(http.Controller):
             )
         company = self._company()
         name = str(values.get('name') or 'Diseño NAU-2')[:120]
-        stamp = fields.Datetime.now().replace('-', '').replace(':', '').replace(' ', '_')
-        layout = request.env['koroshi.layout'].sudo().create({
-            'name': name,
-            'code': 'NAU2-%s-%s' % (request.env.user.id, stamp),
-            'company_id': company.id,
-            'source_version': 'NAU-2 · 2026-10-29',
-            'map_json': json.dumps(data, ensure_ascii=False),
-        })
-        body = json.dumps({'ok': True, 'layout_id': layout.id, 'name': layout.name},
-                          ensure_ascii=False)
-        return request.make_response(body, headers=[
-            ('Content-Type', 'application/json; charset=utf-8'),
-            ('Cache-Control', 'no-store'),
-        ])
+        # v.45 (auditoria 13/11, fase 4): fields.Datetime.now() es un datetime: el .replace('-', '') de antes
+        # fallaba SIEMPRE y el plano no se guardaba nunca (0 registros en koroshi.layout el 14/11). Con microsegundos
+        # para que dos publicaciones en el mismo segundo no choquen con la restriccion unica del codigo.
+        stamp = fields.Datetime.now().strftime('%Y%m%d_%H%M%S_%f')
+        try:
+            layout = request.env['koroshi.layout'].sudo().create({
+                'name': name,
+                'code': 'NAU2-%s-%s' % (request.env.user.id, stamp),
+                'company_id': company.id,
+                'source_version': 'NAU-2 · 2026-10-29',
+                'map_json': json.dumps(data, ensure_ascii=False),
+            })
+        except Exception as error:
+            # v.45: el error de verdad al navegador (antes solo «No se pudo publicar ahora»)
+            _logger.exception('KOROSHI Mapa: no se ha podido guardar el plano «%s»', name)
+            request.env.cr.rollback()
+            return _json({'ok': False, 'error': 'No se ha guardado: %s' % error}, status=500)
+        return _json({'ok': True, 'layout_id': layout.id, 'name': layout.name})
+
+    @http.route('/koroshi_warehouse_map/layout/load', type='http', auth='user', methods=['GET'], csrf=False)
+    def load_layout(self, layout_id=None, **kwargs):
+        """v.45: sin layout_id, la lista de planos guardados (los 20 ultimos); con layout_id, ese plano (data =
+        lo mismo que se publico: pallets y linealEdits). Solo lee."""
+        Layout = request.env['koroshi.layout'].sudo()
+        company = self._company()
+        if not layout_id:
+            planos = Layout.search([('company_id', '=', company.id)], order='id desc', limit=20)
+            return _json({'ok': True, 'layouts': [{
+                'id': l.id, 'name': l.name, 'code': l.code,
+                'created_at': fields.Datetime.context_timestamp(request.env.user, l.create_date).strftime(
+                    '%d/%m/%Y %H:%M') if l.create_date else '',
+                'user': l.create_uid.name or ''} for l in planos]})
+        try:
+            plano = Layout.browse(int(layout_id)).exists()
+        except (TypeError, ValueError):
+            plano = Layout.browse()
+        if not plano or plano.company_id != company:
+            return _json({'ok': False, 'error': 'No existe el plano %s' % layout_id}, status=404)
+        try:
+            data = json.loads(plano.map_json or '{}')
+        except ValueError as error:
+            return _json({'ok': False, 'error': 'El plano %s tiene el JSON roto: %s' % (plano.name, error)}, status=500)
+        return _json({'ok': True, 'id': plano.id, 'name': plano.name, 'data': data})
+
+    @http.route('/koroshi_warehouse_map/planner', type='http', auth='user', methods=['GET'], csrf=False)
+    def planner(self, mode=None, **kwargs):
+        """v.45: abre el plano con ?v=<version del manifest> para que el navegador coja siempre el de la version
+        instalada (antes el ?v= estaba escrito a mano en el JS y se quedaba atrasado)."""
+        try:
+            version = load_information_from_description_file('koroshi_warehouse_map').get('version') or ''
+        except Exception:
+            version = ''
+        url = '%s?v=%s' % (PLANNER, version.replace('13.0.', ''))
+        if mode == 'ops':
+            url += '&mode=ops'
+        respuesta = werkzeug.utils.redirect(url, 302)
+        respuesta.headers['Cache-Control'] = 'no-store'
+        return respuesta
 
     @http.route('/koroshi_warehouse_map/data', type='http', auth='user',
                 methods=['GET'], csrf=False)
-    def data(self, **kwargs):
+    def data(self, since=None, **kwargs):
         company = self._company()
-        now_local = fields.Datetime.context_timestamp(
-            request.env.user, fields.Datetime.now())
+        ahora = fields.Datetime.now()
+        now_local = fields.Datetime.context_timestamp(request.env.user, ahora)
+        # v.45 (auditoria 13/11, fase 4): se respeta 'since' (hora del servidor, UTC, la que devuelve server_time):
+        # solo lo que ha cambiado desde entonces, con 5 s de margen. Sin since, o mas viejo que DELTA_MAX_MIN, foto
+        # completa (asi lo que ya no esta desaparece del mapa).
+        desde = None
+        if since:
+            try:
+                desde = fields.Datetime.from_string(since) - datetime.timedelta(seconds=5)
+            except (TypeError, ValueError):
+                desde = None
+            if desde and (ahora - desde).total_seconds() > DELTA_MAX_MIN * 60:
+                desde = None
         Session = request.env['koroshi.pick.session'].sudo()
-        sessions = Session.search([
-            ('company_id', '=', company.id),
-            ('active', '=', True),
-        ], limit=200)
-        if sessions:
+        dom_sesion = [('company_id', '=', company.id), ('active', '=', True)]
+        sessions = Session.search(dom_sesion, limit=200)
+        if sessions and desde:
+            sessions = sessions.filtered(lambda x: x.write_date and x.write_date >= desde)
+        if sessions or (desde and Session.search_count(dom_sesion)):
             people = [self._session_row(session, index)
                       for index, session in enumerate(sessions)]
             source = 'ODOO · sesiones PDA'
         else:
             Picking = request.env['stock.picking'].sudo()
-            day_start = datetime.datetime.combine(
-                now_local.date(), datetime.time.min)
+            # v.45: el inicio del dia en hora local pasado a UTC (write_date esta en UTC; antes se comparaba la
+            # medianoche local tal cual: 1-2 horas de desfase)
+            tz = pytz.timezone(request.env.user.tz or 'Europe/Madrid')
+            day_start = tz.localize(datetime.datetime.combine(now_local.date(), datetime.time.min)).astimezone(
+                pytz.utc).replace(tzinfo=None)
             # Most OUTs se crean de noche y pasan a reserva después. Se
             # incluyen las activas y las modificadas desde el inicio del día,
             # sin llenar el mapa con históricos cancelados.
-            pickings = Picking.search([
+            dominio = [
                 ('company_id', '=', company.id),
                 ('picking_type_code', '=', 'outgoing'),
                 ('state', 'not in', ('cancel',)),
                 '|',
                 ('state', 'in', ('assigned', 'confirmed', 'partially_available', 'done')),
                 ('write_date', '>=', fields.Datetime.to_string(day_start)),
-            ], order='write_date desc, id desc', limit=200)
+            ]
+            if desde:
+                # v.45: lo que ha cambiado: la OUT o alguna de sus lineas (leer no toca la OUT, solo la linea)
+                dominio += ['|', ('write_date', '>=', fields.Datetime.to_string(desde)),
+                            ('move_line_ids.write_date', '>=', fields.Datetime.to_string(desde))]
+            pickings = Picking.search(dominio, order='write_date desc, id desc', limit=200)
             people = [self._picking_row(picking, index)
                       for index, picking in enumerate(pickings)]
             source = 'ODOO · OUTs'
         payload = {
             'ok': True,
             'source': source,
-            'updated_at': fields.Datetime.now(),
+            'updated_at': ahora,
+            'server_time': fields.Datetime.to_string(ahora),     # v.45: lo que hay que mandar como 'since'
+            'delta': bool(desde),
             'company_id': company.id,
-            'people': people,
             'zones': self._zone_rows(company),
             'as_of_date': now_local.strftime('%Y-%m-%d'),
             'refresh_after_seconds': 60,
         }
-        body = json.dumps(payload, default=str, ensure_ascii=False)
-        return request.make_response(body, headers=[
-            ('Content-Type', 'application/json; charset=utf-8'),
-            ('Cache-Control', 'no-store'),
-        ])
+        # v.45: la foto completa va en 'people' (el mapa la cambia entera); los cambios, en 'records' (el mapa los
+        # junta con lo que ya tiene)
+        payload['records' if desde else 'people'] = people
+        return _json(payload)

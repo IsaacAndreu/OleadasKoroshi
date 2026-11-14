@@ -28,7 +28,8 @@ módulos en [README.md](README.md): leerlos antes de empezar.
 | 1. Robustez PDA | HECHA; preparacion 3.29.0 INSTALADA el 13/11 (contenedores 1.4.0 sin instalar). koroshi_preparacion 3.29.0 (`7828ec25`) y koroshi_contenedores 1.4.0 (`663f268b`). ZIP y scripts en `bin/`. Pendiente: instalar, pasar `tests/test_idempotencia.py` en una base de pruebas y probar en PDA real. |
 | 2. Una sola cifra de productividad | HECHA, SIN INSTALAR (14/11). koroshi_operarios 2.12.0, informe 1.1.0, kpi 1.6.0, consumibles 1.4.0 y monitor 1.26.0; un solo script en `bin/`. Punto 8 hecho por la otra sesión en koroshi_actividades 1.1.0 (`25e37aa6`). Punto 9: koroshi_delegacion no está instalado, la hoja de carga usa su campo solo cuando lo esté. |
 | 3. Integraciones y permisos | HECHA, SIN INSTALAR (14/11). xpo_bultos 1.2.0, s4t_envios 1.2.0 (sigue en diagnóstico), s4t_traspasos 1.1.0, operarios 2.13.0, actividades 1.2.0, monitor 1.27.0, kpi 1.7.0, menu 2.2.0; script `bin/instalar_koroshi_fase3_auditoria_2026-11-14.sh` (después del de la fase 2). queue_job valorado y descartado. |
-| 4 a 7 | Sin empezar. |
+| 4. Mapa de almacén | HECHA, SIN INSTALAR (14/11). koroshi_warehouse_map 0.1.20261114.45 (incluye la .44 nunca instalada); script `bin/instalar_koroshi_warehouse_map_v0.1.20261114.45_2026-11-14.sh`. |
+| 5 a 7 | Sin empezar. |
 
 Versiones en el servidor el 13/11 (leídas en nath.tuctuc.com): preparacion 3.28.1, contenedores 1.2.0,
 operarios 2.11.1, informe 1.0.1, kpi 1.5.0, monitor 1.24.0, menu 2.1.0, zonas 1.2.0, warehouse_map

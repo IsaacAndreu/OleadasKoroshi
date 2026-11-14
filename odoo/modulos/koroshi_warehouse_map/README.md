@@ -3,6 +3,22 @@
 Módulo inicial para Odoo 13. Añade un mapa editable y una vista operativa de
 OUTs/personas/PDA bajo `Inventario > KOROSHI · Almacén`.
 
+
+## v20261114.45 (14/11/2026, auditoría 13/11, fase 4)
+
+- **Publicar versión ya guarda en Odoo.** Antes fallaba siempre: el código del plano se hacía con
+  `fields.Datetime.now().replace('-', '')`, pero en Odoo 13 eso es una fecha, no un texto, y daba error. El 14/11
+  había **0 planos** en `koroshi.layout`. Si algo falla, el mensaje dice el error de verdad (o «sesión caducada»).
+- **Cargar de Odoo** (botón al lado de Publicar, ruta `GET /koroshi_warehouse_map/layout/load`): lista las 20 últimas
+  versiones publicadas y abre la elegida en el editor. «Deshacer» vuelve a lo de antes.
+- Los avisos del editor (publicado, error, cargado) se ven abajo en la pantalla; antes solo iban a la consola.
+- El `?v=` del plano sale de la **versión del manifest** (la acción abre `/koroshi_warehouse_map/planner`, que
+  redirige al HTML con la versión): al actualizar el módulo, el navegador coge el plano nuevo.
+- `/koroshi_warehouse_map/data` respeta **`since`**: el mapa manda la hora del servidor de la última carga y recibe
+  solo lo que ha cambiado (la OUT o sus líneas). Sin `since` o si es de hace más de 10 min, todo.
+- El inicio del día se pasa de hora local a UTC antes de compararlo con `write_date` (antes había 1-2 h de desfase).
+- Incluye la versión 20261106.44 del repo, que no llegó a instalarse (en el servidor está la 20261102.39).
+
 ## Instalación
 
 1. Copiar la carpeta `koroshi_warehouse_map` dentro de la ruta de addons de
