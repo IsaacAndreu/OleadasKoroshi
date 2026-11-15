@@ -35,8 +35,13 @@ salen («Horas de picking de»). Ratios sin media al agrupar. «No cogido» ya n
 con los faltantes de la PDA) y cada noche se recalculan los dias con OUT abiertas. Al actualizar, solo se recalculan los
 ultimos 7 dias (koroshi_kpi.dias_recalcular). Hoja de carga: delegacion del campo de koroshi_delegacion si esta instalado.
 v1.7.0 (14/11/2026): auditoria 13/11, fase 3. La hoja de carga XPO pide el permiso de Inventario (hacia sudo()).
+v1.8.0 (15/11/2026): auditoria 13/11, fase 7. Prevision de cajas por volumen: cada manana (cron 05:30) y con
+«Prever cajas ahora», lo que queda por servir en las OUT abiertas / 0,084 m3 x factor (calibrado con las cajas
+reales de los 20 dias anteriores; del 20/10 al 13/11 sale 1,077 y 13 de 14 dias normales quedan a +-10 %). La
+ficha guarda prevista, real y desviacion. Menu «Prevision de cajas de hoy». Campos nuevos solo en
+koroshi.kpi.dia. Calculo en calculo_prevision.py con tests sin Odoo (tests/).
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

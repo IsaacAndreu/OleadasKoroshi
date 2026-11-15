@@ -12,4 +12,18 @@
         <field name="nextcall" eval="(DateTime.now().replace(hour=21, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
         <field name="active" eval="True"/>
     </record>
+
+    <!-- v1.8: cada mañana, previsión de cajas de hoy (solo escribe en koroshi.kpi.dia). 04:30 UTC = 05:30 en invierno
+         (06:30 en verano): después del reparto por zonas de las 05:00 -->
+    <record id="cron_koroshi_kpi_prevision" model="ir.cron">
+        <field name="name">KOROSHI KPI: previsión de cajas de hoy</field>
+        <field name="model_id" ref="model_koroshi_kpi_dia"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_prever()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="(DateTime.now() + timedelta(days=1)).replace(hour=4, minute=30, second=0).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
 </odoo>

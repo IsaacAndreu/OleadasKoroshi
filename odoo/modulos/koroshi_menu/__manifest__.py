@@ -8,7 +8,7 @@ KOROSHI Menú
 
 Desde la v2.0.0 todo lo KOROSHI está en una aplicación propia, fuera de Inventario, agrupado por temas:
 
-* **Hoy**: Monitor picking, Reparto de hoy, Colas, Mapa NAU-2, Hoja de carga XPO de hoy, Consulta de envíos.
+* **Hoy**: Monitor picking, Previsión de cajas, Reparto de hoy, Colas, Mapa NAU-2, Hoja de carga XPO de hoy, Consulta de envíos.
 * **Faltantes**: Faltante (PDA), Revisión de faltantes, Rondas de faltantes (INT), Crear ronda de revisión, Puestos
   a 0 hoy, Faltas por día, Faltas repetidas (revisar), Recalcular faltas de hoy.
 * **Personas**: Productividad, Tareas, OUT validadas hoy sin operario, Lecturas de preparación e «Informe de
@@ -61,8 +61,10 @@ v2.0.0.
 v2.2.0 (14/11/2026): auditoria 13/11, fase 3. «Guardar» de Ajustes KOROSHI solo para el responsable de Inventario
 (stock.group_stock_manager, el mismo grupo que ve el menu): el modelo es transitorio y escribe parametros con
 sudo(), asi que cualquier usuario podia cambiarlos por RPC.
+v2.3.0 (15/11/2026): auditoria 13/11, fase 7. «Prevision de cajas» en Hoy (la ficha de hoy de koroshi_kpi 1.8:
+cajas previstas por volumen, reales y desviacion). Necesita koroshi_kpi 1.8.0.
 """,
-    'version': '13.0.2.2.0',
+    'version': '13.0.2.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

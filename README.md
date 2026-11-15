@@ -43,9 +43,9 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 |---|---|---|---|
 | `koroshi_zonas` | 1.4.0 | Partir pedidos de tienda por zonas buscando el máximo de cajas cerradas (motor v12f, cron en sombra). | kpi |
 | `koroshi_monitor` | 1.27.0 | Pantalla en directo de las agrupaciones por zonas (Z-ddmm-D1..D5, ZX). | warehouse_map |
-| `koroshi_kpi` | 1.7.0 | KPI diarios: uds, profundidad por SKU, peso, volumen, metros y segundos por prenda. | — |
+| `koroshi_kpi` | 1.8.0 | KPI diarios: uds, profundidad por SKU, peso, volumen, metros y segundos por prenda; previsión de cajas por volumen. | — |
 | `koroshi_informe` | 1.1.0 | Correo diario, semanal y mensual de productividad. | operarios, kpi, preparacion, menu |
-| `koroshi_menu` | 2.2.0 | App KOROSHI (Hoy, Faltantes, Personas, Almacén, KPI, Configuración). | kpi, operarios, preparacion, zonas, warehouse_map, monitor, consumibles, faltantes, contenedores |
+| `koroshi_menu` | 2.3.0 | App KOROSHI (Hoy, Faltantes, Personas, Almacén, KPI, Configuración). | kpi, operarios, preparacion, zonas, warehouse_map, monitor, consumibles, faltantes, contenedores |
 | `koroshi_warehouse_map` | 0.1.20261114.45 | Mapa editable y operativo de picking de NAU-2. | — |
 | `koroshi_consumibles` | 1.4.0 | Control de cajas y materiales fuera del stock de prendas. | warehouse_map |
 | `koroshi_delegacion` | 1.0.0 | Campo Delegación en los albaranes. | — |

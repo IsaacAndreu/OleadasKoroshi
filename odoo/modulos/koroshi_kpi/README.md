@@ -10,6 +10,32 @@ horas y personas de cada fase, y **segundos por prenda** de picking (andando y l
 
 
 
+
+## v1.8.0: previsión de cajas (15/11/2026, auditoría 13/11, fase 7)
+
+- **Cajas previstas = volumen ÷ 0,084 m³ × factor.**
+  - El volumen es lo que queda por servir en las OUT abiertas (empresa 8, tipo de pedido de la ficha). Los productos
+    sin volumen en Odoo usan los litros de la tabla por tipo.
+  - El factor es la mediana de cajas reales ÷ (volumen ÷ 0,084) de los 20 días anteriores (fichas «Día completo» con
+    50 cajas o más); con menos de 5 días, 1,07.
+- **Cuándo**: cada mañana a las 05:30 (cron «KOROSHI KPI: previsión de cajas de hoy», después del reparto por zonas)
+  y con el botón **«Prever cajas ahora»** de la ficha. Menú **KOROSHI KPI › Previsión de cajas de hoy** (y en la app
+  KOROSHI › Hoy, con koroshi_menu 2.3).
+- **Por la noche**, al recalcular, la ficha tiene las cajas reales y la **desviación** (+ = han salido más). Columnas
+  «Cajas previstas» y «Desviación» en la lista.
+- **Calibrado con los datos reales** (20/10-13/11):
+  - factor 1,077;
+  - de los 14 días normales (200 cajas o más), 13 quedan a ±10 % y el 22/10 a +19 %;
+  - el 13/11 (zonas Z-1311, 15,32 m³) da 195 cajas, y salieron 199. La previsión de koroshi_zonas, con cajas de
+    80 L, decía 266.
+- **Limitaciones**:
+  - Las OUT que entran durante el día no están en la previsión de la mañana; se pueden sumar volviendo a prever.
+  - Los días muy pequeños se desvían más, porque pesa la última caja de cada OUT.
+- **Parámetros**: `koroshi_kpi.m3_caja` (0.084) y `koroshi_kpi.prevision_dias` (20).
+- **Dónde escribe**: campos nuevos solo en `koroshi.kpi.dia`.
+- **Código y tests**: el cálculo está en `calculo_prevision.py`, con tests sin Odoo:
+  `python -m unittest discover -s tests`.
+
 ## v1.7.0 (14/11/2026, auditoría 13/11, fase 3)
 
 - La **hoja de carga XPO** (`/koroshi_kpi/hoja_carga`) pide el permiso de Inventario (`stock.group_stock_user`).

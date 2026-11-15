@@ -16,6 +16,8 @@
                 <field name="pedidos" sum="Pedidos" optional="show"/>
                 <field name="outs" sum="OUT" optional="hide"/>
                 <field name="cajas" sum="Cajas" optional="show"/>
+                <field name="cajas_previstas" sum="Previstas" optional="show"/>
+                <field name="desvio_prevision" optional="show"/>
                 <field name="uds_caja" optional="hide"/>
                 <field name="peso_ud" optional="show"/>
                 <field name="peso_total" sum="Peso (kg)" optional="show"/>
@@ -51,6 +53,8 @@
             <form string="KOROSHI KPI">
                 <header>
                     <button name="action_recalcular" type="object" string="Recalcular de Odoo" class="oe_highlight"/>
+                    <button name="action_prever" type="object" string="Prever cajas ahora"
+                            attrs="{'invisible': [('metodo', '!=', 'mixto')]}"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -85,6 +89,28 @@
                             <field name="hp_expedicion" widget="float_time"/>
                             <field name="horas_reloj" widget="float_time"/>
                         </group>
+                    </group>
+                    <group string="Previsión de cajas (v1.8)" attrs="{'invisible': [('metodo', '!=', 'mixto')]}">
+                        <group>
+                            <field name="cajas_previstas"/>
+                            <field name="cajas" string="Cajas reales"/>
+                            <field name="desvio_prevision"/>
+                            <field name="prevision_el"/>
+                        </group>
+                        <group>
+                            <field name="prevision_outs"/>
+                            <field name="prevision_uds"/>
+                            <field name="prevision_volumen"/>
+                            <field name="prevision_uds_sin_volumen"/>
+                            <field name="prevision_factor"/>
+                            <field name="prevision_dias"/>
+                        </group>
+                        <div class="text-muted" colspan="2">
+                            Lo que queda por servir en las OUT abiertas al prever (cada mañana a las 05:30, o con
+                            «Prever cajas ahora») ÷ 0,084 m³ por caja × factor. El factor sale de las cajas reales de
+                            los días anteriores (parámetros koroshi_kpi.m3_caja y koroshi_kpi.prevision_dias). Las OUT
+                            que entran durante el día no están en la previsión de la mañana.
+                        </div>
                     </group>
                     <group string="Estimado por las cajas (de Odoo)">
                         <group>
@@ -231,10 +257,20 @@
         <field name="view_mode">tree</field>
     </record>
 
+    <!-- v1.8: Previsión de cajas de hoy (la ficha «Día completo» de hoy; si no tiene previsión, la calcula) -->
+    <record id="action_koroshi_kpi_prevision_hoy" model="ir.actions.server">
+        <field name="name">Previsión de cajas de hoy</field>
+        <field name="model_id" ref="model_koroshi_kpi_dia"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_hoy()</field>
+    </record>
+
     <menuitem id="menu_koroshi_kpi_root" name="KOROSHI KPI" parent="stock.menu_stock_root" sequence="90"
               groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_kpi_dia" name="KPI por día" parent="menu_koroshi_kpi_root"
               action="action_koroshi_kpi_dia" sequence="10"/>
+    <menuitem id="menu_koroshi_kpi_prevision_hoy" name="Previsión de cajas de hoy" parent="menu_koroshi_kpi_root"
+              action="action_koroshi_kpi_prevision_hoy" sequence="5"/>
     <menuitem id="menu_koroshi_kpi_peso_tipo" name="Pesos y litros por tipo" parent="menu_koroshi_kpi_root"
               action="action_koroshi_kpi_peso_tipo" sequence="20"/>
 </odoo>

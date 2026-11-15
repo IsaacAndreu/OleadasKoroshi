@@ -16,4 +16,13 @@
         <field name="key">koroshi_kpi.dias_recalcular</field>
         <field name="value">7</field>
     </record>
+    <!-- v1.8: previsión de cajas: m³ por caja (mediana de las cajas llenas, 06/11) y días para calibrar el factor -->
+    <record id="param_m3_caja" model="ir.config_parameter">
+        <field name="key">koroshi_kpi.m3_caja</field>
+        <field name="value">0.084</field>
+    </record>
+    <record id="param_prevision_dias" model="ir.config_parameter">
+        <field name="key">koroshi_kpi.prevision_dias</field>
+        <field name="value">20</field>
+    </record>
 </odoo>

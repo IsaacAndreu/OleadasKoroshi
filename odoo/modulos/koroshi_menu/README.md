@@ -4,6 +4,12 @@ Desde la **v2.0.0** todo lo KOROSHI está en una **aplicación propia** (icono K
 agrupado por temas. Antes cada tema estaba repartido entre la barra de Inventario, Informes y Configuración.
 
 
+
+## v2.3.0 (15/11/2026, auditoría 13/11, fase 7)
+
+- **Hoy › Previsión de cajas**: abre la ficha de hoy de koroshi_kpi 1.8 (cajas previstas por volumen, reales y
+  desviación). Si aún no tiene previsión, la calcula al abrir.
+
 ## v2.2.0: solo el responsable guarda los Ajustes (14/11/2026, auditoría 13/11, fase 3)
 
 - **Ajustes KOROSHI › Guardar** solo funciona para el responsable de Inventario (`stock.group_stock_manager`, el mismo

@@ -25,6 +25,9 @@
 
     <menuitem id="menu_koroshi_monitor" name="Monitor picking" parent="menu_koroshi" sequence="10"
               action="koroshi_monitor.action_koroshi_monitor" groups="stock.group_stock_user"/>
+    <!-- v2.3: previsión de cajas de hoy (koroshi_kpi 1.8) -->
+    <menuitem id="menu_koroshi_prevision_cajas" name="Previsión de cajas" parent="menu_koroshi" sequence="15"
+              action="koroshi_kpi.action_koroshi_kpi_prevision_hoy" groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_reparto" name="Reparto de hoy" parent="menu_koroshi" sequence="20"
               action="koroshi_operarios.action_koroshi_operario_reparto_hoy"
               groups="koroshi_operarios.grupo_productividad"/>
