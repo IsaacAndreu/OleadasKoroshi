@@ -18,13 +18,14 @@ from werkzeug.urls import url_quote
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError, ValidationError
 from odoo.tools import float_compare, float_is_zero, html2plaintext, html_escape
+from odoo.addons.koroshi_base import comun   # v3.31: empresa y matrícula CJ
 
 from . import ruta   # v3.13: ruta óptima por la nave
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8                      # EFFECTIVE LOGISTICS, S.L.
-RE_CJ = re.compile(r'^CJ\d{9}$')    # matrícula de caja (igual que koroshi_caja_existente)
+COMPANY_ID = comun.COMPANY_ID       # v3.31: de koroshi_base (EFFECTIVE LOGISTICS, S.L.); agrupacion.py lo importa de aquí
+RE_CJ = comun.RE_CJ                 # v3.31: matrícula de caja, la misma expresión (CJ + 9 cifras), de koroshi_base
 # v3.18: código de barras de producto (EAN/UPC) que no está en Odoo = otro código de la bolsa o de la etiqueta del
 # proveedor (p. ej. 8410782105213 el 12/11). Los de KOROSHI empiezan casi todos por 8445962 (1857 de 2130 artículos
 # de las OUT de noviembre; el resto 8445514 y 810000x).

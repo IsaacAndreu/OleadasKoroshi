@@ -1,8 +1,16 @@
-# KOROSHI Preparación en Lecturas (v3.29.0, 13/11/2026)
+# KOROSHI Preparación en Lecturas (v3.31.0, 16/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
+
+## v3.31.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- La empresa y la expresión de la matrícula CJ de Python salen de `koroshi_base.comun` (instalar koroshi_base antes).
+  La misma expresión: CJ + 9 cifras.
+- La pantalla de la PDA (JS) no cambia: su expresión lleva `/i` y no recorta espacios; pasarla a
+  `koroshi_base.comun` cambiaría qué se acepta.
+- Sin campos ni vistas nuevas.
 
 ## v3.30.0: pausa arriba (⏸ / ▶) y segunda ubicación en Faltante (14/11/2026)
 

@@ -198,12 +198,16 @@ Operarios) y la pantalla se queda tapada con «EN PAUSA»; ▶ Seguir vuelve a e
 leer la tarjeta ni salir. En pausa no se lee ni suena la alarma de parado. Sale del menú ☰. A dos (ayudante),
 como antes. FALTANTE: si la ubicación más cercana tiene pocas uds (menos de 3 o no llega), la segunda también
 sale en grande («Si no, aquí»).
+v3.31.0 (16/11/2026): auditoría 13/11, fase 6 (pasar a koroshi_base). La empresa y la expresión de la matrícula CJ
+de Python salen de koroshi_base.comun (la misma: CJ + 9 cifras). La pantalla de la PDA (JS) no cambia: su expresión
+lleva /i y no recorta espacios, y pasarla a koroshi_base.comun cambiaría qué se acepta. Sin campos ni vistas
+nuevas. Depende de koroshi_base. Incluye la 3.30.0, sin instalar (en el servidor, la 3.29.0 desde el 16/11).
 """,
-    'version': '13.0.3.30.0',
+    'version': '13.0.3.31.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_operarios', 'koroshi_faltantes',
+    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_base', 'koroshi_operarios', 'koroshi_faltantes',
                 'koroshi_consumibles'],
     'data': [
         'security/ir.model.access.csv',
