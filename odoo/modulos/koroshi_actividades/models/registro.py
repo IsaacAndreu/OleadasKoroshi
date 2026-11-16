@@ -18,8 +18,7 @@ import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
-
-ZONA_HORARIA = 'Europe/Madrid'
+from odoo.addons.koroshi_base import comun   # v1.3: hora del almacen
 
 MOTIVOS = [
     ('cambio', 'Cambió de actividad'),
@@ -34,12 +33,12 @@ MOTIVOS_FIN = ('fin', 'fin_auto', 'manual')
 
 
 def _tz():
-    return pytz.timezone(ZONA_HORARIA)
+    return comun.zona()
 
 
 def a_local(dt):
     """datetime naive UTC (Odoo) -> datetime con zona de Madrid."""
-    return pytz.utc.localize(dt).astimezone(_tz()) if dt else False
+    return comun.a_local(dt) or False
 
 
 def a_utc(dt_local):
@@ -102,7 +101,7 @@ class KoroshiActividadRegistro(models.Model):
 
     @api.model
     def _hoy(self):
-        return datetime.datetime.now(_tz()).date()
+        return comun.hoy_local()
 
     @api.model
     def abierto_de(self, employee):
@@ -213,7 +212,7 @@ class KoroshiActividadRegistro(models.Model):
         """Pausa de la comida y cierre de la jornada a su hora exacta. También cierra lo que quedó de otros días."""
         hora_pausa = self._param('hora_pausa', '13:00')
         hora_cierre = self._param('hora_cierre', '17:00')
-        ahora = datetime.datetime.now(_tz())
+        ahora = comun.ahora_local()
         for r in self.search([('estado', '=', 'curso')]):
             inicio = a_local(r.inicio)
             dia = inicio.date()

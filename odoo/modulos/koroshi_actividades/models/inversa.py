@@ -22,7 +22,9 @@ import re
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
-from .registro import _tz, a_local
+from odoo.addons.koroshi_base import comun   # v1.3
+
+from .registro import a_local
 
 RE_MATRICULA = re.compile(r'^CJ\d{9}$')
 PREFIJO_NUESTRA = 'CJ665'           # nuestras cajas de salida (almacén 6665): no son matrículas de tienda
@@ -113,7 +115,7 @@ class KoroshiInversaCaja(models.Model):
     @api.model
     def cron_teorico(self):
         """Completa las cajas de los últimos días que se leyeron antes de importar su matrícula."""
-        desde = datetime.datetime.now(_tz()).date() - datetime.timedelta(days=DIAS_TEORICO)
+        desde = comun.hoy_local() - datetime.timedelta(days=DIAS_TEORICO)
         for c in self.search([('teorico', '=', False), ('estado', '!=', 'anulada'), ('dia', '>=', desde)]):
             datos = self._teorico(c.name)
             if datos:
@@ -168,7 +170,7 @@ class KoroshiInversaCaja(models.Model):
     @api.model
     def resumen(self, employee):
         """Lo que enseña la pantalla: caja abierta, contadores de hoy y las últimas cajas."""
-        hoy = datetime.datetime.now(_tz()).date()
+        hoy = comun.hoy_local()
         cajas = self.search([('employee_id', '=', employee.id), ('dia', '=', hoy), ('estado', '!=', 'anulada')],
                             order='inicio desc, id desc')
         cerradas = cajas.filtered(lambda c: c.estado == 'cerrada')
@@ -219,7 +221,7 @@ class KoroshiInversaCaja(models.Model):
     @api.model
     def anular_ultima(self, employee):
         """La última lectura de hoy no cuenta; si cerró la caja de antes, esa vuelve a quedar abierta."""
-        hoy = datetime.datetime.now(_tz()).date()
+        hoy = comun.hoy_local()
         ultima = self.search([('employee_id', '=', employee.id), ('dia', '=', hoy), ('estado', '!=', 'anulada')],
                              order='inicio desc, id desc', limit=1)
         if not ultima:

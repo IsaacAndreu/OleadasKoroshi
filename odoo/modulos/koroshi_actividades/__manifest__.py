@@ -34,12 +34,15 @@ leídas». Auditoría 13/11 (fase 2.8): un tramo olvidado de otro día ya no se 
 marcado para revisar) y un índice único impide dos tramos abiertos de la misma persona.
 v1.2.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. La persona que manda la pantalla (employee_id o tarjeta) se
 comprueba: activa, con tarjeta y de una empresa del usuario.
+v1.3.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del almacen sale de
+koroshi_base.comun (antes, su propia ZONA_HORARIA). Mismo resultado. Sin campos ni vistas nuevas. Depende de
+koroshi_base.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'hr', 'barcodes', 'koroshi_operarios'],
+    'depends': ['web', 'hr', 'barcodes', 'koroshi_base', 'koroshi_operarios'],
     'data': [
         'security/ir.model.access.csv',
         'data/actividades.xml',

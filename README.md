@@ -35,7 +35,7 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 | `koroshi_caja_existente` | 1.3.0 | Leer una CJ ya hecha para meter uds en esa caja. | — |
 | `koroshi_faltantes` | 1.4.1 | Pieza que no está: buscar otra ubicación, cambiar reserva, llevar a FALTANTE. | operarios |
 | `koroshi_contenedores` | 1.4.0 | Mover contenedores KO_/TT_ a otra ubicación con sus prendas y reservas. | operarios |
-| `koroshi_actividades` | 1.2.0 | Registro de tiempo de manipulaciones con tarjeta en el portátil; inversa: matrícula por caja. | operarios |
+| `koroshi_actividades` | 1.3.0 | Registro de tiempo de manipulaciones con tarjeta en el portátil; inversa: matrícula por caja. | base, operarios |
 
 ### Planificación, seguimiento e informes
 

@@ -4,6 +4,11 @@ Sustituye la hoja donde las personas de manipulaciones apuntaban a mano la hora 
 No cuenta unidades: solo **tiempo por persona y actividad**.
 
 
+## v1.3.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- La hora del almacén sale de `koroshi_base.comun` (instalar koroshi_base antes). Mismo resultado; sin campos ni
+  vistas nuevas.
+
 ## v1.2.0: permisos (14/11/2026, auditoría 13/11, fase 3)
 
 - Las rutas de la pantalla (`/koroshi/actividades/*`) piden el permiso de **Inventario** (`stock.group_stock_user`):
