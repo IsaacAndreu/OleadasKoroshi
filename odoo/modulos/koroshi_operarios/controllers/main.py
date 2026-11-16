@@ -18,16 +18,13 @@
 # La tarjeta se busca en todas las empresas. Solo escribe en las tablas del modulo (con sudo, porque el usuario
 # de la PDA no tiene permisos sobre ellas).
 # =============================================================================
-import datetime
-
-import pytz
 
 from odoo import fields, http
 from odoo.exceptions import UserError
 from odoo.exceptions import AccessError
 from odoo.http import request
+from odoo.addons.koroshi_base import comun   # v2.14: hora del almacen
 
-from ..models.tarea import ZONA_HORARIA
 
 
 # v2.13 (auditoria 13/11, fase 3): las rutas hacen sudo(), asi que antes cualquier usuario con sesion podia usarlas.
@@ -52,7 +49,7 @@ def _empleado_valido(emp):
 def _hora(dt):
     if not dt:
         return ''
-    return pytz.utc.localize(dt).astimezone(pytz.timezone(ZONA_HORARIA)).strftime('%H:%M')
+    return comun.a_local(dt).strftime('%H:%M')
 
 
 def _error(e):
@@ -278,7 +275,7 @@ class KoroshiOperarios(http.Controller):
         abierta; pedidos = tareas acabadas (validadas). v2.12: las uds de la abierta con _uds_hasta_ahora(), lo mismo
         que resumen_operario_dia() (asi cuenta bien la OUT a dos de koroshi_preparacion)."""
         Tarea = request.env['koroshi.operario.tarea'].sudo()
-        hoy = datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).date()
+        hoy = comun.hoy_local()
         pedidos, uds = 0, 0.0
         for t in Tarea.search([('dia', '=', hoy), ('employee_id', '=', emp.id)]):
             if t.estado == 'curso':

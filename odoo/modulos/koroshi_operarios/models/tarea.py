@@ -22,12 +22,11 @@
 import datetime
 import re
 
-import pytz
-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.koroshi_base import comun   # v2.14: hora del almacen
 
-ZONA_HORARIA = 'Europe/Madrid'
+ZONA_HORARIA = comun.TZ   # v2.14: de koroshi_base; se queda el nombre (koroshi_informe <= 1.1 lo importa de aqui)
 PREFIJOS_ZONA = ('Z-',)     # agrupaciones de zona. v2.9: leer su nombre = la zona entera; leer una OUT = solo esa OUT
 VENTANA_TARJETA = 90        # segundos que vale la tarjeta leida para leer el pedido despues
 # v2.8: una tarea en curso sin leer nada en estos minutos ya no cuenta como «la esta haciendo ahora» (parametro
@@ -136,9 +135,8 @@ class KoroshiOperarioTarea(models.Model):
 
     @api.depends('inicio')
     def _compute_dia(self):
-        tz = pytz.timezone(ZONA_HORARIA)
         for t in self:
-            t.dia = pytz.utc.localize(t.inicio).astimezone(tz).date() if t.inicio else False
+            t.dia = comun.dia_local(t.inicio) or False
 
     @api.depends('inicio', 'fin', 'uds_inicio', 'uds_fin', 'estado')
     def _compute_resultado(self):
@@ -445,10 +443,7 @@ class KoroshiOperarioTarea(models.Model):
     @api.model
     def cron_cerrar(self):
         """Cada 5 min: cierra las tareas cuyo pedido ya esta validado; las de dias anteriores, sin cerrar."""
-        tz = pytz.timezone(ZONA_HORARIA)
-        ahora_local = datetime.datetime.now(tz)
-        medianoche = tz.localize(datetime.datetime(ahora_local.year, ahora_local.month, ahora_local.day))
-        medianoche_utc = medianoche.astimezone(pytz.utc).replace(tzinfo=None)
+        medianoche_utc = comun.inicio_dia_utc(comun.hoy_local())
         for t in self.sudo().search([('estado', '=', 'curso')]):
             pickings = t._pickings()
             if pickings and self._validado(pickings):
@@ -466,10 +461,7 @@ class KoroshiOperarioTarea(models.Model):
     @api.model
     def action_validadas_sin_operario(self):
         """OUT validadas hoy (salida) que no estan en ninguna tarea."""
-        tz = pytz.timezone(ZONA_HORARIA)
-        ahora_local = datetime.datetime.now(tz)
-        medianoche = tz.localize(datetime.datetime(ahora_local.year, ahora_local.month, ahora_local.day))
-        desde = medianoche.astimezone(pytz.utc).replace(tzinfo=None)
+        desde = comun.inicio_dia_utc(comun.hoy_local())
         hechas = self.env['stock.picking'].search([
             ('picking_type_code', '=', 'outgoing'),
             ('state', '=', 'done'),

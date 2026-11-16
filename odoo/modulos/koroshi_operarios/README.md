@@ -1,10 +1,16 @@
-# KOROSHI Operarios (v2.13.0, 14/11/2026)
+# KOROSHI Operarios (v2.14.0, 16/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
 
 
+
+## v2.14.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- La hora del almacén sale de `koroshi_base.comun` (instalar koroshi_base antes). Mismo resultado.
+- `ZONA_HORARIA` se queda en `models/tarea.py` como nombre: koroshi_informe 1.0 y 1.1 lo importan de aquí.
+- Lecturas de la PDA no cambia. Sin campos ni vistas nuevas.
 
 ## v2.13.0: permisos (14/11/2026, auditoría 13/11, fase 3)
 

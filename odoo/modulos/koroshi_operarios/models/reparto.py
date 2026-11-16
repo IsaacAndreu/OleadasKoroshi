@@ -19,13 +19,13 @@ import logging
 import re
 
 import psycopg2
-import pytz
 from PyPDF2 import PdfFileReader, PdfFileWriter
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.koroshi_base import comun   # v2.14: hora del almacen
 
-from .tarea import PREFIJOS_ZONA, ZONA_HORARIA
+from .tarea import PREFIJOS_ZONA
 
 _logger = logging.getLogger(__name__)
 
@@ -39,7 +39,7 @@ ACCION_ZONA = 'KOROSHI Etiquetas zona'
 
 
 def _hoy():
-    return datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).date()
+    return comun.hoy_local()
 
 
 def _unir_pdf(pdfs):
@@ -593,7 +593,7 @@ class KoroshiOperarioAsignacion(models.Model):
             if outs:
                 pdfs.append(zona.render_qweb_pdf(outs.ids)[0])
         asigs.write({'etiqueta_impresa': fields.Datetime.now()})
-        ahora = datetime.datetime.now(pytz.timezone(ZONA_HORARIA))
+        ahora = comun.ahora_local()
         nombre = 'Etiquetas operarios %s.pdf' % ahora.strftime('%d-%m %H%M')
         adjunto = self.env['ir.attachment'].create({
             'name': nombre,
@@ -608,7 +608,7 @@ class KoroshiOperarioAsignacion(models.Model):
         return {'type': 'ir.actions.act_url', 'url': '/web/content/%d' % adjunto.id, 'target': 'new'}
 
     def _ahora_texto(self):
-        return datetime.datetime.now(pytz.timezone(ZONA_HORARIA)).strftime('%d/%m/%Y %H:%M')
+        return comun.ahora_local().strftime('%d/%m/%Y %H:%M')
 
     def action_imprimir_etiquetas(self):
         """Colas: Accion > Imprimir etiquetas de lo seleccionado (tambien para reimprimir)."""

@@ -101,12 +101,15 @@ el de koroshi_informe. Reparto: las OUT de zonas Z- y el tramo se filtran en la 
 v2.13.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. El employee_id que manda la PDA se comprueba (activo, con
 tarjeta y de una empresa del usuario). «Asignar a operario» ya no usa display_notification (no existe en Odoo 13:
 daba error despues de asignar): abre la cola del operario.
+v2.14.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del almacen sale de koroshi_base.comun
+(dia de la tarea, medianoche del cron de cierre, «hoy» de Lecturas y del reparto). ZONA_HORARIA se queda como nombre
+(koroshi_informe <= 1.1 lo importa). Mismo resultado; sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.2.13.0',
+    'version': '13.0.2.14.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'mail', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode'],
+    'depends': ['web', 'mail', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_base'],
     'data': [
         'security/grupo.xml',
         'security/ir.model.access.csv',

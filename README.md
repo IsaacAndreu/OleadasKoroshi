@@ -29,7 +29,7 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 
 | Módulo | Versión | Qué hace | Depende de (propios) |
 |---|---|---|---|
-| `koroshi_operarios` | 2.13.0 | Cola de pedidos por operario en la PDA (tarjeta una vez, siguiente pedido solo); tiempo y uds por pedido. | — |
+| `koroshi_operarios` | 2.14.0 | Cola de pedidos por operario en la PDA (tarjeta una vez, siguiente pedido solo); tiempo y uds por pedido. | base |
 | `koroshi_preparacion` | 3.30.0 | Preparar la OUT dentro de Lecturas: leer, cerrar caja con la CJ y validar; agrupaciones Z-. | operarios, faltantes, consumibles |
 | `koroshi_pda_app` | 1.1.0 | Lecturas como app instalable en la PDA. | base, operarios |
 | `koroshi_caja_existente` | 1.4.0 | Leer una CJ ya hecha para meter uds en esa caja. | base |
