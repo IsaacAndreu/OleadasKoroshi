@@ -19,6 +19,11 @@
     <menuitem id="menu_koroshi_app" name="KOROSHI" sequence="5" groups="stock.group_stock_user"
               web_icon="koroshi_menu,static/description/icon_koroshi.png"/>
 
+    <!-- v2.5 (16/11/2026): lo que solo interesa a los jefes de almacén va con grupo_jefes (views/bandeja.xml). El
+         picking entra con el usuario «Almacén Nath», que no está en ese grupo: le quedan Monitor, Hoja de carga XPO,
+         Consulta de envíos, Faltante (PDA) y Registrar consumo (más Lecturas, código de barras, Actividades y
+         Contenedores, que son de sus módulos). «-grupo» quita el grupo de antes: al actualizar, Odoo solo AÑADE los
+         grupos de un menuitem, no quita los que ya tenía. -->
     <!-- ===== Hoy ===== -->
     <menuitem id="menu_koroshi" name="Hoy" parent="menu_koroshi_app" sequence="10"
               groups="stock.group_stock_user"/>
@@ -27,17 +32,17 @@
               action="koroshi_monitor.action_koroshi_monitor" groups="stock.group_stock_user"/>
     <!-- v2.4: bandeja del encargado (lo pendiente e integraciones en una pantalla; views/bandeja.xml) -->
     <menuitem id="menu_koroshi_bandeja" name="Bandeja del encargado" parent="menu_koroshi" sequence="5"
-              action="action_koroshi_bandeja" groups="stock.group_stock_user"/>
+              action="action_koroshi_bandeja" groups="-stock.group_stock_user,grupo_jefes"/>
     <!-- v2.3: previsión de cajas de hoy (koroshi_kpi 1.8) -->
     <menuitem id="menu_koroshi_prevision_cajas" name="Previsión de cajas" parent="menu_koroshi" sequence="15"
-              action="koroshi_kpi.action_koroshi_kpi_prevision_hoy" groups="stock.group_stock_user"/>
+              action="koroshi_kpi.action_koroshi_kpi_prevision_hoy" groups="-stock.group_stock_user,grupo_jefes"/>
     <menuitem id="menu_koroshi_reparto" name="Reparto de hoy" parent="menu_koroshi" sequence="20"
               action="koroshi_operarios.action_koroshi_operario_reparto_hoy"
-              groups="koroshi_operarios.grupo_productividad"/>
+              groups="-koroshi_operarios.grupo_productividad,grupo_jefes"/>
     <menuitem id="menu_koroshi_colas" name="Colas" parent="menu_koroshi" sequence="30"
-              action="koroshi_operarios.action_koroshi_operario_colas" groups="koroshi_operarios.grupo_productividad"/>
+              action="koroshi_operarios.action_koroshi_operario_colas" groups="-koroshi_operarios.grupo_productividad,grupo_jefes"/>
     <menuitem id="menu_koroshi_mapa" name="Mapa NAU-2" parent="menu_koroshi" sequence="40"
-              action="koroshi_warehouse_map.action_koroshi_warehouse_map" groups="stock.group_stock_user"/>
+              action="koroshi_warehouse_map.action_koroshi_warehouse_map" groups="-stock.group_stock_user,grupo_jefes"/>
     <menuitem id="menu_koroshi_hoja_carga" name="Hoja de carga XPO de hoy" parent="menu_koroshi" sequence="50"
               action="koroshi_kpi.action_koroshi_hoja_carga_hoy" groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_consulta_envios" name="Consulta de envíos" parent="menu_koroshi" sequence="60"
@@ -50,26 +55,31 @@
     <menuitem id="menu_koroshi_faltante_pda" name="Faltante (PDA)" parent="menu_koroshi_sec_faltantes" sequence="10"
               action="koroshi_faltantes.action_koroshi_faltantes_pantalla"/>
     <menuitem id="menu_koroshi_revision_faltantes" name="Revisión de faltantes" parent="menu_koroshi_sec_faltantes"
-              sequence="20" action="koroshi_faltantes.action_koroshi_faltante_revision"/>
+              sequence="20" action="koroshi_faltantes.action_koroshi_faltante_revision"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_rondas_faltantes" name="Rondas de faltantes (INT)" parent="menu_koroshi_sec_faltantes"
-              sequence="30" action="koroshi_faltantes.action_koroshi_rondas"/>
+              sequence="30" action="koroshi_faltantes.action_koroshi_rondas"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_crear_ronda" name="Crear ronda de revisión" parent="menu_koroshi_sec_faltantes"
-              sequence="40" action="koroshi_faltantes.action_koroshi_crear_ronda" groups="stock.group_stock_manager"/>
+              sequence="40" action="koroshi_faltantes.action_koroshi_crear_ronda" groups="-stock.group_stock_manager,grupo_jefes"/>
     <menuitem id="menu_koroshi_puestos_cero" name="Puestos a 0 hoy" parent="menu_koroshi_sec_faltantes" sequence="50"
-              action="koroshi_faltantes.action_koroshi_puestos_a_cero" groups="stock.group_stock_manager"/>
+              action="koroshi_faltantes.action_koroshi_puestos_a_cero" groups="-stock.group_stock_manager,grupo_jefes"/>
     <menuitem id="menu_koroshi_kpi_falta" name="Faltas por día" parent="menu_koroshi_sec_faltantes" sequence="60"
-              action="koroshi_kpi.action_koroshi_kpi_falta"/>
+              action="koroshi_kpi.action_koroshi_kpi_falta"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_kpi_faltas_repetidas" name="Faltas repetidas (revisar)"
               parent="menu_koroshi_sec_faltantes" sequence="70"
-              action="koroshi_kpi.action_koroshi_kpi_faltas_repetidas"/>
+              action="koroshi_kpi.action_koroshi_kpi_faltas_repetidas"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_recalcular_faltas" name="Recalcular faltas de hoy" parent="menu_koroshi_sec_faltantes"
-              sequence="80" action="koroshi_kpi.action_koroshi_kpi_falta_recalcular"/>
+              sequence="80" action="koroshi_kpi.action_koroshi_kpi_falta_recalcular"
+              groups="grupo_jefes"/>
 
     <!-- ===== Personas (id de la v1.x: menu_koroshi_informes; ver arriba) =====
          Huecos 20, 25 y 30 reservados para Jornada por persona, Horas por actividad y Tramos de tiempo de
          koroshi_actividades, que aún no está instalado en el servidor (13/11/2026). -->
     <menuitem id="menu_koroshi_informes" name="Personas" parent="menu_koroshi_app" sequence="30"
-              groups="stock.group_stock_user"/>
+              groups="-stock.group_stock_user,grupo_jefes"/>
 
     <menuitem id="menu_koroshi_productividad" name="Productividad" parent="menu_koroshi_informes" sequence="10"
               action="koroshi_operarios.action_koroshi_operario_productividad"
@@ -89,23 +99,27 @@
               groups="stock.group_stock_user"/>
 
     <menuitem id="menu_koroshi_contenedores_mov" name="Movimientos de contenedores" parent="menu_koroshi_sec_almacen"
-              sequence="10" action="koroshi_contenedores.action_koroshi_contenedor_mov"/>
+              sequence="10" action="koroshi_contenedores.action_koroshi_contenedor_mov"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_registrar_consumo" name="Registrar consumo" parent="menu_koroshi_sec_almacen"
               sequence="20" action="koroshi_consumibles.action_koroshi_consumable_quick_consumption"
               groups="stock.group_stock_user"/>
     <menuitem id="menu_koroshi_consumibles_historial" name="Historial de consumibles" parent="menu_koroshi_sec_almacen"
               sequence="30" action="koroshi_consumibles.action_koroshi_consumable_moves"
-              groups="stock.group_stock_user"/>
+              groups="-stock.group_stock_user,grupo_jefes"/>
     <menuitem id="menu_koroshi_zonas_ejecucion" name="Ejecuciones de zonas" parent="menu_koroshi_sec_almacen"
-              sequence="40" action="koroshi_zonas.action_koroshi_zonas_ejecucion"/>
+              sequence="40" action="koroshi_zonas.action_koroshi_zonas_ejecucion"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_zonas_cajas" name="Cajas cerradas por día y zona" parent="menu_koroshi_sec_almacen"
-              sequence="50" action="koroshi_zonas.action_koroshi_zonas_ejecucion_out"/>
+              sequence="50" action="koroshi_zonas.action_koroshi_zonas_ejecucion_out"
+              groups="grupo_jefes"/>
     <menuitem id="menu_koroshi_zonas_diagnostico" name="Diagnóstico de zonas de hoy" parent="menu_koroshi_sec_almacen"
-              sequence="60" action="koroshi_zonas.action_koroshi_zonas_diagnostico_hoy"/>
+              sequence="60" action="koroshi_zonas.action_koroshi_zonas_diagnostico_hoy"
+              groups="grupo_jefes"/>
 
     <!-- ===== KPI ===== -->
     <menuitem id="menu_koroshi_sec_kpi" name="KPI" parent="menu_koroshi_app" sequence="50"
-              groups="stock.group_stock_user"/>
+              groups="-stock.group_stock_user,grupo_jefes"/>
 
     <menuitem id="menu_koroshi_kpi_dia" name="KPI por día" parent="menu_koroshi_sec_kpi" sequence="10"
               action="koroshi_kpi.action_koroshi_kpi_dia"/>
@@ -117,7 +131,7 @@
     <!-- ===== Configuración (id de la v1.x: menu_koroshi_config; Ajustes KOROSHI va con sequence 1) =====
          Hueco 35 reservado para «Actividades» de koroshi_actividades (aún no instalado). -->
     <menuitem id="menu_koroshi_config" name="Configuración" parent="menu_koroshi_app" sequence="90"
-              groups="stock.group_stock_user"/>
+              groups="-stock.group_stock_user,grupo_jefes"/>
 
     <menuitem id="menu_koroshi_operarios" name="Operarios" parent="menu_koroshi_config" sequence="10"
               action="koroshi_operarios.action_koroshi_operarios_empleados"

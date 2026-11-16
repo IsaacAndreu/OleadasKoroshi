@@ -74,8 +74,16 @@ Depende de koroshi_base.
 v2.4.1 (16/11/2026): la bandeja tambien como icono «Bandeja» en la pantalla de aplicaciones, solo para el grupo
 «KOROSHI: Bandeja del encargado en Aplicaciones». Al actualizar (o instalar) entra el usuario «Almacen 2»
 (almacen2@nath.es). Para darselo a otro: Ajustes > Usuarios. El menu de Hoy sigue igual.
+v2.5.0 (16/11/2026): grupo «KOROSHI: Jefes de almacen». Solo ellos ven en la app KOROSHI: Bandeja, Prevision de
+cajas, Reparto de hoy, Colas, Mapa NAU-2, la revision de Faltantes (revision, rondas, crear ronda, puestos a 0,
+faltas por dia, recalcular, repetidas), Personas, KPI, Historial de consumibles, Movimientos de contenedores, las
+tres de Zonas y Configuracion. El picking entra con «Almacen Nath» (almacen@nath.es), que no esta en el grupo: le
+quedan Monitor, Hoja de carga XPO, Consulta de envios, Faltante (PDA) y Registrar consumo (y Lecturas, codigo de
+barras, Actividades y Contenedores, de sus modulos). Al actualizar o instalar entran todos los usuarios internos de
+la empresa 8 con Inventario menos Almacen Nath. Los menus llevan «-grupo» para quitar el de antes (Odoo solo anade
+grupos al actualizar). Solo menus: los permisos de los datos no cambian.
 """,
-    'version': '13.0.2.4.1',
+    'version': '13.0.2.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

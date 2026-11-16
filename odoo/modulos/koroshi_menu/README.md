@@ -5,6 +5,21 @@ agrupado por temas. Antes cada tema estaba repartido entre la barra de Inventari
 
 
 
+## v2.5.0: jefes de almacén (16/11/2026)
+
+Grupo **«KOROSHI: Jefes de almacén»**. El picking entra con **Almacén Nath** (almacen@nath.es), que no está en él.
+
+| | Lo ven |
+|---|---|
+| **Todos (también el picking)** | Monitor picking, Hoja de carga XPO de hoy, Consulta de envíos, Faltante (PDA), Registrar consumo. Fuera de esta app: Lecturas, código de barras, Actividades, Contenedores y los botones de las OUT («Enviar al Expedidor», «Hoja de carga XPO»). |
+| **Solo jefes** | Bandeja, Previsión de cajas, Reparto de hoy, Colas, Mapa NAU-2; Revisión, Rondas, Crear ronda, Puestos a 0, Faltas por día, Recalcular y Faltas repetidas; Personas entera; KPI entera; Historial de consumibles, Movimientos de contenedores y las tres de Zonas; Configuración entera. |
+
+- Al actualizar (o instalar) entran **todos los usuarios internos de la empresa 8 con Inventario menos Almacén Nath**
+  (el 16/11: Administración, Almacen 2, BackOffice, Departament IT y Jose Ismael Fonollosa). Solo añade.
+- Un usuario nuevo: Ajustes › Usuarios › el usuario › «KOROSHI: Jefes de almacén».
+- Solo cambia qué menús se ven: los permisos de los datos son los de siempre.
+- «Crear ronda» y «Puestos a 0» eran del responsable de Inventario: ahora, de los jefes.
+
 ## v2.4.1: icono «Bandeja» en Aplicaciones, solo para Almacen 2 (16/11/2026)
 
 - La bandeja también sale como icono propio en la pantalla de aplicaciones, solo para el grupo «KOROSHI: Bandeja del

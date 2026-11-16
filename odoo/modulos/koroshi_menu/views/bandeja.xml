@@ -88,6 +88,14 @@
         <field name="comment">Ve el icono «Bandeja» en la pantalla de aplicaciones.</field>
     </record>
 
+    <!-- v2.5: jefes de almacén. Ven lo que no es de picking (views/menu.xml). Al instalar o actualizar entran todos los
+         usuarios internos de la empresa 8 con Inventario MENOS «Almacén Nath» (almacen@nath.es), que es el de las PDA y
+         el picking (ver __init__.py). Los nuevos: Ajustes › Usuarios › el usuario › este grupo. -->
+    <record id="grupo_jefes" model="res.groups">
+        <field name="name">KOROSHI: Jefes de almacén</field>
+        <field name="comment">Ve en la app KOROSHI lo que solo interesa a los jefes: bandeja, previsión, reparto, colas, mapa, revisión de faltantes, Personas, KPI, zonas y Configuración.</field>
+    </record>
+
     <menuitem id="menu_koroshi_bandeja_app" name="Bandeja" sequence="6" action="action_koroshi_bandeja"
               groups="grupo_bandeja_app" web_icon="koroshi_menu,static/description/icon_bandeja.png"/>
 </odoo>

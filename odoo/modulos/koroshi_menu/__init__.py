@@ -27,8 +27,28 @@ def dar_bandeja_en_apps(env):
     return usuario
 
 
+USUARIO_PICKING = 'almacen@nath.es'   # v2.5: «Almacén Nath», el usuario de las PDA y el picking: NO es jefe
+
+
+def dar_jefes(env):
+    """v2.5: mete en «KOROSHI: Jefes de almacén» a todos los usuarios internos activos de la empresa 8 con Inventario,
+    menos el de picking. Solo añade (no quita a nadie). Devuelve los que ha añadido."""
+    grupo = env.ref('koroshi_menu.grupo_jefes', raise_if_not_found=False)
+    inventario = env.ref('stock.group_stock_user', raise_if_not_found=False)
+    if not grupo or not inventario:
+        return env['res.users']
+    usuarios = env['res.users'].search([('share', '=', False), ('company_ids', 'in', [8]),
+                                        ('groups_id', 'in', [inventario.id]), ('login', '!=', USUARIO_PICKING)])
+    nuevos = usuarios - grupo.users
+    if nuevos:
+        grupo.write({'users': [(4, u.id) for u in nuevos]})
+    return nuevos
+
+
 def post_init_hook(cr, registry):
-    dar_bandeja_en_apps(api.Environment(cr, SUPERUSER_ID, {}))
+    env = api.Environment(cr, SUPERUSER_ID, {})
+    dar_bandeja_en_apps(env)
+    dar_jefes(env)
 
 
 def uninstall_hook(cr, registry):
