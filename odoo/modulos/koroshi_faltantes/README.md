@@ -1,4 +1,4 @@
-# KOROSHI Faltantes (v1.4.1, 11/11/2026)
+# KOROSHI Faltantes (v1.5.0, 16/11/2026)
 
 Qué hacer en la PDA cuando una pieza de una OUT no está donde dice Odoo. Hasta ahora se ponía a 0 la ubicación desde la PDA:
 el stock se iba a pérdidas sin saber quién, de qué OUT ni por qué. Del 27/10 al 09/11 se hizo 111 veces (159 uds), y el 44 % de
@@ -8,6 +8,12 @@ Con este módulo:
 - la línea de la OUT pasa a otra ubicación con stock libre;
 - la pieza que no está va a **EFFEC/FALTANTE**;
 - queda un registro que se revisa cada día.
+
+## v1.5.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- La hora del almacén sale de `koroshi_base.comun` (instalar koroshi_base antes).
+- «Puestos a 0 hoy» ya empieza a las 00:00 justas también el día del cambio de hora (antes, una hora corrido).
+- La pantalla Faltante de la PDA no cambia. Sin campos ni vistas nuevas.
 
 ## v1.4.1: corrección (11/11/2026)
 

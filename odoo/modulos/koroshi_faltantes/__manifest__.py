@@ -42,12 +42,16 @@ v1.4.0 (11/11/2026): mismo aspecto que Preparacion en Lecturas. La UBICACION va 
   En PDA sin la barra de menus de Odoo.
 v1.4.1 (11/11/2026): «Prueba en» se veia gris sobre negro (regla antigua); ahora en blanco. Debajo de la ubicacion,
   el nombre del articulo una sola vez (no el EAN ni el codigo repetido).
+v1.5.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del almacen sale de koroshi_base.comun
+  (antes, su propia ZONA_HORARIA). Arregla «Puestos a 0 hoy» el dia del cambio de hora: las 00:00 se sacaban
+  cambiando la hora de «ahora» con el desfase de ahora, y quedaban una hora corridas. Sin campos ni vistas nuevas.
+  Depende de koroshi_base. La pantalla Faltante de la PDA no cambia.
 """,
-    'version': '13.0.1.4.1',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_operarios'],
+    'depends': ['web', 'hr', 'stock', 'stock_picking_batch', 'stock_barcode', 'koroshi_base', 'koroshi_operarios'],
     'data': [
         'security/ir.model.access.csv',
         'data/ubicacion.xml',

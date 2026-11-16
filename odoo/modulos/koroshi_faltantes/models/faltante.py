@@ -25,16 +25,13 @@
 # Todo dentro de un savepoint: si algo falla, no se hace nada.
 # No anade campos a albaranes, movimientos, lineas, agrupaciones ni tipos de operacion.
 # =============================================================================
-import datetime
 import re
-
-import pytz
 
 from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero, html_escape
+from odoo.addons.koroshi_base import comun   # v1.5: hora del almacen
 
-ZONA_HORARIA = 'Europe/Madrid'
 MAX_ALTERNATIVAS = 5
 NOMBRE_PUESTA_A_CERO = 'Cantidad de producto actualizada'   # lo que escribe Odoo al poner a 0 desde la PDA
 PREFIJOS_ZONA = ('Z-',)                                      # agrupaciones que se abren enteras
@@ -117,9 +114,8 @@ class KoroshiFaltante(models.Model):
 
     @api.depends('fecha')
     def _compute_dia(self):
-        tz = pytz.timezone(ZONA_HORARIA)
         for f in self:
-            f.dia = pytz.utc.localize(f.fecha).astimezone(tz).date() if f.fecha else False
+            f.dia = comun.dia_local(f.fecha) or False
 
     # ------------------------------------------------------------------ ubicaciones
     @api.model
@@ -565,8 +561,7 @@ class KoroshiFaltante(models.Model):
         if not faltantes:
             raise UserError('No hay faltantes pendientes con uds en FALTANTE que no esten ya en una ronda.')
         faltant = self._ubicacion_faltant()
-        tz = pytz.timezone(ZONA_HORARIA)
-        ahora = datetime.datetime.now(tz).strftime('%d/%m %H:%M')
+        ahora = comun.ahora_local().strftime('%d/%m %H:%M')
         grupos = {}
         for f in faltantes:
             tipo = f.picking_id.picking_type_id.warehouse_id.int_type_id
@@ -684,9 +679,9 @@ class KoroshiFaltante(models.Model):
     def action_puestos_a_cero(self):
         """Movimientos de hoy hechos poniendo cantidades a 0 (o cambiandolas) en la PDA, sin pasar por
         la pantalla Faltante. Agrupados por usuario."""
-        tz = pytz.timezone(ZONA_HORARIA)
-        hoy = datetime.datetime.now(tz).replace(hour=0, minute=0, second=0, microsecond=0)
-        desde = fields.Datetime.to_string(hoy.astimezone(pytz.utc).replace(tzinfo=None))
+        # v1.5: las 00:00 de hoy con su propio desfase (antes se cambiaba la hora de «ahora» y el dia del cambio de
+        # hora quedaba una hora corrido)
+        desde = fields.Datetime.to_string(comun.inicio_dia_utc(comun.hoy_local()))
         return {
             'type': 'ir.actions.act_window',
             'name': 'Puestos a 0 hoy',
