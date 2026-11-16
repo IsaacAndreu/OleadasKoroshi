@@ -63,13 +63,22 @@ v2.2.0 (14/11/2026): auditoria 13/11, fase 3. «Guardar» de Ajustes KOROSHI sol
 sudo(), asi que cualquier usuario podia cambiarlos por RPC.
 v2.3.0 (15/11/2026): auditoria 13/11, fase 7. «Prevision de cajas» en Hoy (la ficha de hoy de koroshi_kpi 1.8:
 cajas previstas por volumen, reales y desviacion). Necesita koroshi_kpi 1.8.0.
+v2.4.0 (16/11/2026): auditoria 13/11, fase 7, ideas 2 y 3. «Bandeja del encargado» en Hoy: una pantalla con lo
+pendiente (Lecturas sin guardar en horario, faltantes, lecturas rechazadas de cola, pedidos sin OUT, reparto de zonas
+con aviso, jobs fallidos, envios S4T rechazados, traspasos S4T con error, tramos de actividad por revisar) y una
+pestana de Integraciones (crons KOROSHI y S4T con retraso, cola root.s4t_sync, OUT de XPO sin etiqueta, ultima
+pasada del sync S4T). Semaforo y «Abrir» en cada linea. Solo lee; tablas transitorias propias; cada fuente solo si
+su modulo esta instalado. «Lecturas de la PDA» en rojo con 30 min de horario sin ninguna lectura y operarios en
+Lecturas (parametro koroshi_menu.minutos_sin_lecturas): el 13-16/11 la PDA no guardaba y no lo vio nadie.
+Depende de koroshi_base.
 """,
-    'version': '13.0.2.3.0',
+    'version': '13.0.2.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
     'depends': [
         'stock',
+        'koroshi_base',
         'koroshi_kpi',
         'koroshi_operarios',
         'koroshi_preparacion',
@@ -81,6 +90,7 @@ cajas previstas por volumen, reales y desviacion). Necesita koroshi_kpi 1.8.0.
         'koroshi_contenedores',
     ],
     'data': [
+        'views/bandeja.xml',
         'views/menu.xml',
         'views/ajustes.xml',
         'views/apps.xml',

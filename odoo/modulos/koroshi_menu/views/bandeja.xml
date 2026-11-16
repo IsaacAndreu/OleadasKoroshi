@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v2.4 (auditoría 13/11, fase 7, ideas 2 y 3): Bandeja del encargado. Se calcula al abrir (models/bandeja.py). -->
+    <record id="view_koroshi_bandeja_linea_tree" model="ir.ui.view">
+        <field name="name">koroshi.bandeja.linea.tree</field>
+        <field name="model">koroshi.bandeja.linea</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'"
+                  decoration-success="semaforo == 'verde'" decoration-muted="semaforo == 'gris'">
+                <field name="semaforo" invisible="1"/>
+                <field name="accion" invisible="1"/>
+                <field name="marca"/>
+                <field name="que"/>
+                <field name="cuantos"/>
+                <field name="detalle"/>
+                <button name="action_abrir" type="object" string="Abrir" icon="fa-arrow-right"
+                        attrs="{'invisible': [('accion', '=', False)]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_bandeja_form" model="ir.ui.view">
+        <field name="name">koroshi.bandeja.form</field>
+        <field name="model">koroshi.bandeja</field>
+        <field name="arch" type="xml">
+            <form string="Bandeja del encargado" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_actualizar" type="object" string="Actualizar" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="resumen"/></h1>
+                        <div class="text-muted">Calculado el <field name="generado" class="oe_inline"/>.
+                            Solo lee: para resolver, «Abrir» en cada línea.</div>
+                    </div>
+                    <notebook>
+                        <page string="Pendiente" name="pendiente">
+                            <field name="pendiente_ids" nolabel="1">
+                                <tree create="false" edit="false" delete="false"
+                                      decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'"
+                                      decoration-success="semaforo == 'verde'" decoration-muted="semaforo == 'gris'">
+                                    <field name="semaforo" invisible="1"/>
+                                    <field name="accion" invisible="1"/>
+                                    <field name="marca"/>
+                                    <field name="que"/>
+                                    <field name="cuantos"/>
+                                    <field name="detalle"/>
+                                    <button name="action_abrir" type="object" string="Abrir" icon="fa-arrow-right"
+                                            attrs="{'invisible': [('accion', '=', False)]}"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Integraciones" name="integraciones">
+                            <field name="integracion_ids" nolabel="1">
+                                <tree create="false" edit="false" delete="false"
+                                      decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'"
+                                      decoration-success="semaforo == 'verde'" decoration-muted="semaforo == 'gris'">
+                                    <field name="semaforo" invisible="1"/>
+                                    <field name="accion" invisible="1"/>
+                                    <field name="marca"/>
+                                    <field name="que"/>
+                                    <field name="cuantos"/>
+                                    <field name="detalle"/>
+                                    <button name="action_abrir" type="object" string="Abrir" icon="fa-arrow-right"
+                                            attrs="{'invisible': [('accion', '=', False)]}"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_bandeja" model="ir.actions.server">
+        <field name="name">Bandeja del encargado</field>
+        <field name="model_id" ref="model_koroshi_bandeja"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_bandeja()</field>
+    </record>
+</odoo>

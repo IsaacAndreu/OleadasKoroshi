@@ -25,6 +25,9 @@
 
     <menuitem id="menu_koroshi_monitor" name="Monitor picking" parent="menu_koroshi" sequence="10"
               action="koroshi_monitor.action_koroshi_monitor" groups="stock.group_stock_user"/>
+    <!-- v2.4: bandeja del encargado (lo pendiente e integraciones en una pantalla; views/bandeja.xml) -->
+    <menuitem id="menu_koroshi_bandeja" name="Bandeja del encargado" parent="menu_koroshi" sequence="5"
+              action="action_koroshi_bandeja" groups="stock.group_stock_user"/>
     <!-- v2.3: previsión de cajas de hoy (koroshi_kpi 1.8) -->
     <menuitem id="menu_koroshi_prevision_cajas" name="Previsión de cajas" parent="menu_koroshi" sequence="15"
               action="koroshi_kpi.action_koroshi_kpi_prevision_hoy" groups="stock.group_stock_user"/>

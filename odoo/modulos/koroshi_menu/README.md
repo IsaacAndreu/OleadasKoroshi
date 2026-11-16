@@ -5,6 +5,29 @@ agrupado por temas. Antes cada tema estaba repartido entre la barra de Inventari
 
 
 
+## v2.4.0: Bandeja del encargado (16/11/2026, auditoría 13/11, fase 7, ideas 2 y 3)
+
+**Hoy › Bandeja del encargado**: una pantalla con todo lo que hay que mirar. Cada línea con semáforo (rojo, ámbar,
+verde, gris = sin datos), cuántas, detalle y «Abrir» (la lista donde se resuelve). «Actualizar» lo vuelve a calcular.
+
+| Pestaña | Línea | Rojo / ámbar cuando |
+|---|---|---|
+| Pendiente | Lecturas de la PDA | rojo: 30 min **de horario** (los tramos de la alarma de la PDA) sin ninguna lectura guardada, con operarios hoy en Lecturas. El 13-16/11 la PDA no guardaba y no lo vio nadie. Minutos: parámetro `koroshi_menu.minutos_sin_lecturas` |
+| Pendiente | Faltantes pendientes | ámbar si hay alguno (y el más antiguo) |
+| Pendiente | Lecturas rechazadas de cola de la PDA | rojo si hay alguna (preparación 3.29+) |
+| Pendiente | Pedidos sin OUT (¿OUT borrada?) | rojo: pedidos confirmados de los últimos 7 días sin ninguna entrega |
+| Pendiente | Reparto de zonas de hoy con aviso | ámbar: error, fallos, «AVISO:» o «NO SE HA PARTIDO» |
+| Pendiente | Jobs fallidos (queue_job) | rojo si hay alguno |
+| Pendiente | Envíos rechazados por S4T, traspasos S4T con error, tramos de actividad por revisar | solo si su módulo está instalado |
+| Integraciones | Sync de pedidos S4T: última pasada | el resumen del cron 186; ámbar si hace más de 1 h |
+| Integraciones | Cola S4T (root.s4t_sync) | rojo con fallidos; ámbar si un job espera más de 30 min |
+| Integraciones | OUT de XPO validadas hoy sin etiqueta | rojo si hay alguna |
+| Integraciones | Cron: … (los KOROSHI y S4T activos) | ámbar con 15 min de retraso, rojo con 60 |
+
+Solo lee (con sudo). Tablas transitorias propias (`koroshi.bandeja`, `koroshi.bandeja.linea`): no toca stock ni
+tablas compartidas. Si una fuente falla, sale en gris con el error y el resto sigue. Las líneas de crons y del sync
+no tienen «Abrir» (son pantallas de Ajustes › Técnico).
+
 ## v2.3.0 (15/11/2026, auditoría 13/11, fase 7)
 
 - **Hoy › Previsión de cajas**: abre la ficha de hoy de koroshi_kpi 1.8 (cajas previstas por volumen, reales y
