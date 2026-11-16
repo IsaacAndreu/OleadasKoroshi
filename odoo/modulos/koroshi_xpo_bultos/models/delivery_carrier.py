@@ -24,10 +24,11 @@ import logging
 
 from odoo import _, models
 from odoo.exceptions import UserError
+from odoo.addons.koroshi_base import comun   # v1.3: la empresa
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8                              # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID               # v1.3: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 CTX = 'koroshi_xpo_bultos'
 PESO_BULTO = 15.0                           # kg por bulto (criterio de XPO)
 VOLUMEN_BULTO = 0.09                        # m3 por bulto (criterio de XPO)

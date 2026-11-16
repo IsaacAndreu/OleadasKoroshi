@@ -1,4 +1,4 @@
-# KOROSHI XPO bultos (v1.2, 14/11/2026)
+# KOROSHI XPO bultos (v1.3, 16/11/2026)
 
 En cada expedición XPO de EFFEC (empresa 8) se mandan a XPO:
 
@@ -8,6 +8,11 @@ En cada expedición XPO de EFFEC (empresa 8) se mandan a XPO:
 | `Peso`, `PesoNeto`, `PesoBruto` | **15 kg × bultos** |
 | `VolumenNeto`, `VolumenOperacional` | **0,09 m3 × bultos** |
 
+
+## v1.3 (16/11/2026, auditoría 13/11, fase 6)
+
+- La empresa sale de `koroshi_base.comun` (instalar koroshi_base antes). Mismo resultado; sin campos ni vistas
+  nuevas.
 
 ## v1.2 (14/11/2026, auditoría 13/11, fase 3)
 
