@@ -79,4 +79,15 @@
         <field name="state">code</field>
         <field name="code">action = model.action_abrir_bandeja()</field>
     </record>
+
+    <!-- v2.4.1: icono propio en la pantalla de aplicaciones, solo para quien esté en este grupo (al actualizar se pone
+         el usuario «Almacen 2», almacen2@nath.es: ver __init__.py). Para dárselo a otro: Ajustes › Usuarios › el
+         usuario › este grupo. El menú «Hoy › Bandeja del encargado» sigue para todo Inventario. -->
+    <record id="grupo_bandeja_app" model="res.groups">
+        <field name="name">KOROSHI: Bandeja del encargado en Aplicaciones</field>
+        <field name="comment">Ve el icono «Bandeja» en la pantalla de aplicaciones.</field>
+    </record>
+
+    <menuitem id="menu_koroshi_bandeja_app" name="Bandeja" sequence="6" action="action_koroshi_bandeja"
+              groups="grupo_bandeja_app" web_icon="koroshi_menu,static/description/icon_bandeja.png"/>
 </odoo>

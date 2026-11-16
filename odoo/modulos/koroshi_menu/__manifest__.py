@@ -71,8 +71,11 @@ pasada del sync S4T). Semaforo y «Abrir» en cada linea. Solo lee; tablas trans
 su modulo esta instalado. «Lecturas de la PDA» en rojo con 30 min de horario sin ninguna lectura y operarios en
 Lecturas (parametro koroshi_menu.minutos_sin_lecturas): el 13-16/11 la PDA no guardaba y no lo vio nadie.
 Depende de koroshi_base.
+v2.4.1 (16/11/2026): la bandeja tambien como icono «Bandeja» en la pantalla de aplicaciones, solo para el grupo
+«KOROSHI: Bandeja del encargado en Aplicaciones». Al actualizar (o instalar) entra el usuario «Almacen 2»
+(almacen2@nath.es). Para darselo a otro: Ajustes > Usuarios. El menu de Hoy sigue igual.
 """,
-    'version': '13.0.2.4.0',
+    'version': '13.0.2.4.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -95,6 +98,7 @@ Depende de koroshi_base.
         'views/ajustes.xml',
         'views/apps.xml',
     ],
+    'post_init_hook': 'post_init_hook',
     'uninstall_hook': 'uninstall_hook',
     'installable': True,
     'application': False,

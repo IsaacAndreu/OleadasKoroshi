@@ -5,6 +5,13 @@ agrupado por temas. Antes cada tema estaba repartido entre la barra de Inventari
 
 
 
+## v2.4.1: icono «Bandeja» en Aplicaciones, solo para Almacen 2 (16/11/2026)
+
+- La bandeja también sale como icono propio en la pantalla de aplicaciones, solo para el grupo «KOROSHI: Bandeja del
+  encargado en Aplicaciones». Al actualizar (o instalar) entra el usuario **Almacen 2** (almacen2@nath.es).
+- Para dárselo a otro: Ajustes › Usuarios › el usuario › ese grupo. «Hoy › Bandeja del encargado» sigue para todo
+  Inventario.
+
 ## v2.4.0: Bandeja del encargado (16/11/2026, auditoría 13/11, fase 7, ideas 2 y 3)
 
 **Hoy › Bandeja del encargado**: una pantalla con todo lo que hay que mirar. Cada línea con semáforo (rojo, ámbar,
