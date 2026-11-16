@@ -46,7 +46,7 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 | `koroshi_kpi` | 1.9.0 | KPI diarios: uds, profundidad por SKU, peso, volumen, metros y segundos por prenda; previsión de cajas por volumen. | base |
 | `koroshi_informe` | 1.2.0 | Correo diario, semanal y mensual de productividad. | base, operarios, kpi, preparacion, menu |
 | `koroshi_menu` | 2.3.0 | App KOROSHI (Hoy, Faltantes, Personas, Almacén, KPI, Configuración). | kpi, operarios, preparacion, zonas, warehouse_map, monitor, consumibles, faltantes, contenedores |
-| `koroshi_warehouse_map` | 0.1.20261114.45 | Mapa editable y operativo de picking de NAU-2. | — |
+| `koroshi_warehouse_map` | 0.1.20261116.46 | Mapa editable y operativo de picking de NAU-2. | base |
 | `koroshi_consumibles` | 1.4.0 | Control de cajas y materiales fuera del stock de prendas. | warehouse_map |
 | `koroshi_delegacion` | 1.0.0 | Campo Delegación en los albaranes. | — |
 | `koroshi_rendiment` | 1.1.0 | Botones Previsto y Stock de la ficha de producto rápidos. | — |

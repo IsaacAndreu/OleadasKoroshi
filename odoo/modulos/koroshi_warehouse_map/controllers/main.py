@@ -4,17 +4,17 @@ import json
 import logging
 import re
 
-import pytz
 import werkzeug.utils
 
 from odoo import fields, http
 from odoo.http import request
 from odoo.modules.module import load_information_from_description_file
+from odoo.addons.koroshi_base import comun   # v.46: empresa e inicio del dia
 
 _logger = logging.getLogger(__name__)
 
 
-COMPANY_ID = 8  # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID  # v.46: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 LINE_RE = re.compile(r'\bL(\d{1,3})\b', re.IGNORECASE)
 POSITION_RE = re.compile(r'\bP(\d{1,3})\b', re.IGNORECASE)
 LEVEL_RE = re.compile(r'\bC([1-4])\b', re.IGNORECASE)
@@ -575,9 +575,8 @@ class KoroshiWarehouseMapController(http.Controller):
             Picking = request.env['stock.picking'].sudo()
             # v.45: el inicio del dia en hora local pasado a UTC (write_date esta en UTC; antes se comparaba la
             # medianoche local tal cual: 1-2 horas de desfase)
-            tz = pytz.timezone(request.env.user.tz or 'Europe/Madrid')
-            day_start = tz.localize(datetime.datetime.combine(now_local.date(), datetime.time.min)).astimezone(
-                pytz.utc).replace(tzinfo=None)
+            # v.46: con koroshi_base (hora del almacen; todos los usuarios internos estan en Europe/Madrid)
+            day_start = comun.inicio_dia_utc(now_local.date())
             # Most OUTs se crean de noche y pasan a reserva después. Se
             # incluyen las activas y las modificadas desde el inicio del día,
             # sin llenar el mapa con históricos cancelados.

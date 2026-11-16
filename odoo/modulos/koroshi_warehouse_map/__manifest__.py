@@ -26,12 +26,17 @@ fields.Datetime.now() es un datetime y su .replace('-', '') daba error; 0 planos
 Nueva ruta /koroshi_warehouse_map/layout/load y botón «Cargar de Odoo». El ?v= del plano sale de la versión del
 manifest (ruta /koroshi_warehouse_map/planner). /data respeta 'since' (hora del servidor) y el inicio del día va en
 UTC. Incluye la v20261106.44 del repo, que no llegó a instalarse (en el servidor está la 20261102.39).
+
+v20261116.46 (16/11/2026): auditoría 13/11, fase 6 (pasar a koroshi_base). La empresa y el inicio del día de /data
+salen de koroshi_base.comun (hora del almacén; antes, la del usuario o Madrid: hoy todos los usuarios internos están
+en Europe/Madrid, así que da lo mismo). Las horas que se enseñan siguen en la zona del usuario. Sin campos ni vistas
+nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.0.1.20261114.45',
+    'version': '13.0.0.1.20261116.46',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'stock_picking_batch'],
+    'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_base'],
     'data': [
         'security/ir.model.access.csv',
         'views/assets.xml',

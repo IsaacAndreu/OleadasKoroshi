@@ -4,6 +4,11 @@ Módulo inicial para Odoo 13. Añade un mapa editable y una vista operativa de
 OUTs/personas/PDA bajo `Inventario > KOROSHI · Almacén`.
 
 
+## v20261116.46 (16/11/2026, auditoría 13/11, fase 6)
+
+- La empresa y el inicio del día de `/data` salen de `koroshi_base.comun` (instalar koroshi_base antes). Hoy da lo
+  mismo: todos los usuarios internos están en Europe/Madrid. Las horas que se enseñan siguen en la zona del usuario.
+
 ## v20261114.45 (14/11/2026, auditoría 13/11, fase 4)
 
 - **Publicar versión ya guarda en Odoo.** Antes fallaba siempre: el código del plano se hacía con
