@@ -17,8 +17,9 @@ import werkzeug.utils
 
 from odoo import http
 from odoo.http import request
+from odoo.addons.koroshi_base import comun   # v1.1: la empresa
 
-COMPANY_ID = 8                                          # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID                           # v1.1: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 LECTURAS = '/web#cids=%s&action=koroshi_operarios_pantalla' % COMPANY_ID
 INICIO = '/koroshi_pda/inicio'
 COLOR = '#14243b'                                       # el fondo de la pantalla «Lee tu tarjeta»

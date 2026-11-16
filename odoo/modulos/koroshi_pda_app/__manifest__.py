@@ -20,12 +20,14 @@ No escribe nada en la base de datos (solo crea el parámetro al instalar). Para 
 Lecturas: en el usuario, Preferencias → Acción inicial = «Operarios» (Lecturas PDA).
 
 v1.0.0 (11/11/2026): primera versión.
+v1.1.0 (16/11/2026): auditoría 13/11, fase 6 (pasar a koroshi_base). La empresa sale de koroshi_base.comun. Misma
+app y mismas rutas; sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'koroshi_operarios'],
+    'depends': ['web', 'koroshi_base', 'koroshi_operarios'],
     'data': [
         'data/parametros.xml',
         'views/layout.xml',

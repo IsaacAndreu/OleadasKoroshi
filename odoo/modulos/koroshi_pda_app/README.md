@@ -1,4 +1,7 @@
-# KOROSHI Lecturas PDA como app (v1.0.0, 11/11/2026)
+# KOROSHI Lecturas PDA como app (v1.1.0, 16/11/2026)
+
+> v1.1.0 (16/11/2026, auditoría 13/11, fase 6): la empresa sale de `koroshi_base.comun` (instalar koroshi_base
+> antes). Misma app y mismas rutas.
 
 Instala **Lecturas (PDA)** como una app en las PDA: un icono «Lecturas KOROSHI» en la pantalla de inicio que abre
 directamente Lecturas, sin barra de direcciones ni pestañas de Chrome.
