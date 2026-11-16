@@ -19,12 +19,14 @@ v1.1.0 (14/11/2026): auditoria 13/11, fase 3. Cada traspaso en su savepoint, gua
 raro ya no hace perder la pagina). Conciliacion diaria de hoy y ayer por fecha (koroshi_s4t_traspasos.
 hora_conciliacion, 06:00). Los que dan error se reintentan hasta 5 veces. «Recuperar por fecha» ya no usa
 display_notification (no existe en Odoo 13). Sigue sin instalar y con el cron archivado.
+v1.2.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). Empresa y hora del almacen salen de
+koroshi_base.comun. Mismo resultado; sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',
-    'depends': ['api_s4t_batch_update_PROD', 'stock'],
+    'depends': ['api_s4t_batch_update_PROD', 'stock', 'koroshi_base'],
     'data': [
         'security/ir.model.access.csv',
         'data/datos.xml',

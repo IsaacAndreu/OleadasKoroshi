@@ -26,21 +26,20 @@ import hashlib
 import json
 import logging
 
-import pytz
 
 import requests
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
+from odoo.addons.koroshi_base import comun   # v1.2: empresa y hora del almacen
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8                     # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID      # v1.2: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 TIMEOUT = 60
 LIMITE_PAGINA = 100
 MAX_PAGINAS = 50                   # proteccion: 5.000 traspasos por pasada como mucho
 MAX_INTENTOS = 5                   # v1.1: veces que se reintenta procesar uno con error
-TZ = 'Europe/Madrid'
 P = 'koroshi_s4t_traspasos.'
 ENDPOINTS = {
     'devolucion': '/transfers/return-ecommerce',
@@ -259,7 +258,7 @@ class KoroshiS4tTraspaso(models.Model):
         """v1.1: una vez al dia (desde koroshi_s4t_traspasos.hora_conciliacion) vuelve a pedir por fecha los de hoy y
         ayer y guarda los que falten. Devuelve cuantos ha recuperado (None si hoy ya se habia hecho)."""
         Param = self.env['ir.config_parameter'].sudo()
-        ahora = datetime.datetime.now(pytz.timezone(TZ))
+        ahora = comun.ahora_local()
         hoy = ahora.date()
         if not forzar:
             if Param.get_param(P + 'ultima_conciliacion') == hoy.isoformat():
