@@ -10,14 +10,13 @@ import datetime
 import logging
 import re
 
-import pytz
-
 from odoo import api, fields, models
+
+from odoo.addons.koroshi_base import comun   # v1.9: empresa, hora del almacen y rangos de dia
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8                  # EFFECTIVE LOGISTICS, S.L.
-TZ = 'Europe/Madrid'
+COMPANY_ID = comun.COMPANY_ID   # v1.9: de koroshi_base (lo importan falta, falta_repetida y prevision)
 RE_HUECO = re.compile(r'\bL(\d+) P(\d+)\b')
 RE_TIPO = re.compile(r'^\d{4}([A-Z]{2})')
 
@@ -325,10 +324,8 @@ class KoroshiKpiDia(models.Model):
 
     # ---------------- Calculo de lo que sale de Odoo ----------------
     def _rango_utc(self):
-        tz = pytz.timezone(TZ)
-        ini = tz.localize(datetime.datetime.combine(self.fecha, datetime.time.min))
-        ini = ini.astimezone(pytz.utc).replace(tzinfo=None)
-        return ini, ini + datetime.timedelta(days=1)
+        # v1.9: con koroshi_base; los dias del cambio de hora duran 23 o 25 h (antes se sumaban 24 h)
+        return comun.rango_dia_utc(self.fecha)
 
     def _lineas_dia(self):
         ini, fin = self._rango_utc()
@@ -347,7 +344,6 @@ class KoroshiKpiDia(models.Model):
     def action_recalcular(self):
         Pick = self.env['stock.picking'].sudo()
         Line = self.env['stock.move.line'].sudo()
-        tz = pytz.timezone(TZ)
         tipos = {}
         defecto = (300.0, 3.0)
         for t in self.env['koroshi.kpi.peso.tipo'].sudo().search([]):
@@ -413,7 +409,7 @@ class KoroshiKpiDia(models.Model):
             marcas_pick = []
             marcas_u = []
             for hora, quien in cajas.values():
-                local = pytz.utc.localize(hora).astimezone(tz)
+                local = comun.a_local(hora)
                 (marcas_u if quien[0] == 'U' else marcas_pick).append((local, quien))
             pick_hp, pick_max = horas_persona(marcas_pick)
             u_hp = horas_persona(marcas_u)[0]
@@ -468,7 +464,7 @@ class KoroshiKpiDia(models.Model):
             dias = max(int(self.env['ir.config_parameter'].sudo().get_param('koroshi_kpi.dias_recalcular', '7')), 0)
         except ValueError:
             dias = 7
-        desde = datetime.datetime.now(pytz.timezone(TZ)).date() - datetime.timedelta(days=dias)
+        desde = comun.hoy_local() - datetime.timedelta(days=dias)
         for d in sorted(set(self.search([('fecha', '>=', desde)]).mapped('fecha'))):
             try:
                 with self.env.cr.savepoint():
@@ -480,7 +476,7 @@ class KoroshiKpiDia(models.Model):
     @api.model
     def cron_recalcular(self):
         # Cada noche: fichas de hoy y ayer (dia completo y cada metodo con actividad), recalculadas
-        hoy = datetime.datetime.now(pytz.timezone(TZ)).date()
+        hoy = comun.hoy_local()
         for d in (hoy - datetime.timedelta(days=1), hoy):
             self.crear_fichas(d).action_recalcular()
         # v1.6: las faltas de los dias anteriores con OUT aun abiertas o validadas hoy (cambian al cogerlas o validarlas)

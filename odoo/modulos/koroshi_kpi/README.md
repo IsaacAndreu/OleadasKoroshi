@@ -11,6 +11,14 @@ horas y personas de cada fase, y **segundos por prenda** de picking (andando y l
 
 
 
+## v1.9.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- Empresa (8), hora del almacén y rangos de día salen de `koroshi_base.comun` (instalar koroshi_base antes).
+- **Arreglo del cambio de hora**: el rango de un día sumaba 24 h fijas. El último domingo de marzo (23 h) y de
+  octubre (25 h) las fichas KPI, las faltas y la hoja de carga cogían una hora del día de al lado o perdían una.
+  Ahora el día acaba a las 00:00 del siguiente en hora del almacén.
+- Sin campos, vistas ni datos nuevos.
+
 ## v1.8.0: previsión de cajas (15/11/2026, auditoría 13/11, fase 7)
 
 - **Cajas previstas = volumen ÷ 0,084 m³ × factor.**

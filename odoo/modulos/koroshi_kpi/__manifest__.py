@@ -40,12 +40,16 @@ v1.8.0 (15/11/2026): auditoria 13/11, fase 7. Prevision de cajas por volumen: ca
 reales de los 20 dias anteriores; del 20/10 al 13/11 sale 1,077 y 13 de 14 dias normales quedan a +-10 %). La
 ficha guarda prevista, real y desviacion. Menu «Prevision de cajas de hoy». Campos nuevos solo en
 koroshi.kpi.dia. Calculo en calculo_prevision.py con tests sin Odoo (tests/).
+v1.9.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). Empresa, hora del almacen y rangos de dia
+salen de koroshi_base.comun. Arregla los dias del cambio de hora: el rango del dia sumaba 24 h fijas (fichas KPI,
+faltas y hoja de carga del ultimo domingo de marzo y de octubre cogian una hora de mas o de menos). Sin campos ni
+vistas nuevas. Depende de koroshi_base (instalarlo antes).
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.9.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['stock', 'sale_stock'],
+    'depends': ['stock', 'sale_stock', 'koroshi_base'],
     'data': [
         'security/ir.model.access.csv',
         'data/peso_tipo.xml',

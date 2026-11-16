@@ -8,15 +8,13 @@
 # Por la noche, al recalcular, la ficha tiene las cajas reales y la desviación.
 # Solo escribe en koroshi.kpi.dia (sus campos nuevos). El cálculo, en calculo_prevision.py (con tests).
 # =============================================================================
-import datetime
 import logging
 
-import pytz
-
 from odoo import api, fields, models
+from odoo.addons.koroshi_base import comun   # v1.9
 
 from .. import calculo_prevision as cp
-from .kpi import COMPANY_ID, TZ, tipo_producto
+from .kpi import COMPANY_ID, tipo_producto
 
 _logger = logging.getLogger(__name__)
 
@@ -112,7 +110,7 @@ class KoroshiKpiDiaPrevision(models.Model):
 
     @api.model
     def ficha_de_hoy(self):
-        hoy = datetime.datetime.now(pytz.timezone(TZ)).date()
+        hoy = comun.hoy_local()
         return self.search([('fecha', '=', hoy), ('metodo', '=', 'mixto')], limit=1) or \
             self.create({'fecha': hoy, 'metodo': 'mixto'})
 

@@ -15,15 +15,14 @@ import datetime
 import io
 import re
 
-import pytz
 import xlsxwriter
 
 from odoo import http
+from odoo.addons.koroshi_base import comun   # v1.9
 from odoo.exceptions import AccessError
 from odoo.http import request, content_disposition
 
-COMPANY_ID = 8
-TZ = 'Europe/Madrid'
+COMPANY_ID = comun.COMPANY_ID
 CAJAS_PALET = 16            # el 23/10/2026: 355 bultos -> 32 palets, los que se cargaron
 RE_K = re.compile(r'\bK(\d+) - .*$')
 
@@ -60,10 +59,8 @@ class KoroshiHojaCarga(http.Controller):
         Pick = env['stock.picking'].sudo()
         if ids:
             return Pick.browse(ids).filtered(lambda p: p.picking_type_code == 'outgoing' and p.state == 'done'), ''
-        tz = pytz.timezone(TZ)
-        dia = fecha or datetime.datetime.now(tz).date()
-        ini = tz.localize(datetime.datetime.combine(dia, datetime.time.min)).astimezone(pytz.utc).replace(tzinfo=None)
-        fin = ini + datetime.timedelta(days=1)
+        dia = fecha or comun.hoy_local()
+        ini, fin = comun.rango_dia_utc(dia)   # v1.9: dias de 23 o 25 h bien
         etiquetas = env['ir.attachment'].sudo().search([('res_model', '=', 'stock.picking'),
                                                          ('name', '=like', 'LabelXPO_%'),
                                                          ('create_date', '>=', ini), ('create_date', '<', fin)])

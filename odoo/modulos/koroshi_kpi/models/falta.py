@@ -20,11 +20,10 @@
 # =============================================================================
 import datetime
 
-import pytz
-
 from odoo import api, fields, models
+from odoo.addons.koroshi_base import comun   # v1.9
 
-from .kpi import COMPANY_ID, TZ, tipo_producto
+from .kpi import COMPANY_ID, tipo_producto
 
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # igual que el Monitor: sin cerrar caja en estos minutos = parada
@@ -57,9 +56,7 @@ class KoroshiKpiFalta(models.Model):
 
     @api.model
     def _rango_utc(self, dia):
-        tz = pytz.timezone(TZ)
-        ini = tz.localize(datetime.datetime.combine(dia, datetime.time.min)).astimezone(pytz.utc).replace(tzinfo=None)
-        return ini, ini + datetime.timedelta(days=1)
+        return comun.rango_dia_utc(dia)   # v1.9: dias de 23 o 25 h bien (antes, 24 h fijas)
 
     @api.model
     def recalcular_dia(self, dia):
@@ -91,7 +88,7 @@ class KoroshiKpiFalta(models.Model):
             w = ml.result_package_id and ml.result_package_id.create_date or ml.write_date
             if w and (pid not in ultima or w > ultima[pid]):
                 ultima[pid] = w
-        hoy = datetime.datetime.now(pytz.timezone(TZ)).date()
+        hoy = comun.hoy_local()
         estado = {}
         for p in raices:
             if p.state == 'done':
@@ -186,20 +183,19 @@ class KoroshiKpiFalta(models.Model):
     def dias_por_revisar(self, dias=DIAS_REVISAR):
         """v1.6: dias (hora de Madrid) de los ultimos `dias` con OUT de tienda (sin pedido pendiente de otra) aun
         abiertas o validadas hoy: sus faltas cambian aunque el dia ya haya pasado."""
-        tz = pytz.timezone(TZ)
-        hoy = datetime.datetime.now(tz).date()
+        hoy = comun.hoy_local()
         desde = self._rango_utc(hoy - datetime.timedelta(days=dias))[0]
         hoy_ini = self._rango_utc(hoy)[0]
         outs = self.env['stock.picking'].sudo().search([
             ('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'), ('backorder_id', '=', False),
             ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO), ('create_date', '>=', desde),
             '|', ('state', 'not in', ('done', 'cancel')), ('date_done', '>=', hoy_ini)])
-        return sorted(set(pytz.utc.localize(p.create_date).astimezone(tz).date() for p in outs))
+        return sorted(set(comun.dia_local(p.create_date) for p in outs))
 
     @api.model
     def action_recalcular_hoy(self):
         """Menu 'Recalcular faltas de hoy': saca las de hoy y ayer y abre la lista."""
-        hoy = datetime.datetime.now(pytz.timezone(TZ)).date()
+        hoy = comun.hoy_local()
         for d in (hoy - datetime.timedelta(days=1), hoy):
             self.recalcular_dia(d)
         return self.env.ref('koroshi_kpi.action_koroshi_kpi_falta').read()[0]
