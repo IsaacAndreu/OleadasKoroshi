@@ -25,12 +25,15 @@ v1.1 (10/11/2026, cambiado en v1.3): la caja puede ser de OTRA OUT del MISMO ped
   CANCELADA y sale de la agrupacion (no hay que validarla ni juntar cajas).
 - esa OUT ya validada: las uds van a esa caja; al validar esta OUT no cuenta esa caja como bulto suyo.
 v1.0 (09/11/2026).
+v1.4 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La empresa y la expresion de la matricula CJ
+salen de koroshi_base.comun (la misma: CJ + 9 cifras, sin pasar a mayusculas, igual que antes). Mismo resultado;
+sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['stock', 'stock_barcode_optimization'],
+    'depends': ['stock', 'stock_barcode_optimization', 'koroshi_base'],
     'data': [],
     'installable': True,
     'application': False,

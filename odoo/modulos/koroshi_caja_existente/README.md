@@ -1,4 +1,7 @@
-# KOROSHI Caja existente (v1.3, 10/11/2026)
+# KOROSHI Caja existente (v1.4, 16/11/2026)
+
+v1.4 (auditoría 13/11, fase 6): la empresa y la expresión de la CJ salen de `koroshi_base.comun` (instalar
+koroshi_base antes). Mismo resultado.
 
 v1.3: con la caja de **otra OUT del mismo pedido y tienda** (validada o no) las prendas van a esa caja y la OUT
 pequeña **se valida como siempre, con 0 bultos**. Ya no se cancela ninguna OUT ni se pasan unidades de una OUT

@@ -18,16 +18,16 @@
 # En cualquier otro caso se llama al super igual que antes.
 # =============================================================================
 import logging
-import re
 
 from odoo import _, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_round
+from odoo.addons.koroshi_base import comun   # v1.4: empresa y matricula CJ
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8                              # EFFECTIVE LOGISTICS, S.L.
-RE_CJ = re.compile(r'^CJ\d{9}$')
+COMPANY_ID = comun.COMPANY_ID               # v1.4: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
+RE_CJ = comun.RE_CJ                         # v1.4: la misma expresion (CJ + 9 cifras), de koroshi_base
 
 
 class StockPicking(models.Model):
