@@ -26,17 +26,16 @@ import html
 import logging
 import re
 
-import pytz
-
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
 from odoo.addons.koroshi_operarios.models.informe import codigo_corto, hm
-from odoo.addons.koroshi_operarios.models.tarea import ZONA_HORARIA, uds_hora_de
+from odoo.addons.koroshi_base import comun   # v1.2: empresa, hora del almacen y rangos de dia
+from odoo.addons.koroshi_operarios.models.tarea import uds_hora_de
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8          # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID   # v1.2: de koroshi_base
 P = 'koroshi_informe.'
 DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 DIAS_CORTO = ['lun', 'mar', 'mié', 'jue', 'vie', 'sáb', 'dom']
@@ -132,7 +131,7 @@ class KoroshiInforme(models.AbstractModel):
 
     @api.model
     def _ahora_local(self):
-        return datetime.datetime.now(pytz.timezone(ZONA_HORARIA))
+        return comun.ahora_local()
 
     @api.model
     def _hoy(self):
@@ -141,17 +140,13 @@ class KoroshiInforme(models.AbstractModel):
     @api.model
     def _limites(self, desde, hasta=None):
         """UTC sin zona [desde 00:00, hasta+1 00:00) en hora de Madrid."""
-        tz = pytz.timezone(ZONA_HORARIA)
-        hasta = hasta or desde
-        ini = tz.localize(datetime.datetime.combine(desde, datetime.time.min)).astimezone(pytz.utc)
-        fin = tz.localize(datetime.datetime.combine(hasta + datetime.timedelta(days=1), datetime.time.min))
-        return ini.replace(tzinfo=None), fin.astimezone(pytz.utc).replace(tzinfo=None)
+        return comun.rango_dias_utc(desde, hasta or desde)
 
     @api.model
     def _hora(self, dt):
         if not dt:
             return ''
-        return pytz.utc.localize(dt).astimezone(pytz.timezone(ZONA_HORARIA)).strftime('%H:%M')
+        return comun.a_local(dt).strftime('%H:%M')
 
     @api.model
     def _excluidos(self):

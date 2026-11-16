@@ -25,12 +25,15 @@ v1.1.0 (14/11/2026): auditoria 13/11, fase 2. La u/h de los operarios sale de ko
 (resumen_operario_dia: la misma cifra en todas partes). Es el unico correo diario (el de koroshi_operarios se ha
 quitado). Sin media de u/h al agrupar la tabla por operario y dia. «Horas estimadas» sale de la fuente de horas de la
 ficha KPI (koroshi_kpi 1.6). Necesita koroshi_operarios 2.12 y koroshi_kpi 1.6.
+v1.2.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). Empresa, hora del almacen y limites de dia
+salen de koroshi_base.comun (antes, la zona horaria de koroshi_operarios). Mismo resultado: esos limites ya
+estaban bien en los dias del cambio de hora. Sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['mail', 'koroshi_operarios', 'koroshi_kpi', 'koroshi_preparacion', 'koroshi_menu'],
+    'depends': ['mail', 'koroshi_base', 'koroshi_operarios', 'koroshi_kpi', 'koroshi_preparacion', 'koroshi_menu'],
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',

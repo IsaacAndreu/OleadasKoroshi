@@ -1,5 +1,10 @@
-# KOROSHI Informe de productividad (v1.1.0, 14/11/2026)
+# KOROSHI Informe de productividad (v1.2.0, 16/11/2026)
 
+
+## v1.2.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- Empresa, hora del almacén y límites de día salen de `koroshi_base.comun` (instalar koroshi_base antes). Mismo
+  resultado: los límites ya estaban bien los días del cambio de hora. Sin campos ni vistas nuevas.
 
 ## v1.1.0: la misma cifra que todo lo demás (14/11/2026, auditoría 13/11, fase 2)
 
