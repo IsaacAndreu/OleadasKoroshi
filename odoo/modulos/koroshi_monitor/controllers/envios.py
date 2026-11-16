@@ -20,11 +20,12 @@ import xlsxwriter
 
 from odoo import fields, http
 from odoo.http import content_disposition, request
+from odoo.addons.koroshi_base import comun   # v1.28: la empresa
 
 from .main import _comprobar_grupo   # v1.27: permiso de Inventario
 
 
-COMPANY_ID = 8
+COMPANY_ID = comun.COMPANY_ID   # v1.28: de koroshi_base
 MAX_COINCIDENCIAS = 40
 MAX_OUTS = 250
 RE_TIENDA = re.compile(r'\bK\d+ - .*$')
@@ -211,7 +212,7 @@ class KoroshiConsultaEnvios(http.Controller):
         }
 
     def _rango_utc(self, desde, hasta):
-        tz = pytz.timezone(request.env.user.tz or 'Europe/Madrid')
+        tz = pytz.timezone(request.env.user.tz or comun.TZ)
         hoy = datetime.datetime.now(pytz.utc).astimezone(tz).date()
         try:
             dia_desde = datetime.datetime.strptime(desde or '', '%Y-%m-%d').date()
@@ -409,7 +410,7 @@ class KoroshiConsultaEnvios(http.Controller):
         for dato in env['stock.move.line'].sudo().read_group(
                 [('picking_id', 'in', picks.ids)], ['qty_done'], ['picking_id'], lazy=False):
             unidades[dato['picking_id'][0]] = dato['qty_done']
-        tz = pytz.timezone(request.env.user.tz or 'Europe/Madrid')
+        tz = pytz.timezone(request.env.user.tz or comun.TZ)
         for fila, p in enumerate(picks.sorted(key=lambda x: (x.date_done or x.create_date, x.name)), start=2):
             fecha = p.date_done and pytz.utc.localize(p.date_done).astimezone(tz).replace(tzinfo=None) or None
             marca = getattr(p, 'x_studio_marca', False)

@@ -33,6 +33,14 @@ capa inventada ni ralentice el seguimiento.
 
 
 
+## v1.28.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
+
+- La empresa sale de `koroshi_base.comun` (instalar koroshi_base antes).
+- La hora sigue siendo **la del usuario** (decidido el 16/11; si no tiene zona, la del almacén).
+- Días del cambio de hora: el día de una Z-ddmm- y el día elegido en Tiendas sumaban 24 h fijas; ahora el día acaba
+  a las 00:00 del siguiente (el 25/10, de 25 h, ya no pierde la última hora).
+- Sin campos ni vistas nuevas.
+
 ## v1.27.0: permisos, caché y año de las zonas (14/11/2026, auditoría 13/11, fase 3)
 
 - Todas las rutas (monitor y consulta de envíos) piden el permiso de **Inventario** (`stock.group_stock_user`).

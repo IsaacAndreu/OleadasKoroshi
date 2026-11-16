@@ -28,10 +28,11 @@ import pytz
 from odoo import fields, http
 from odoo.exceptions import AccessError
 from odoo.http import request
+from odoo.addons.koroshi_base import comun   # v1.28: la empresa (la hora sigue siendo la del usuario)
 
 _logger = logging.getLogger(__name__)
 
-COMPANY_ID = 8          # EFFECTIVE LOGISTICS, S.L.
+COMPANY_ID = comun.COMPANY_ID   # v1.28: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 N_PREFIJOS = 15         # agrupaciones que salen en el desplegable
 N_DIAS = 3              # dias de "Tiendas" que salen en el desplegable
 # v1.27 (auditoria 13/11, fase 3): cache compartida entre pantallas, como oriola_monitor. Con varias pantallas abiertas
@@ -75,7 +76,14 @@ def codigo_op(emp):
 class KoroshiMonitor(http.Controller):
 
     def _tz(self):
-        return pytz.timezone(request.env.user.tz or 'Europe/Madrid')
+        # v1.28: decidido el 16/11: el Monitor va en la hora del usuario (sin zona, la del almacen)
+        return pytz.timezone(request.env.user.tz or comun.TZ)
+
+    def _inicio_utc(self, dia):
+        """v1.28: 00:00 del dia en la hora del usuario, en UTC sin zona. El fin de un dia es el inicio del siguiente:
+        los dias del cambio de hora duran 23 o 25 h (antes se sumaban 24 h fijas)."""
+        return self._tz().localize(datetime.datetime(dia.year, dia.month, dia.day)).astimezone(pytz.utc).replace(
+            tzinfo=None)
 
     def _hoy_local(self):
         return datetime.datetime.now(pytz.utc).astimezone(self._tz()).date()
@@ -545,9 +553,8 @@ class KoroshiMonitor(http.Controller):
                     zd = datetime.date(hoy.year, int(m.group(2)), int(m.group(1)))
                     if zd > hoy:
                         zd = zd.replace(year=hoy.year - 1)
-                    z_ini = self._tz().localize(datetime.datetime(zd.year, zd.month, zd.day)).astimezone(
-                        pytz.utc).replace(tzinfo=None)
-                    z_fin = z_ini + datetime.timedelta(days=1)
+                    z_ini = self._inicio_utc(zd)
+                    z_fin = self._inicio_utc(zd + datetime.timedelta(days=1))   # v1.28: dias de 23 o 25 h
                 except ValueError:
                     z_ini = z_fin = None
             # v1.27: Z-ddmm- no lleva año: solo las agrupaciones creadas cerca de ese dia (antes, en 2027 saldrian
@@ -583,9 +590,8 @@ class KoroshiMonitor(http.Controller):
 
         # ---------------- Modo tiendas: una OUT por pedido, el dia elegido ----------------
         dia = datetime.date(*[int(x) for x in prefijo.split(':')[1].split('-')])
-        tz = self._tz()
-        ini = tz.localize(datetime.datetime(dia.year, dia.month, dia.day)).astimezone(pytz.utc).replace(tzinfo=None)
-        fin = ini + datetime.timedelta(days=1)
+        ini = self._inicio_utc(dia)
+        fin = self._inicio_utc(dia + datetime.timedelta(days=1))   # v1.28: dias de 23 o 25 h
         picks = env['stock.picking'].sudo().search([
             ('company_id', '=', COMPANY_ID),
             ('picking_type_code', '=', 'outgoing'),

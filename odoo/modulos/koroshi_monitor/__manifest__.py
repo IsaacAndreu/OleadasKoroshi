@@ -108,12 +108,16 @@ v1.26.0 (14/11/2026): auditoria 13/11, fase 2. La u/h de la tabla de Operarios (
 v1.27.0 (14/11/2026): auditoria 13/11, fase 3. Las rutas piden el permiso de Inventario (stock.group_stock_user): antes, con sudo(), cualquier usuario con sesion podia usarlas. Cache compartida con candado (20 s) como oriola_monitor: un
 solo calculo a la vez. Con la pestana oculta no se refresca. Z-ddmm- sin ano: solo agrupaciones creadas de 7
 dias antes a 10 despues de ese dia.
+v1.28.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La empresa sale de koroshi_base.comun. La hora
+sigue siendo la del usuario (decidido el 16/11; sin zona, la del almacen). Arregla los dias del cambio de hora: el dia
+de una Z-ddmm- y el dia elegido en la vista de tiendas sumaban 24 h fijas (el 25/10, 25 h, perdia la ultima hora).
+Sin campos ni vistas nuevas. Depende de koroshi_base.
 """,
-    'version': '13.0.1.27.0',
+    'version': '13.0.1.28.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_warehouse_map'],
+    'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_base', 'koroshi_warehouse_map'],
     'data': [
         'security/ir.model.access.csv',
         'views/assets.xml',
