@@ -138,8 +138,14 @@ quedan y hora de fin (hoy con las OUT de tienda abiertas de dias anteriores). Ex
 Monitor: «Personas y horas» sale de los operarios de verdad (koroshi_operarios) y no de las cajas cerradas (Z-1711
 daba 141 u/h y media de 4 personas con 12 operarios); sin operarios, la estimacion de siempre. Misma formula de u/h
 real que el correo (koroshi_informe), acordada el 17/11. Solo lee: sin campos ni modelos nuevos.
+v1.33.0 (17/11/2026): Excel de Tiendas XPO y cierre del camion. «Bultos Odoo» = lo declarado a XPO al hacer la etiqueta
+(nota «XPO: declarados N bultos» de koroshi_xpo_bultos, una vez por expedicion); sin nota, los bultos de las OUT como
+antes. Y las OUT hechas del mismo pedido sin nº de expedicion (validadas despues de la etiqueta) salen en la fila: OUT,
+uds y cajas, con aviso en Observacion. K1 17/11, S-6665004320 (121771266): la etiqueta se hizo desde 26076, que uso
+«Caja existente» en la caja de 26077 (0 bultos propios); 26077 se valido despues, sin numero: el Excel daba 6 bultos y
+NO; a XPO se declararon 7 y son 7. Del 12 al 17/11 solo cambia K1. Solo lee: sin campos ni modelos nuevos.
 """,
-    'version': '13.0.1.32.0',
+    'version': '13.0.1.33.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -267,6 +267,7 @@ class KoroshiConsultaEnvios(http.Controller):
         es_gls = etiqueta == 'GLS'
         todos = etiqueta == NOMBRES_TRANSPORTISTA['todos']
         uds = self._uds_por_out(env, picks)
+        declarados = self._declarados_xpo(env, picks) if etiqueta == NOMBRES_TRANSPORTISTA['xpo'] else {}
 
         # v1.23: una fila por TIENDA (antes una por pedido). A la izquierda, todos sus pedidos y OUT.
         tiendas = {}
@@ -277,7 +278,7 @@ class KoroshiConsultaEnvios(http.Controller):
             t = tiendas.setdefault(g['tienda'] or '—', {
                 'pedidos': [], 'outs': [], 'transportistas': set(), 'expediciones': [], 'bultos': 0,
                 'cajas': 0, 'cajas_cmp': 0, 'pedidas': 0, 'hechas': 0, 'fecha': None, 'a_mano': [],
-                'sin_transportista': 0, 'detalle': [],
+                'sin_transportista': 0, 'detalle': [], 'refs_declaradas': set(),
             })
             t['pedidos'].append(g['pedido'])
             # v1.23.1: cajas de cada pedido/expedicion, para el Excel de GLS (al agrupar por tienda se perdia).
@@ -296,7 +297,13 @@ class KoroshiConsultaEnvios(http.Controller):
             else:
                 t['sin_transportista'] += 1
             t['expediciones'] += [x for x in g['expediciones'] if x not in t['expediciones']]
-            t['bultos'] += bultos
+            # v1.33.0: en XPO, los bultos declarados en la etiqueta (una vez por expedicion, aunque lleve varios
+            # pedidos); sin nota, los de las OUT como antes.
+            refs = [x for x in g['expediciones'] if x in declarados]
+            if refs:
+                t['refs_declaradas'].update(refs)
+            else:
+                t['bultos'] += bultos
             t['cajas'] += g['cajas']
             t['cajas_cmp'] += cajas
             try:
@@ -305,6 +312,9 @@ class KoroshiConsultaEnvios(http.Controller):
                 fecha = None
             if fecha and (not t['fecha'] or fecha > t['fecha']):
                 t['fecha'] = fecha
+
+        for t in tiendas.values():
+            t['bultos'] += sum([declarados[r] for r in t['refs_declaradas']])
 
         def orden_tienda(nombre):
             numero = re.search(r'K(\d+)', nombre or '')
@@ -332,9 +342,8 @@ class KoroshiConsultaEnvios(http.Controller):
                 observacion = 'Añadido a mano' if len(t['a_mano']) == len(t['outs']) else \
                     'Añadido a mano: %s' % ', '.join(t['a_mano'])
             for ref in t['expediciones']:
-                for aviso in (avisos or {}).get(ref, []):
-                    observacion = (observacion + '\n' if observacion else '') + \
-                        'No cuenta: %s con el nº %s pero sin etiqueta XPO' % (aviso, ref)
+                for _tipo, aviso in (avisos or {}).get(ref, []):
+                    observacion = (observacion + '\n' if observacion else '') + aviso
             valores = [nombre, ', '.join(t['pedidos']), ', '.join(sorted(t['outs'])), t['fecha'], transportista,
                        ', '.join(t['expediciones']), t['bultos'], t['cajas'], 'SÍ' if coincide else 'NO',
                        t['pedidas'], t['hechas'], '\n'.join(t['detalle']), observacion]
@@ -361,7 +370,8 @@ class KoroshiConsultaEnvios(http.Controller):
         hoja.write_blank(total, 12, None, f['total'])
         nota = ('Etiquetas GLS = solo expediciones con etiqueta generada, máximo 5 por pedido. '
                 'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
-                'Bultos Odoo = lo declarado al transportista. Cajas preparadas = matrículas CJ distintas.')
+                'Bultos Odoo = lo declarado al transportista (en XPO, la nota «XPO: declarados N bultos» de la '
+                'etiqueta; sin nota, los bultos de las OUT). Cajas preparadas = matrículas CJ distintas.')
         hoja.write(total + 2, 0, nota + ' Uds pedidas = lo que pide el pedido en esas OUT; Done Quantity = '
                    'uds hechas (leídas).', f['nota'])
         if todos:
@@ -473,7 +483,8 @@ class KoroshiConsultaEnvios(http.Controller):
 
         v1.23.2: en XPO cada OUT de la expedicion recibe su propio LabelXPO_. Una OUT de XPO con el
         numero pero SIN etiqueta propia no entro en lo registrado en XPO (K81 12/11: XPO 17, Excel 18):
-        no cuenta; sale en avisos {nº expedicion: ['OUT 24900 (1 caja)', ...]}. GLS no cambia.
+        no cuenta; sale en avisos {nº expedicion: [('no_cuenta', texto), ...]}. GLS no cambia.
+        v1.33.0: en XPO se suman las OUT del pedido sin nº (('nota', texto) en avisos).
         """
         Pick = env['stock.picking'].sudo()
         base = self._dominio_apartado('tiendas', transportista) + [
@@ -505,11 +516,67 @@ class KoroshiConsultaEnvios(http.Controller):
                 cajas = self._cajas_por_out(env, sin_etiqueta)
                 for p in sin_etiqueta:
                     n = len(cajas.get(p.id, set())) or p.number_of_packages or 0
-                    avisos.setdefault(p.carrier_tracking_ref, []).append('OUT %s de %s (%d %s)' % (
-                        (p.name or '').replace('EFFEC/OUT/', ''), p.origin or '', n, n == 1 and 'caja' or 'cajas'))
+                    avisos.setdefault(p.carrier_tracking_ref, []).append((
+                        'no_cuenta', 'No cuenta: OUT %s de %s (%d %s) con el nº %s pero sin etiqueta XPO' % (
+                            (p.name or '').replace('EFFEC/OUT/', ''), p.origin or '', n,
+                            n == 1 and 'caja' or 'cajas', p.carrier_tracking_ref)))
                 picks = picks - sin_etiqueta
         fechas = dict([(p.id, primera[p.carrier_tracking_ref]) for p in picks])
+        if transportista == 'xpo' and picks:
+            picks, fechas = self._hermanas_sin_expedicion(env, picks, fechas, primera, avisos, inicio, fin)
         return picks, fechas, avisos
+
+    def _hermanas_sin_expedicion(self, env, picks, fechas, primera, avisos, inicio, fin):
+        """v1.33.0: OUT hechas del mismo pedido SIN nº de expedicion (validadas despues de la etiqueta).
+
+        K1 17/11, S-6665004320 (121771266): la etiqueta se hizo desde 26076, que llevaba 2 uds en CJ665011851
+        («Caja existente»); la duena de la caja, 26077, se valido 4 min despues y se quedo sin transportista ni
+        numero. Fisicamente va en la expedicion: sale en la lista de OUT de la fila, sus uds y cajas cuentan y
+        se avisa en Observacion. No cambia los bultos declarados a XPO.
+        """
+        Pick = env['stock.picking'].sudo()
+        ref_por_pedido = {}
+        for p in picks:
+            if p.sale_id and p.carrier_tracking_ref:
+                ref_por_pedido.setdefault(p.sale_id.id, p.carrier_tracking_ref)
+        if not ref_por_pedido:
+            return picks, fechas
+        margen = datetime.timedelta(days=1)
+        hermanas = Pick.search(self._dominio_apartado('tiendas', 'todos') + [
+            ('state', '=', 'done'), ('carrier_tracking_ref', '=', False),
+            ('sale_id', 'in', list(ref_por_pedido)), ('id', 'not in', picks.ids),
+            ('date_done', '>=', inicio - margen), ('date_done', '<', fin + margen)])
+        if not hermanas:
+            return picks, fechas
+        cajas = self._cajas_por_out(env, hermanas)
+        for p in hermanas:
+            ref = ref_por_pedido[p.sale_id.id]
+            fechas[p.id] = primera[ref]
+            n = len(cajas.get(p.id, set()))
+            despues = p.date_done and p.date_done > primera[ref]
+            avisos.setdefault(ref, []).append((
+                'nota', 'OUT %s de %s (%d %s) sin nº de expedición: validada %sla etiqueta, va en la %s' % (
+                    (p.name or '').replace('EFFEC/OUT/', ''), p.origin or '', n, n == 1 and 'caja' or 'cajas',
+                    'después de ' if despues else 'sin ', ref)))
+        return picks | hermanas, fechas
+
+    @staticmethod
+    def _declarados_xpo(env, picks):
+        """v1.33.0: {nº expedicion: bultos} de la nota «XPO: declarados N bultos» que deja koroshi_xpo_bultos
+        en la OUT desde la que se hace la etiqueta. Es lo que se registro en XPO. Si se repitio la etiqueta,
+        manda la ultima nota."""
+        ref_por_out = dict([(p.id, p.carrier_tracking_ref) for p in picks if p.carrier_tracking_ref])
+        if not ref_por_out:
+            return {}
+        mensajes = env['mail.message'].sudo().search_read([
+            ('model', '=', 'stock.picking'), ('res_id', 'in', list(ref_por_out)),
+            ('body', 'ilike', 'XPO: declarados')], ['res_id', 'body'], order='date asc, id asc')
+        declarados = {}
+        for mensaje in mensajes:
+            numero = re.search(r'declarados\s+(\d+)\s+bultos', mensaje['body'] or '')
+            if numero:
+                declarados[ref_por_out[mensaje['res_id']]] = int(numero.group(1))
+        return declarados
 
     @staticmethod
     def _extras(env, apartado, transportista, dia_desde, dia_hasta):
@@ -573,12 +640,19 @@ class KoroshiConsultaEnvios(http.Controller):
     def _resumen_xpo(self, env, picks, fechas, avisos):
         """Totales del Excel XPO y las diferencias que se quedan sin resolver (las mismas cuentas que el Excel)."""
         grupos = self._agrupar(env, picks, fechas)
+        declarados = self._declarados_xpo(env, picks)   # v1.33.0: igual que el Excel
         tiendas = {}
         for g in grupos:
-            t = tiendas.setdefault(g['tienda'] or '—', {'bultos': 0, 'cajas': 0, 'pedidos': []})
-            t['bultos'] += g['bultos']
+            t = tiendas.setdefault(g['tienda'] or '—', {'bultos': 0, 'cajas': 0, 'pedidos': [], 'refs': set()})
+            refs = [x for x in g['expediciones'] if x in declarados]
+            if refs:
+                t['refs'].update(refs)
+            else:
+                t['bultos'] += g['bultos']
             t['cajas'] += g['cajas']
             t['pedidos'].append(g['pedido'])
+        for t in tiendas.values():
+            t['bultos'] += sum([declarados[r] for r in t['refs']])
         diferencias = []
         for nombre in sorted(tiendas):
             t = tiendas[nombre]
@@ -586,8 +660,9 @@ class KoroshiConsultaEnvios(http.Controller):
                 diferencias.append('%s: %d bultos en Odoo y %d cajas preparadas (%s)' % (
                     nombre, t['bultos'], t['cajas'], ', '.join(t['pedidos'])))
         for ref in sorted(avisos or {}):
-            for aviso in avisos[ref]:
-                diferencias.append('No cuenta: %s con el nº %s pero sin etiqueta XPO' % (aviso, ref))
+            for tipo, aviso in avisos[ref]:
+                if tipo == 'no_cuenta':   # las 'nota' (OUT sin nº que si van) no son diferencias
+                    diferencias.append(aviso)
         return {
             'tiendas': len(tiendas),
             'pedidos': len(grupos),

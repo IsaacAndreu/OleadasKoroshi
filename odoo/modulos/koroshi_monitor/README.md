@@ -203,3 +203,8 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   (adjunto `LabelXPO_…`). Una OUT con el mismo nº de expedición pero sin etiqueta no se registró en XPO: no suma bultos
   ni cajas y sale en «Observación»: «No cuenta: OUT 24900 de S-6665004175 (1 caja) con el nº 121771203 pero sin etiqueta
   XPO». Caso K81 del 12/11: XPO 17 bultos, el Excel daba 18. GLS no cambia.
+- **v1.33.0 (17/11/2026):** Excel de Tiendas **XPO** y cierre del camión: **«Bultos Odoo» = lo declarado a XPO** al
+  hacer la etiqueta (nota «XPO: declarados N bultos» de `koroshi_xpo_bultos`, una vez por expedición); sin nota, los
+  bultos de las OUT como antes. Las OUT hechas del mismo pedido **sin nº de expedición** (validadas después de la
+  etiqueta) salen en la fila (OUT, uds y cajas) con aviso en «Observación». Caso K1 del 17/11 (S-6665004320,
+  121771266): daba 6 bultos y «NO»; a XPO se declararon 7 y son 7.
