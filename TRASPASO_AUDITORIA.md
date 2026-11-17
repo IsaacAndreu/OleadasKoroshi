@@ -37,8 +37,8 @@ módulos en [README.md](README.md): leerlos antes de empezar.
 revisados los cambios hasta HEAD: plan para actualizar de golpe en `bin/versiones/plan-actualizacion-koroshi_2026-11-17_v2.md`
 (koroshi_base primero, solo; luego 14 módulos con un reinicio y «Actualizar» en koroshi_base nada más arrancar).
 Hechos y SIN INSTALAR: koroshi_monitor 1.29.0 (cerrar camión XPO y enviar manifiesto) y koroshi_s4t_envios 1.3.0
-(is_final al cerrar el camión, botón Reenviar), spec `intent/carga-camion-bultos/spec_2026-11-17.md`. Falta el correo
-de Erika (parámetro koroshi_monitor.manifiesto_cc).
+(is_final al cerrar el camión, botón Reenviar), spec `intent/carga-camion-bultos/spec_2026-11-17.md`. El correo de Erika
+es expediciones@koroshi.tv, ya en copia.
 
 Versiones en el servidor el 13/11 (leídas en nath.tuctuc.com): preparacion 3.28.1, contenedores 1.2.0,
 operarios 2.11.1, informe 1.0.1, kpi 1.5.0, monitor 1.24.0, menu 2.1.0, zonas 1.2.0, warehouse_map
