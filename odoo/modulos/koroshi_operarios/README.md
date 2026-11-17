@@ -203,6 +203,11 @@ clave de la PDA (`koroshi_operarios_pda_2`) y las mismas rutas (solo devuelven d
 - **Salida por inactividad:** parámetro `koroshi_operarios.minutos_inactividad` (*Ajustes > Técnico > Parámetros
   del sistema*). `0` = desactivado (de inicio). Con p. ej. `20`, si en la PDA no se toca nada en 20 min (y no está
   dentro de un pedido), sale el operario. No se pisa al actualizar.
+- **Recarga sola (v2.15):** al actualizar cualquier módulo `koroshi_*`, cada PDA se recarga sola en el siguiente
+  momento seguro (en Lecturas, sin nada abierto ni escrito, con red y sin lecturas pendientes en la memoria); si está
+  dentro de una OUT, al volver a Lecturas. El operario guardado sigue y se abre su OUT. Para forzarla sin actualizar
+  nada: cambiar el parámetro `koroshi_operarios.recargar_pda` (cualquier valor nuevo). La primera vez (para tener la
+  v2.15 en la PDA), Ctrl+F5 a mano.
 - **Menú ☰:** con tarjeta obligatoria hay que **mantenerlo pulsado 2 s** (para que no se abra sin querer). Los
   demás usuarios, un toque.
 - **Datos (solo lectura):** del pedido en curso tienda, zona, líneas, uds, minutos y barra de uds leídas; la cola

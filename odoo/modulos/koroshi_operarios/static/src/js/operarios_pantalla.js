@@ -19,6 +19,12 @@ odoo.define('koroshi_operarios.Pantalla', function (require) {
  * - Salida por inactividad: parametro koroshi_operarios.minutos_inactividad (0 = no).
  * - Menu (☰): en tarjeta obligatoria, pulsacion larga de 2 s.
  *
+ * v2.15: recarga sola. /estado trae version_pantallas (huella de los modulos koroshi_* de la BD). La primera que
+ *   llega es la de esta carga; si cambia (se ha actualizado un modulo), la PDA se recarga sola en un momento seguro:
+ *   en Lecturas, sin hoja ni capa, sin nada escrito, con red y sin lecturas de koroshi_preparacion pendientes en la
+ *   memoria. Si la PDA esta dentro de una OUT, espera a volver a Lecturas. Al recargar, el operario guardado abre
+ *   su OUT como siempre.
+ *
  * Se conserva lo que usa koroshi_faltantes: this.actual, this.operario, events como objeto, .o_ko_dejar.
  */
 var AbstractAction = require('web.AbstractAction');
@@ -31,6 +37,8 @@ var REINTENTO_MS = 5000;     // sin conexion: reintento
 var CUENTA_HECHO = 3;        // segundos antes de abrir la siguiente
 var MENU_LARGO_MS = 2000;    // pulsacion larga del menu en tarjeta obligatoria
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';
+// v2.15: memoria de koroshi_preparacion (lecturas y caducadas pendientes de mandar): con algo dentro no se recarga
+var CLAVES_PENDIENTES = ['koroshi_preparacion_cola', 'koroshi_preparacion_caducadas'];
 var PLACEHOLDER = 'Escribir tarjeta o pedido y Enter';
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 var DESTINOS = {oficina: 'Queda en expediciones', final: 'Va al final de tu cola', suya: 'Sigue siendo tuyo: fin de turno',
@@ -87,6 +95,8 @@ var Pantalla = AbstractAction.extend({
         this.confirmarAccion = null;
         this.minutosInactividad = 0;
         this.ultimaActividad = Date.now();
+        this.versionBase = null;   // v2.15: version_pantallas de esta carga
+        this.recargaPendiente = false;
         this.refHecho = null;      // ref de la OUT que estaba haciendo al irse a la app (para "¡Hecho!")
         this.sonido = this._leerSonido();
         this._enLinea = this._onEnLinea.bind(this);
@@ -141,6 +151,7 @@ var Pantalla = AbstractAction.extend({
         $('body').addClass('o_ko_en_lecturas');   // v2.6
         this.ocupado = false;
         this._ocultarCapa();
+        if (this._recargarSiToca()) { return; }   // v2.15: vuelve de una OUT y hay version nueva
         this._marcarActividad();
         this._pintarAbiertas();
         if (this.operario) {
@@ -1029,6 +1040,40 @@ var Pantalla = AbstractAction.extend({
         });
     },
 
+    // v2.15: recarga sola cuando se ha actualizado un modulo koroshi_*
+    _mirarVersion: function (version) {
+        if (!version) { return; }   // servidor sin la v2.15
+        if (!this.versionBase) { this.versionBase = version; return; }
+        if (version !== this.versionBase) {
+            this.recargaPendiente = true;
+            this._recargarSiToca();
+        }
+    },
+
+    _hayPendientes: function () {
+        try {
+            return CLAVES_PENDIENTES.some(function (k) {
+                var v = JSON.parse(window.localStorage.getItem(k) || '{}') || {};
+                return Object.keys(v).length > 0;
+            });
+        } catch (e) {
+            return true;   // si no se puede leer la memoria, mejor no recargar
+        }
+    },
+
+    _recargarSiToca: function () {
+        if (!this.recargaPendiente) { return false; }
+        var enLecturas = $('body').hasClass('o_ko_en_lecturas') && this.el && $.contains(document, this.el);
+        var escrito = (this.$('.o_ko_codigo').val() || '').trim();
+        if (!enLecturas || this.ocupado || this.capa || this.sinRed || navigator.onLine === false ||
+                this.$('.o_ko_hoja').is(':visible') || escrito || this._hayPendientes()) {
+            return false;
+        }
+        this.recargaPendiente = false;
+        window.location.reload();
+        return true;
+    },
+
     _pintarAbiertas: function () {
         var self = this;
         return this._rpc({route: '/koroshi/operarios/estado',
@@ -1037,6 +1082,7 @@ var Pantalla = AbstractAction.extend({
                 if (!r || !r.ok) { return; }
                 self.$('.o_ko_reloj').text(r.ahora);
                 self.minutosInactividad = r.minutos_inactividad || 0;
+                self._mirarVersion(r.version_pantallas);   // v2.15
                 var n = r.n_operarios !== undefined ? r.n_operarios : r.abiertas.length;
                 self.$('.o_ko_n_operarios').text('(' + n + ')');
                 // v2.3.1: sin contador del día (pedidos / uds): los operarios no ven nada de productividad

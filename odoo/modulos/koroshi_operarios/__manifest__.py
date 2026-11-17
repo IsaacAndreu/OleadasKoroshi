@@ -104,8 +104,14 @@ daba error despues de asignar): abre la cola del operario.
 v2.14.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del almacen sale de koroshi_base.comun
 (dia de la tarea, medianoche del cron de cierre, «hoy» de Lecturas y del reparto). ZONA_HORARIA se queda como nombre
 (koroshi_informe <= 1.1 lo importa). Mismo resultado; sin campos ni vistas nuevas. Depende de koroshi_base.
+v2.15.0 (17/11/2026): las PDA se recargan solas tras actualizar un modulo (antes habia que cerrar y abrir Odoo en
+cada una para ver lo nuevo, p. ej. la pausa de koroshi_preparacion 3.30). /estado trae version_pantallas: huella de
+latest_version de los modulos koroshi_* instalados + el parametro koroshi_operarios.recargar_pda (cambiarlo fuerza
+la recarga). Si cambia, Lecturas se recarga sola en un momento seguro: en Lecturas, sin hoja ni capa, sin nada
+escrito, con red y sin lecturas pendientes de koroshi_preparacion en la memoria de la PDA; dentro de una OUT espera
+a volver. La primera vez, Ctrl+F5 a mano. Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.2.14.0',
+    'version': '13.0.2.15.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

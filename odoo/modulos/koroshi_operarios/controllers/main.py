@@ -10,7 +10,8 @@
 # JSON /koroshi/operarios/motivos    {}                           -> v2: motivos para saltar
 # JSON /koroshi/operarios/dejar      {employee_id}                -> "Dejar aqui" (v1, se mantiene)
 # JSON /koroshi/operarios/estado     {employee_id}                -> tareas abiertas (+ v2.3: n_operarios, contador
-#                                                                    del dia del operario, minutos_inactividad)
+#                                                                    del dia del operario, minutos_inactividad;
+#                                                                    v2.15: version_pantallas)
 #
 # v2.3: las respuestas llevan claves nuevas (solo lectura, el contrato de antes no cambia): en la asignacion y en
 # cada pedido de la cola zona, lineas, uds, hechas; en la tarea minutos desde que empezo, hechas y uds.
@@ -18,6 +19,8 @@
 # La tarjeta se busca en todas las empresas. Solo escribe en las tablas del modulo (con sudo, porque el usuario
 # de la PDA no tiene permisos sobre ellas).
 # =============================================================================
+
+import hashlib
 
 from odoo import fields, http
 from odoo.exceptions import UserError
@@ -50,6 +53,17 @@ def _hora(dt):
     if not dt:
         return ''
     return comun.a_local(dt).strftime('%H:%M')
+
+
+def _version_pantallas():
+    """v2.15: huella de lo que hay instalado en la BD (latest_version de los modulos koroshi_*) mas el parametro
+    koroshi_operarios.recargar_pda. Cambia al actualizar un modulo (cuando la BD ya esta al dia, no al reiniciar) o al
+    cambiar el parametro: la PDA lo ve en /estado y se recarga sola en un momento seguro (operarios_pantalla.js)."""
+    request.env.cr.execute("""SELECT name, COALESCE(latest_version, '') FROM ir_module_module
+                              WHERE state = 'installed' AND name LIKE %s ORDER BY name""", ('koroshi%',))
+    texto = ';'.join('%s=%s' % fila for fila in request.env.cr.fetchall())
+    forzar = request.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.recargar_pda', '') or ''
+    return hashlib.md5((texto + '|' + forzar).encode('utf-8')).hexdigest()[:12]
 
 
 def _error(e):
@@ -257,7 +271,8 @@ class KoroshiOperarios(http.Controller):
                'abiertas': [_tarea_json(t) for t in abiertas],
                # v2.3
                'n_operarios': len(abiertas.mapped('employee_id')),
-               'minutos_inactividad': self._minutos_inactividad()}
+               'minutos_inactividad': self._minutos_inactividad(),
+               'version_pantallas': _version_pantallas()}   # v2.15
         emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
         if emp:
             res['dia'] = self._contador_dia(emp)
