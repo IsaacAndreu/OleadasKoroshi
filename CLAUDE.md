@@ -42,6 +42,25 @@ momento. El mapa de módulos y el despliegue están en [README.md](README.md).
 11. **Cada fase/entrega acaba con**: qué se ha cambiado (`archivo:línea`), cómo se ha probado, qué no se ha
     podido probar y qué hay que probar en una PDA real. Después, parar y esperar el visto bueno.
 
+## Qué modelo para qué (desde el 17/11/2026)
+
+El modelo del chat lo elige la persona en el selector. Si la tarea pide otro distinto del de la sesión, decirlo
+al empezar, en una línea. Antes de cambiar de modelo, probar a subir un nivel de esfuerzo.
+
+| Tarea | Modelo | Esfuerzo |
+|---|---|---|
+| Fallo o cambio en un módulo que usa la PDA (preparación, operarios, Lecturas, faltantes, zonas) | Opus | medium; high si toca stock, cajas o validación |
+| Diseño (fase 7), cambio en dos módulos, sync S4T y crons, cálculos de oleadas | Fable (u Opus en high) | medium → high |
+| Correos a S4T y a clientes, planes y transcripciones en `bin/versiones/` | Sonnet | medium |
+| Buscar dónde está algo, leer logs, revisar versión antes de empaquetar | subagentes (abajo) | — |
+
+**Nunca se baja a Sonnet ni a Haiku para tocar código de un módulo**: si falla, para la PDA en el almacén. Los
+modelos pequeños solo hacen trabajo cuyo error se ve enseguida (leer, buscar, comprobar).
+
+Subagentes (`.claude/agents/`, en Haiku, solo leen):
+- `lector-modulo`: «¿dónde se hace X?» → `archivo:línea`. Usarlo en vez de leer medio módulo en el chat principal.
+- `revisor-version`: antes de `empaquetar.py`, revisa versión, historial, etiqueta y `bin/comprobar.py`.
+
 ## Secretos
 
 `App.config`, `bin/Release/PedidosMultiples.exe.Config` y varios `.cs` de `PedidosMultiples/` tienen
