@@ -129,9 +129,17 @@ hora cuantas me saca»). Uds de cada hora = las uds de cada pedido repartidas po
 (koroshi_preparacion); sin lecturas (app de siempre), por el tiempo, marcado con «~». Minutos de cada hora = sin los
 parados de 15 min o mas. Los totales son la misma cifra que la tabla Operarios y Productividad (tarea._medir de
 koroshi_operarios 2.12+). Excel por dia o rango (hojas Por hora, Resumen y Pedidos). Desplegable de 14 dias; hoy se
-refresca cada 2 min. Solo lee: sin campos, sin modelos nuevos. Pruebas sin Odoo en tests/test_produccion_calc.py.
+refresca cada 2 min. Solo lee: sin campos, sin modelos nuevos. Pruebas sin Odoo en tests/test_produccion_calc.py.v1.32.0 (17/11/2026): revision de Producción por hora con el responsable. u/h REAL como cifra principal (uds entre el
+tiempo de presencia: del primer pedido del dia al ultimo, con cerrar cajas y huecos dentro; «Andres paga la hora
+entera»; Diana 9-10: 42 uds = 42 u/h, no 65) y u/h picking (la de antes) al lado; en cada casilla minutos leyendo y
+perdidos; verde/rojo contra el ritmo estandar (100 u/h real, parametro koroshi_monitor.ritmo_estandar); selector Todo /
+Tiendas / Web / Marketplace / Otros (tipo del pedido de venta); franja del dia: total, hecho, pendiente, horas que
+quedan y hora de fin (hoy con las OUT de tienda abiertas de dias anteriores). Excel con presencia, perdidos y u/h real.
+Monitor: «Personas y horas» sale de los operarios de verdad (koroshi_operarios) y no de las cajas cerradas (Z-1711
+daba 141 u/h y media de 4 personas con 12 operarios); sin operarios, la estimacion de siempre. Misma formula de u/h
+real que el correo (koroshi_informe), acordada el 17/11. Solo lee: sin campos ni modelos nuevos.
 """,
-    'version': '13.0.1.31.0',
+    'version': '13.0.1.32.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

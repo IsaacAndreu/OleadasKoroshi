@@ -157,3 +157,6 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor table.km-ops tr.km-op-alarma-fila .km-op.km-op-parado { background: #fff; color: #c62828; }
 .o_koroshi_monitor .km-alarma-txt { font-weight: 900; color: #fff; animation: km-alarma-parpadeo 1s steps(1, end) infinite; }
 @keyframes km-alarma-parpadeo { 50% { opacity: .35; } }
+/* v1.32.0: u/h real contra el ritmo estandar */
+.o_koroshi_monitor .km-uh-ok { color: #1e7b3a; }
+.o_koroshi_monitor .km-uh-bajo { color: #c62828; }

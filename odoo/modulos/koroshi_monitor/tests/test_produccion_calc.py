@@ -71,6 +71,35 @@ class TestProduccion(unittest.TestCase):
         self.assertIsNone(o['celdas']['10']['uh'])      # 2 min en esa hora: no se ensena u/h
         self.assertEqual(o['celdas']['11']['uds'], 8)
 
+    def test_uh_real_y_perdido(self):
+        # v1.32: Diana de 9 a 10 hace 42 uds en 44 min efectivos (dos pedidos con 16 min entre ellos): u/h real 42
+        a = {'op': 'Diana · OP2', 'codigo': 'OP2', 'tipo': 'tiendas', 'inicio': utc(9, 0), 'fin': utc(9, 20),
+             'uds': 20, 'minutos': 20, 'efectivo': 20, 'huecos': [], 'lecturas': [(utc(9, 10), 20)]}
+        b = {'op': 'Diana · OP2', 'codigo': 'OP2', 'tipo': 'web', 'inicio': utc(9, 36), 'fin': utc(10, 0),
+             'uds': 22, 'minutos': 24, 'efectivo': 24, 'huecos': [], 'lecturas': [(utc(9, 50), 22)]}
+        r = calc.produccion([a, b], TZ)
+        c = r['operarios'][0]['celdas']['9']
+        self.assertEqual((c['uds'], c['min'], c['pres'], c['perdido']), (42, 44, 60, 16))
+        self.assertEqual(c['uh_real'], 42)
+        self.assertEqual(c['uh'], 57)                   # mientras pica: 42 uds / 44 min
+        self.assertEqual(c['color'], 'bajo')            # < 100 u/h real: rojo
+        o = r['operarios'][0]
+        self.assertEqual((o['presencia'], o['perdido'], o['uh_real']), (60, 16, 42))
+        self.assertEqual(r['tipos'], {'tiendas': 1, 'web': 1})
+        self.assertEqual(r['equipo']['max_a_la_vez'], 1)
+        # solo web: la presencia es solo el tiempo dentro de sus pedidos (24 min)
+        w = calc.produccion([a, b], TZ, filtrar=lambda t: t['tipo'] == 'web')
+        ow = w['operarios'][0]
+        self.assertEqual((ow['uds'], ow['presencia'], ow['perdido']), (22, 24, 0))
+        self.assertEqual(ow['uh_real'], 55)
+
+    def test_color_ok(self):
+        t = {'op': 'X', 'codigo': 'OP5', 'inicio': utc(8, 0), 'fin': utc(9, 0), 'uds': 120, 'minutos': 60,
+             'efectivo': 60, 'huecos': [], 'lecturas': [(utc(8, 30), 120)]}
+        o = calc.produccion([t], TZ)['operarios'][0]
+        self.assertEqual(o['celdas']['8']['color'], 'ok')
+        self.assertEqual(o['color'], 'ok')
+
     def test_cambio_de_hora(self):
         # 25/10/2026: a las 3:00 de verano vuelven a ser las 2:00 (dia de 25 h)
         ini = TZ.localize(D(2026, 10, 25, 1, 30)).astimezone(pytz.utc).replace(tzinfo=None)

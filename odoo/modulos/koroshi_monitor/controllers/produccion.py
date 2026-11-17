@@ -20,15 +20,46 @@ from odoo import fields, http
 from odoo.http import content_disposition, request
 from odoo.addons.koroshi_base import comun
 
+import logging
+
 from . import produccion_calc as calc
 from .main import _comprobar_grupo, codigo_op, etiqueta_op
 
+_logger = logging.getLogger(__name__)
 COMPANY_ID = comun.COMPANY_ID
 N_DIAS = 14             # dias en el desplegable
 MAX_DIAS_EXCEL = 31
 CACHE_SEG = 30
 _cache = {}
 _lock = threading.Lock()
+
+
+TIPOS = ('tiendas', 'web', 'marketplace', 'otros')     # v1.32.0: selector de la pantalla
+NOMBRE_TIPO = {'PED. TIENDAS': 'tiendas', 'PED. MARKETPLACE': 'marketplace', 'PED. WEB': 'web'}
+PARAM_RITMO = 'koroshi_monitor.ritmo_estandar'          # v1.32.0: u/h real por debajo de la cual sale en rojo
+
+
+def tipo_de(picking):
+    """v1.32.0: tiendas / web / marketplace / otros segun el tipo del pedido de venta (y W-... = web, como Consulta
+    de envios). Las INT y lo que no tiene pedido de venta: otros."""
+    if not picking:
+        return 'otros'
+    try:
+        nombre = picking.sale_id and picking.sale_id.s_order_type_id and picking.sale_id.s_order_type_id.name or ''
+    except AttributeError:      # sin el campo s_order_type_id
+        nombre = ''
+    if nombre in NOMBRE_TIPO:
+        return NOMBRE_TIPO[nombre]
+    if (picking.origin or '').startswith('W-'):
+        return 'web'
+    return 'otros'
+
+
+def ritmo_estandar(env):
+    try:
+        return max(1, int(float(env['ir.config_parameter'].sudo().get_param(PARAM_RITMO, calc.RITMO_ESTANDAR))))
+    except (TypeError, ValueError):
+        return calc.RITMO_ESTANDAR
 
 
 class KoroshiProduccion(http.Controller):
@@ -91,7 +122,9 @@ class KoroshiProduccion(http.Controller):
                     if t.inicio <= fecha <= fin:
                         suyas.append((fecha, cant))
             ref = (t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name) or t.referencia or ''
+            pick0 = t.picking_id if t.tipo != 'agrupacion' else t.batch_id.picking_ids[:1]
             datos.append({
+                'tipo': tipo_de(pick0), 'pickings': pickings[t.id],
                 'op': etiqueta_op(t.employee_id), 'codigo': codigo_op(t.employee_id),
                 'ref': ref.replace('EFFEC/', ''), 'out_id': t.picking_id.id if t.tipo != 'agrupacion' else False,
                 'estado': dict(t._fields['estado'].selection).get(t.estado, t.estado),
@@ -100,27 +133,55 @@ class KoroshiProduccion(http.Controller):
             })
         return datos
 
-    def _calcular(self, dia):
+    def _calcular(self, dia, tipo=None):
         env = self._env()
         datos = self._tareas(env, dia)
         if datos is None:
             return {'sin_modulo': True}
-        res = calc.produccion(datos, self._tz())
+        filtrar = (lambda t: t['tipo'] == tipo) if tipo in TIPOS else None
+        res = calc.produccion(datos, self._tz(), filtrar=filtrar, ritmo=ritmo_estandar(env))
         res['sin_modulo'] = False
+        res['tipo'] = tipo if tipo in TIPOS else 'todo'
         return res
 
+    def _cabecera(self, dia):
+        """v1.32.0: franja del dia de los pedidos de tienda: total, hecho, pendiente, ritmo del equipo, horas que
+        quedan y hora de fin. Las mismas cuentas que la vista Tiendas del Monitor; hoy suma tambien las OUT de tienda
+        abiertas de dias anteriores (lo pendiente a primera hora)."""
+        from .main import KoroshiMonitor
+        try:
+            r = KoroshiMonitor()._calcular_datos('TIENDAS:%s' % dia.isoformat(), forzar=True,
+                                                abiertas_antes=(dia == self._hoy()))
+        except Exception:
+            _logger.exception('KOROSHI Produccion: no se ha podido calcular la cabecera del dia')
+            return {}
+        total = sum([(d['leido'] if d['est'] == 'hecha' else d['disp']) for d in r.get('D') or []])
+        hecho = sum([d['leido'] for d in r.get('D') or []])
+        eq = r.get('equipo') or {}
+        pendiente = max(total - hecho, 0.0)
+        return {
+            'total': int(round(total)), 'hecho': int(round(hecho)), 'pendiente': int(round(pendiente)),
+            'pct': int(round(100.0 * hecho / total)) if total else 0, 'uh_equipo': eq.get('uh') or 0,
+            'horas_quedan': round(pendiente / eq['uh'], 1) if eq.get('uh') else None,
+            'fin_previsto': eq.get('fin_previsto') or '', 'inicio': eq.get('inicio') or '',
+            'out': len(r.get('D') or []), 'anteriores': r.get('abiertas_antes', 0),
+        }
+
     @http.route('/koroshi_monitor/produccion', type='json', auth='user')
-    def produccion(self, dia=None, **kw):
+    def produccion(self, dia=None, tipo=None, **kw):
         _comprobar_grupo()
         hoy = self._hoy()
         d = self._fecha(dia, hoy)
-        clave = (request.env.cr.dbname, request.env.user.tz or '', d.isoformat())
+        tipo = tipo if tipo in TIPOS else None
+        clave = (request.env.cr.dbname, request.env.user.tz or '', d.isoformat(), tipo or '')
         with _lock:
             guardado = _cache.get(clave)
             if guardado and time.time() - guardado[0] < CACHE_SEG:
                 res = guardado[1]
             else:
-                res = self._calcular(d)
+                res = self._calcular(d, tipo)
+                if not res.get('sin_modulo'):
+                    res['cabecera'] = self._cabecera(d)
                 ahora = time.time()
                 _cache[clave] = (ahora, res)
                 for k in [k for k, v in _cache.items() if ahora - v[0] > 600]:
@@ -147,11 +208,13 @@ class KoroshiProduccion(http.Controller):
         h_hora = libro.add_worksheet('Por hora')
         h_res = libro.add_worksheet('Resumen')
         h_ped = libro.add_worksheet('Pedidos')
-        cab_hora = ['Día', 'Operario', 'Código', 'Hora', 'Uds', 'Min efectivos', 'u/h']
-        cab_res = ['Día', 'Operario', 'Código', 'Pedidos', 'Uds', 'Min efectivos', 'Horas efectivas', 'u/h',
-                   'Estimado (sin lecturas PDA)']
-        cab_ped = ['Día', 'Operario', 'Código', 'Pedido', 'Estado', 'Inicio', 'Fin', 'Uds', 'Min efectivos', 'u/h',
-                   'Estimado (sin lecturas PDA)']
+        # v1.32.0: u/h real (hora entera, presencia) y u/h picking (minutos efectivos), minutos perdidos y tipo
+        cab_hora = ['Día', 'Operario', 'Código', 'Hora', 'Uds', 'Min presencia', 'Min efectivos', 'Min perdidos',
+                    'u/h real', 'u/h picking']
+        cab_res = ['Día', 'Operario', 'Código', 'Pedidos', 'Uds', 'Min presencia', 'Min efectivos', 'Min perdidos',
+                   'Horas presencia', 'u/h real', 'u/h picking', 'Estimado (sin lecturas PDA)']
+        cab_ped = ['Día', 'Operario', 'Código', 'Pedido', 'Tipo', 'Estado', 'Inicio', 'Fin', 'Uds', 'Min (inicio a fin)',
+                   'Min efectivos', 'u/h picking', 'Estimado (sin lecturas PDA)']
         for hoja, cab in ((h_hora, cab_hora), (h_res, cab_res), (h_ped, cab_ped)):
             for c, txt in enumerate(cab):
                 hoja.write(0, c, txt, neg)
@@ -159,6 +222,10 @@ class KoroshiProduccion(http.Controller):
             hoja.set_column(0, 0, 11)
             hoja.set_column(1, 1, 30)
             hoja.set_column(2, len(cab) - 1, 13)
+
+        def vacio(x):
+            return x if x is not None else ''
+
         fh = fr = fp = 1
         d = d1
         while d <= d2:
@@ -170,26 +237,29 @@ class KoroshiProduccion(http.Controller):
                     if not c:
                         continue
                     h_hora.write_row(fh, 0, [dia_txt, o['op'], o['codigo'], '%02d:00-%02d:00' % (h, (h + 1) % 24),
-                                             c['uds'], c['min'], c['uh'] if c['uh'] is not None else ''])
+                                             c['uds'], c['pres'], c['min'], c['perdido'], vacio(c['uh_real']),
+                                             vacio(c['uh'])])
                     fh += 1
-                h_res.write_row(fr, 0, [dia_txt, o['op'], o['codigo'], o['n_pedidos'], o['uds'], o['efectivo'],
-                                        o['horas_ef'], o['uh'], 'Sí' if o['estimado'] else ''])
+                h_res.write_row(fr, 0, [dia_txt, o['op'], o['codigo'], o['n_pedidos'], o['uds'], o['presencia'],
+                                        o['efectivo'], o['perdido'], o['horas_pres'], o['uh_real'], o['uh'],
+                                        'Sí' if o['estimado'] else ''])
                 fr += 1
                 for p in o['pedidos']:
-                    h_ped.write_row(fp, 0, [dia_txt, o['op'], o['codigo'], p['ref'], p['estado'], p['ini'], p['fin'],
-                                            p['uds'], p['min'], p['uh'], 'Sí' if p['estimado'] else ''])
+                    h_ped.write_row(fp, 0, [dia_txt, o['op'], o['codigo'], p['ref'], p['tipo'], p['estado'], p['ini'],
+                                            p['fin'], p['uds'], p['min_total'], p['min'], p['uh'],
+                                            'Sí' if p['estimado'] else ''])
                     fp += 1
             eq = r.get('equipo')
             if eq:
                 for h in r['horas']:
                     c = eq['celdas'].get(str(h))
                     if c:
-                        h_hora.write_row(fh, 0, [dia_txt, 'EQUIPO (por persona en u/h)', '',
-                                                 '%02d:00-%02d:00' % (h, (h + 1) % 24), c['uds'], c['min'],
-                                                 c['uh'] if c['uh'] is not None else ''])
+                        h_hora.write_row(fh, 0, [dia_txt, 'EQUIPO (u/h por persona)', '',
+                                                 '%02d:00-%02d:00' % (h, (h + 1) % 24), c['uds'], c['pres'], c['min'],
+                                                 c['perdido'], vacio(c['uh_real']), vacio(c['uh'])])
                         fh += 1
-                h_res.write_row(fr, 0, [dia_txt, 'EQUIPO', '', '', eq['uds'], eq['efectivo'], eq['horas_ef'],
-                                        eq['uh'], ''])
+                h_res.write_row(fr, 0, [dia_txt, 'EQUIPO', '', '', eq['uds'], eq['presencia'], eq['efectivo'],
+                                        eq['perdido'], eq['horas_pres'], eq['uh_real'], eq['uh'], ''])
                 fr += 1
             d += datetime.timedelta(days=1)
         libro.close()

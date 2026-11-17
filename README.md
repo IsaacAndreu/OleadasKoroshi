@@ -42,7 +42,7 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 | Módulo | Versión | Qué hace | Depende de (propios) |
 |---|---|---|---|
 | `koroshi_zonas` | 1.4.0 | Partir pedidos de tienda por zonas buscando el máximo de cajas cerradas (motor v12f, cron en sombra). | kpi |
-| `koroshi_monitor` | 1.31.0 | Pantalla en directo de las agrupaciones por zonas (Z-ddmm-D1..D5, ZX), Consulta de envíos y Producción por hora (uds y u/h de cada operario hora a hora). | base, warehouse_map |
+| `koroshi_monitor` | 1.32.0 | Pantalla en directo de las agrupaciones por zonas (Z-ddmm-D1..D5, ZX), Consulta de envíos y Producción por hora (uds y u/h de cada operario hora a hora). | base, warehouse_map |
 | `koroshi_sesiones` | 1.0.0 | Las sesiones con usuario no se borran nunca (Odoo 13 las borraba a los 7 días sin usarse); las sin usuario, a los 7 días en el auto-vacuum diario. Sin tablas. | — |
 | `koroshi_kpi` | 1.9.0 | KPI diarios: uds, profundidad por SKU, peso, volumen, metros y segundos por prenda; previsión de cajas por volumen. | base |
 | `koroshi_informe` | 1.2.0 | Correo diario, semanal y mensual de productividad. | base, operarios, kpi, preparacion, menu |

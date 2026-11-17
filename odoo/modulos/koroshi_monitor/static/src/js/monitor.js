@@ -92,7 +92,27 @@ function tablaOperarios(ops, tv) {
     return h + '</tbody></table></div>' + (tv ? '' : '<p class="km-nota">Nombre y código de la tarjeta de cada operario (KOROSHI Operarios). Uds = uds leídas entre que lee la OUT y la valida o la deja; en curso, hasta ahora.</p>');
 }
 // Personas y horas estimadas por las cajas cerradas (v1.3): sale para cualquier dia, no solo hoy
-function personas(p, quien) {
+// v1.32.0: con KOROSHI Operarios, «Personas y horas» sale de las tareas de cada operario (tarjeta en Lecturas), con la
+// misma cuenta que Producción por hora. Antes (y sin operarios) se estimaba por las cajas cerradas y salía muy alto
+// (Z-1711: 141 u/h y media de 4 personas con 12 operarios).
+function personasOp(q) {
+    var col = q.color === 'bajo' ? ' km-uh-bajo' : (q.color === 'ok' ? ' km-uh-ok' : '');
+    return '<h2>Personas y horas</h2><p class="km-nota">De los operarios con tarjeta en Lecturas (KOROSHI Operarios), solo el tiempo dentro de estos pedidos. ' +
+        '<b>u/h real</b> = uds entre el tiempo de presencia (de que empieza un pedido a que lo acaba, con cerrar cajas y huecos dentro); ' +
+        '<b>u/h picking</b> = solo mientras lee (sin los ratos de 15 min o más sin leer). En rojo por debajo de ' + q.ritmo + ' u/h real. ' +
+        'Detalle hora a hora en «Producción por hora».</p>' +
+        '<div class="km-grid">' + [
+            [q.operarios + (q.max_a_la_vez ? ' <small>(' + q.max_a_la_vez + ' a la vez)</small>' : ''), 'operarios' + (q.inicio ? ' (' + e(q.inicio) + ' – ' + e(q.fin) + ')' : '')],
+            [hm(q.horas_pres), 'horas de presencia'],
+            [hm(q.horas_ef), 'horas leyendo · ' + n(q.perdido) + ' min perdidos'],
+            ['<span class="' + col + '">' + n(q.uh_real) + ' u/h</span>', 'real (por hora de presencia)'],
+            [n(q.uh) + ' u/h', 'picking (mientras lee)'],
+            [n(q.uds_persona), 'uds por operario'],
+        ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
+}
+
+function personas(p, quien, op) {
+    if (op && op.operarios) { return personasOp(op); }   // v1.32.0
     if (!p || !p.hp) { return ''; }
     var inactividad = p.inactividad_min || 5;
     // v1.20.1: en zonas, una persona por OUT desde que empieza cada caja hasta que la cierra
@@ -370,7 +390,7 @@ var Monitor = AbstractAction.extend({
             [T.p, 'OUT sin empezar'],
         ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
         h += avisoParados(r, false);
-        h += personas(r.personas, 'OUT');
+        h += personas(r.personas, 'OUT', r.personas_op);
         h += tablaOperarios(r.operarios, false);
 
         // Totales
@@ -667,7 +687,7 @@ Monitor.include({
         }
 
         if (!tv) {
-            h += personas(r.personas, 'OUT');
+            h += personas(r.personas, 'OUT', r.personas_op);
             // Uds leidas por hora
             var ph = r.por_hora || [];
             var phOut = r.por_hora_out || [];

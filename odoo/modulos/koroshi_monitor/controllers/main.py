@@ -528,7 +528,35 @@ class KoroshiMonitor(http.Controller):
                 _cache.pop(k, None)
         return res
 
-    def _calcular_datos(self, prefijo=None):
+    def _personas_op(self, env, dia, picking_ids):
+        """v1.32.0: «Personas y horas» con los operarios de verdad (koroshi_operarios), no estimado por las cajas: las
+        tareas de ese dia en estas OUT, con la misma cuenta que Producción por hora (presencia = el tiempo dentro de
+        esos pedidos). None sin koroshi_operarios 2.12 o sin tareas: entonces sale la estimacion de siempre."""
+        from .produccion import KoroshiProduccion, ritmo_estandar
+        from . import produccion_calc
+        try:
+            datos = KoroshiProduccion()._tareas(env, dia)
+            if not datos:
+                return None
+            ids = set(picking_ids)
+            r = produccion_calc.produccion(datos, self._tz(), filtrar=lambda t: bool(ids & set(t['pickings'])),
+                                           ritmo=ritmo_estandar(env))
+        except Exception:
+            _logger.exception('KOROSHI Monitor: no se han podido sacar las personas de koroshi_operarios')
+            return None
+        eq = r['equipo']
+        if not eq['operarios']:
+            return None
+        return {
+            'operarios': eq['operarios'], 'max_a_la_vez': eq['max_a_la_vez'], 'inicio': eq['inicio'], 'fin': eq['fin'],
+            'horas_pres': eq['horas_pres'], 'horas_ef': eq['horas_ef'], 'perdido': eq['perdido'], 'uds': eq['uds'],
+            'uh_real': eq['uh_real'], 'uh': eq['uh'], 'color': eq['color'], 'ritmo': r['ritmo'],
+            'uds_persona': int(round(eq['uds'] / eq['operarios'])),
+        }
+
+    def _calcular_datos(self, prefijo=None, forzar=False, abiertas_antes=False):
+        """v1.32.0: forzar = acepta cualquier 'TIENDAS:aaaa-mm-dd' (Producción por hora, dias de su desplegable);
+        abiertas_antes = suma las OUT de tienda abiertas creadas antes de ese dia (lo pendiente a primera hora)."""
         env = request.env(context=dict(request.env.context, allowed_company_ids=[COMPANY_ID]))
         hoy = self._hoy_local()
         dias = []
@@ -536,11 +564,15 @@ class KoroshiMonitor(http.Controller):
             dias.append('TIENDAS:%s' % (hoy - datetime.timedelta(days=i)).isoformat())
         zonas = self._prefijos(env)
         prefijos = dias + zonas
+        if forzar and prefijo and re.match(r'^TIENDAS:\d{4}-\d{2}-\d{2}$', prefijo) and prefijo not in prefijos:
+            prefijos = prefijos + [prefijo]
         if not prefijo or prefijo not in prefijos:
             z_hoy = 'Z-%s-' % hoy.strftime('%d%m')
             prefijo = z_hoy in zonas and z_hoy or dias[0]
         etiquetas = {}
-        for d in dias:
+        for d in prefijos:
+            if not d.startswith('TIENDAS:'):
+                continue
             f = datetime.date(*[int(x) for x in d.split(':')[1].split('-')])
             etiquetas[d] = 'Tiendas %s%s' % (f.strftime('%d/%m'), f == hoy and ' (hoy)' or '')
         for z in zonas:
@@ -596,20 +628,31 @@ class KoroshiMonitor(http.Controller):
             res['personas'] = self._personas(dia_z, sum([x[1] for x in por_hora.items()]), zonas=True)
             res['personas']['inicio'] = self._hora(dia_z['primera'])
             res['personas']['ultima'] = self._hora(dia_z['ultima'])
+            if z_ini:   # v1.32.0: con los operarios de verdad (dia de la agrupacion)
+                res['personas_op'] = self._personas_op(env, zd, picks.ids)
             return res
 
         # ---------------- Modo tiendas: una OUT por pedido, el dia elegido ----------------
         dia = datetime.date(*[int(x) for x in prefijo.split(':')[1].split('-')])
         ini = self._inicio_utc(dia)
         fin = self._inicio_utc(dia + datetime.timedelta(days=1))   # v1.28: dias de 23 o 25 h
-        picks = env['stock.picking'].sudo().search([
+        dominio = [
             ('company_id', '=', COMPANY_ID),
             ('picking_type_code', '=', 'outgoing'),
             ('state', '!=', 'cancel'),
             ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO),
             '|', '&', ('create_date', '>=', ini), ('create_date', '<', fin),
             '&', ('date_done', '>=', ini), ('date_done', '<', fin),
-        ])
+        ]
+        picks = env['stock.picking'].sudo().search(dominio)
+        if abiertas_antes:
+            # v1.32.0 (solo Producción por hora): + las OUT de tienda sin validar creadas antes de ese dia
+            antes = env['stock.picking'].sudo().search([
+                ('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
+                ('state', 'not in', ('done', 'cancel')), ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO),
+                ('create_date', '<', ini)])
+            res['abiertas_antes'] = len(antes - picks)
+            picks |= antes
         filas, por_hora, dia_t, por_hora_out = self._filas(env, picks, None, ini, fin)
         D = []
         primera = dia_t['primera']
@@ -696,6 +739,8 @@ class KoroshiMonitor(http.Controller):
         res['pedidos'] = len(set([d['pedido'] for d in D]))
         res['equipo'] = equipo
         res['personas'] = self._personas(dia_t, leidas_dia)
-        res['por_hora'] = [[h, int(por_hora[h])] for h in sorted(por_hora)]
+        if not forzar:      # v1.32.0: con los operarios de verdad (no hace falta en Producción por hora)
+            res['personas_op'] = self._personas_op(env, dia, picks.ids)
+        res['por_hora'] =[[h, int(por_hora[h])] for h in sorted(por_hora)]
         res['por_hora_out'] = [[h, list(por_hora_out[h].values())] for h in sorted(por_hora_out)]
         return res
