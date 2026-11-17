@@ -1,4 +1,4 @@
-# KOROSHI Faltantes (v1.6.0, 17/11/2026)
+# KOROSHI Faltantes (v1.6.1, 17/11/2026)
 
 Qué hacer en la PDA cuando una pieza de una OUT no está donde dice Odoo. Hasta ahora se ponía a 0 la ubicación desde la PDA:
 el stock se iba a pérdidas sin saber quién, de qué OUT ni por qué. Del 27/10 al 09/11 se hizo 111 veces (159 uds), y el 44 % de
@@ -8,6 +8,12 @@ Con este módulo:
 - la línea de la OUT pasa a otra ubicación con stock libre;
 - la pieza que no está va a **EFFEC/FALTANTE**;
 - queda un registro que se revisa cada día.
+
+## v1.6.1: el muelle, como en koroshi_zonas (17/11/2026)
+
+- Muelle = huecos `MU-.. P.. C..` (MU2) y `N1-L.. P.. C..` (MU1), los mismos de koroshi_zonas.
+- Dentro de NAVE2 solo vale un hueco de lineal o de muelle (con o sin caja KO). Ya no se proponen las KO sueltas
+  (recepción sin ubicar, p. ej. `KO_171126_…`) ni `PERCHAS_KO`.
 
 ## v1.6.0: solo lineales y muelle (17/11/2026)
 

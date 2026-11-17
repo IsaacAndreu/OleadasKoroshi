@@ -35,12 +35,13 @@ from odoo.addons.koroshi_base import comun   # v1.5: hora del almacen
 MAX_ALTERNATIVAS = 5
 NOMBRE_PUESTA_A_CERO = 'Cantidad de producto actualizada'   # lo que escribe Odoo al poner a 0 desde la PDA
 PREFIJOS_ZONA = ('Z-',)                                      # agrupaciones que se abren enteras
-# v1.6: solo se coge de NAVE2: los huecos de los lineales (L.. P.. C..) y las cajas KO del muelle (KO_ sueltas en
-# NAVE2, aun sin hueco). Nunca de DEVOLUCIO_KOROSHI, CAJAS, PRUEBA ni de EFFEC/Stock directamente.
+# v1.6: solo se coge de NAVE2. v1.6.1: y solo de un hueco de lineal o de muelle (los mismos que koroshi_zonas): «L62 P36
+# C2», «N1-L09 P08 C1» (MU1) o «MU-01 P00 C1» (MU2), con o sin caja KO dentro. Nunca de DEVOLUCIO_KOROSHI, CAJAS,
+# PRUEBA, la raiz de Stock, las KO sueltas en NAVE2 (recepcion sin ubicar) ni PERCHAS_KO.
 ZONA_PICKING = 'NAVE2'
 
 RE_LINEAL = re.compile(r'\bL(\d+)\b')
-RE_HUECO = re.compile(r'(L\d+\s+P\d+\s+C\d+)')
+RE_HUECO = re.compile(r'((?:L|MU-)\d+\s+P\d+\s+C\d+)')   # v1.6.1: tambien los huecos del muelle (MU-..)
 
 
 def lineal_de(ubicacion):
@@ -159,11 +160,13 @@ class KoroshiFaltante(models.Model):
     @api.model
     def _excluida(self, ubicacion):
         """v1.6: True si no es de donde se coge para una OUT: fuera de NAVE2 (DEVOLUCIO_KOROSHI, CAJAS, PRUEBA, la
-        raiz de Stock...) o la propia NAVE2. Dentro: huecos de lineal y cajas KO del muelle."""
-        partes = [p.strip() for p in (ubicacion.complete_name or '').split('/')]
+        raiz de Stock...) o, v1.6.1, dentro de NAVE2 pero fuera de un hueco de lineal o de muelle (KO sueltas,
+        PERCHAS_KO)."""
+        completo = ubicacion.complete_name or ''
+        partes = [p.strip() for p in completo.split('/')]
         if ZONA_PICKING not in partes:
             return True
-        return partes[-1] == ZONA_PICKING
+        return not RE_HUECO.search(completo)
 
     @api.model
     def _libre_en(self, product, ubicacion):
