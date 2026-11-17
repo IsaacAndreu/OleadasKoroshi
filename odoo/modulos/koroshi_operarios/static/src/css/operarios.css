@@ -272,6 +272,11 @@
    La clase solo se pone en body mientras se ve Lecturas sin operario. */
 body.o_ko_bloqueado .o_main_navbar { display: none !important; }
 
+/* v2.18.1: error de Odoo 13 «Cannot read properties of undefined (reading 'getBoundingClientRect')» en los menus sin
+   submenus (p. ej. Lecturas (PDA)) con la ventana estrecha: los iconos de la derecha no dejan sitio, Odoo intenta pasar
+   los submenus al desplegable «+» y no hay ninguno. Con la barra de submenus vacia oculta, Odoo no la recoloca. */
+.o_main_navbar .o_menu_sections:empty { display: none !important; }
+
 /* ================================================================ v2.6: mismo aspecto que Preparación en Lecturas v3.11
    («etiqueta de estantería»): plano, negro sobre blanco, sin sombras; cabecera negra; botones planos. */
 .o_koroshi_operarios {

@@ -124,8 +124,11 @@ operarios creados: cambiar nombre y codigo, quitar (se elimina sin historial; co
 «Crear operarios» y tarjeta KOROSHI (texto KOROSHI, nombre y codigo de barras, sin el logo de Effective). Crear
 operarios vuelve a esa pantalla. La lista de Empleados queda en «Operarios (ficha de empleado)» (grupo RRHH).
 Dos modelos temporales nuevos; sin campos en tablas existentes.
+v2.18.1 (17/11/2026): arregla el error rojo «Cannot read properties of undefined (reading 'getBoundingClientRect')»
+de Odoo 13 en los menus sin submenus (Lecturas (PDA)) con la ventana del PC estrecha: una regla CSS oculta la barra
+de submenus cuando esta vacia (static/src/css/operarios.css). Solo CSS.
 """,
-    'version': '13.0.2.18.0',
+    'version': '13.0.2.18.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

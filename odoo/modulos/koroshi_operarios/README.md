@@ -1,8 +1,14 @@
-# KOROSHI Operarios (v2.18.0, 17/11/2026)
+# KOROSHI Operarios (v2.18.1, 17/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.18.1: error de la barra de menús (17/11/2026)
+
+- En «Lecturas (PDA)» (menú sin submenús), con la ventana del PC estrecha, Odoo 13 sacaba el error rojo
+  «Cannot read properties of undefined (reading 'getBoundingClientRect')». Una regla CSS en
+  `static/src/css/operarios.css` oculta la barra de submenús cuando está vacía y Odoo ya no intenta recolocarla.
 
 ## v2.18.0: pantalla Operarios para los responsables (17/11/2026)
 
