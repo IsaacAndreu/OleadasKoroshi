@@ -1,0 +1,39 @@
+/* v1.31.0: pantalla «Producción por hora» */
+.o_koroshi_produccion { --kp-bg: #f6f7f9; --kp-line: #dfe3e8; --kp-ink: #17202a; --kp-muted: #667085; --kp-azul: #315b85;
+    height: 100%; overflow: auto; background: var(--kp-bg); color: var(--kp-ink); font-size: 15px; }
+.o_koroshi_produccion main { width: 100%; padding: 22px 20px 60px; box-sizing: border-box; }
+.o_koroshi_produccion .kp-cab { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
+.o_koroshi_produccion .kp-cab h1 { margin: 0; font-size: 28px; font-weight: 750; }
+.o_koroshi_produccion .kp-cab p { margin: 4px 0 16px; color: var(--kp-muted); }
+.o_koroshi_produccion .kp-ctl { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; }
+.o_koroshi_produccion .kp-ctl label { margin: 0; font-weight: 650; color: var(--kp-muted); }
+.o_koroshi_produccion .kp-ctl select, .o_koroshi_produccion .kp-ctl input { height: 34px; margin-left: 4px; padding: 4px 8px; border: 1px solid #aeb7c2; border-radius: 6px; background: #fff; color: var(--kp-ink); }
+.o_koroshi_produccion .kp-sep { flex: 1 1 auto; }
+.o_koroshi_produccion .kp-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+.o_koroshi_produccion .kp-kpi { padding: 12px 16px; border: 1px solid var(--kp-line); border-radius: 10px; background: #fff; }
+.o_koroshi_produccion .kp-kpi b { display: block; font-size: 26px; }
+.o_koroshi_produccion .kp-kpi span { color: var(--kp-muted); }
+.o_koroshi_produccion .kp-card { border: 1px solid var(--kp-line); border-radius: 10px; background: #fff; }
+.o_koroshi_produccion .kp-scroll { overflow-x: auto; }
+.o_koroshi_produccion table.kp-tabla { width: 100%; border-collapse: collapse; }
+.o_koroshi_produccion .kp-tabla th { position: sticky; top: 0; background: #eef2f6; padding: 8px 6px; font-size: 13px; white-space: nowrap; border-bottom: 1px solid var(--kp-line); }
+.o_koroshi_produccion .kp-tabla td { padding: 6px; border-bottom: 1px solid #edf0f3; text-align: center; white-space: nowrap; }
+.o_koroshi_produccion .kp-tabla td b { display: block; font-size: 16px; }
+.o_koroshi_produccion .kp-tabla td small { display: block; font-size: 11px; color: #3b4652; }
+.o_koroshi_produccion .kp-tabla .c { text-align: center; }
+.o_koroshi_produccion .kp-tabla .r { text-align: right; }
+.o_koroshi_produccion .kp-col-op { text-align: left !important; min-width: 220px; position: sticky; left: 0; background: #fff; z-index: 1; }
+.o_koroshi_produccion th.kp-col-op { background: #eef2f6; z-index: 2; }
+.o_koroshi_produccion .kp-col-op small { display: block; color: var(--kp-muted); font-size: 11px; }
+.o_koroshi_produccion tr.kp-op { cursor: pointer; }
+.o_koroshi_produccion tr.kp-op:hover .kp-col-op, .o_koroshi_produccion tr.kp-abierto .kp-col-op { background: #f2f6fa; }
+.o_koroshi_produccion .kp-flecha { color: var(--kp-azul); }
+.o_koroshi_produccion .kp-vacia { color: #c3c9d0; }
+.o_koroshi_produccion .kp-est { color: #b26a00; font-weight: 700; }
+.o_koroshi_produccion tr.kp-pedidos > td { background: #f8fafc; text-align: left; padding: 8px 12px 12px 36px; }
+.o_koroshi_produccion tr.kp-pedidos table { border-collapse: collapse; min-width: 560px; }
+.o_koroshi_produccion tr.kp-pedidos th, .o_koroshi_produccion tr.kp-pedidos td { padding: 3px 10px; font-size: 13px; border-bottom: 1px solid #e6eaee; text-align: left; position: static; background: transparent; }
+.o_koroshi_produccion tr.kp-pedidos .r { text-align: right; }
+.o_koroshi_produccion tr.kp-equipo td { background: #e8eef5; border-top: 2px solid var(--kp-azul); font-weight: 600; }
+.o_koroshi_produccion tr.kp-equipo td.kp-col-op { background: #e8eef5; }
+.o_koroshi_produccion .kp-nota { margin-top: 12px; color: var(--kp-muted); font-size: 13px; max-width: 1100px; }

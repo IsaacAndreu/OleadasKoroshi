@@ -122,6 +122,7 @@ var Monitor = AbstractAction.extend({
         'input .km-buscar': '_onFiltro',
         'click .km-refrescar': '_cargar',
         'click .km-envios': '_abrirEnvios',
+        'click .km-produccion': '_abrirProduccion',   // v1.31.0
         'click .km-mapa': '_abrirMapa',
         'click .km-limpiar-filtros': '_limpiarFiltros',
         'dblclick th.km-sort': '_onSort',
@@ -254,6 +255,17 @@ var Monitor = AbstractAction.extend({
         });
     },
 
+    // v1.31.0: Producción por hora (uds y u/h de cada operario hora a hora)
+    _abrirProduccion: function (ev) {
+        ev.preventDefault();
+        this.do_action({
+            type: 'ir.actions.client',
+            name: 'Producción por hora',
+            tag: 'koroshi_produccion',
+            target: 'current',
+        });
+    },
+
     // v1.12: clic en una OUT: se abre dentro de Odoo (con migas para volver al monitor); funciona tambien en la PDA y
     // donde no se abren pestanas nuevas. Ctrl/Cmd/Mayus o boton central: pestana nueva (el enlace normal)
     _onOut: function (ev) {
@@ -316,6 +328,7 @@ var Monitor = AbstractAction.extend({
                 '<button class="btn btn-secondary km-limpiar-filtros" title="Limpiar filtros y orden">Limpiar</button>';
         }
         return ctl + '<button class="btn btn-secondary km-refrescar">Refrescar</button>' +
+            '<button class="btn btn-info km-produccion">Producción por hora</button>' +   // v1.31.0
             '<button class="btn btn-success km-envios">Consulta envíos / Excel</button>' +
             '<button class="btn btn-primary km-mapa">Abrir mapa operativo</button></div>';
     },

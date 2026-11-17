@@ -9,6 +9,9 @@
             <link rel="stylesheet" type="text/css" href="/koroshi_monitor/static/src/css/envios.css"/>
             <script type="text/javascript" src="/koroshi_monitor/static/src/js/monitor.js"/>
             <script type="text/javascript" src="/koroshi_monitor/static/src/js/envios.js"/>
+            <!-- v1.31.0: Producción por hora -->
+            <link rel="stylesheet" type="text/css" href="/koroshi_monitor/static/src/css/produccion.css"/>
+            <script type="text/javascript" src="/koroshi_monitor/static/src/js/produccion.js"/>
             <script type="text/javascript" src="/koroshi_monitor/static/src/js/mobile_swipe_guard.js"/>
         </xpath>
     </template>

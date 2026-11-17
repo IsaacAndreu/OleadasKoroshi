@@ -122,8 +122,16 @@ v1.30.0 (17/11/2026): operarios con nombre + codigo («Ana Garcia · OP3») en l
 la matriz de zonas, el aviso de parados y el Modo pantalla (antes, desde la v1.18, solo el codigo). Lo pidio Isaac el
 17/11. El buscador tambien encuentra por nombre. Se ordena y se busca la u/h por el codigo, como antes. Sin campos ni
 vistas nuevas.
+v1.31.0 (17/11/2026): pantalla nueva «Producción por hora» (boton en el Monitor picking y menu KOROSHI). Por operario
+(nombre + codigo): uds y u/h de CADA HORA del dia, sus pedidos (uds, minutos efectivos y u/h de cada uno) y la fila
+EQUIPO con las uds de cada hora, la u/h por persona y cuantos operarios. Lo pidio Isaac el 17/11 (transcript: «cada
+hora cuantas me saca»). Uds de cada hora = las uds de cada pedido repartidas por la hora de sus lecturas en la PDA
+(koroshi_preparacion); sin lecturas (app de siempre), por el tiempo, marcado con «~». Minutos de cada hora = sin los
+parados de 15 min o mas. Los totales son la misma cifra que la tabla Operarios y Productividad (tarea._medir de
+koroshi_operarios 2.12+). Excel por dia o rango (hojas Por hora, Resumen y Pedidos). Desplegable de 14 dias; hoy se
+refresca cada 2 min. Solo lee: sin campos, sin modelos nuevos. Pruebas sin Odoo en tests/test_produccion_calc.py.
 """,
-    'version': '13.0.1.30.0',
+    'version': '13.0.1.31.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

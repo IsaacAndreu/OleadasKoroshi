@@ -10,6 +10,12 @@
         <field name="tag">koroshi_consulta_envios</field>
     </record>
 
+    <!-- v1.31.0: Producción por hora (uds y u/h de cada operario hora a hora) -->
+    <record id="action_koroshi_produccion" model="ir.actions.client">
+        <field name="name">Producción por hora</field>
+        <field name="tag">koroshi_produccion</field>
+    </record>
+
     <!-- Agrupado dentro de KOROSHI · Operaciones para no saturar Inventario. -->
     <menuitem id="menu_koroshi_monitor"
               name="Monitor picking"
@@ -23,5 +29,12 @@
               parent="koroshi_warehouse_map.menu_koroshi_warehouse_root"
               action="action_koroshi_consulta_envios"
               sequence="25"
+              groups="stock.group_stock_user"/>
+
+    <menuitem id="menu_koroshi_produccion"
+              name="Producción por hora"
+              parent="koroshi_warehouse_map.menu_koroshi_warehouse_root"
+              action="action_koroshi_produccion"
+              sequence="22"
               groups="stock.group_stock_user"/>
 </odoo>
