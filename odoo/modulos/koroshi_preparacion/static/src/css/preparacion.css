@@ -292,6 +292,9 @@
 }
 .o_koroshi_preparacion .o_kp_rojo { background: var(--kp-rojo); }
 .o_koroshi_preparacion .o_kp_rojo.o_kp_confirmar { box-shadow: 0 0 0 4px #111827 inset; font-size: 20px; }
+/* v3.33: ronda de faltantes */
+.o_koroshi_preparacion .o_kp_fila_ronda .o_kp_boton { font-size: 17px; }
+.o_koroshi_preparacion .o_kp_gris.o_kp_confirmar { box-shadow: 0 0 0 4px #111827 inset; }
 .o_koroshi_preparacion .o_kp_f_lista {
     display: block; margin: 4px auto 0; border: 0; background: none; color: var(--kp-azul); font-size: 16px;
     text-decoration: underline; padding: 8px; cursor: pointer;

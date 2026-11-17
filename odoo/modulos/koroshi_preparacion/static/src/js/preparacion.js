@@ -53,6 +53,7 @@ var A_DOS_MS = 10000;          // v3.3: preparar a dos -> se refresca lo del com
 var AVISO_OK_MS = 3000;
 var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
 var TXT_SIN_CAJA = 'Sin caja (bolsa) → expediciones';   // v3.32
+var TXT_RONDA = {no_esta: 'No está', no_existe: 'La ubicación no existe'};   // v3.33: ronda de faltantes
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
 var CLAVE_PDA = 'koroshi_preparacion_pda';
 var RE_CJ = /^CJ\d{9}$/i;
@@ -93,6 +94,8 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_tipo_caja': '_onTipoCaja',          // v3.24
         'click .o_kp_cancelar_caja': '_salirDeCaja',
         'click .o_kp_sin_caja_btn': '_onSinCaja',        // v3.32
+        'click .o_kp_ronda_no_esta': '_onRondaNoEsta',   // v3.33
+        'click .o_kp_ronda_no_existe': '_onRondaNoExiste',   // v3.33
         'click .o_kp_rech_reintentar': '_onRechazadaReintentar',   // v3.29: caja sin conexión rechazada
         'click .o_kp_rech_fuera': '_onRechazadaFuera',
         'click .o_kp_hoja_fondo': '_onFondoHoja',
@@ -2126,6 +2129,61 @@ var Pantalla = AbstractAction.extend({
         });
     },
 
+    // v3.33: ronda de faltantes (koroshi_faltantes 1.7). Se va a cada ubicación: si la prenda está, se lee como
+    // siempre; si no, «No está» o «La ubicación no existe» (dos toques) en la línea que se ve. La línea desaparece y
+    // se pasa a la siguiente. Al validar, koroshi_faltantes apunta el resultado y el operario.
+    _onRondaNoEsta: function () { return this._rondaMarcar('no_esta'); },
+    _onRondaNoExiste: function () { return this._rondaMarcar('no_existe'); },
+
+    _resetRonda: function () {
+        clearTimeout(this.timerRonda);
+        this.$('.o_kp_ronda_no_esta').removeClass('o_kp_confirmar').text(TXT_RONDA.no_esta);
+        this.$('.o_kp_ronda_no_existe').removeClass('o_kp_confirmar').text(TXT_RONDA.no_existe);
+    },
+
+    _rondaMarcar: function (resultado) {
+        var self = this;
+        var e = this.estado;
+        var out = this._out();
+        if (!out || !e || this.modo !== 'leer' || this.ocupadoRonda) { return; }
+        if (this.sinRed) { return this._aviso('Sin conexión: espera a que vuelva.', 'mal'); }
+        if (this.cola.length || this.enviando) { return this._aviso('Un momento: guardando lo leído…', 'info'); }
+        var id = this._idVisto();
+        var l = id && _.findWhere(e.lineas, {id: id});
+        if (!l) { return this._aviso('No queda ninguna línea por marcar.', 'info'); }
+        if (l.completa) { return this._aviso('Esta ya está leída. Con ◀ ▶ ve a la que no encuentras.', 'info'); }
+        var $b = this.$(resultado === 'no_esta' ? '.o_kp_ronda_no_esta' : '.o_kp_ronda_no_existe');
+        if (!$b.hasClass('o_kp_confirmar')) {
+            this._resetRonda();
+            $b.addClass('o_kp_confirmar').text('¿' + TXT_RONDA[resultado] + '? Toca otra vez');
+            this.timerRonda = setTimeout(function () { self._resetRonda(); }, 4000);
+            return;
+        }
+        this._resetRonda();
+        this.ocupadoRonda = true;
+        this._aviso('Guardando…', 'info');
+        return this._rpc({route: '/koroshi/preparacion/ronda_marcar', params: {
+            picking_id: out.id, linea_id: l.id, resultado: resultado,
+            employee_id: this.operario ? this.operario.id : false, id_lectura: this._nuevoId()}})
+            .then(function (r) {
+                self.ocupadoRonda = false;
+                if (!r || !r.ok) {
+                    self._pitido(false);
+                    return self._aviso((r && r.msg) || 'No se ha podido guardar.', 'mal');
+                }
+                self._pitido(true);
+                self.verId = null;   // a la siguiente que toca
+                self._aviso(r.msg || TXT_RONDA[resultado], 'ok');
+                if (r.estado && self._aplicar(r.estado)) { return self._pintar(); }
+                return self._recargar();
+            }).guardedCatch(function (err) {
+                self.ocupadoRonda = false;
+                if (err && err.event && err.event.preventDefault) { err.event.preventDefault(); }
+                if (self._esSinConexion(err)) { return self._sinConexion(); }
+                self._aviso('No se ha podido guardar: ' + self._mensajeError(err), 'mal');
+            });
+    },
+
     _onPausaBtn: function () {
         var self = this;
         var $b = this.$('.o_kp_pausa_btn');
@@ -2320,7 +2378,8 @@ var Pantalla = AbstractAction.extend({
             this.cola = [];
             this._vaciarOtra(clave, items);
         }
-        this._capa('✓ ' + out.name + (out.estado === 'done' ? ' validada' : ' cancelada'), true);
+        this._capa('✓ ' + out.name + (out.ronda ? ' terminada' : (out.estado === 'done' ? ' validada' : ' cancelada')),
+                   true);   // v3.33: la ronda sin nada leído se cancela: «terminada»
         this.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
         return true;
     },
@@ -2468,13 +2527,20 @@ var Pantalla = AbstractAction.extend({
             .text(conRed ? 'Caja' : 'Caja (sin red)')
             .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
         var armado = this.incompletoOut === out.id;   // v3.27: Zalando / About You, validar incompleto
-        this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja || !e.leidas)
+        this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja ||
+                                     (!e.leidas && !(out.ronda && e.todo_leido)))   // v3.33: ronda toda marcada
             .text(!conRed ? 'Esperando conexión…' : (guardando ? 'Guardando lecturas…' :
                   (armado ? '⚠ Validar incompleto' : '✓ Validar')))
             .toggleClass('o_kp_incompleto', armado)
             .toggleClass('o_kp_destacado', conRed && !guardando && !e.sin_caja && e.todo_leido);
         this.$('.o_kp_deshacer').prop('disabled', !libre || !e.leidas || (!conRed && !this.cola.length));
         this.$('.o_kp_faltante').prop('disabled', !libre || !conRed || e.todo_leido || !e.siguiente_id);
+        // v3.33: ronda de faltantes: en vez de «Faltante», «No está» / «La ubicación no existe»
+        var ronda = !!out.ronda;
+        this.$('.o_kp_faltante').toggle(!ronda);
+        this.$('.o_kp_fila_ronda').toggle(ronda);
+        this.$('.o_kp_ronda_no_esta, .o_kp_ronda_no_existe')
+            .prop('disabled', !libre || !conRed || guardando || e.todo_leido || !e.lineas.length);
         this._pintarLineas();
     },
 

@@ -248,6 +248,19 @@ class KoroshiPreparacion(http.Controller):
             return {'ok': False, 'msg': 'No se encuentra la OUT.'}
         return {'ok': True, 'impresos': self._lectura().impresos(picking)}
 
+    @http.route('/koroshi/preparacion/ronda_marcar', type='json', auth='user')
+    def ronda_marcar(self, picking_id=False, linea_id=False, resultado='', employee_id=False, id_lectura=False, **kw):
+        """v3.33: ronda de faltantes: «No está» / «La ubicación no existe» en una línea."""
+        picking = self._picking(picking_id)
+        emp = self._empleado(employee_id)
+        try:
+            res = self._lectura().ronda_marcar(picking, emp, linea_id, resultado, id_lectura)
+        except Ocupada as e:
+            return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
+        except (UserError, ValidationError) as e:
+            res = {'ok': False, 'msg': _msg(e)}
+        return self._con_estado(picking, res, emp)
+
     @http.route('/koroshi/preparacion/validar', type='json', auth='user')
     def validar(self, picking_id=False, employee_id=False, pedido_pendiente=False, lote_id=False, tipo_caja=False,
                 incompleto=False, id_lectura=False, **kw):

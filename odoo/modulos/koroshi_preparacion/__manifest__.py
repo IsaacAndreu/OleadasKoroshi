@@ -207,8 +207,14 @@ con CJ y con operario. Para OUT pequeñas (1-3 uds) que van en bolsa: la OUT NO 
 caja y la OUT pasa a expediciones con el motivo «Sin caja» (koroshi_operarios 2.17, instalarlo a la vez). Expediciones
 la mete en caja con su CJ y la valida, así que a S4T no le llega nada sin caja. Vuelta a Lecturas y la siguiente.
 Sin campos ni vistas nuevas.
+v3.33.0 (17/11/2026): RONDA DE FALTANTES EN LECTURAS (necesita koroshi_faltantes 1.7.0, instalar a la vez). La INT de
+la ronda (origen «RONDA FALTANTES») se abre aquí leyendo la INT, como una OUT. Se va a la ubicación DESTINO de cada
+línea (la pieza sale de FALTANTE o, en los puestos a 0, de pérdidas). Si está, se lee la prenda; si no, «No está» o
+«La ubicación no existe» (dos toques, en lugar de «Faltante»): la línea desaparece y se pasa a la siguiente. Validar:
+lo leído se valida y lo demás se cancela (sin pedido pendiente); con todo marcado y nada leído, la INT se cancela. El
+resultado se aplica al momento (koroshi_faltantes). Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.3.32.0',
+    'version': '13.0.3.33.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

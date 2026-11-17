@@ -94,6 +94,11 @@
                     <button type="button" class="o_kp_boton o_kp_faltante">Faltante</button>
                     <button type="button" class="o_kp_boton o_kp_deshacer">↶ Deshacer</button>
                 </div>
+                <!-- v3.33: ronda de faltantes (koroshi_faltantes 1.7): si está, se lee la prenda; si no, uno de estos -->
+                <div class="o_kp_fila_botones o_kp_fila_ronda" style="display: none;">
+                    <button type="button" class="o_kp_boton o_kp_rojo o_kp_ronda_no_esta">No está</button>
+                    <button type="button" class="o_kp_boton o_kp_gris o_kp_ronda_no_existe">La ubicación no existe</button>
+                </div>
 
                 <input class="o_kp_codigo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
                        placeholder="Leer producto o escribir EAN y Enter"/>

@@ -134,12 +134,15 @@ class Lectura(models.Model):
         v3.14: también las INT que salen del stock (las de web, de EFFEC/Stock a SORTER). Las que salen de otro sitio
         (p. ej. la ronda de faltantes, desde FALTANTE) siguen en la app de código de barras.
         v3.15: en_lote=True (pantalla de la agrupación entera) acepta también las OUT de una agrupación Z-.
-        v3.25: una OUT de una zona Z- también se prepara sola (se leyó la OUT, no la zona)."""
+        v3.25: una OUT de una zona Z- también se prepara sola (se leyó la OUT, no la zona).
+        v3.33: también la ronda de faltantes (koroshi_faltantes 1.7): se va a la ubicación DESTINO de cada línea."""
         if not picking or picking.company_id.id != COMPANY_ID:
             return False
         if picking.picking_type_code == 'internal':
             origen = picking.picking_type_id.default_location_src_id
-            if not origen or not (picking.location_id.parent_path or '').startswith(origen.parent_path or '-'):
+            if self._es_ronda(picking):
+                pass   # v3.33: la ronda de faltantes (sale de FALTANTE o de pérdidas) también se hace aquí
+            elif not origen or not (picking.location_id.parent_path or '').startswith(origen.parent_path or '-'):
                 return False
         elif picking.picking_type_code != 'outgoing':
             return False
@@ -150,6 +153,17 @@ class Lectura(models.Model):
         return True
 
     # ------------------------------------------------------------------ estado de la OUT
+    @api.model
+    def _es_ronda(self, picking):
+        """v3.33: INT de una ronda de faltantes (koroshi_faltantes 1.7)."""
+        return self.env['koroshi.faltante'].es_ronda(picking)
+
+    @api.model
+    def _ubi(self, ml):
+        """v3.33: la ubicación donde se va: la de origen; en la ronda de faltantes, la de destino (la línea sale de
+        FALTANTE o de pérdidas y vuelve a su sitio)."""
+        return ml.location_dest_id if self._es_ronda(ml.picking_id) else ml.location_id
+
     @api.model
     def _lineas(self, picking):
         """v3.13: en el orden de la RUTA ÓPTIMA (models/ruta.py: menos metros, saliendo de los muelles y volviendo).
@@ -169,13 +183,13 @@ class Lectura(models.Model):
             # v3.17: el orden de la app de código de barras de Odoo: por el nombre completo de la ubicación
             # (EFFEC/Stock/NAVE2/00114 - L02 P31 C3, 00221 - L03..., ..., L.., MU-.., N1-..); en la misma ubicación,
             # por referencia. La ruta optimizada (ruta.py) sigue con el parámetro koroshi_preparacion.orden = 'ruta'.
-            return mls.sorted(lambda ml: (ml.location_id.complete_name or '', ml.product_id.default_code or '', ml.id))
-        paradas = dict((ml.id, ruta.parada(ml.location_id.complete_name)) for ml in mls)
+            return mls.sorted(lambda ml: (self._ubi(ml).complete_name or '', ml.product_id.default_code or '', ml.id))
+        paradas = dict((ml.id, ruta.parada(self._ubi(ml).complete_name)) for ml in mls)
         puesto = dict((p, i) for i, p in enumerate(ruta.ordenar(paradas.values())))
 
         def clave(ml):
             p = paradas[ml.id]
-            nombre = ml.location_id.complete_name or ''
+            nombre = self._ubi(ml).complete_name or ''
             if p:
                 t = ruta.lpc(nombre)   # None en las MU-
                 return (0, puesto[p], t[2] if t else 0, nombre, ml.product_id.default_code or '', ml.id)
@@ -185,7 +199,7 @@ class Lectura(models.Model):
     @api.model
     def _parada(self, ml):
         """v3.13: 'pasillo:x' de la parada (mismo valor = se coge sin moverse: «Aquí mismo»); '' si no es un lineal."""
-        p = ruta.parada(ml.location_id.complete_name)
+        p = ruta.parada(self._ubi(ml).complete_name)
         return '%s:%s' % p if p else ''
 
     @api.model
@@ -271,7 +285,7 @@ class Lectura(models.Model):
     @api.model
     def _clave(self, ml):
         """Orden de la ruta (el mismo de _lineas)."""
-        return (ml.location_id.complete_name or '', ml.product_id.default_code or '', ml.id)
+        return (self._ubi(ml).complete_name or '', ml.product_id.default_code or '', ml.id)
 
     @api.model
     def _grupo(self, picking, equipo):
@@ -402,7 +416,7 @@ class Lectura(models.Model):
             idx = next((i for i, l in enumerate(lista) if l.id == grupo.corte_id), None)
             if idx is None:
                 idx = next((i for i, l in enumerate(lista)
-                            if (l.location_id.complete_name or '') == grupo.corte_ubicacion), None)
+                            if (self._ubi(l).complete_name or '') == grupo.corte_ubicacion), None)
             if idx is None:
                 idx = len(lista) if (grupo.corte_ubicacion or '').startswith(u'\uffff') else len(lista) // 2
             primera = self.env['stock.move.line'].browse([l.id for l in lista[:idx]])
@@ -447,7 +461,9 @@ class Lectura(models.Model):
         mias_sin_caja = sum(v[0] for v in reparto.values())
         otros_sin_caja = sum(v[1] for v in reparto.values())
         companeros = [e.name for e in equipo if not employee or e != employee]
-        todo_leido = bool(lineas) and all((l[4] if ligero else l['completa']) for l in lineas)
+        # v3.33: en la ronda de faltantes, con todo marcado («No está» / «No existe») no queda ninguna línea: hecho
+        todo_leido = (bool(lineas) or self._es_ronda(picking)) and all(
+            (l[4] if ligero else l['completa']) for l in lineas)
         res = {
             'ligero': ligero,
             'out_estado': picking.state,   # v3.29: el ligero no trae 'out'; la PDA mira si ya está hecha
@@ -484,6 +500,7 @@ class Lectura(models.Model):
                 'estado': picking.state,
                 'agrupacion': picking.batch_id.name or '',   # v3.25: también la Z- (la OUT de una zona hecha sola)
                 'propia': self.picking_propio(picking),
+                'ronda': self._es_ronda(picking),   # v3.33: ronda de faltantes («No está» / «No existe»)
                 'nota': self._nota(picking),   # v3.7: las notas de la OUT, arriba
             },
             'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
@@ -511,10 +528,10 @@ class Lectura(models.Model):
             'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
             'ean': ml.product_id.barcode or '',
             'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
-            'ubicacion': ml.location_id.name or '',
-            'ubicacion_completa': ml.location_id.complete_name or '',
+            'ubicacion': self._ubi(ml).name or '',   # v3.33: en la ronda de faltantes, el destino
+            'ubicacion_completa': self._ubi(ml).complete_name or '',
             # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
-            'ubicacion_codigos': [c for c in (ml.location_id.barcode, ml.location_id.location_id.barcode) if c],
+            'ubicacion_codigos': [c for c in (self._ubi(ml).barcode, self._ubi(ml).location_id.barcode) if c],
             'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
             'pedidas': round(ml.product_uom_qty),
             'leidas': round(ml.qty_done),
@@ -1066,6 +1083,41 @@ class Lectura(models.Model):
         return r
 
     @api.model
+    def _validar_ronda(self, Faltante, picking, employee):
+        """v3.33: ronda de faltantes. Todas las líneas leídas (está) o marcadas («No está» / «No existe»). Lo leído se
+        valida y lo no leído se cancela (sin pedido pendiente); sin nada leído, la INT se cancela. Lo demás lo hace
+        koroshi_faltantes (sincronizar_rondas)."""
+        pendientes = Faltante.lineas_pendientes(picking)
+        if pendientes:
+            return {'estado': 'pendientes', 'n': len(pendientes)}
+        Faltante.ronda_antes_de_validar(picking, employee)
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            return Faltante._todo_o_nada(Faltante.ronda_cerrar_sin_leer, picking)
+        return Faltante._todo_o_nada(Faltante._validar_out, picking, 'no')
+
+    @api.model
+    def ronda_marcar(self, picking, employee, linea_id, resultado, id_lectura=False):
+        """v3.33: «No está» / «La ubicación no existe» en una línea de la ronda de faltantes (koroshi_faltantes)."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return {'ok': True, 'que': 'repetida', 'msg': ''}
+        self._comprobar(picking)
+        if not self._es_ronda(picking):
+            raise UserError(_('%s no es una ronda de faltantes.') % picking.name)
+        ml = self.env['stock.move.line'].browse(int(linea_id or 0)).exists()
+        if not ml or ml.picking_id != picking:
+            raise UserError(_('Esa línea ya no está en %s: vuelve a cargar.') % picking.name)
+        self._bloquear(picking)
+        # antes de marcar: la línea se borra si no tenía nada leído
+        ubicacion, producto = self._ubi(ml).name or '', ml.product_id.display_name or ''
+        self.env['koroshi.faltante'].ronda_marcar(ml, resultado, employee)
+        texto = _('No está') if resultado == 'no_esta' else _('La ubicación no existe')
+        msg = '%s · %s' % (texto, ubicacion)
+        self._apuntar(picking, employee, 'leer', resultado, 'ok', _('Ronda: %s') % msg, id_lectura=id_lectura,
+                      producto=producto)
+        return {'ok': True, 'que': 'ronda', 'msg': msg}
+
+    @api.model
     def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False, incompleto=False, id_lectura=False):
         """Misma validación que koroshi_faltantes (button_validate, todo o nada). Devuelve
         {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}.
@@ -1119,8 +1171,11 @@ class Lectura(models.Model):
             pedido_pendiente = fijo if fijo in ('si', 'no') else None
         if self._con_caja(picking) and self._pack_auto(picking):
             pedido_pendiente = 'si'   # v3.27: Zalando / About You: lo que no sale nunca se cancela, queda pendiente
+        ronda = self._es_ronda(picking)   # v3.33
         try:
-            if incompleto:
+            if ronda:
+                r = self._validar_ronda(Faltante, picking, employee)
+            elif incompleto:
                 r = self._validar_incompleta(Faltante, picking, employee)   # v3.27
             elif picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
                 r = self._validar_out_de_zona(Faltante, picking, pedido_pendiente)   # v3.25
@@ -1138,11 +1193,22 @@ class Lectura(models.Model):
                 return {'ok': False, 'que': 'quedan', 'n': r['n'],
                         'msg': _('Faltan %s uds por leer entre los dos (%s líneas). Si es de tu compañero, espera a '
                                  'que acabe.') % (round(faltan), r['n'])}
+            if ronda:   # v3.33
+                return {'ok': False, 'que': 'quedan', 'n': r['n'],
+                        'msg': _('Quedan %s líneas: lee la prenda si está o pulsa «No está» / «La ubicación no '
+                                 'existe».') % r['n']}
             return {'ok': False, 'que': 'quedan', 'n': r['n'],
                     'msg': _('Quedan %s líneas por coger: léelas o pulsa «Faltante».') % r['n']}
         if r['estado'] == 'preguntar':
             return {'ok': True, 'que': 'preguntar', 'msg': _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')}
         msg = _('%s validada.') % picking.name
+        if ronda:   # v3.33
+            try:
+                with self.env.cr.savepoint():
+                    Faltante.sincronizar_rondas()   # el resultado, ya (sin esperar al cron de 15 min)
+            except Exception:
+                _logger.exception('KOROSHI Preparación: no se ha podido actualizar la ronda %s', picking.name)
+            msg = _('Ronda %s terminada.') % picking.name
         if incompleto:   # v3.27
             msg = _('%s validada incompleta (faltan %s uds): lo que falta, en %s.') % (
                 picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')

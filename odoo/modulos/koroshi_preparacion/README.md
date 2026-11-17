@@ -1,8 +1,17 @@
-# KOROSHI Preparación en Lecturas (v3.31.0, 16/11/2026)
+# KOROSHI Preparación en Lecturas (v3.33.0, 17/11/2026)
 
 Pantalla de preparación propia dentro de **Lecturas (PDA)**. El operario lee su tarjeta, se abre su OUT y la prepara
 entera sin salir a la app de código de barras: leer productos, cerrar cajas con la etiqueta CJ y validar.
 
+
+## v3.33.0: ronda de faltantes en Lecturas (17/11/2026)
+
+- Con **koroshi_faltantes 1.7.0** (instalar a la vez). La INT de la ronda de faltantes se lee en Lecturas como una OUT.
+- Cada línea enseña la ubicación **destino** (donde tenía que estar la pieza; la línea sale de FALTANTE o de pérdidas).
+- Si está, se lee la prenda. Si no, **«No está»** o **«La ubicación no existe»** (dos toques; sustituyen a «Faltante»).
+  La línea desaparece y se pasa a la siguiente.
+- Validar: lo leído se valida y lo demás se cancela (sin pedido pendiente). Con todo marcado y nada leído, la INT se
+  cancela («Ronda … terminada»). koroshi_faltantes aplica el resultado al momento.
 
 ## v3.31.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
 
