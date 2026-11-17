@@ -53,9 +53,13 @@ Nada. El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) q
 faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47) y 1.33.1 (15:08, cifra de u/h real), hora del almacén. **Antes de instalar algo nuevo,
 volver a leer la `installed_version`** (el servidor puede ir por delante del repo).
 
-**No instalar todavía** (decidido): koroshi_actividades (menús ocultos, icono para todos), koroshi_s4t_traspasos
+**Instalado el 17/11 a las 15:28**: koroshi_actividades 1.3.0 (nuevo) y koroshi_menu **2.4.2** (sus menús en Personas y
+Configuración). La 2.4.2 sale de la 2.4.1 en la rama `koroshi_menu-2.4` (etiqueta `koroshi_menu/v2.4.2`), no de la 2.5.0
+de `main`: una 2.5.x tendrá que llevar estos menús.
+
+**No instalar todavía** (decidido): koroshi_s4t_traspasos
 (crearía DEV de todo desde el 01/07), koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.1, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
-pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, menu 2.4.1, s4t_envios 1.3.0,
+**Al día**: actividades 1.3.0, menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.1, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, contenedores 1.4.0, rendiment 1.1.0.
