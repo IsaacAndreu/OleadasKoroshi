@@ -4,8 +4,12 @@ Módulos Odoo 13 Enterprise del almacén KOROSHI (Effective Logistics, compañí
 nath.tuctuc.com. Los operarios preparan pedidos con PDA todo el día: cualquier fallo se nota en el almacén al
 momento. El mapa de módulos y el despliegue están en [README.md](README.md).
 
-**Trabajo en curso**: corrección por fases de la auditoría del 13/11/2026. Estado y fases que quedan en
-[TRASPASO_AUDITORIA.md](TRASPASO_AUDITORIA.md): leerlo antes de seguir.
+**Al empezar cada chat, leer [TABLERO.md](TABLERO.md)**: qué está en curso y quién tiene cada módulo, qué espera a
+alguien y qué está hecho sin instalar. Al acabar, actualizar su línea en el mismo commit. **Congelación desde el
+17/11/2026**: hasta instalar lo pendiente, nada de funciones nuevas (solo arreglos, correos, análisis y diseño).
+
+**Trabajo en curso**: corrección por fases de la auditoría del 13/11/2026. Detalle de las fases en
+[TRASPASO_AUDITORIA.md](TRASPASO_AUDITORIA.md).
 
 ## Reglas (no negociables)
 
