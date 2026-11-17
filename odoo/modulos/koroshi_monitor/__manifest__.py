@@ -144,8 +144,11 @@ antes. Y las OUT hechas del mismo pedido sin nº de expedicion (validadas despue
 uds y cajas, con aviso en Observacion. K1 17/11, S-6665004320 (121771266): la etiqueta se hizo desde 26076, que uso
 «Caja existente» en la caja de 26077 (0 bultos propios); 26077 se valido despues, sin numero: el Excel daba 6 bultos y
 NO; a XPO se declararon 7 y son 7. Del 12 al 17/11 solo cambia K1. Solo lee: sin campos ni modelos nuevos.
+v1.33.1 (17/11/2026): «Personas y horas»: la cifra de u/h real salia pequena y gris, no como las otras tarjetas, y
+sin el rojo/verde. La regla del texto de debajo (.km-kpi span) tambien pillaba el <span> de color de la cifra; ahora
+solo el hijo directo (.km-kpi > span). Solo CSS.
 """,
-    'version': '13.0.1.33.0',
+    'version': '13.0.1.33.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

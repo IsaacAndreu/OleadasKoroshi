@@ -208,3 +208,5 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   bultos de las OUT como antes. Las OUT hechas del mismo pedido **sin nº de expedición** (validadas después de la
   etiqueta) salen en la fila (OUT, uds y cajas) con aviso en «Observación». Caso K1 del 17/11 (S-6665004320,
   121771266): daba 6 bultos y «NO»; a XPO se declararon 7 y son 7.
+- **v1.33.1 (17/11/2026):** «Personas y horas»: la cifra de **u/h real** salía pequeña y gris (sin el rojo/verde)
+  porque la regla del texto de debajo de las tarjetas también se aplicaba a su `<span>` de color. Solo CSS.

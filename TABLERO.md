@@ -24,7 +24,7 @@ Isaac lo diga.
 | Tema | Módulo cogido | Chat | Siguiente paso |
 |---|---|---|---|
 | Coordinación y traspaso de la auditoría | — | Traspaso KOROSHI: reparto por zonas | Plan v3 instalado entero el 17/11 por la tarde |
-| Excel de envíos para tiendas | koroshi_monitor (1.33.0, instalada 17/11 14:47) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
+| Excel de envíos para tiendas | koroshi_monitor (1.33.0, instalada 17/11 14:47; la 1.33.1 la saca el chat de faltantes) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |

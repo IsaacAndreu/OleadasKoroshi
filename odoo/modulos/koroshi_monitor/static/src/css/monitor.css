@@ -19,7 +19,8 @@
 .o_koroshi_monitor .km-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
 .o_koroshi_monitor .km-card { background: var(--km-card); border: 1px solid var(--km-line); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; }
 .o_koroshi_monitor .km-kpi b { display: block; font-size: 26px; }
-.o_koroshi_monitor .km-kpi span { color: var(--km-muted); font-size: 13px; }
+/* v1.33.1: solo el texto de debajo (hijo directo); antes tambien pillaba el <span> de color de la cifra «u/h real» */
+.o_koroshi_monitor .km-kpi > span { color: var(--km-muted); font-size: 13px; }
 .o_koroshi_monitor .km-z { display: inline-block; min-width: 34px; text-align: center; padding: 2px 8px; border-radius: 6px; color: #fff; font-weight: 800; }
 .o_koroshi_monitor .km-zona { display: grid; grid-template-columns: 60px 1fr; gap: 12px; align-items: center; padding: 10px 0; border-bottom: 1px solid var(--km-line); }
 .o_koroshi_monitor .km-zona:last-child { border-bottom: 0; }
