@@ -24,7 +24,7 @@ Isaac lo diga.
 | Tema | Módulo cogido | Chat | Siguiente paso |
 |---|---|---|---|
 | Coordinación y traspaso de la auditoría | — | Traspaso KOROSHI: reparto por zonas | Plan v3 instalado entero el 17/11 por la tarde |
-| Excel de envíos para tiendas | koroshi_monitor (1.33.0, instalada 17/11 14:47; la 1.33.1 la saca el chat de faltantes) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
+| Excel de envíos para tiendas | koroshi_monitor (1.33.1, instalada 17/11 15:08) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
@@ -50,12 +50,12 @@ Las filas con «?» las rellena su chat la próxima vez que se abra.
 ## Hecho y sin instalar
 
 Nada. El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) quedó instalado el 17/11 por la tarde:
-faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47), hora del almacén. **Antes de instalar algo nuevo,
+faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47) y 1.33.1 (15:08, cifra de u/h real), hora del almacén. **Antes de instalar algo nuevo,
 volver a leer la `installed_version`** (el servidor puede ir por delante del repo).
 
 **No instalar todavía** (decidido): koroshi_actividades (menús ocultos, icono para todos), koroshi_s4t_traspasos
 (crearía DEV de todo desde el 01/07), koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.0, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.1, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, menu 2.4.1, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, contenedores 1.4.0, rendiment 1.1.0.
