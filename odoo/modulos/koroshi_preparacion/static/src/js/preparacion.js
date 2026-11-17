@@ -52,6 +52,7 @@ var REINTENTO_MS = 5000;        // sin conexión: reintento
 var A_DOS_MS = 10000;          // v3.3: preparar a dos -> se refresca lo del compañero cada 10 s
 var AVISO_OK_MS = 3000;
 var VOLVER_MS = 900;            // tras validar, vuelta a Lecturas
+var TXT_SIN_CAJA = 'Sin caja (bolsa) → expediciones';   // v3.32
 var CLAVE_SONIDO = 'koroshi_operarios_sonido';   // el mismo interruptor que Lecturas
 var CLAVE_PDA = 'koroshi_preparacion_pda';
 var RE_CJ = /^CJ\d{9}$/i;
@@ -91,6 +92,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_caja': '_onCaja',
         'click .o_kp_tipo_caja': '_onTipoCaja',          // v3.24
         'click .o_kp_cancelar_caja': '_salirDeCaja',
+        'click .o_kp_sin_caja_btn': '_onSinCaja',        // v3.32
         'click .o_kp_rech_reintentar': '_onRechazadaReintentar',   // v3.29: caja sin conexión rechazada
         'click .o_kp_rech_fuera': '_onRechazadaFuera',
         'click .o_kp_hoja_fondo': '_onFondoHoja',
@@ -1092,6 +1094,9 @@ var Pantalla = AbstractAction.extend({
         this.cjPendiente = null;
         this._pintarTipos(auto);
         this.$('.o_kp_hoja_caja .o_kp_hoja_titulo').text(auto ? 'Cerrar caja' : 'Escanea la caja');
+        // v3.32: «Sin caja» solo en una OUT suelta con CJ y con operario (no en agrupaciones ni en Zalando / About You)
+        this.$('.o_kp_sin_caja_btn').removeClass('o_kp_confirmar').text(TXT_SIN_CAJA)
+            .toggle(!auto && !this._esLote() && !!this.operario);
         if (auto) {
             this.$('.o_kp_hoja_tiendas').empty().hide();
             this.$('.o_kp_hoja_texto').text(this.estado.sin_caja + (this.estado.sin_caja === 1 ? ' ud va' : ' uds van') +
@@ -1190,7 +1195,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_hoja_pregunta, .o_kp_hoja_faltante, .o_kp_hoja_cantidad, .o_kp_hoja_imprimir, .o_kp_hoja_menu, ' +
                '.o_kp_hoja_pack, .o_kp_hoja_mover, .o_kp_hoja_color').hide();
         this.$('.o_kp_hoja_tiendas').empty().hide();
-        this.$('.o_kp_tipos_titulo, .o_kp_tipos_caja, .o_kp_cancelar_caja').hide();
+        this.$('.o_kp_tipos_titulo, .o_kp_tipos_caja, .o_kp_cancelar_caja, .o_kp_sin_caja_btn').hide();
         this.$('.o_kp_hoja_caja .o_kp_hoja_titulo').text('La caja ' + nombre + ' no se ha cerrado en Odoo');
         this.$('.o_kp_hoja_texto').text(item.rechazo + ' ' + (resto ? 'Lo leído después (' + resto +
             (resto === 1 ? ' cosa' : ' cosas') + ') espera en la PDA. ' : '') +
@@ -2085,6 +2090,42 @@ var Pantalla = AbstractAction.extend({
     // leído se guarda y Odoo para el tiempo (motivo «Pausa» de Operarios: la OUT sigue suya y la primera). La pantalla
     // se queda tapada con «EN PAUSA» y ▶ Seguir: vuelve a empezar el tiempo con la misma OUT, sin leer la tarjeta.
     // A dos (ayudante) no hay OUT suya que guardar: como antes, se para su tiempo y vuelve a Lecturas.
+    // v3.32: OUT pequeña (1-3 uds) que va en bolsa: no se valida. Lo leído queda fuera de caja y la OUT pasa a
+    // expediciones (motivo «Sin caja» de koroshi_operarios 2.17), que la mete en caja (con su CJ) y la valida. Así a S4T
+    // nunca le llega sin caja. Dos toques, como la pausa. Después, vuelta a Lecturas: se abre la siguiente.
+    _onSinCaja: function () {
+        var self = this;
+        var $b = this.$('.o_kp_sin_caja_btn');
+        if (!this.operario) { return this._aviso('Sin tarjeta no se puede dejar sin caja.', 'warn'); }
+        if (this.sinRed) { return this._aviso('Sin conexión: espera a que vuelva.', 'mal'); }
+        if (!$b.hasClass('o_kp_confirmar')) {
+            $b.addClass('o_kp_confirmar').text('¿Sin caja? Toca otra vez');
+            clearTimeout(this.timerSinCaja);
+            this.timerSinCaja = setTimeout(function () { $b.removeClass('o_kp_confirmar').text(TXT_SIN_CAJA); }, 4000);
+            return;
+        }
+        clearTimeout(this.timerSinCaja);
+        $b.removeClass('o_kp_confirmar').text(TXT_SIN_CAJA);
+        if (this.cola.length || this.enviando) {
+            return this._aviso('Espera: guardando ' + this._textoPendientes() + '… y vuelve a pulsar.', 'warn');
+        }
+        var emp = this.operario.id;
+        this._cerrarHoja();
+        this._aviso('Dejando sin caja…', 'info');
+        return this._rpc({route: '/koroshi/operarios/motivos', params: {}}).then(function (r) {
+            var m = r && r.ok && _.findWhere(r.motivos || [], {sin_caja: true});
+            if (!m) { throw {msg: 'falta el motivo «Sin caja» (koroshi_operarios 2.17)'}; }
+            return self._rpc({route: '/koroshi/operarios/saltar', params: {employee_id: emp, motivo_id: m.id, nota: ''}});
+        }).then(function (r) {
+            if (!r || !r.ok) { throw {msg: (r && r.msg) || 'Error'}; }
+            self._aviso('Sin caja: queda en expediciones.', 'ok');
+            self.timerVolver = setTimeout(function () { self.trigger_up('history_back'); }, VOLVER_MS);
+        }).guardedCatch(function (e) {
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            self._aviso('No se ha podido dejar sin caja' + (e && e.msg ? ': ' + e.msg : '') + '.', 'mal');
+        });
+    },
+
     _onPausaBtn: function () {
         var self = this;
         var $b = this.$('.o_kp_pausa_btn');

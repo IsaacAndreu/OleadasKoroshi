@@ -125,6 +125,8 @@
                             <button type="button" class="o_kp_boton o_kp_blanco o_kp_rech_reintentar">↻ Probar otra vez con la misma</button>
                             <button type="button" class="o_kp_boton o_kp_rojo o_kp_rech_fuera">Dejar lo leído fuera de caja</button>
                         </div>
+                        <!-- v3.32: OUT pequeña en bolsa: no se valida, queda en expediciones (koroshi_operarios 2.17) -->
+                        <button type="button" class="o_kp_boton o_kp_rojo o_kp_sin_caja_btn" style="display: none;">Sin caja (bolsa) → expediciones</button>
                         <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
                     </div>
                     <!-- v3.21: mover uds de una caja cerrada a otra (✎ en la lista de líneas) -->

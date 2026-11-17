@@ -202,8 +202,13 @@ v3.31.0 (16/11/2026): auditoría 13/11, fase 6 (pasar a koroshi_base). La empres
 de Python salen de koroshi_base.comun (la misma: CJ + 9 cifras). La pantalla de la PDA (JS) no cambia: su expresión
 lleva /i y no recorta espacios, y pasarla a koroshi_base.comun cambiaría qué se acepta. Sin campos ni vistas
 nuevas. Depende de koroshi_base. Incluye la 3.30.0, sin instalar (en el servidor, la 3.29.0 desde el 16/11).
+v3.32.0 (17/11/2026): botón «Sin caja (bolsa) → expediciones» en la hoja de caja (dos toques), solo en una OUT suelta
+con CJ y con operario. Para OUT pequeñas (1-3 uds) que van en bolsa: la OUT NO se valida; lo leído queda fuera de
+caja y la OUT pasa a expediciones con el motivo «Sin caja» (koroshi_operarios 2.17, instalarlo a la vez). Expediciones
+la mete en caja con su CJ y la valida, así que a S4T no le llega nada sin caja. Vuelta a Lecturas y la siguiente.
+Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.3.31.0',
+    'version': '13.0.3.32.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
