@@ -35,6 +35,9 @@ from odoo.addons.koroshi_base import comun   # v1.5: hora del almacen
 MAX_ALTERNATIVAS = 5
 NOMBRE_PUESTA_A_CERO = 'Cantidad de producto actualizada'   # lo que escribe Odoo al poner a 0 desde la PDA
 PREFIJOS_ZONA = ('Z-',)                                      # agrupaciones que se abren enteras
+# v1.6: solo se coge de NAVE2: los huecos de los lineales (L.. P.. C..) y las cajas KO del muelle (KO_ sueltas en
+# NAVE2, aun sin hueco). Nunca de DEVOLUCIO_KOROSHI, CAJAS, PRUEBA ni de EFFEC/Stock directamente.
+ZONA_PICKING = 'NAVE2'
 
 RE_LINEAL = re.compile(r'\bL(\d+)\b')
 RE_HUECO = re.compile(r'(L\d+\s+P\d+\s+C\d+)')
@@ -154,6 +157,15 @@ class KoroshiFaltante(models.Model):
         return {loc: qty for loc, qty in libre.items() if float_compare(qty, 0, precision_rounding=rounding) > 0}
 
     @api.model
+    def _excluida(self, ubicacion):
+        """v1.6: True si no es de donde se coge para una OUT: fuera de NAVE2 (DEVOLUCIO_KOROSHI, CAJAS, PRUEBA, la
+        raiz de Stock...) o la propia NAVE2. Dentro: huecos de lineal y cajas KO del muelle."""
+        partes = [p.strip() for p in (ubicacion.complete_name or '').split('/')]
+        if ZONA_PICKING not in partes:
+            return True
+        return partes[-1] == ZONA_PICKING
+
+    @api.model
     def _libre_en(self, product, ubicacion):
         """Uds libres justo en esa ubicacion (sin hijas)."""
         quants = self.env['stock.quant'].search([('product_id', '=', product.id),
@@ -167,6 +179,7 @@ class KoroshiFaltante(models.Model):
         libre = self._libre_por_ubicacion(product, [('location_id', 'child_of', raiz.id),
                                                     ('location_id.usage', '=', 'internal'),
                                                     ('location_id', '!=', ubicacion_vieja.id)])
+        libre = {loc: qty for loc, qty in libre.items() if not self._excluida(loc)}   # v1.6
         lv = lineal_de(ubicacion_vieja)
 
         def orden(item):
@@ -263,11 +276,15 @@ class KoroshiFaltante(models.Model):
             raise UserError('%s no esta dentro de %s.' % (ubicacion_leida.complete_name, raiz.complete_name))
         if ubicacion_leida.usage != 'internal':
             raise UserError('%s no es una ubicacion interna.' % ubicacion_leida.complete_name)
+        if self._excluida(ubicacion_leida):   # v1.6
+            raise UserError('De %s no se coge para las OUT: solo de los lineales y del muelle.'
+                            % nombre_corto(ubicacion_leida))
         if ubicacion_leida == ml.location_id:
             raise UserError('Es la misma ubicacion donde ya esta reservada. Lee la ubicacion de donde has '
                             'cogido la pieza.')
         libre = self._libre_por_ubicacion(product, [('location_id', 'child_of', ubicacion_leida.id),
                                                     ('location_id', '!=', ml.location_id.id)])
+        libre = {loc: q for loc, q in libre.items() if not self._excluida(loc)}   # v1.6
         if not libre:
             raise UserError('En %s no hay stock libre de este articulo en Odoo.' % nombre_corto(ubicacion_leida))
         destino, qty = max(libre.items(), key=lambda it: (it[1], -it[0].id))

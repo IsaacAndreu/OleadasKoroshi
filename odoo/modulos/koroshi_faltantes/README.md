@@ -1,4 +1,4 @@
-# KOROSHI Faltantes (v1.5.0, 16/11/2026)
+# KOROSHI Faltantes (v1.6.0, 17/11/2026)
 
 Qué hacer en la PDA cuando una pieza de una OUT no está donde dice Odoo. Hasta ahora se ponía a 0 la ubicación desde la PDA:
 el stock se iba a pérdidas sin saber quién, de qué OUT ni por qué. Del 27/10 al 09/11 se hizo 111 veces (159 uds), y el 44 % de
@@ -8,6 +8,14 @@ Con este módulo:
 - la línea de la OUT pasa a otra ubicación con stock libre;
 - la pieza que no está va a **EFFEC/FALTANTE**;
 - queda un registro que se revisa cada día.
+
+## v1.6.0: solo lineales y muelle (17/11/2026)
+
+- «Prueba en» solo propone ubicaciones de **NAVE2**: huecos de los lineales (L.. P.. C..) y cajas KO del muelle
+  (KO_ sueltas en NAVE2, aún sin hueco). Antes mandaba a coger de **DEVOLUCIO_KOROSHI** (foto de la PDA, 17/11) y
+  podía proponer CAJAS, PRUEBA o la raíz de Stock.
+- Si se lee una ubicación de fuera, avisa «solo de los lineales y del muelle» y no cambia nada.
+- Constante `ZONA_PICKING` en `models/faltante.py`. Sin campos ni vistas nuevas.
 
 ## v1.5.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
 

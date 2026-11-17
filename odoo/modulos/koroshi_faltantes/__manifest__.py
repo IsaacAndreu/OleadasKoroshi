@@ -46,8 +46,11 @@ v1.5.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del
   (antes, su propia ZONA_HORARIA). Arregla «Puestos a 0 hoy» el dia del cambio de hora: las 00:00 se sacaban
   cambiando la hora de «ahora» con el desfase de ahora, y quedaban una hora corridas. Sin campos ni vistas nuevas.
   Depende de koroshi_base. La pantalla Faltante de la PDA no cambia.
+v1.6.0 (17/11/2026): la pantalla Faltante solo propone en «Prueba en», y solo acepta al leerla, una ubicacion de
+  NAVE2: los huecos de los lineales y las cajas KO del muelle. Antes mandaba a coger de DEVOLUCIO_KOROSHI (y podia
+  proponer CAJAS, PRUEBA o la raiz de Stock). ZONA_PICKING en models/faltante.py. Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
