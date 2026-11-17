@@ -14,6 +14,8 @@ Reglas (nunca se sobrescribe una version):
   - Etiqueta anotada <modulo>/v<version> (p. ej. koroshi_zonas/v1.3.0). Si ya existe con OTRO contenido, para:
     hay que sacar una version nueva. Nunca se mueve ni se borra una etiqueta.
   - ZIP bin/AAAAMMDD_<modulo>_v<version>.zip. Si ya hay uno de esa version con otro contenido, para.
+  - Antes de etiquetar pasa bin/comprobar.py (aria-hidden, display_notification, report_name, campos en tablas
+    compartidas, version e historial). Con errores, para (desde el 17/11/2026).
   - El ZIP se comprueba: solo la carpeta del modulo, manifest con la version, .py que compilan.
 La etiqueta necesita usuario de git: si no hay, se pone con GIT_COMMITTER_NAME / GIT_COMMITTER_EMAIL en el entorno.
 Despues se instala con bin/desplegar.sh <check|install> <modulo> <version>. Este script no sube nada.
@@ -76,6 +78,16 @@ def main(argv):
         sucio = git('status', '--porcelain', '--', '%s/%s' % (MODULOS, modulo)).decode().strip()
         if sucio:
             parar('%s tiene cambios sin commitear:\n%s' % (modulo, sucio))
+        # 17/11/2026: antes de etiquetar, las trampas conocidas (bin/comprobar.py). Con errores no se empaqueta.
+        sys.path.insert(0, os.path.join(RAIZ, 'bin'))
+        import comprobar
+        errores, avisos = comprobar.comprobar_modulo(modulo)
+        for t in avisos:
+            print('AVISO ' + t)
+        if errores:
+            parar('bin/comprobar.py encuentra errores en %s:\n  %s' % (modulo, '\n  '.join(errores)))
+    else:
+        print('AVISO: --commit antiguo, no se pasa bin/comprobar.py (comprueba la copia de trabajo, no ese commit)')
     manifest = git('show', '%s:%s/%s/__manifest__.py' % (commit, MODULOS, modulo)).decode('utf-8')
     version = ast.literal_eval(manifest)['version']
     corta = version_corta(version)

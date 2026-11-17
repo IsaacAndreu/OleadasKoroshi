@@ -16,6 +16,8 @@ momento. El mapa de módulos y el despliegue están en [README.md](README.md).
    - se commitea y se empaqueta con `python bin/empaquetar.py <modulo>`: etiqueta `<modulo>/vX.Y.Z` (anotada, **nunca
      se mueve ni se borra**) y ZIP `bin/AAAAMMDD_<modulo>_vX.Y.Z.zip` sacado de la etiqueta con `git archive`. Nunca
      con `Compress-Archive` (rompe las rutas en Linux). Los ZIP, APK y fotos no van en git (`.gitignore`).
+   - `empaquetar.py` pasa antes `bin/comprobar.py` (reglas 2, 7 y 9 como comprobaciones). Si para, se arregla el
+     código; no se esquiva. Cada trampa nueva que aparezca se añade allí, no solo aquí.
    - Se instala con `bin/desplegar.sh check|install <modulo> <version> ...`: ya no se escribe un script por versión
      (desde el 14/11/2026, fase 6).
 3. **El servidor puede ir por delante del repo**: antes de sacar una versión, preguntar la `installed_version`

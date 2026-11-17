@@ -1,0 +1,5 @@
+# Campos de los modulos KOROSHI aprobados en tablas compartidas (CLAUDE.md, regla 7).
+# Uno por linea: modelo.campo. Solo se anade uno despues de preguntar al responsable (no_overscan tumbo la PDA el 03/11).
+# Lo lee bin/comprobar.py (E4).
+
+stock.picking.koroshi_delegacion   # koroshi_delegacion 1.0.0 (ya en el repo el 17/11/2026)

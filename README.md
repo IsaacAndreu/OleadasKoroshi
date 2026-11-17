@@ -10,7 +10,7 @@ producción (nath.tuctuc.com). Las reglas de trabajo están en [CLAUDE.md](CLAUD
 | `odoo/modulos/` | Módulos Odoo propios (lo que se despliega). |
 | `odoo/*.py` | Acciones de servidor y scripts sueltos (diagnóstico, simulaciones de oleadas, partición por zonas). |
 | `odoo/referencia/` | Material de referencia. |
-| `bin/` | `empaquetar.py` (etiqueta + ZIP), `desplegar.sh` (instalar en el servidor), scripts antiguos por versión y copias de acciones de servidor. Los ZIP ya no van en git. |
+| `bin/` | `empaquetar.py` (etiqueta + ZIP), `comprobar.py` (trampas conocidas, lo llama empaquetar), `desplegar.sh` (instalar en el servidor), scripts antiguos por versión y copias de acciones de servidor. Los ZIP ya no van en git. |
 | `bin/versiones/` | Versiones anteriores de acciones, crons y módulos (nunca se sobrescriben). |
 | `PedidosMultiples/`, `App.config`, `*.csproj` | Programa de escritorio .NET de pedidos múltiples. |
 | `PdaKoroshiAndroid/` | App Android de la PDA. |
@@ -78,6 +78,11 @@ de instalación. Los scripts `bin/instalar_*` anteriores se quedan como historia
    `git archive` (todo en LF). Para si el módulo tiene cambios sin commitear, si la etiqueta ya existe con otro
    contenido o si ya hay un ZIP de esa versión distinto: hay que sacar una versión nueva. La etiqueta necesita usuario
    de git (`GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL`).
+   Antes de etiquetar pasa `bin/comprobar.py` (desde el 17/11/2026) y para si encuentra: `aria-hidden="true"`,
+   `display_notification`, `report_name` sin punto, un campo nuevo en `stock.picking`, `stock.picking.type` o
+   `stock.move.line` que no esté en `bin/campos_compartidos_aprobados.txt`, un módulo cambiado sin subir la versión,
+   una versión sin su línea de historial o un `.py` que no compila. Avisa (sin parar) de los `<function>` con
+   `noupdate`. Se puede pasar a mano en cualquier momento: `python bin/comprobar.py [modulo ...]`.
 3. **En el servidor** (lo hace el responsable, no se automatiza), con los ZIP en `/home/it_nath_group` y
    `bin/desplegar.sh`:
    ```bash
