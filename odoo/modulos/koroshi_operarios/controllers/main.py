@@ -222,8 +222,10 @@ class KoroshiOperarios(http.Controller):
     def motivos(self, **kw):
         _comprobar_grupo()   # v2.13
         Motivo = request.env['koroshi.operario.motivo'].sudo()
+        sin_caja = request.env.ref('koroshi_operarios.motivo_sin_caja', raise_if_not_found=False)   # v2.17
         return {'ok': True, 'motivos': [{'id': m.id, 'nombre': m.name, 'destino': m.destino,
-                                         'pide_nota': m.pide_nota} for m in Motivo.search([])]}
+                                         'pide_nota': m.pide_nota, 'sin_caja': m == sin_caja}
+                                        for m in Motivo.search([])]}
 
     @http.route('/koroshi/operarios/saltar', type='json', auth='user')
     def saltar(self, employee_id=False, motivo_id=False, nota='', **kw):

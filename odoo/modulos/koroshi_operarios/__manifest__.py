@@ -114,8 +114,12 @@ v2.16.0 (17/11/2026): una OUT o agrupacion «en expediciones» (oficina: saltada
 dejada por dos operarios el mismo dia) ya no pide «Que la libere el responsable»: quien la lee en Lecturas se la
 queda y sigue donde estaba (lo leido no se pierde). En la nota de la asignacion queda «Recogido por X». Siguen igual
 los avisos de «la esta haciendo X» y de la zona entera. Sin campos ni vistas nuevas.
+v2.17.0 (17/11/2026): motivo «Sin caja (bolsa, a expediciones)» (data/motivos_v2170.xml, destino expediciones)
+para el botón «Sin caja» de koroshi_preparacion 3.32: OUT pequeñas que van en bolsa; la OUT no se valida y queda en
+expediciones, que la mete en caja y la valida. /motivos lo marca con sin_caja y Lecturas no lo enseña en Saltar.
+Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.2.16.0',
+    'version': '13.0.2.17.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -127,6 +131,7 @@ los avisos de «la esta haciendo X» y de la zona entera. Sin campos ni vistas n
         'data/motivos.xml',
         'data/motivos_v221.xml',
         'data/motivos_v2100.xml',
+        'data/motivos_v2170.xml',   # v2.17
         'data/cron.xml',
         'data/parametros.xml',
         'data/informe.xml',

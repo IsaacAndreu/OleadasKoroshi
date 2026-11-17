@@ -542,7 +542,7 @@ var Pantalla = AbstractAction.extend({
         var $m = this.$('.o_ko_salto_motivos').empty();
         this.motivoElegido = null;
         this.motivos.forEach(function (m) {
-            if (m.destino === 'pausa') { return; }   // v2.10: la pausa tiene su botón
+            if (m.destino === 'pausa' || m.sin_caja) { return; }   // v2.10: la pausa tiene su botón; v2.17: «Sin caja», en la preparación
             var $b = $('<button type="button" class="o_ko_motivo"/>').attr('data-id', m.id);
             $('<span class="o_ko_marca" role="presentation"/>').appendTo($b);
             $('<span class="o_ko_motivo_txt"/>').text(m.nombre)
