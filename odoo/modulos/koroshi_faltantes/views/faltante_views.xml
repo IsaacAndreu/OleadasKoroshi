@@ -5,7 +5,7 @@
         <field name="model">koroshi.faltante</field>
         <field name="arch" type="xml">
             <tree decoration-warning="estado == 'pendiente'" decoration-success="estado == 'encontrado'"
-                  decoration-danger="estado == 'no_encontrado'" create="false">
+                  decoration-danger="estado == 'no_encontrado'" decoration-info="estado == 'no_existe'" create="false">
                 <field name="fecha"/>
                 <field name="employee_id"/>
                 <field name="picking_id"/>
@@ -17,15 +17,18 @@
                 <field name="tipo"/>
                 <field name="estado"/>
                 <field name="ronda_picking_id" optional="show"/>
+                <field name="ronda_resultado" optional="show"/>
+                <field name="ronda_operario_id" optional="show"/>
+                <field name="ronda_fecha" optional="hide"/>
                 <field name="rondas" optional="hide"/>
                 <field name="en_ronda" invisible="1"/>
                 <field name="nota" optional="hide"/>
                 <field name="user_id" optional="hide"/>
                 <button name="action_encontrado" type="object" string="Encontrado" icon="fa-check"
-                        attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                        attrs="{'invisible': ['|', ('estado', 'not in', ['pendiente', 'no_existe']), ('en_ronda', '=', True)]}"
                         groups="stock.group_stock_manager"/>
                 <button name="action_no_encontrado" type="object" string="No encontrado" icon="fa-times"
-                        attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                        attrs="{'invisible': ['|', ('estado', 'not in', ['pendiente', 'no_existe']), ('en_ronda', '=', True)]}"
                         confirm="Las uds de FALTANTE pasan a perdidas de inventario. ¿Seguro?"
                         groups="stock.group_stock_manager"/>
             </tree>
@@ -39,10 +42,10 @@
             <form create="false">
                 <header>
                     <button name="action_encontrado" type="object" string="Encontrado" class="btn-primary"
-                            attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                            attrs="{'invisible': ['|', ('estado', 'not in', ['pendiente', 'no_existe']), ('en_ronda', '=', True)]}"
                             groups="stock.group_stock_manager"/>
                     <button name="action_no_encontrado" type="object" string="No encontrado"
-                            attrs="{'invisible': ['|', ('estado', '!=', 'pendiente'), ('en_ronda', '=', True)]}"
+                            attrs="{'invisible': ['|', ('estado', 'not in', ['pendiente', 'no_existe']), ('en_ronda', '=', True)]}"
                             confirm="Las uds de FALTANTE pasan a perdidas de inventario. ¿Seguro?"
                             groups="stock.group_stock_manager"/>
                     <field name="estado" widget="statusbar"/>
@@ -77,6 +80,10 @@
                             <field name="ronda_move_id"/>
                             <field name="rondas"/>
                             <field name="en_ronda"/>
+                            <field name="ronda_resultado"/>
+                            <field name="ronda_operario_id"/>
+                            <field name="ronda_fecha"/>
+                            <field name="move_cero_id" attrs="{'invisible': [('move_cero_id', '=', False)]}"/>
                         </group>
                         <group>
                             <field name="fecha_revision"/>
@@ -119,9 +126,11 @@
                 <filter name="pendiente" string="Pendientes" domain="[('estado', '=', 'pendiente')]"/>
                 <filter name="encontrado" string="Encontrados" domain="[('estado', '=', 'encontrado')]"/>
                 <filter name="no_encontrado" string="No encontrados" domain="[('estado', '=', 'no_encontrado')]"/>
+                <filter name="no_existe" string="Ubicacion no existe" domain="[('estado', '=', 'no_existe')]"/>
                 <separator/>
                 <filter name="reubicado" string="Reubicados" domain="[('tipo', '=', 'reubicado')]"/>
                 <filter name="sin_alternativa" string="Sin alternativa" domain="[('tipo', '=', 'sin_alternativa')]"/>
+                <filter name="puesto_a_cero" string="Puestos a 0 (picking viejo)" domain="[('tipo', '=', 'puesto_a_cero')]"/>
                 <separator/>
                 <filter name="en_ronda" string="En una ronda abierta" domain="[('en_ronda', '=', True)]"/>
                 <filter name="fuera_ronda" string="Fuera de ronda" domain="[('en_ronda', '=', False)]"/>
@@ -129,6 +138,8 @@
                     <filter name="g_ronda" string="Ronda" context="{'group_by': 'ronda_picking_id'}"/>
                     <filter name="g_dia" string="Dia" context="{'group_by': 'dia:day'}"/>
                     <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_resultado" string="Resultado de la ronda" context="{'group_by': 'ronda_resultado'}"/>
+                    <filter name="g_operario_ronda" string="Operario de la ronda" context="{'group_by': 'ronda_operario_id'}"/>
                     <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
                     <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
                     <filter name="g_producto" string="Articulo" context="{'group_by': 'product_id'}"/>
@@ -183,6 +194,73 @@
         <field name="domain">[('origin', '=like', 'RONDA FALTANTES%')]</field>
         <field name="context">{'create': False}</field>
     </record>
+
+    <!-- v1.7: lo puesto a 0 en la app de codigo de barras (picking viejo) pasa a faltantes para la ronda -->
+    <record id="action_koroshi_importar_puestos_a_cero" model="ir.actions.server">
+        <field name="name">Pasar los puestos a 0 a faltantes</field>
+        <field name="model_id" ref="model_koroshi_faltante"/>
+        <field name="state">code</field>
+        <field name="code">action = model.importar_puestos_a_cero()</field>
+    </record>
+
+    <!-- v1.7: resultado de las rondas (agrupado por ronda) y documento -->
+    <record id="action_koroshi_resultado_rondas" model="ir.actions.act_window">
+        <field name="name">Resultado de las rondas</field>
+        <field name="res_model">koroshi.faltante</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="search_view_id" ref="view_koroshi_faltante_search"/>
+        <field name="domain">[('ronda_picking_id', '!=', False)]</field>
+        <field name="context">{'search_default_g_ronda': 1, 'search_default_g_resultado': 1}</field>
+    </record>
+
+    <report id="action_report_resultado_ronda"
+            model="koroshi.faltante"
+            string="Resultado de la ronda"
+            report_type="qweb-pdf"
+            name="koroshi_faltantes.report_resultado_ronda"
+            file="koroshi_faltantes.report_resultado_ronda"
+            print_report_name="'Resultado ronda faltantes'"/>
+
+    <template id="report_resultado_ronda">
+        <t t-call="web.html_container">
+            <t t-call="web.basic_layout">
+                <div class="page" style="font-family: Arial, Helvetica, sans-serif; font-size: 10pt;">
+                    <h3>Resultado de la ronda de faltantes</h3>
+                    <p>
+                        Rondas: <t t-esc="', '.join(sorted(set(docs.mapped('ronda_picking_id.name')))) or '-'"/>
+                        · <t t-esc="len(docs)"/> lineas
+                    </p>
+                    <t t-foreach="docs.lineas_informe()" t-as="g">
+                        <h4 style="margin-top: 14pt;"><t t-esc="g[0]"/> (<t t-esc="len(g[1])"/>)</h4>
+                        <table class="table table-sm" style="width: 100%;">
+                            <thead>
+                                <tr>
+                                    <th>Ubicacion</th>
+                                    <th>Articulo</th>
+                                    <th class="text-right">Uds</th>
+                                    <th>Tipo</th>
+                                    <th>Operario</th>
+                                    <th>Hora</th>
+                                    <th>Ronda</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr t-foreach="g[1]" t-as="f">
+                                    <td><t t-esc="f.ubicacion_vieja_id.complete_name.split('/Stock/')[-1]"/></td>
+                                    <td><t t-esc="f.product_id.default_code or f.product_id.display_name"/></td>
+                                    <td class="text-right"><t t-esc="int(f.cantidad_faltant)"/></td>
+                                    <td><t t-esc="dict(f._fields['tipo'].selection).get(f.tipo)"/></td>
+                                    <td><t t-esc="f.ronda_operario_id.name or ''"/></td>
+                                    <td><span t-field="f.ronda_fecha" t-options="{'format': 'dd/MM HH:mm'}"/></td>
+                                    <td><t t-esc="f.ronda_picking_id.name or ''"/></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </t>
+                </div>
+            </t>
+        </t>
+    </template>
 
     <!-- Pantalla de la PDA. Tambien se abre con el boton "Faltante" de la pantalla de Operarios. -->
     <record id="action_koroshi_faltantes_pantalla" model="ir.actions.client">

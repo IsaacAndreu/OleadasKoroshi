@@ -10,6 +10,11 @@
               action="action_koroshi_crear_ronda" sequence="22" groups="stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_faltantes_rondas" name="Rondas de faltantes (INT)" parent="menu_koroshi_faltantes_root"
               action="action_koroshi_rondas" sequence="24"/>
+    <menuitem id="menu_koroshi_faltantes_resultado" name="Resultado de las rondas" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_resultado_rondas" sequence="26"/>
+    <menuitem id="menu_koroshi_faltantes_importar_cero" name="Pasar los puestos a 0 a faltantes"
+              parent="menu_koroshi_faltantes_root" action="action_koroshi_importar_puestos_a_cero" sequence="32"
+              groups="stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_faltantes_cero" name="Puestos a 0 hoy" parent="menu_koroshi_faltantes_root"
               action="action_koroshi_puestos_a_cero" sequence="30" groups="stock.group_stock_manager"/>
 </odoo>

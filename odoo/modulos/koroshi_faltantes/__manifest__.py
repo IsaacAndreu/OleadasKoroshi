@@ -52,8 +52,18 @@ v1.6.0 (17/11/2026): la pantalla Faltante solo propone en «Prueba en», y solo 
 v1.6.1 (17/11/2026): «muelle» es lo mismo que en koroshi_zonas: huecos MU-.. (MU2) y N1-L.. (MU1). Dentro de NAVE2
   solo vale un hueco de lineal o de muelle (con o sin caja KO): ya no se proponen las KO sueltas (recepcion sin
   ubicar) ni PERCHAS_KO. En la PDA el muelle se ve como «MU-01 P00 C1 · KO_...».
+v1.7.0 (17/11/2026): RONDA EN LECTURAS Y PUESTOS A 0 DEL PICKING VIEJO (con koroshi_preparacion 3.33.0, instalar a la
+  vez). La INT de la ronda se hace en Lecturas (la pantalla nueva), no en la app de codigo de barras: leer la prenda =
+  esta; «No esta» = sigue pendiente (a la 2.a ronda sin aparecer, a perdidas); «La ubicacion no existe» = estado nuevo
+  «Ubicacion no existe» (lo decide la oficina; Encontrado / No encontrado siguen disponibles). Se apunta el operario y
+  la hora de cada linea. Informe PDF «Resultado de la ronda» (Imprimir en la lista) y menu «Resultado de las rondas».
+  Menu «Pasar los puestos a 0 a faltantes»: lo puesto a 0 desde las PDA en la app de codigo de barras desde el
+  1/11 (parametros koroshi_faltantes.puestos_a_cero_desde / _usuarios) pasa a faltantes de tipo «Puesto a 0», solo en
+  lineales y muelle y si ahora no hay stock de ese articulo alli. No mueve stock: su ronda va de perdidas a la
+  ubicacion y solo lo encontrado vuelve. Campos nuevos solo en koroshi.faltante (ronda_resultado, ronda_operario_id,
+  ronda_fecha, move_cero_id; la OUT deja de ser obligatoria). Nada en albaranes, movimientos ni lineas.
 """,
-    'version': '13.0.1.6.1',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

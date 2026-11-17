@@ -16,6 +16,14 @@
 #   - sincronizar_rondas() (cron cada 15 min): linea hecha -> Encontrado (en la ubicacion donde se leyo);
 #     INT validada "Sin pedido pendiente" -> lo no leido queda cancelado -> No encontrado (a perdidas);
 #     "Crear pedido pendiente" -> sigue pendiente en la INT nueva; INT cancelada entera -> vuelve a pendiente.
+# v1.7 Ronda en Lecturas (koroshi_preparacion 3.33): la INT de la ronda se lee en la pantalla nueva. Por linea:
+#   leer la prenda = esta; «No esta» / «La ubicacion no existe» = ronda_marcar() (quita la reserva de la linea y
+#   apunta el resultado y el operario). Al validar: esta -> Encontrado; no esta -> sigue pendiente (a la
+#   RONDAS_PERDIDAS.a ronda sin aparecer, a perdidas); la ubicacion no existe -> estado «Ubicacion no existe»
+#   (la oficina decide). Informe «Resultado de la ronda».
+# v1.7 Puestos a 0 del picking viejo: importar_puestos_a_cero() pasa a faltantes (tipo «Puesto a 0») lo que se puso
+#   a 0 en la app de codigo de barras desde una fecha. Sus uds ya estan en perdidas: la ronda va de perdidas a la
+#   ubicacion y solo si se encuentra vuelve al stock; si no, se queda como estaba.
 #
 # Como se cambia la reserva: se escribe location_id en la stock.move.line reservada (sin nada leido).
 # Es el write estandar de Odoo 13: quita la reserva de la vieja y reserva en la nueva con strict=True,
@@ -25,6 +33,7 @@
 # Todo dentro de un savepoint: si algo falla, no se hace nada.
 # No anade campos a albaranes, movimientos, lineas, agrupaciones ni tipos de operacion.
 # =============================================================================
+import logging
 import re
 
 from odoo import api, fields, models
@@ -32,9 +41,17 @@ from odoo.exceptions import UserError
 from odoo.tools import float_compare, float_is_zero, html_escape
 from odoo.addons.koroshi_base import comun   # v1.5: hora del almacen
 
+_logger = logging.getLogger(__name__)
+
 MAX_ALTERNATIVAS = 5
 NOMBRE_PUESTA_A_CERO = 'Cantidad de producto actualizada'   # lo que escribe Odoo al poner a 0 desde la PDA
 PREFIJOS_ZONA = ('Z-',)                                      # agrupaciones que se abren enteras
+ORIGEN_RONDA = 'RONDA FALTANTES'                             # origin de las INT de ronda (v1.7: Lecturas las reconoce)
+RONDAS_PERDIDAS = 2                                          # v1.7: «No esta» en esta ronda -> a perdidas
+PARAM_CERO_DESDE = 'koroshi_faltantes.puestos_a_cero_desde'  # v1.7: desde que dia se pasan los puestos a 0
+PARAM_CERO_USUARIOS = 'koroshi_faltantes.puestos_a_cero_usuarios'   # v1.7: logins de las PDA (separados por comas)
+CERO_DESDE_DEFECTO = '2026-11-01'
+CERO_USUARIOS_DEFECTO = 'almacen@nath.es,almacen2@nath.es'
 # v1.6: solo se coge de NAVE2. v1.6.1: y solo de un hueco de lineal o de muelle (los mismos que koroshi_zonas): «L62 P36
 # C2», «N1-L09 P08 C1» (MU1) o «MU-01 P00 C1» (MU2), con o sin caja KO dentro. Nunca de DEVOLUCIO_KOROSHI, CAJAS,
 # PRUEBA, la raiz de Stock, las KO sueltas en NAVE2 (recepcion sin ubicar) ni PERCHAS_KO.
@@ -72,7 +89,8 @@ class KoroshiFaltante(models.Model):
                                   help='Operario de la tarjeta o de la tarea abierta de esa OUT (koroshi_operarios)')
     user_id = fields.Many2one('res.users', 'Usuario', required=True, default=lambda self: self.env.user,
                               ondelete='restrict')
-    picking_id = fields.Many2one('stock.picking', 'OUT', required=True, index=True, ondelete='restrict')
+    # v1.7: sin OUT en los puestos a 0 del picking viejo (no se sabe de que OUT eran)
+    picking_id = fields.Many2one('stock.picking', 'OUT', index=True, ondelete='restrict')
     batch_id = fields.Many2one('stock.picking.batch', 'Agrupacion', related='picking_id.batch_id')
     product_id = fields.Many2one('product.product', 'Articulo', required=True, index=True, ondelete='restrict')
     cantidad = fields.Float('Uds de la linea', digits='Product Unit of Measure',
@@ -86,11 +104,13 @@ class KoroshiFaltante(models.Model):
     tipo = fields.Selection([
         ('reubicado', 'Reubicado'),
         ('sin_alternativa', 'Sin alternativa'),
+        ('puesto_a_cero', 'Puesto a 0 (picking viejo)'),   # v1.7
     ], 'Tipo', required=True)
     estado = fields.Selection([
         ('pendiente', 'Pendiente'),
         ('encontrado', 'Encontrado'),
         ('no_encontrado', 'No encontrado'),
+        ('no_existe', 'Ubicacion no existe'),   # v1.7: marcado en la ronda; lo decide la oficina
     ], 'Estado', default='pendiente', required=True, index=True)
     fecha = fields.Datetime('Fecha', required=True, default=fields.Datetime.now, index=True)
     dia = fields.Date('Dia', compute='_compute_dia', store=True, index=True)
@@ -107,6 +127,16 @@ class KoroshiFaltante(models.Model):
                                     readonly=True)
     rondas = fields.Integer('Rondas', readonly=True, help='Veces que ha salido en una ronda de revision')
     en_ronda = fields.Boolean('En ronda abierta', compute='_compute_en_ronda', search='_search_en_ronda')
+    # v1.7: lo marcado en la ultima ronda (Lecturas) y quien
+    ronda_resultado = fields.Selection([
+        ('esta', 'Esta'),
+        ('no_esta', 'No esta'),
+        ('no_existe', 'La ubicacion no existe'),
+    ], 'Resultado de la ronda', readonly=True)
+    ronda_operario_id = fields.Many2one('hr.employee', 'Operario de la ronda', ondelete='set null', readonly=True)
+    ronda_fecha = fields.Datetime('Hora de la ronda', readonly=True)
+    move_cero_id = fields.Many2one('stock.move', 'Movimiento puesto a 0', index=True, ondelete='set null',
+                                   readonly=True, help='v1.7: el movimiento a perdidas del picking viejo')
     company_id = fields.Many2one('res.company', 'Empresa', required=True,
                                  default=lambda self: self.env.company)
 
@@ -114,7 +144,7 @@ class KoroshiFaltante(models.Model):
     @api.depends('picking_id', 'product_id')
     def _compute_name(self):
         for f in self:
-            f.name = '%s - %s' % (f.picking_id.name or '', f.product_id.display_name or '')
+            f.name = '%s - %s' % (f.picking_id.name or 'Puesto a 0', f.product_id.display_name or '')
 
     @api.depends('fecha')
     def _compute_dia(self):
@@ -145,6 +175,13 @@ class KoroshiFaltante(models.Model):
         if not loc:
             raise UserError('El articulo %s no tiene ubicacion de perdidas de inventario' % product.display_name)
         return loc
+
+    def _origen(self):
+        """v1.7: donde estan las uds del faltante: FALTANTE o, en un puesto a 0, perdidas de inventario."""
+        self.ensure_one()
+        if self.tipo == 'puesto_a_cero':
+            return self._ubicacion_perdidas(self.product_id, self.company_id)
+        return self._ubicacion_faltant()
 
     @api.model
     def _libre_por_ubicacion(self, product, dominio_ubicacion):
@@ -496,11 +533,11 @@ class KoroshiFaltante(models.Model):
     # ------------------------------------------------------------------ revision
     def _comprobar_revision(self):
         for f in self:
-            if f.estado != 'pendiente':
+            if f.estado not in ('pendiente', 'no_existe'):   # v1.7: tambien «Ubicacion no existe»
                 raise UserError('%s ya esta revisado.' % f.name)
             if f.en_ronda:
-                raise UserError('%s esta en la ronda %s: se revisa en esa INT con la app de codigo de barras '
-                                '(o se cancela la INT).' % (f.name, f.ronda_move_id.picking_id.name or ''))
+                raise UserError('%s esta en la ronda %s: se revisa en esa INT (Lecturas) o se cancela la INT.'
+                                % (f.name, f.ronda_move_id.picking_id.name or ''))
 
     def action_no_encontrado(self):
         """De FALTANTE a perdidas de inventario (lo que antes se hacia poniendo a 0 en la PDA)."""
@@ -512,7 +549,9 @@ class KoroshiFaltante(models.Model):
     def _cerrar_no_encontrado(self, nota='', usuario=None):
         self.ensure_one()
         move = False
-        if not float_is_zero(self.cantidad_faltant, precision_rounding=self.product_id.uom_id.rounding):
+        # v1.7: un puesto a 0 ya esta en perdidas: no se mueve nada
+        if self.tipo != 'puesto_a_cero' and not float_is_zero(self.cantidad_faltant,
+                                                                  precision_rounding=self.product_id.uom_id.rounding):
             perdidas = self._ubicacion_perdidas(self.product_id, self.company_id)
             move = self._mover_desde_faltant(self, self._ubicacion_faltant(), perdidas)
         vals = {'estado': 'no_encontrado', 'move_revision_id': move.id if move else False,
@@ -540,12 +579,15 @@ class KoroshiFaltante(models.Model):
         return True
 
     def _mover_desde_faltant(self, f, faltant, destino):
-        libre = self._libre_en(f.product_id, faltant)
-        if float_compare(libre, f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding) < 0:
-            raise UserError('En FALTANTE solo hay %s uds de %s y este faltante es de %s. Revisa FALTANTE.'
-                            % (libre, f.product_id.display_name, f.cantidad_faltant))
-        return self._mover(f.product_id, f.cantidad_faltant, faltant, destino, f.company_id,
-                           'KOROSHI Revision faltante %s' % f.picking_id.name, f.picking_id.name)
+        origen = f._origen()   # v1.7: FALTANTE o, en un puesto a 0, perdidas
+        if origen.usage == 'internal':
+            libre = self._libre_en(f.product_id, origen)
+            if float_compare(libre, f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding) < 0:
+                raise UserError('En FALTANTE solo hay %s uds de %s y este faltante es de %s. Revisa FALTANTE.'
+                                % (libre, f.product_id.display_name, f.cantidad_faltant))
+        ref = f.picking_id.name or 'puesto a 0'
+        return self._mover(f.product_id, f.cantidad_faltant, origen, destino, f.company_id,
+                           'KOROSHI Revision faltante %s' % ref, ref)
 
     def action_encontrado(self):
         return {
@@ -580,32 +622,35 @@ class KoroshiFaltante(models.Model):
             not float_is_zero(f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding))
         if not faltantes:
             raise UserError('No hay faltantes pendientes con uds en FALTANTE que no esten ya en una ronda.')
-        faltant = self._ubicacion_faltant()
         ahora = comun.ahora_local().strftime('%d/%m %H:%M')
         grupos = {}
         for f in faltantes:
-            tipo = f.picking_id.picking_type_id.warehouse_id.int_type_id
+            almacen = f.picking_id.picking_type_id.warehouse_id or f.ubicacion_vieja_id.get_warehouse()   # v1.7
+            tipo = almacen.int_type_id
             if not tipo:
-                raise UserError('El almacen de %s no tiene tipo de transferencia interna.' % f.picking_id.name)
-            grupos.setdefault(tipo, self.browse())
-            grupos[tipo] |= f
+                raise UserError('El almacen de %s no tiene tipo de transferencia interna.' % f.name)
+            # v1.7: una INT por origen (FALTANTE o, los puestos a 0, perdidas)
+            clave = (tipo, f._origen())
+            grupos.setdefault(clave, self.browse())
+            grupos[clave] |= f
         Picking, Move = self.env['stock.picking'], self.env['stock.move']
         pickings = Picking.browse()
-        for tipo, grupo in grupos.items():
+        for (tipo, faltant), grupo in grupos.items():
             company = grupo[0].company_id
+            cero = faltant.usage != 'internal'
             picking = Picking.create({
                 'picking_type_id': tipo.id,
                 'location_id': faltant.id,
                 'location_dest_id': (tipo.warehouse_id.lot_stock_id or tipo.default_location_dest_id).id,
-                'origin': 'RONDA FALTANTES %s' % ahora,
+                'origin': '%s %s%s' % (ORIGEN_RONDA, ahora, ' (PUESTOS A 0)' if cero else ''),
                 'company_id': company.id,
                 'move_type': 'direct',
             })
             moves = Move.browse()
             for i, f in enumerate(sorted(grupo, key=self._orden_ronda)):
                 m = Move.create({
-                    'name': 'KOROSHI Ronda faltante %s' % f.picking_id.name,
-                    'origin': f.picking_id.name,
+                    'name': 'KOROSHI Ronda faltante %s' % (f.picking_id.name or 'puesto a 0'),
+                    'origin': f.picking_id.name or 'Puesto a 0',
                     'picking_id': picking.id,
                     'picking_type_id': tipo.id,
                     'sequence': i + 1,
@@ -616,14 +661,16 @@ class KoroshiFaltante(models.Model):
                     'location_dest_id': f.ubicacion_vieja_id.id,
                     'company_id': company.id,
                 })
-                f.write({'ronda_move_id': m.id, 'ronda_picking_id': picking.id, 'rondas': f.rondas + 1})
+                f.write({'ronda_move_id': m.id, 'ronda_picking_id': picking.id, 'rondas': f.rondas + 1,
+                         'ronda_resultado': False, 'ronda_operario_id': False, 'ronda_fecha': False})   # v1.7
                 moves |= m
             # sin juntar lineas: cada faltante tiene la suya aunque sea el mismo articulo y ubicacion
             moves._action_confirm(merge=False)
             picking.action_assign()
             for f in grupo:
                 if f.ronda_move_id.state != 'assigned':
-                    f.nota = ('%s En FALTANTE no hay stock para la ronda %s.' % (f.nota or '', picking.name)).strip()
+                    f.nota = ('%s En %s no hay stock para la ronda %s.' % (
+                        f.nota or '', faltant.name, picking.name)).strip()
             pickings |= picking
         if len(pickings) == 1:
             return {'type': 'ir.actions.act_window', 'name': 'Ronda de faltantes', 'res_model': 'stock.picking',
@@ -664,6 +711,22 @@ class KoroshiFaltante(models.Model):
                     f.write({'ronda_picking_id': m.picking_id.id, 'rondas': f.rondas + 1})
                 continue
             if m.state == 'cancel':
+                # v1.7: lo marcado en Lecturas manda
+                ronda = m.picking_id.name or ''
+                if f.ronda_resultado == 'no_existe':
+                    f.write({'estado': 'no_existe', 'ronda_move_id': False,
+                             'fecha_revision': f.ronda_fecha or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
+                             'nota': ('%s Ronda %s: la ubicacion ya no existe.' % (f.nota or '', ronda)).strip()})
+                    continue
+                if f.ronda_resultado == 'no_esta':
+                    if f.tipo == 'puesto_a_cero' or f.rondas >= RONDAS_PERDIDAS:
+                        f._cerrar_no_encontrado('No estaba en la ronda %s (%s.a ronda).' % (ronda, f.rondas),
+                                                m.write_uid)
+                    else:
+                        f.write({'ronda_move_id': False,
+                                 'nota': ('%s Ronda %s: no estaba; sigue pendiente (a la %s.a ronda sin aparecer, a '
+                                          'perdidas).' % (f.nota or '', ronda, RONDAS_PERDIDAS)).strip()})
+                    continue
                 if m.picking_id.state == 'cancel':
                     # se ha cancelado la INT entera: no es "no encontrado", vuelve a pendiente sin ronda
                     f.write({'ronda_move_id': False, 'ronda_picking_id': False,
@@ -691,8 +754,149 @@ class KoroshiFaltante(models.Model):
                     nuevo._cerrar_no_encontrado('No encontrado en la ronda %s.' % (m.picking_id.name or ''),
                                                 m.write_uid)
             f.write({'estado': 'encontrado', 'move_revision_id': m.id, 'ubicacion_revision_id': destino.id,
-                     'fecha_revision': m.date or fields.Datetime.now(), 'revisado_por': m.write_uid.id})
+                     'fecha_revision': m.date or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
+                     'ronda_resultado': 'esta', 'ronda_fecha': f.ronda_fecha or m.date})
         return True
+
+    # ------------------------------------------------------------------ v1.7: ronda en Lecturas
+    @api.model
+    def es_ronda(self, picking):
+        """INT de una ronda de faltantes (la crea crear_ronda; tambien su pedido pendiente)."""
+        return bool(picking) and picking.picking_type_code == 'internal' and \
+            (picking.origin or '').startswith(ORIGEN_RONDA)
+
+    @api.model
+    def ronda_marcar(self, ml, resultado, employee=False):
+        """Lecturas: «No esta» / «La ubicacion no existe» en una linea de la ronda. Quita la reserva de lo que no se
+        ha leido (la linea desaparece de la pantalla) y apunta el resultado y el operario. Lo demas lo hace
+        sincronizar_rondas() al validar la INT."""
+        if resultado not in ('no_esta', 'no_existe'):
+            raise UserError('Resultado desconocido: %s' % resultado)
+        ml = ml.exists()
+        if not ml:
+            raise UserError('Esa linea ya no existe: vuelve a cargar la ronda.')
+        picking = ml.picking_id
+        if not self.es_ronda(picking):
+            raise UserError('%s no es una ronda de faltantes.' % (picking.name or '-'))
+        if picking.state in ('done', 'cancel'):
+            raise UserError('La ronda %s ya esta %s.' % (picking.name, 'validada' if picking.state == 'done'
+                                                         else 'cancelada'))
+        faltantes = self.search([('ronda_move_id', '=', ml.move_id.id)])
+        if not faltantes:
+            raise UserError('Esta linea no es de ningun faltante de la ronda.')
+        return self._todo_o_nada(self._ronda_marcar, ml, faltantes, resultado, employee)
+
+    @api.model
+    def _ronda_marcar(self, ml, faltantes, resultado, employee=False):
+        move = ml.move_id
+        if float_is_zero(ml.qty_done, precision_rounding=ml.product_uom_id.rounding):
+            ml.unlink()
+        else:
+            ml.write({'product_uom_qty': ml.qty_done})
+            self.flush()
+            move._recompute_state()
+        faltantes.write({'ronda_resultado': resultado, 'ronda_fecha': fields.Datetime.now(),
+                         'ronda_operario_id': employee.id if employee else False})
+        return {'ok': True}
+
+    @api.model
+    def ronda_antes_de_validar(self, picking, employee=False):
+        """Lecturas, al validar la ronda: apunta el operario en lo que se ha leido (esta)."""
+        faltantes = self.search([('ronda_move_id', 'in', picking.move_lines.ids), ('ronda_resultado', '=', False)])
+        ahora = fields.Datetime.now()
+        for f in faltantes:
+            if any(f.ronda_move_id.move_line_ids.mapped('qty_done')):
+                f.write({'ronda_resultado': 'esta', 'ronda_fecha': ahora,
+                         'ronda_operario_id': employee.id if employee else False})
+        return True
+
+    @api.model
+    def ronda_cerrar_sin_leer(self, picking):
+        """Lecturas: ronda sin nada leido y todo marcado («No esta» / «No existe»): no hay nada que validar, se
+        cancela la INT y sincronizar_rondas() aplica lo marcado."""
+        if self.lineas_pendientes(picking):
+            raise UserError('Quedan lineas sin marcar en %s.' % picking.name)
+        picking.action_cancel()
+        return {'estado': 'validada', 'n': 0}
+
+    # ------------------------------------------------------------------ v1.7: puestos a 0 del picking viejo
+    @api.model
+    def importar_puestos_a_cero(self):
+        """Pasa a faltantes (tipo «Puesto a 0») lo que se puso a 0 desde las PDA en la app de codigo de barras desde
+        el dia del parametro koroshi_faltantes.puestos_a_cero_desde. Solo en lineales y muelle (v1.6) y si ahora en
+        esa ubicacion no hay stock de ese articulo (si lo hay, la ronda no sabria si es la pieza perdida). No mueve
+        stock: las uds siguen en perdidas hasta que la ronda las encuentra. Se puede repetir: lo ya pasado no se
+        vuelve a pasar."""
+        Param = self.env['ir.config_parameter'].sudo()
+        desde = fields.Date.to_date(Param.get_param(PARAM_CERO_DESDE, CERO_DESDE_DEFECTO))
+        logins = [x.strip() for x in (Param.get_param(PARAM_CERO_USUARIOS, CERO_USUARIOS_DEFECTO) or '').split(',')
+                  if x.strip()]
+        usuarios = self.env['res.users'].sudo().with_context(active_test=False).search([('login', 'in', logins)])
+        moves = self.env['stock.move'].search([
+            ('name', '=', NOMBRE_PUESTA_A_CERO), ('state', '=', 'done'),
+            ('date', '>=', fields.Datetime.to_string(comun.inicio_dia_utc(desde))),
+            ('location_id.usage', '=', 'internal'), ('location_dest_id.usage', '=', 'inventory'),
+            ('create_uid', 'in', usuarios.ids), ('company_id', 'in', self.env.companies.ids),
+        ], order='date')
+        ya = set(self.search([('move_cero_id', 'in', moves.ids)]).mapped('move_cero_id').ids)
+        Quant = self.env['stock.quant']
+        creados = self.browse()
+        saltados = {'ya': 0, 'zona': 0, 'con_stock': 0}
+        for m in moves:
+            if m.id in ya:
+                saltados['ya'] += 1
+                continue
+            if self._excluida(m.location_id):
+                saltados['zona'] += 1
+                continue
+            hay = sum(Quant.search([('product_id', '=', m.product_id.id),
+                                    ('location_id', '=', m.location_id.id)]).mapped('quantity'))
+            if float_compare(hay, 0, precision_rounding=m.product_id.uom_id.rounding) > 0:
+                saltados['con_stock'] += 1
+                continue
+            qty = m.product_uom._compute_quantity(m.quantity_done or m.product_uom_qty, m.product_id.uom_id)
+            creados |= self.create({
+                'user_id': m.create_uid.id,
+                'product_id': m.product_id.id,
+                'cantidad': qty,
+                'cantidad_faltant': qty,
+                'ubicacion_vieja_id': m.location_id.id,
+                'tipo': 'puesto_a_cero',
+                'fecha': m.date,
+                'move_cero_id': m.id,
+                'company_id': m.company_id.id,
+                'nota': 'Puesto a 0 en la app de codigo de barras (picking viejo).',
+            })
+        _logger.info('KOROSHI FALTANTES puestos a 0 desde %s: %s pasados; saltados %s', desde, len(creados), saltados)
+        return {
+            'type': 'ir.actions.act_window',
+            'name': 'Puestos a 0 pasados: %s (ya estaban %s, fuera de lineal/muelle %s, con stock ahora %s)'
+                    % (len(creados), saltados['ya'], saltados['zona'], saltados['con_stock']),
+            'res_model': self._name,
+            'view_mode': 'tree,form',
+            'views': [(False, 'tree'), (False, 'form')],
+            'domain': [('tipo', '=', 'puesto_a_cero'), ('estado', '=', 'pendiente')],
+        }
+
+    # ------------------------------------------------------------------ v1.7: informe de la ronda
+    def lineas_informe(self):
+        """Para el informe «Resultado de la ronda»: [(titulo, faltantes)] por resultado, por lineal."""
+        def grupo(f):
+            if f.estado == 'encontrado':
+                return 0
+            if f.estado == 'no_existe' or f.ronda_resultado == 'no_existe':
+                return 2
+            if f.ronda_resultado == 'no_esta' or f.estado == 'no_encontrado':
+                return 1
+            return 3
+        titulos = ['Encontrado', 'No estaba', 'La ubicacion ya no existe', 'Sin hacer']
+        res = []
+        for i, titulo in enumerate(titulos):
+            fs = self.filtered(lambda f: grupo(f) == i).sorted(
+                lambda f: (lineal_de(f.ubicacion_vieja_id) or 9999, f.ubicacion_vieja_id.complete_name or ''))
+            if fs:
+                res.append((titulo, fs))
+        return res
 
     # ------------------------------------------------------------------ informe
     @api.model

@@ -1,4 +1,4 @@
-# KOROSHI Faltantes (v1.6.1, 17/11/2026)
+# KOROSHI Faltantes (v1.7.0, 17/11/2026)
 
 Qué hacer en la PDA cuando una pieza de una OUT no está donde dice Odoo. Hasta ahora se ponía a 0 la ubicación desde la PDA:
 el stock se iba a pérdidas sin saber quién, de qué OUT ni por qué. Del 27/10 al 09/11 se hizo 111 veces (159 uds), y el 44 % de
@@ -8,6 +8,29 @@ Con este módulo:
 - la línea de la OUT pasa a otra ubicación con stock libre;
 - la pieza que no está va a **EFFEC/FALTANTE**;
 - queda un registro que se revisa cada día.
+
+## v1.7.0: ronda en Lecturas y puestos a 0 del picking viejo (17/11/2026)
+
+Instalar a la vez que **koroshi_preparacion 3.33.0**.
+
+**Ronda en Lecturas.** La oficina crea la ronda como siempre («Crear ronda de revisión»). En la PDA, el operario lee
+su tarjeta y **lee la INT** en Lecturas, como una OUT. Va a cada ubicación:
+
+| En la ubicación | En la PDA | Qué pasa al validar |
+|---|---|---|
+| La prenda está | Leerla, como siempre | Encontrado: vuelve a su ubicación |
+| No está | «No está» (dos toques) | Sigue pendiente. A la 2.ª ronda sin aparecer, a pérdidas |
+| La ubicación ya no existe | «La ubicación no existe» (dos toques) | Estado «Ubicación no existe»: lo decide la oficina |
+
+Se apunta el operario y la hora de cada línea. **Documento:** en la lista de faltantes (o en «Resultado de las
+rondas»), seleccionar y *Imprimir → Resultado de la ronda* (PDF por resultado), o *Exportar* a Excel.
+
+**Puestos a 0 del picking viejo.** Menú «Pasar los puestos a 0 a faltantes»: lo que se puso a 0 desde las PDA en la
+app de código de barras desde el 1/11 pasa a faltantes de tipo «Puesto a 0». Solo en lineales y muelle y si ahora no
+hay stock de ese artículo en esa ubicación. No mueve stock: sus uds ya estaban en pérdidas; su ronda va de pérdidas a
+la ubicación y solo lo encontrado vuelve al stock. Se puede repetir sin duplicar. Parámetros:
+`koroshi_faltantes.puestos_a_cero_desde` (2026-11-01) y `koroshi_faltantes.puestos_a_cero_usuarios`
+(almacen@nath.es,almacen2@nath.es).
 
 ## v1.6.1: el muelle, como en koroshi_zonas (17/11/2026)
 
