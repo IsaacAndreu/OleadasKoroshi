@@ -18,8 +18,13 @@
               action="action_koroshi_operario_productividad" sequence="30" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_operarios_sin" name="OUT validadas hoy sin operario" parent="menu_koroshi_operarios_root"
               action="action_koroshi_validadas_sin_operario" sequence="40" groups="koroshi_operarios.grupo_productividad"/>
+    <!-- v2.18: «Operarios» abre la pantalla propia (modificar, quitar, crear, tarjeta KOROSHI); la lista de
+         Empleados de siempre queda para quien tiene permisos de RRHH -->
     <menuitem id="menu_koroshi_operarios_empleados" name="Operarios" parent="menu_koroshi_operarios_root"
-              action="action_koroshi_operarios_empleados" sequence="50" groups="koroshi_operarios.grupo_productividad"/>
+              action="action_koroshi_operarios_gestion" sequence="50" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_operarios_empleados_rrhh" name="Operarios (ficha de empleado)"
+              parent="menu_koroshi_operarios_root" action="action_koroshi_operarios_empleados" sequence="55"
+              groups="hr.group_hr_user"/>
     <menuitem id="menu_koroshi_operarios_crear" name="Crear operarios" parent="menu_koroshi_operarios_root"
               action="action_koroshi_crear_operarios" sequence="60" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_operarios_motivos" name="Motivos para saltar" parent="menu_koroshi_operarios_root"

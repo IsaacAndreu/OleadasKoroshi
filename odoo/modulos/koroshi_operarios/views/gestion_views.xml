@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v2.18: pantalla «Operarios» para los responsables: modificar, quitar, crear e imprimir la tarjeta KOROSHI.
+         No necesita permisos de Empleados (RRHH). -->
+    <record id="view_koroshi_operarios_gestion_form" model="ir.ui.view">
+        <field name="name">koroshi.operarios.gestion.form</field>
+        <field name="model">koroshi.operarios.gestion</field>
+        <field name="arch" type="xml">
+            <form string="Operarios">
+                <header>
+                    <button name="action_guardar" type="object" string="Guardar cambios" class="btn-primary"/>
+                    <button name="action_crear" type="object" string="Crear operarios"/>
+                    <button name="action_imprimir" type="object" string="Imprimir tarjetas marcadas"/>
+                </header>
+                <sheet>
+                    <div class="text-muted" style="margin-bottom: 8px;">
+                        Cambia el nombre o el codigo y pulsa <b>Guardar cambios</b>. <b>Quitar</b>: se elimina si
+                        todavia no ha hecho ningun pedido; si ya tiene historial se da de baja (su tarjeta deja de
+                        funcionar y no se pierde su productividad). Para volver a darlo de alta: «Ver tambien los
+                        quitados» y marcar Activo. <b>Tarjeta</b>: marcar y «Imprimir tarjetas marcadas».
+                    </div>
+                    <group>
+                        <field name="ver_quitados"/>
+                    </group>
+                    <field name="linea_ids">
+                        <tree editable="bottom" create="false" delete="false"
+                              decoration-muted="not activo" decoration-danger="quitar">
+                            <field name="emp_id" invisible="1" force_save="1"/>
+                            <field name="nombre"/>
+                            <field name="codigo"/>
+                            <field name="activo"/>
+                            <field name="imprimir"/>
+                            <field name="quitar"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_operarios_gestion" model="ir.actions.act_window">
+        <field name="name">Operarios</field>
+        <field name="res_model">koroshi.operarios.gestion</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- Tarjeta del operario: KOROSHI, nombre y codigo de barras (sin el logo de la empresa) -->
+    <report id="action_report_tarjeta_operario"
+            model="koroshi.operarios.gestion"
+            string="Tarjeta operario KOROSHI"
+            report_type="qweb-pdf"
+            name="koroshi_operarios.report_tarjeta_operario"
+            file="koroshi_operarios.report_tarjeta_operario"
+            print_report_name="'Tarjetas operarios KOROSHI'"
+            menu="False"/>
+
+    <template id="report_tarjeta_operario">
+        <t t-call="web.basic_layout">
+            <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #000;">
+                <t t-foreach="docs" t-as="g">
+                    <t t-foreach="g.tarjetas()" t-as="emp">
+                        <div style="display: inline-block; width: 243pt; height: 153pt; border: 1pt solid #000;
+                                    border-radius: 8pt; margin: 5pt; padding: 6pt 8pt; vertical-align: top;
+                                    page-break-inside: avoid; text-align: center; box-sizing: border-box;">
+                            <div style="font-size: 20pt; font-weight: 900; letter-spacing: 4pt;
+                                        border-bottom: 2pt solid #000; padding-bottom: 2pt;">KOROSHI</div>
+                            <div style="font-size: 15pt; font-weight: 700; margin-top: 6pt; white-space: nowrap;
+                                        overflow: hidden;" t-esc="(emp.name or '').upper()"/>
+                            <img alt="codigo" t-att-src="'/report/barcode/?type=%s&amp;value=%s&amp;width=%s&amp;height=%s' % ('Code128', emp.barcode, 600, 120)"
+                                 style="max-height: 45pt; max-width: 100%; margin-top: 6pt;"/>
+                            <div style="font-size: 10pt; letter-spacing: 1pt;" t-esc="emp.barcode"/>
+                        </div>
+                    </t>
+                </t>
+            </div>
+        </t>
+    </template>
+</odoo>

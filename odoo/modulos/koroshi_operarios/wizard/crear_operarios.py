@@ -44,11 +44,5 @@ class KoroshiCrearOperarios(models.TransientModel):
                 'category_ids': [(4, categoria.id)],
             })
             numero += 1
-        return {
-            'type': 'ir.actions.act_window',
-            'name': _('Operarios creados (%d)') % len(creados),
-            'res_model': 'hr.employee',
-            'view_mode': 'tree,form',
-            'domain': [('id', 'in', creados.ids)],
-            'target': 'current',
-        }
+        # v2.18: vuelve a la pantalla Operarios (la lista de Empleados daba error a quien no tiene permisos de RRHH)
+        return self.env['koroshi.operarios.gestion']._reabrir()

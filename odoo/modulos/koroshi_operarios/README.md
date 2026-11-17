@@ -1,8 +1,21 @@
-# KOROSHI Operarios (v2.14.0, 16/11/2026)
+# KOROSHI Operarios (v2.18.0, 17/11/2026)
 
 Saber quién coge cada pedido sin crear usuarios de Odoo. Cada operario es un **empleado** con una tarjeta.
 Desde la v2 el operario lee su tarjeta **una vez** y la PDA le va abriendo sola los pedidos de su cola.
 El tiempo se cierra solo cuando se valida el pedido.
+
+## v2.18.0: pantalla Operarios para los responsables (17/11/2026)
+
+- *KOROSHI Operarios > Operarios* abre una pantalla propia. Funciona sin permisos de Empleados (RRHH), que «Almacén
+  Nath» y «Almacen 2» no tienen; por eso antes daba error al imprimir la tarjeta o al abrir los operarios creados.
+- Se cambia el **nombre** o el **código** en la misma lista y se pulsa **Guardar cambios**. No deja repetir códigos.
+- **Quitar**: si no ha hecho ningún pedido, se elimina; si tiene historial, se da de baja (archivado: su tarjeta deja
+  de funcionar y no se pierde su productividad). Con «Ver también los quitados» y **Activo** se vuelve a dar de alta.
+- Botón **Crear operarios** (el mismo asistente de siempre; al acabar vuelve a esta pantalla).
+- **Tarjeta**: marcar y «Imprimir tarjetas marcadas». Sale *KOROSHI*, el nombre y el código de barras, sin el logo de
+  Effective. Antes de imprimir guarda los cambios de la pantalla.
+- La lista de Empleados de siempre queda en *Operarios (ficha de empleado)*, solo para quien tiene permisos de RRHH.
+- Sin campos nuevos en tablas existentes: dos modelos temporales (`koroshi.operarios.gestion` y su línea).
 
 
 
@@ -262,7 +275,7 @@ No cambia la app de código de barras. La pantalla usa las mismas llamadas que s
 1. **Crear los operarios:** menú *Inventario > KOROSHI Operarios > Crear operarios*. Se escribe un nombre por línea.
    - Cada uno se crea como empleado de EFFEC con el código `OP0001`, `OP0002`... en *ID de credencial* y la etiqueta *Operario KOROSHI*.
    - No se crea ningún usuario.
-2. **Tarjetas:** *KOROSHI Operarios > Operarios*, seleccionarlos y luego *Imprimir > Imprimir Identificación*.
+2. **Tarjetas:** *KOROSHI Operarios > Operarios*, marcar «Tarjeta» y «Imprimir tarjetas marcadas» (v2.18).
 3. **En la PDA:** pantalla *KOROSHI Operarios > Lecturas (PDA)*, la acción inicial del usuario. Ver arriba.
    - **Empezar:** leer la tarjeta y después el pedido.
      - El pedido es el código de la OUT, el que sale en *Transferir agrupación* y en el albarán.

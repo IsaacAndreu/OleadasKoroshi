@@ -118,8 +118,14 @@ v2.17.0 (17/11/2026): motivo «Sin caja (bolsa, a expediciones)» (data/motivos_
 para el botón «Sin caja» de koroshi_preparacion 3.32: OUT pequeñas que van en bolsa; la OUT no se valida y queda en
 expediciones, que la mete en caja y la valida. /motivos lo marca con sin_caja y Lecturas no lo enseña en Saltar.
 Sin campos ni vistas nuevas.
+v2.18.0 (17/11/2026): pantalla «Operarios» propia (wizard/gestion_operarios.py, views/gestion_views.xml) para los
+responsables, que no tienen permisos de Empleados (RRHH) y les daba error al imprimir la tarjeta o al ver los
+operarios creados: cambiar nombre y codigo, quitar (se elimina sin historial; con historial se archiva), boton
+«Crear operarios» y tarjeta KOROSHI (texto KOROSHI, nombre y codigo de barras, sin el logo de Effective). Crear
+operarios vuelve a esa pantalla. La lista de Empleados queda en «Operarios (ficha de empleado)» (grupo RRHH).
+Dos modelos temporales nuevos; sin campos en tablas existentes.
 """,
-    'version': '13.0.2.17.0',
+    'version': '13.0.2.18.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -138,6 +144,7 @@ Sin campos ni vistas nuevas.
         'views/assets.xml',
         'views/tarea_views.xml',
         'views/wizard_views.xml',
+        'views/gestion_views.xml',   # v2.18
         'views/reparto_views.xml',
         'views/etiquetas_report.xml',
         'views/menu.xml',

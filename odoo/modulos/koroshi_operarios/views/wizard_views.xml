@@ -6,8 +6,8 @@
         <field name="arch" type="xml">
             <form string="Crear operarios">
                 <p>Un nombre por linea. Cada operario se crea como empleado (no como usuario de Odoo) con un
-                    codigo en "ID de credencial" (OP0001, OP0002...). Despues: seleccionarlos y
-                    Imprimir > Imprimir Identificacion para las tarjetas.</p>
+                    codigo en "ID de credencial" (OP0001, OP0002...). Despues, en Operarios: marcar «Tarjeta» e
+                    «Imprimir tarjetas marcadas».</p>
                 <group>
                     <field name="nombres" placeholder="Nombre Apellido&#10;Nombre Apellido"/>
                     <field name="prefijo"/>
