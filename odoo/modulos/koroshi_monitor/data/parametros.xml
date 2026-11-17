@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.29.0: destinatarios del manifiesto XPO (Consulta de envios > Cerrar camion). noupdate: si se cambian a
+         mano en Ajustes > Tecnico > Parametros del sistema, una actualizacion no los pisa. Correos separados por coma. -->
+    <data noupdate="1">
+        <record id="param_manifiesto_para" model="ir.config_parameter">
+            <field name="key">koroshi_monitor.manifiesto_para</field>
+            <field name="value">marta.bernabeu@xpo.com</field>
+        </record>
+        <!-- Falta el correo de Erika: anadirlo aqui (en el servidor) cuando lo tengamos. -->
+        <record id="param_manifiesto_cc" model="ir.config_parameter">
+            <field name="key">koroshi_monitor.manifiesto_cc</field>
+            <field name="value">expediciones@koroshi.tv, betty@nath.es</field>
+        </record>
+    </data>
+</odoo>

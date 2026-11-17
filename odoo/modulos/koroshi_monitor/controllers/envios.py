@@ -11,14 +11,17 @@ validacion. Al generar la etiqueta, XPO y GLS dejan el PDF como adjunto de la OU
 la etiqueta. Comprobado el 11/11/2026: las 165 expediciones desde el 05/11 tienen ese
 adjunto, y 217 OUT validadas el 10/11 se etiquetaron el 11/11.
 """
+import base64
 import datetime
 import io
 import re
+from html import escape
 
 import pytz
 import xlsxwriter
 
 from odoo import fields, http
+from odoo.exceptions import UserError
 from odoo.http import content_disposition, request
 from odoo.addons.koroshi_base import comun   # v1.28: la empresa
 
@@ -521,14 +524,9 @@ class KoroshiConsultaEnvios(http.Controller):
             dominio.append(('transportista', '=', transportista))
         return env['koroshi.envio.extra'].search(dominio)
 
-    @http.route('/koroshi_monitor/consulta_envios.xlsx', type='http', auth='user')
-    def consulta_envios_excel(self, apartado='tiendas', transportista=None, desde=None, hasta=None, **kw):
-        _comprobar_grupo()   # v1.27
-        apartado = apartado if apartado in PERMITIDOS else 'tiendas'
-        transportista = transportista if transportista in PERMITIDOS[apartado] else PERMITIDOS[apartado][0]
-        etiqueta = NOMBRES_TRANSPORTISTA[transportista]
-        dia_desde, dia_hasta, inicio, fin = self._rango_utc(desde, hasta)
-        env = self._env()
+    def _datos_excel(self, env, apartado, transportista, dia_desde, dia_hasta, inicio, fin):
+        """v1.29.0: las OUT del Excel (antes dentro de consulta_envios_excel; ahora tambien las usa el cierre).
+        Devuelve (OUT, {id OUT: fecha etiqueta}, ids añadidas a mano, avisos)."""
         Pick = env['stock.picking'].sudo()
         fechas = {}
         avisos = {}
@@ -544,6 +542,18 @@ class KoroshiConsultaEnvios(http.Controller):
         manuales = set(extras.mapped('picking_id').ids)
         picks = (picks | Pick.browse(list(manuales))).filtered(lambda p: p.state != 'cancel')
         picks = picks.sorted(key=lambda p: (p.date_done or p.create_date, p.id))
+        return picks, fechas, manuales, avisos
+
+    @http.route('/koroshi_monitor/consulta_envios.xlsx', type='http', auth='user')
+    def consulta_envios_excel(self, apartado='tiendas', transportista=None, desde=None, hasta=None, **kw):
+        _comprobar_grupo()   # v1.27
+        apartado = apartado if apartado in PERMITIDOS else 'tiendas'
+        transportista = transportista if transportista in PERMITIDOS[apartado] else PERMITIDOS[apartado][0]
+        etiqueta = NOMBRES_TRANSPORTISTA[transportista]
+        dia_desde, dia_hasta, inicio, fin = self._rango_utc(desde, hasta)
+        env = self._env()
+        picks, fechas, manuales, avisos = self._datos_excel(env, apartado, transportista, dia_desde, dia_hasta,
+                                                            inicio, fin)
         if apartado == 'web':
             contenido, _n = self._excel_web(env, picks, etiqueta, dia_desde, dia_hasta)
         else:
@@ -556,6 +566,167 @@ class KoroshiConsultaEnvios(http.Controller):
             ('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'),
             ('Content-Disposition', content_disposition(nombre)),
         ])
+
+    # ------------------------------------------------------------------
+    # v1.29.0: cierre del camión XPO del día (manifiesto por correo)
+    # ------------------------------------------------------------------
+    def _resumen_xpo(self, env, picks, fechas, avisos):
+        """Totales del Excel XPO y las diferencias que se quedan sin resolver (las mismas cuentas que el Excel)."""
+        grupos = self._agrupar(env, picks, fechas)
+        tiendas = {}
+        for g in grupos:
+            t = tiendas.setdefault(g['tienda'] or '—', {'bultos': 0, 'cajas': 0, 'pedidos': []})
+            t['bultos'] += g['bultos']
+            t['cajas'] += g['cajas']
+            t['pedidos'].append(g['pedido'])
+        diferencias = []
+        for nombre in sorted(tiendas):
+            t = tiendas[nombre]
+            if t['bultos'] != t['cajas']:
+                diferencias.append('%s: %d bultos en Odoo y %d cajas preparadas (%s)' % (
+                    nombre, t['bultos'], t['cajas'], ', '.join(t['pedidos'])))
+        for ref in sorted(avisos or {}):
+            for aviso in avisos[ref]:
+                diferencias.append('No cuenta: %s con el nº %s pero sin etiqueta XPO' % (aviso, ref))
+        return {
+            'tiendas': len(tiendas),
+            'pedidos': len(grupos),
+            'outs': len(picks),
+            'bultos': sum([t['bultos'] for t in tiendas.values()]),
+            'cajas': sum([t['cajas'] for t in tiendas.values()]),
+            'seguimientos': sorted(set([p.carrier_tracking_ref for p in picks if p.carrier_tracking_ref])),
+            'diferencias': diferencias,
+        }
+
+    @staticmethod
+    def _destinatarios(env):
+        Param = env['ir.config_parameter'].sudo()
+
+        def lista(clave):
+            texto = (Param.get_param(clave) or '').replace(';', ',')
+            return [c.strip() for c in texto.split(',') if c.strip()]
+        return lista('koroshi_monitor.manifiesto_para'), lista('koroshi_monitor.manifiesto_cc')
+
+    def _datos_cierre(self, env, dia):
+        dia_desde, _dia_hasta, inicio, fin = self._rango_utc(dia, dia)
+        picks, fechas, manuales, avisos = self._datos_excel(env, 'tiendas', 'xpo', dia_desde, dia_desde, inicio, fin)
+        return dia_desde, picks, fechas, manuales, avisos
+
+    @staticmethod
+    def _cierre_existente(env, dia_fecha):
+        return env['koroshi.envio.cierre'].search([
+            ('company_id', '=', COMPANY_ID), ('transportista', '=', 'xpo'), ('dia', '=', dia_fecha)], limit=1)
+
+    def _info_cierre(self, cierre):
+        if not cierre:
+            return False
+        return {
+            'envios': cierre.envios,
+            'cuando': self._hora(cierre.fecha_envio),
+            'usuario': cierre.usuario_id.name or '',
+            'bultos': cierre.bultos,
+            'tiendas': cierre.tiendas,
+        }
+
+    @http.route('/koroshi_monitor/cierre/resumen', type='json', auth='user')
+    def cierre_resumen(self, dia=None, **kw):
+        _comprobar_grupo()
+        env = self._env()
+        dia_fecha, picks, fechas, _manuales, avisos = self._datos_cierre(env, dia)
+        para, cc = self._destinatarios(env)
+        resumen = self._resumen_xpo(env, picks, fechas, avisos)
+        resumen.update({
+            'dia': dia_fecha.strftime('%Y-%m-%d'),
+            'dia_texto': dia_fecha.strftime('%d/%m/%Y'),
+            'para': para,
+            'cc': cc,
+            'cierre': self._info_cierre(self._cierre_existente(env, dia_fecha)),
+        })
+        return resumen
+
+    @http.route('/koroshi_monitor/cierre/enviar', type='json', auth='user')
+    def cierre_enviar(self, dia=None, reenviar=False, **kw):
+        """Manda el Excel XPO del día a XPO (para/cc en parámetros) y guarda el cierre. No sale nada si no se pulsa."""
+        _comprobar_grupo()
+        env = self._env()
+        dia_fecha, picks, fechas, manuales, avisos = self._datos_cierre(env, dia)
+        if not picks:
+            return {'error': 'El %s no hay ninguna OUT de tienda con etiqueta XPO: no hay nada que enviar.'
+                    % dia_fecha.strftime('%d/%m/%Y')}
+        para, cc = self._destinatarios(env)
+        if not para:
+            return {'error': 'Falta el destinatario de XPO (parámetro koroshi_monitor.manifiesto_para).'}
+        cierre = self._cierre_existente(env, dia_fecha)
+        if cierre and not reenviar:
+            return {'error': 'El camión del %s ya se cerró (%s). Si hay que mandarlo otra vez, usa «Reenviar».'
+                    % (dia_fecha.strftime('%d/%m/%Y'), self._hora(cierre.fecha_envio)), 'ya_cerrado': True}
+        resumen = self._resumen_xpo(env, picks, fechas, avisos)
+        contenido, _n = self._excel_tiendas(env, picks, NOMBRES_TRANSPORTISTA['xpo'], dia_fecha, dia_fecha, fechas,
+                                            manuales, avisos)
+        texto_dia = dia_fecha.strftime('%d/%m/%Y')
+        nombre = 'manifiesto_XPO_KOROSHI_%s.xlsx' % dia_fecha.strftime('%Y-%m-%d')
+        usuario = request.env.user
+        try:
+            with env.cr.savepoint():
+                vals = {
+                    'picking_ids': [(6, 0, picks.ids)],
+                    'seguimientos': ', '.join(resumen['seguimientos']),
+                    'tiendas': resumen['tiendas'],
+                    'pedidos': resumen['pedidos'],
+                    'bultos': resumen['bultos'],
+                    'cajas': resumen['cajas'],
+                    'diferencias': '\n'.join(resumen['diferencias']),
+                    'para': ', '.join(para),
+                    'cc': ', '.join(cc),
+                    'envios': (cierre.envios if cierre else 0) + 1,
+                    'fecha_envio': fields.Datetime.now(),
+                    'usuario_id': usuario.id,
+                }
+                if cierre:
+                    cierre.write(vals)
+                else:
+                    vals.update({'dia': dia_fecha, 'transportista': 'xpo', 'company_id': COMPANY_ID})
+                    cierre = env['koroshi.envio.cierre'].create(vals)
+                adjunto = env['ir.attachment'].sudo().create({
+                    'name': nombre,
+                    'datas': base64.b64encode(contenido),
+                    'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                    'res_model': 'koroshi.envio.cierre',
+                    'res_id': cierre.id,
+                })
+                diferencias = ''
+                if resumen['diferencias']:
+                    diferencias = '<p><b>Diferencias sin resolver:</b></p><ul>%s</ul>' % ''.join(
+                        ['<li>%s</li>' % escape(d) for d in resumen['diferencias']])
+                cuerpo = (
+                    '<p>Hola,</p>'
+                    '<p>Os adjuntamos el manifiesto de KOROSHI del %s (Effective Logistics, NAU-2): '
+                    '%d tiendas, %d pedidos y <b>%d bultos</b>.</p>%s'
+                    '<p>Un saludo,<br/>%s</p>'
+                ) % (texto_dia, resumen['tiendas'], resumen['pedidos'], resumen['bultos'], diferencias,
+                     escape(usuario.name or ''))
+                correo = env['mail.mail'].sudo().create({
+                    'subject': 'Manifiesto KOROSHI %s%s' % (texto_dia, cierre.envios > 1 and ' (corregido)' or ''),
+                    'body_html': cuerpo,
+                    'email_from': usuario.email_formatted or env.company.email or False,
+                    'email_to': ', '.join(para),
+                    'email_cc': ', '.join(cc),
+                    'attachment_ids': [(4, adjunto.id)],
+                    'auto_delete': False,
+                })
+                cierre.write({'adjunto_id': adjunto.id, 'mail_id': correo.id})
+                correo.send(raise_exception=False)
+                if correo.state == 'exception':
+                    raise UserError(correo.failure_reason or 'el servidor de correo no lo ha aceptado')
+        except UserError as error:
+            # Se deshace el cierre: el camión no queda cerrado si el correo no ha salido.
+            return {'error': 'No se ha enviado el correo: %s' % (error.args and error.args[0] or error)}
+        return {
+            'ok': True,
+            'mensaje': 'Manifiesto del %s enviado a %s%s.' % (
+                texto_dia, ', '.join(para), cc and ' (copia a %s)' % ', '.join(cc) or ''),
+            'cierre': self._info_cierre(cierre),
+        }
 
     # ------------------------------------------------------------------
     # OUT añadidas a mano a un dia

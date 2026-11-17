@@ -112,16 +112,24 @@ v1.28.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La empresa
 sigue siendo la del usuario (decidido el 16/11; sin zona, la del almacen). Arregla los dias del cambio de hora: el dia
 de una Z-ddmm- y el dia elegido en la vista de tiendas sumaban 24 h fijas (el 25/10, 25 h, perdia la ultima hora).
 Sin campos ni vistas nuevas. Depende de koroshi_base.
+v1.29.0 (17/11/2026): Consulta de envios > Tiendas: «Cerrar camion XPO y enviar manifiesto». Ver resumen del dia (tiendas,
+pedidos, bultos, cajas y diferencias sin resolver) y, al confirmar, manda el Excel XPO del dia por correo a XPO con copia
+(parametros koroshi_monitor.manifiesto_para y _cc, noupdate). Uno al dia; se puede reenviar corregido. Se guarda en el
+modelo nuevo koroshi.envio.cierre (menu «Cierres de camion XPO»), que koroshi_s4t_envios 1.3 usa para mandar el is_final
+a S4T cuando el camion ha salido. Si el correo no sale, no queda cerrado. Solo XPO (GLS fuera, decidido el 17/11). Nada
+automatico. Sin campos en tablas compartidas. Depende tambien de mail.
 """,
-    'version': '13.0.1.28.0',
+    'version': '13.0.1.29.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'stock_picking_batch', 'koroshi_base', 'koroshi_warehouse_map'],
+    'depends': ['web', 'mail', 'stock', 'stock_picking_batch', 'koroshi_base', 'koroshi_warehouse_map'],
     'data': [
         'security/ir.model.access.csv',
+        'data/parametros.xml',
         'views/assets.xml',
         'views/menu.xml',
+        'views/cierre_views.xml',
     ],
     'installable': True,
     'application': False,

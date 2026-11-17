@@ -26,6 +26,8 @@ var ConsultaEnvios = AbstractAction.extend({
         'click a.ke-out': '_onOut',
         'submit .ke-extra-form': '_onAnadir',
         'click .ke-extra-quitar': '_onQuitar',
+        'click .ke-cierre-ver': '_onCierreVer',          // v1.29.0
+        'click .ke-cierre-enviar': '_onCierreEnviar',    // v1.29.0
     },
 
     init: function () {
@@ -75,6 +77,7 @@ var ConsultaEnvios = AbstractAction.extend({
             '<label>Desde<input class="ke-export-control ke-export-desde" type="date" value="' + e(this.desde) + '"></label>' +
             '<label>Hasta<input class="ke-export-control ke-export-hasta" type="date" value="' + e(this.hasta) + '"></label>' +
             '<button class="btn btn-success ke-excel" type="button">Descargar Excel</button></div></section>' +
+            (tiendas ? this._htmlCierre() : '') +
             '<section class="ke-extra"><form class="ke-extra-form"><div><h2>Añadir un pedido u OUT al Excel de un día</h2>' +
             '<p>Si al Excel le falta algo (por ejemplo, de un día anterior), escríbelo aquí y saldrá junto al resto de ese día.</p></div>' +
             '<div class="ke-export-camps"><label>Pedido u OUT<input class="ke-extra-texto" type="text" autocomplete="off" placeholder="' +
@@ -86,6 +89,78 @@ var ConsultaEnvios = AbstractAction.extend({
             '<div class="ke-search"><input id="ke-buscar" class="ke-buscar" type="search" autocomplete="off" ' +
             'placeholder="Pedido, OUT, tienda o nº de expedición" value="' + e(texto || '') + '">' +
             '<button class="btn btn-primary" type="submit">Buscar</button></div></form>';
+    },
+
+    // v1.29.0: cerrar el camión XPO del día y mandar el manifiesto por correo (solo si se pulsa).
+    _htmlCierre: function () {
+        return '<section class="ke-cierre"><div class="ke-cierre-cab"><div><h2>Cerrar camión XPO y enviar manifiesto</h2>' +
+            '<p>Al acabar de cargar: manda a XPO el Excel XPO del día, con copia a Koroshi y a oficina. Primero revisa el resumen.</p></div>' +
+            '<div class="ke-export-camps"><label>Día<input class="ke-cierre-dia" type="date" value="' + e(this.desde) + '"></label>' +
+            '<button class="btn btn-secondary ke-cierre-ver" type="button">Ver resumen</button></div></div>' +
+            '<div class="ke-cierre-resumen"></div></section>';
+    },
+
+    _htmlResumenCierre: function (r) {
+        var h = '<div class="ke-cierre-datos"><div><span>Tiendas</span><b>' + numero(r.tiendas) + '</b></div>' +
+            '<div><span>Pedidos</span><b>' + numero(r.pedidos) + '</b></div>' +
+            '<div><span>Bultos</span><b>' + numero(r.bultos) + '</b></div>' +
+            '<div><span>Cajas preparadas</span><b>' + numero(r.cajas) + '</b></div></div>';
+        if ((r.diferencias || []).length) {
+            h += '<div class="ke-cierre-dif"><b>Diferencias sin resolver (' + r.diferencias.length + '):</b><ul>' +
+                r.diferencias.map(function (d) { return '<li>' + e(d) + '</li>'; }).join('') +
+                '</ul><small>Salen también en el correo. Si se pueden arreglar antes, mejor.</small></div>';
+        } else if (r.outs) {
+            h += '<div class="ke-cierre-ok">Los bultos cuadran con las cajas en todas las tiendas.</div>';
+        }
+        h += '<p class="ke-cierre-para"><b>Para:</b> ' + e((r.para || []).join(', ') || '— (falta el parámetro koroshi_monitor.manifiesto_para)') +
+            '<br/><b>CC:</b> ' + e((r.cc || []).join(', ') || '—') + '</p>';
+        if (r.cierre) {
+            h += '<div class="ke-cierre-hecho">Camión ya cerrado: enviado ' + e(r.cierre.cuando) + ' por ' + e(r.cierre.usuario) +
+                (r.cierre.envios > 1 ? ' (' + r.cierre.envios + ' veces)' : '') + ', ' + numero(r.cierre.bultos) + ' bultos.</div>' +
+                '<button class="btn btn-outline-danger ke-cierre-enviar" type="button" data-reenviar="1">Reenviar manifiesto corregido</button>';
+        } else if (!r.outs) {
+            h += '<div class="ke-cierre-dif">Ese día no hay ninguna OUT de tienda con etiqueta XPO.</div>';
+        } else {
+            h += '<button class="btn btn-danger ke-cierre-enviar" type="button">Cerrar camión y enviar manifiesto</button>';
+        }
+        return h;
+    },
+
+    _onCierreVer: function (ev) {
+        if (ev) { ev.preventDefault(); }
+        var self = this;
+        var dia = this.$('.ke-cierre-dia').val() || this._hoy();
+        this.$('.ke-cierre-resumen').html('<p class="ke-muted">Calculando…</p>');
+        return this._rpc({route: '/koroshi_monitor/cierre/resumen', params: {dia: dia}}).then(function (r) {
+            self.cierre = r;
+            self.$('.ke-cierre-resumen').html(self._htmlResumenCierre(r));
+        }).guardedCatch(function () {
+            self.$('.ke-cierre-resumen').html('<div class="ke-cierre-dif">No se ha podido consultar Odoo.</div>');
+        });
+    },
+
+    _onCierreEnviar: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var r = this.cierre;
+        if (!r) { return; }
+        var reenviar = ev.currentTarget.getAttribute('data-reenviar') === '1';
+        var pregunta = (reenviar ? '¿Mandar OTRA VEZ el manifiesto del ' : '¿Cerrar el camión y mandar el manifiesto del ') + r.dia_texto +
+            ' a ' + (r.para || []).join(', ') + '?\n\n' + r.tiendas + ' tiendas, ' + r.pedidos + ' pedidos, ' + r.bultos + ' bultos.' +
+            ((r.diferencias || []).length ? '\nCon ' + r.diferencias.length + ' diferencias sin resolver.' : '');
+        if (!window.confirm(pregunta)) { return; }
+        this.$('.ke-cierre-enviar').prop('disabled', true);
+        return this._rpc({route: '/koroshi_monitor/cierre/enviar', params: {dia: r.dia, reenviar: reenviar}}).then(function (res) {
+            if (res.error) {
+                self.do_warn('No se ha enviado', res.error);
+                self.$('.ke-cierre-enviar').prop('disabled', false);
+                return;
+            }
+            self.do_notify('Manifiesto enviado', res.mensaje);
+            return self._onCierreVer();
+        }).guardedCatch(function () {
+            self.$('.ke-cierre-enviar').prop('disabled', false);
+        });
     },
 
     _htmlExtras: function () {

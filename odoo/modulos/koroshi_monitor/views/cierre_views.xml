@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.29.0: cierres del camion XPO (manifiestos enviados desde Consulta de envios). Solo lectura. -->
+    <record id="view_koroshi_envio_cierre_tree" model="ir.ui.view">
+        <field name="name">koroshi.envio.cierre.tree</field>
+        <field name="model">koroshi.envio.cierre</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="dia"/>
+                <field name="tiendas"/>
+                <field name="pedidos"/>
+                <field name="bultos" sum="Bultos"/>
+                <field name="cajas" sum="Cajas"/>
+                <field name="envios"/>
+                <field name="fecha_envio"/>
+                <field name="usuario_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_envio_cierre_form" model="ir.ui.view">
+        <field name="name">koroshi.envio.cierre.form</field>
+        <field name="model">koroshi.envio.cierre</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <h1><field name="dia"/></h1>
+                    <group>
+                        <group>
+                            <field name="tiendas"/>
+                            <field name="pedidos"/>
+                            <field name="bultos"/>
+                            <field name="cajas"/>
+                        </group>
+                        <group>
+                            <field name="fecha_envio"/>
+                            <field name="usuario_id"/>
+                            <field name="envios"/>
+                            <field name="para"/>
+                            <field name="cc"/>
+                            <field name="adjunto_id"/>
+                            <field name="mail_id"/>
+                        </group>
+                    </group>
+                    <group string="Diferencias sin resolver" attrs="{'invisible': [('diferencias', '=', False)]}">
+                        <field name="diferencias" nolabel="1"/>
+                    </group>
+                    <group string="Seguimientos XPO">
+                        <field name="seguimientos" nolabel="1"/>
+                    </group>
+                    <field name="picking_ids"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_envio_cierre" model="ir.actions.act_window">
+        <field name="name">Cierres de camión XPO</field>
+        <field name="res_model">koroshi.envio.cierre</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_koroshi_envio_cierre"
+              name="Cierres de camión XPO"
+              parent="koroshi_warehouse_map.menu_koroshi_warehouse_root"
+              action="action_koroshi_envio_cierre"
+              sequence="26"
+              groups="stock.group_stock_user"/>
+</odoo>

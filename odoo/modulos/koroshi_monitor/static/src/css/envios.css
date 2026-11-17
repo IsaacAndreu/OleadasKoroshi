@@ -91,3 +91,23 @@
     .o_koroshi_envios .ke-datos > div:nth-child(2) { border-right: 0; }
     .o_koroshi_envios .ke-transporte { grid-template-columns: 1fr; }
 }
+/* v1.29.0: cerrar camion XPO y enviar manifiesto */
+.o_koroshi_envios .ke-cierre { margin-bottom: 14px; padding: 16px 18px; border: 1px solid #f3b8b0; border-radius: 12px; background: #fff7f5; }
+.o_koroshi_envios .ke-cierre-cab { display: flex; align-items: flex-end; justify-content: space-between; gap: 20px; }
+.o_koroshi_envios .ke-cierre h2 { margin: 0; font-size: 18px; }
+.o_koroshi_envios .ke-cierre-cab p { margin: 3px 0 0; color: var(--ke-muted); font-size: 13px; }
+.o_koroshi_envios .ke-cierre-resumen:not(:empty) { margin-top: 14px; }
+.o_koroshi_envios .ke-cierre-datos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 10px; }
+.o_koroshi_envios .ke-cierre-datos > div { padding: 10px 12px; border: 1px solid var(--ke-line); border-radius: 8px; background: #fff; }
+.o_koroshi_envios .ke-cierre-datos span { display: block; color: var(--ke-muted); font-size: 11px; font-weight: 650; text-transform: uppercase; }
+.o_koroshi_envios .ke-cierre-datos b { font-size: 22px; }
+.o_koroshi_envios .ke-cierre-dif { margin-bottom: 10px; padding: 10px 12px; border-radius: 8px; background: #fff0ee; color: #b42318; }
+.o_koroshi_envios .ke-cierre-dif ul { margin: 6px 0; padding-left: 20px; }
+.o_koroshi_envios .ke-cierre-ok { margin-bottom: 10px; padding: 10px 12px; border-radius: 8px; background: #ecfdf3; color: #067647; font-weight: 650; }
+.o_koroshi_envios .ke-cierre-hecho { margin-bottom: 10px; padding: 10px 12px; border-radius: 8px; background: #e8eef6; color: #294a70; font-weight: 650; }
+.o_koroshi_envios .ke-cierre-para { margin: 0 0 10px; font-size: 13px; }
+.o_koroshi_envios .ke-cierre-enviar { font-weight: 700; }
+@media (max-width: 700px) {
+    .o_koroshi_envios .ke-cierre-cab { flex-direction: column; align-items: stretch; }
+    .o_koroshi_envios .ke-cierre-datos { grid-template-columns: repeat(2, 1fr); }
+}

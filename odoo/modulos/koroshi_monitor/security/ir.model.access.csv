@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_koroshi_envio_extra_user,koroshi.envio.extra usuario,model_koroshi_envio_extra,stock.group_stock_user,1,1,1,1
+access_koroshi_envio_cierre_user,koroshi.envio.cierre usuario,model_koroshi_envio_cierre,stock.group_stock_user,1,1,1,0
+access_koroshi_envio_cierre_system,koroshi.envio.cierre admin,model_koroshi_envio_cierre,base.group_system,1,1,1,1
