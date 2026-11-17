@@ -140,7 +140,7 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-matriz .km-cel.km-bx-mal small.km-bx { color: inherit; opacity: 1; text-decoration: underline; }
 
 /* v1.18: codigos de operario (OP1, OP2...), sin nombres */
-.o_koroshi_monitor .km-op { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--km-cur); color: #fff; font-family: monospace; font-size: .95em; }
+.o_koroshi_monitor .km-op { display: inline-block; padding: 0 6px; border-radius: 4px; background: var(--km-cur); color: #fff; font-size: .95em; white-space: nowrap; }  /* v1.30: nombre + codigo, sin monospace y sin partir */
 .o_koroshi_monitor .km-op-old { background: transparent; color: inherit; opacity: .55; border: 1px solid currentColor; }
 .o_koroshi_monitor table.km-ops tr.km-op-activo td { font-weight: 600; }
 /* v1.21: alarma de bloqueo (pedido abierto sin leer) */

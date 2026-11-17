@@ -73,6 +73,14 @@ def codigo_op(emp):
     return b or 'OP?'
 
 
+def etiqueta_op(emp):
+    """v1.30: lo que sale en el monitor: nombre + codigo ('Ana Garcia · OP3'), decidido por Isaac el 17/11 (antes,
+    desde la v1.18, solo el codigo). Sin nombre en la ficha, solo el codigo."""
+    nombre = (emp.name or '').strip()
+    cod = codigo_op(emp)
+    return nombre and '%s · %s' % (nombre, cod) or cod
+
+
 class KoroshiMonitor(http.Controller):
 
     def _tz(self):
@@ -359,7 +367,7 @@ class KoroshiMonitor(http.Controller):
 
     def _operarios(self, env, dominio, filas_por_id, dia=None):
         """v1.18: quien coge cada OUT, con el modulo koroshi_operarios (si esta instalado; si no, nada).
-        Solo codigos (OP1, OP2...), nunca nombres. Devuelve (por_picking, por_lote, resumen)."""
+        v1.30: nombre + codigo ('Ana Garcia · OP3'); hasta la 1.29, solo codigos. Devuelve (por_picking, por_lote, resumen)."""
         if 'koroshi.operario.tarea' not in env.registry:
             return {}, {}, []
         ahora = fields.Datetime.now()
@@ -367,7 +375,8 @@ class KoroshiMonitor(http.Controller):
         tareas = env['koroshi.operario.tarea'].sudo().search(dominio, order='inicio asc')
         por_picking, por_lote, ops = {}, {}, {}
         for t in tareas:
-            cod = codigo_op(t.employee_id)
+            codigo = codigo_op(t.employee_id)
+            cod = etiqueta_op(t.employee_id)    # v1.30: lo que se ensena (nombre + codigo)
             abierta = t.estado == 'curso'
             fin_real = None
             if abierta:
@@ -398,7 +407,7 @@ class KoroshiMonitor(http.Controller):
                 parado = sin_leer >= t._minutos_sin_leer_max()
                 if parado and destino is not None and cod not in destino['parados']:
                     destino['parados'].append(cod)
-            o = ops.setdefault(cod, {'op': cod, 'tareas': 0, 'acabadas': 0, 'dejadas': 0, 'uds': 0.0,
+            o = ops.setdefault(cod, {'op': cod, 'codigo': codigo, 'tareas': 0, 'acabadas': 0, 'dejadas': 0, 'uds': 0.0,
                                      'min': 0.0, 'ahora': '', 'desde': '', 'ini': None, 'ult': None,
                                      'sin_leer': 0, 'parado': False, 'ahora_id': False, 'alarma': False})
             o['tareas'] += 1
@@ -434,7 +443,7 @@ class KoroshiMonitor(http.Controller):
                 hasattr(env['koroshi.operario.asignacion'], 'en_pausa'):
             try:
                 for a in env['koroshi.operario.asignacion'].sudo().en_pausa():
-                    o = ops.get(codigo_op(a.employee_id))
+                    o = ops.get(etiqueta_op(a.employee_id))
                     if o is not None and not o['ahora']:
                         o['pausa'] = self._hora(a.fecha_salto)
                         o['pausa_ref'] = (a.name or '').replace('EFFEC/OUT/', '')
@@ -451,10 +460,11 @@ class KoroshiMonitor(http.Controller):
             except Exception:
                 _logger.exception('KOROSHI Monitor: no se ha podido sacar la u/h de resumen_operario_dia')
         resumen = []
-        for cod in sorted(ops, key=lambda c: (int(re.sub(r'\D', '', c) or 0), c)):
+        # v1.30: se ordena y se busca la u/h por el codigo (OP3), no por lo que se ensena (nombre + codigo)
+        for cod in sorted(ops, key=lambda c: (int(re.sub(r'\D', '', ops[c]['codigo']) or 0), ops[c]['codigo'])):
             o = ops[cod]
-            if cod in uh_unica:
-                o['uh'] = int(round(uh_unica[cod]))
+            if o['codigo'] in uh_unica:
+                o['uh'] = int(round(uh_unica[o['codigo']]))
             else:
                 o['uh'] = o['min'] > 1 and int(round(o['uds'] * 60.0 / o['min'])) or 0
             o['uds'] = int(round(o['uds']))
@@ -578,7 +588,7 @@ class KoroshiMonitor(http.Controller):
                     continue
                 D.append(d)
             D.sort(key=lambda d: d['out'])
-            # v1.18: operarios (codigos) de las agrupaciones de este prefijo
+            # v1.18: operarios de las agrupaciones de este prefijo (v1.30: nombre + codigo)
             pp, pl, res['operarios'] = self._operarios(env, [('batch_id.name', '=like', prefijo + '%')], filas)
             self._poner_ops(D, pp, pl)
             res['D'] = D
@@ -660,7 +670,7 @@ class KoroshiMonitor(http.Controller):
                 equipo['uh'] = int(round(leidas_dia / horas))   # solo lo cerrado ese dia
                 if pendientes > 0 and equipo['uh'] > 0 and dia == self._hoy_local():
                     equipo['fin_previsto'] = self._hora(ahora + datetime.timedelta(hours=pendientes / equipo['uh']))
-        # v1.18: operarios (codigos) del dia
+        # v1.18: operarios del dia (v1.30: nombre + codigo)
         pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas, dia=dia)
         self._poner_ops(D, pp, pl)
         # v1.20.2: personas cogiendo ahora = operarios de Lecturas con una tarea abierta (OUT, INT o agrupacion) +

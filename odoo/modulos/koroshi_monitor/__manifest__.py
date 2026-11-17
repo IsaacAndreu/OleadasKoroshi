@@ -118,8 +118,12 @@ pedidos, bultos, cajas y diferencias sin resolver) y, al confirmar, manda el Exc
 modelo nuevo koroshi.envio.cierre (menu «Cierres de camion XPO»), que koroshi_s4t_envios 1.3 usa para mandar el is_final
 a S4T cuando el camion ha salido. Si el correo no sale, no queda cerrado. Solo XPO (GLS fuera, decidido el 17/11). Nada
 automatico. Sin campos en tablas compartidas. Depende tambien de mail.
+v1.30.0 (17/11/2026): operarios con nombre + codigo («Ana Garcia · OP3») en la tabla Operarios, la columna Operario,
+la matriz de zonas, el aviso de parados y el Modo pantalla (antes, desde la v1.18, solo el codigo). Lo pidio Isaac el
+17/11. El buscador tambien encuentra por nombre. Se ordena y se busca la u/h por el codigo, como antes. Sin campos ni
+vistas nuevas.
 """,
-    'version': '13.0.1.29.0',
+    'version': '13.0.1.30.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

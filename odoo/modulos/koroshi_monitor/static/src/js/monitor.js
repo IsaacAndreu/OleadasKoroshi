@@ -51,7 +51,7 @@ function transporteTexto(o) {
     var et = o.etiqueta || '';
     return t + (t && et ? ' · ' : '') + et;
 }
-// v1.18: operarios por codigo (OP1, OP2...), del modulo koroshi_operarios. Nunca nombres.
+// v1.18: operarios del modulo koroshi_operarios. v1.30: nombre + codigo ('Ana Garcia · OP3'); antes solo el codigo.
 // En negrita el que la tiene abierta ahora; los demas (la empezaron o la dejaron) en gris.
 function opsTxt(o) {
     var ahora = o.ops_ahora || [], todos = o.ops || [], parados = o.ops_parados || [];
@@ -75,7 +75,7 @@ function avisoParados(r, tv) {
 }
 function tablaOperarios(ops, tv) {
     if (!ops || !ops.length) { return ''; }
-    var h = '<h2>Operarios (' + ops.length + ')</h2><div class="km-card km-scroll"><table class="km-ops"><thead><tr><th>Código</th><th>Ahora</th><th>Desde</th>' +
+    var h = '<h2>Operarios (' + ops.length + ')</h2><div class="km-card km-scroll"><table class="km-ops"><thead><tr><th>Operario</th><th>Ahora</th><th>Desde</th>' +
         (tv ? '' : '<th class="r">Pedidos</th><th class="r">Acabados</th><th class="r">Dejados</th>') +
         '<th class="r">Uds</th><th class="r">Min</th><th class="r">u/h</th></tr></thead><tbody>';
     ops.forEach(function (o) {
@@ -89,7 +89,7 @@ function tablaOperarios(ops, tv) {
             (tv ? '' : '<td class="r">' + o.tareas + '</td><td class="r">' + o.acabadas + '</td><td class="r">' + (o.dejadas || '') + '</td>') +
             '<td class="r">' + n(o.uds) + '</td><td class="r">' + n(o.min) + '</td><td class="r"><b>' + (o.uh || '') + '</b></td></tr>';
     });
-    return h + '</tbody></table></div>' + (tv ? '' : '<p class="km-nota">Cada código es la tarjeta de un operario (KOROSHI Operarios). Uds = uds leídas entre que lee la OUT y la valida o la deja; en curso, hasta ahora.</p>');
+    return h + '</tbody></table></div>' + (tv ? '' : '<p class="km-nota">Nombre y código de la tarjeta de cada operario (KOROSHI Operarios). Uds = uds leídas entre que lee la OUT y la valida o la deja; en curso, hasta ahora.</p>');
 }
 // Personas y horas estimadas por las cajas cerradas (v1.3): sale para cualquier dia, no solo hoy
 function personas(p, quien) {
