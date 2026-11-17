@@ -26,6 +26,15 @@
 #   - Bultos, peso y volumen: los de koroshi_xpo_bultos (bultos_de, valores_xpo), la misma cuenta que XPO.
 #   - Valorado queue_job (un job por pedido en root.s4t_sync): no hace falta con el cursor y los commits por pedido;
 #     ademas ese canal ya dio problemas (pedidos atascados por canal sin configurar).
+#
+# v1.3 (17/11/2026, spec intent/carga-camion-bultos/spec_2026-11-17.md):
+#   - Camion XPO: si koroshi_monitor 1.29 esta instalado (modelo koroshi.envio.cierre), un tracking XPO esta
+#     'cerrado' cuando alguna de sus OUT va en un cierre (manifiesto enviado). El is_final (y SHIPPED) solo va cuando
+#     todas las OUT del pedido estan hechas Y todos sus trackings XPO estan cerrados. GLS, como en la v1.2. Sin el
+#     modelo de cierre, todo como en la v1.2.
+#   - Correccion: si los bultos de un envio ya mandado cambian antes del cierre, pasa a 'corregir' (con los bultos
+#     de S4T y los nuevos) y se corrige con el boton «Reenviar» (nunca solo). Despues del cierre, o con el final ya
+#     mandado, solo se avisa con una nota en el pedido (una vez por cada cifra nueva).
 # =============================================================================
 import json
 import logging
@@ -72,8 +81,14 @@ class KoroshiS4tEnvio(models.Model):
         ('enviado', 'Enviado'),
         ('error', 'Error (se reintenta)'),
         ('rechazado', 'Rechazado por S4T (no se reintenta)'),
+        ('corregir', 'Bultos cambiados (pulsar Reenviar)'),     # v1.3
         ('omitido', 'Omitido'),
     ], string='Estado', default='diagnostico', readonly=True, index=True)
+    # v1.3: correccion de bultos y cierre del camion XPO
+    packages_nuevo = fields.Integer(string='Bultos nuevos (sin reenviar)', readonly=True)
+    packages_aviso = fields.Integer(string='Bultos ya avisados', readonly=True)
+    cerrado = fields.Boolean(string='Camion cerrado', readonly=True,
+                             help='Alguna OUT de este tracking va en un manifiesto XPO enviado (koroshi_monitor).')
     intentos = fields.Integer(string='Intentos', readonly=True)
     fecha_envio = fields.Datetime(string='Fecha envio', readonly=True)
     order_status = fields.Char(string='Estado orden en S4T', readonly=True)
@@ -141,6 +156,7 @@ class KoroshiS4tEnvio(models.Model):
             grupos.setdefault(ref, self.env['stock.picking'])
             grupos[ref] |= p
         refs = sorted(grupos, key=lambda r: max(str(x.date_done or x.write_date) for x in grupos[r]))
+        en_cierre = self._en_cierre(picks)          # v1.3: None = sin koroshi_monitor 1.29 (como la v1.2)
 
         valores = []
         for i, ref in enumerate(refs):
@@ -155,6 +171,8 @@ class KoroshiS4tEnvio(models.Model):
             if bultos <= 0:
                 return [], '%s: 0 cajas' % ref
             peso, volumen = valores_xpo(bultos)
+            # v1.3: XPO cerrado = alguna de sus OUT va en un manifiesto enviado; GLS y sin cierres, siempre «cerrado»
+            cerrado = carrier != 'XPO' or en_cierre is None or bool(set(outs.ids) & en_cierre)
             valores.append({
                 'name': '%s / %s %s' % (order.name, carrier, ref),
                 'sale_id': order.id,
@@ -165,9 +183,36 @@ class KoroshiS4tEnvio(models.Model):
                 'weight_kg': peso,
                 'volume_m3': volumen,
                 'is_final': not quedan and i == len(refs) - 1,
+                'cerrado': cerrado,
                 'picking_ids': [(6, 0, outs.ids)],
             })
+        # v1.3: el final solo cuando todos los trackings del pedido han salido en su camion
+        if valores and not all(v['cerrado'] for v in valores):
+            valores[-1]['is_final'] = False
         return valores, ''
+
+    @api.model
+    def _en_cierre(self, picks):
+        """v1.3: ids de esas OUT que van en algun cierre de camion XPO (koroshi_monitor 1.29). None si no esta."""
+        if 'koroshi.envio.cierre' not in self.env:
+            return None
+        cierres = self.env['koroshi.envio.cierre'].sudo().search([('picking_ids', 'in', picks.ids)])
+        return set(cierres.mapped('picking_ids').ids) & set(picks.ids)
+
+    def _avisar_bultos(self, nuevos):
+        """v1.3: los bultos han cambiado cuando ya no se puede corregir: nota en el pedido, una vez por cifra."""
+        self.ensure_one()
+        if self.packages_aviso == nuevos:
+            return
+        motivo = self.cerrado and _('el camion ya ha salido') or _('el pedido ya esta en SHIPPED')
+        texto = _('Envio a S4T %s: S4T tiene %d bultos y ahora salen %d, pero %s: no se corrige en S4T.') % (
+            self.name, self.packages, nuevos, motivo)
+        try:
+            with self.env.cr.savepoint():
+                self.sale_id.message_post(body=texto, subtype='mail.mt_note')
+        except Exception:
+            _logger.exception('KOROSHI S4T ENVIOS: no se ha podido avisar de los bultos de %s', self.name)
+        self.write({'packages_aviso': nuevos})
 
     @api.model
     def _sincronizar_pedido(self, order, modo):
@@ -184,9 +229,25 @@ class KoroshiS4tEnvio(models.Model):
             if rec and rec.state == 'rechazado':
                 nuevos |= rec               # v1.2: definitivo; solo se reintenta con «Enviar ahora»
                 continue
-            if rec and rec.state == 'enviado' and not (vals['is_final'] and not rec.is_final):
-                nuevos |= rec
-                continue
+            if rec and rec.state in ('enviado', 'corregir'):
+                # v1.3: S4T ya tiene este tracking con rec.packages bultos
+                cambiado = vals['packages'] != rec.packages
+                rec.write({'cerrado': vals['cerrado']})
+                if cambiado and not vals['cerrado'] and not rec.is_final:
+                    # Antes de que salga el camion: se marca y se corrige con «Reenviar» (nunca solo)
+                    rec.write({'state': 'corregir', 'packages_nuevo': vals['packages']})
+                    nuevos |= rec
+                    continue
+                if rec.state == 'corregir':
+                    # Ha vuelto a la cifra de S4T, o el camion ya ha salido: ya no se corrige
+                    rec.write({'state': 'enviado', 'packages_nuevo': 0})
+                if cambiado:
+                    rec._avisar_bultos(vals['packages'])
+                if not (vals['is_final'] and not rec.is_final):
+                    nuevos |= rec
+                    continue
+                # Ahora es el ultimo: se reenvia con is_final y con los bultos que S4T ya tiene
+                vals = dict(vals, packages=rec.packages, weight_kg=rec.weight_kg, volume_m3=rec.volume_m3)
             vals = dict(vals)
             if not rec or rec.state in ('diagnostico', 'omitido', 'enviado'):
                 # v1.2: 'enviado' aqui = se mando sin is_final y ahora es el ultimo: se reenvia con is_final
@@ -199,7 +260,7 @@ class KoroshiS4tEnvio(models.Model):
                 rec = self.create(vals)
             nuevos |= rec
         # Trackings que ya no estan en el pedido (etiqueta cambiada): no se envian.
-        (existentes - nuevos).filtered(lambda r: r.state != 'enviado').write({'state': 'omitido'})
+        (existentes - nuevos).filtered(lambda r: r.state not in ('enviado', 'corregir')).write({'state': 'omitido'})
         return nuevos, ''
 
     # ------------------------------------------------------------------
@@ -357,6 +418,23 @@ class KoroshiS4tEnvio(models.Model):
             todos.filtered(lambda r: r.state in ('diagnostico', 'error', 'rechazado')).write(
                 {'state': 'pendiente', 'intentos': 0})
             todos._enviar_en_orden()
+        return True
+
+    def action_reenviar(self):
+        """v1.3: manda a S4T los bultos nuevos de los envios en 'corregir' (mismo tracking: S4T actualiza, no duplica).
+        Solo antes de que salga el camion; con el is_final que ya tenia."""
+        if self._modo() != 'real':
+            raise UserError(_('Modo diagnostico: no se envia nada a S4T (parametro %s).') % PARAM_MODO)
+        for rec in self:
+            if rec.state != 'corregir' or not rec.packages_nuevo:
+                raise UserError(_('%s no tiene bultos pendientes de reenviar.') % rec.name)
+            if rec.cerrado or rec.is_final:
+                raise UserError(_('%s: el camion ya ha salido o el pedido ya esta en SHIPPED; no se corrige.')
+                                % rec.name)
+            peso, volumen = valores_xpo(rec.packages_nuevo)
+            rec.write({'packages': rec.packages_nuevo, 'weight_kg': peso, 'volume_m3': volumen,
+                       'packages_nuevo': 0, 'state': 'pendiente', 'intentos': 0})
+            rec._post()
         return True
 
     def action_consultar_s4t(self):

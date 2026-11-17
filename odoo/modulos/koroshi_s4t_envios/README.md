@@ -1,8 +1,27 @@
-# KOROSHI Envíos a S4T (v1.2, 14/11/2026)
+# KOROSHI Envíos a S4T (v1.3, 17/11/2026)
 
 Envía a S4T (`POST /shipments`) el transportista, el tracking, los bultos, el peso y el volumen de cada pedido
 S-6665. Con el último envío del pedido (`is_final=true`), S4T pasa la orden a `SHIPPED`.
 
+
+## v1.3.0 (17/11/2026: camión XPO y corrección de bultos; sigue en modo diagnóstico)
+
+Spec: `intent/carga-camion-bultos/spec_2026-11-17.md`. Manual de S4T «API de envíos» (noviembre 2026): volver a mandar
+el mismo `order_number` + `tracking_number` actualiza el envío.
+
+- **Camión XPO.** Con koroshi_monitor 1.29 instalado, un tracking XPO está **cerrado** cuando alguna de sus OUT va en
+  un *cierre de camión* (Consulta de envíos › «Cerrar camión XPO y enviar manifiesto»). Hasta entonces se manda sin
+  `is_final`. El `is_final` (y SHIPPED) va cuando todas las OUT del pedido están hechas **y** todos sus trackings XPO
+  están cerrados.
+- **Bultos cambiados.** Si los bultos de un envío ya mandado cambian antes del cierre, el envío pasa a «Bultos
+  cambiados (pulsar Reenviar)»: se ven los bultos de S4T y los nuevos. Con «Reenviar con los bultos nuevos»
+  (responsable de Inventario) se manda el mismo tracking otra vez. Nunca se reenvía solo.
+- Después del cierre, o con el final ya mandado, ya no se corrige: solo una nota interna en el pedido, una vez por
+  cada cifra nueva.
+- **GLS**, como en la v1.2: el final va en cuanto todas las OUT tienen etiqueta.
+- **Sin koroshi_monitor 1.29**, todo como en la v1.2.
+- Campos nuevos solo en `koroshi.s4t.envio`: `packages_nuevo`, `packages_aviso` y `cerrado`. Filtros «Bultos cambiados» y
+  «Camión sin cerrar».
 
 ## v1.2.0 (14/11/2026, auditoría 13/11, fase 3; sigue en modo diagnóstico)
 
