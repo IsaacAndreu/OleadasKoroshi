@@ -120,8 +120,10 @@ El tiempo se cierra solo cuando se valida el pedido.
    - **Continuar:** la vuelve a abrir.
    - **Saltar:** se elige el motivo (ver abajo) y se abre la siguiente.
    - **Faltante** (koroshi_faltantes v1.2): la OUT ya va puesta, solo hay que leer el EAN.
-6. Se puede seguir **leyendo una OUT a mano**: si está libre, pasa a ser suya y se abre. Si la tiene otro operario o
-   está en oficina, sale el aviso. La que estaba haciendo vuelve la primera de su cola.
+6. Se puede seguir **leyendo una OUT a mano**: si está libre, pasa a ser suya y se abre. Si otro operario la está
+   haciendo ahora, sale el aviso. Si está en expediciones (oficina), desde la v2.16 se la queda quien la lee (antes
+   la tenía que liberar el responsable); en la nota queda «Recogido por X». La que estaba haciendo vuelve la primera
+   de su cola.
 7. **Sin tarjeta**, leer una OUT la abre igual, pero no cuenta en productividad.
 
 ### Saltar

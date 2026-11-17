@@ -726,9 +726,6 @@ class KoroshiOperarioAsignacion(models.Model):
         """El operario lee una OUT a mano: si esta libre (o ya es suya) pasa a ser la que hace."""
         objetivo_lote = lote if tipo == 'agrupacion' else None
         viva = self._viva_de(picking=picking if tipo == 'out' else None, lote=objetivo_lote)
-        if viva and viva.estado == 'oficina':
-            raise UserError(_('%s esta en oficina (%s). Que la libere el responsable.')
-                            % (viva.name, viva.motivo_id.name or ''))
         zona = picking.batch_id if tipo == 'out' and picking else None
         if zona and (zona.name or '').startswith(PREFIJOS_ZONA):
             # v2.9: OUT de una zona leída sola: no si otro está haciendo ahora la zona entera
@@ -737,6 +734,12 @@ class KoroshiOperarioAsignacion(models.Model):
             if ahora:
                 raise UserError(_('%s es de la zona %s y la esta haciendo %s')
                                 % (picking.name, zona.name, ', '.join(ahora.mapped('employee_id.name'))))
+        if viva and viva.estado == 'oficina':
+            # v2.16: antes «Que la libere el responsable». Ahora quien la lee se la queda y sigue donde estaba;
+            # en la nota queda quien la ha recogido (se ve en Reparto, pestaña «En expediciones» / tareas).
+            nota = ('%s Recogido por %s.' % (viva.nota or '', employee.name)).strip()
+            viva.write({'employee_id': employee.id, 'estado': 'cola', 'tarea_id': False, 'nota': nota,
+                        'secuencia': self._primera_secuencia(employee)})
         if viva and viva.employee_id and viva.employee_id != employee:
             # v2.8: si otro la esta haciendo AHORA (ha leido hace poco), sigue siendo suya. Si nadie la esta haciendo
             # (la dejo, se paro o aun no la habia empezado), se la queda quien la lee, sin preguntar nada.

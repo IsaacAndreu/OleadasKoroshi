@@ -110,8 +110,12 @@ latest_version de los modulos koroshi_* instalados + el parametro koroshi_operar
 la recarga). Si cambia, Lecturas se recarga sola en un momento seguro: en Lecturas, sin hoja ni capa, sin nada
 escrito, con red y sin lecturas pendientes de koroshi_preparacion en la memoria de la PDA; dentro de una OUT espera
 a volver. La primera vez, Ctrl+F5 a mano. Sin campos ni vistas nuevas.
+v2.16.0 (17/11/2026): una OUT o agrupacion «en expediciones» (oficina: saltada con un motivo de expediciones o
+dejada por dos operarios el mismo dia) ya no pide «Que la libere el responsable»: quien la lee en Lecturas se la
+queda y sigue donde estaba (lo leido no se pierde). En la nota de la asignacion queda «Recogido por X». Siguen igual
+los avisos de «la esta haciendo X» y de la zona entera. Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.2.15.0',
+    'version': '13.0.2.16.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
