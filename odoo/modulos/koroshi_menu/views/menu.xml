@@ -66,8 +66,7 @@
               sequence="80" action="koroshi_kpi.action_koroshi_kpi_falta_recalcular"/>
 
     <!-- ===== Personas (id de la v1.x: menu_koroshi_informes; ver arriba) =====
-         Huecos 20, 25 y 30 reservados para Jornada por persona, Horas por actividad y Tramos de tiempo de
-         koroshi_actividades, que aún no está instalado en el servidor (13/11/2026). -->
+         v2.4.2: 18, 20, 25, 28 y 30 son de koroshi_actividades (manipulaciones). -->
     <menuitem id="menu_koroshi_informes" name="Personas" parent="menu_koroshi_app" sequence="30"
               groups="stock.group_stock_user"/>
 
@@ -76,6 +75,22 @@
               groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_tareas" name="Tareas" parent="menu_koroshi_informes" sequence="15"
               action="koroshi_operarios.action_koroshi_operario_tarea" groups="koroshi_operarios.grupo_productividad"/>
+    <!-- v2.4.2: koroshi_actividades (sus menus propios cuelgan de KOROSHI Operarios, archivado aqui) -->
+    <menuitem id="menu_koroshi_act_pantalla" name="Actividades (portátil)" parent="menu_koroshi_informes"
+              sequence="18" action="koroshi_actividades.action_koroshi_actividades_pantalla"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_act_jornada" name="Jornada por persona" parent="menu_koroshi_informes" sequence="20"
+              action="koroshi_actividades.action_koroshi_actividad_jornada"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_act_horas" name="Horas por actividad" parent="menu_koroshi_informes" sequence="25"
+              action="koroshi_actividades.action_koroshi_actividad_horas"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_act_inversa" name="Inversa: cajas leídas" parent="menu_koroshi_informes" sequence="28"
+              action="koroshi_actividades.action_koroshi_inversa_caja"
+              groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_act_tramos" name="Tramos de tiempo" parent="menu_koroshi_informes" sequence="30"
+              action="koroshi_actividades.action_koroshi_actividad_registro"
+              groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_sin_operario" name="OUT validadas hoy sin operario" parent="menu_koroshi_informes"
               sequence="35" action="koroshi_operarios.action_koroshi_validadas_sin_operario"
               groups="koroshi_operarios.grupo_productividad"/>
@@ -126,6 +141,9 @@
               action="koroshi_operarios.action_koroshi_crear_operarios" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_motivos" name="Motivos para saltar" parent="menu_koroshi_config" sequence="30"
               action="koroshi_operarios.action_koroshi_operario_motivos" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_act_config" name="Actividades: configuración" parent="menu_koroshi_config"
+              sequence="35" action="koroshi_actividades.action_koroshi_actividad"
+              groups="koroshi_operarios.grupo_productividad"/>   <!-- v2.4.2 -->
     <menuitem id="menu_koroshi_consumibles_articulos" name="Consumibles: artículos" parent="menu_koroshi_config"
               sequence="40" action="koroshi_consumibles.action_koroshi_consumable_items"
               groups="stock.group_stock_user"/>

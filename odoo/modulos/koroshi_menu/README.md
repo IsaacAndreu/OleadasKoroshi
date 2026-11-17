@@ -77,9 +77,12 @@ S4T, Koroshi Zebra y Job Queue. Para volver a mostrar una: quitarla de la lista 
 
 En Inventario no queda nada KOROSHI salvo lo de S4T (Inventario › Operaciones), que sigue en sus módulos.
 
-**Pendiente:** koroshi_actividades (Jornada por persona, Horas por actividad, Tramos de tiempo, Actividades) no está
-instalado en el servidor (13/11/2026) y no está en `depends`. Al instalarlo: añadirlo a `depends` y meter sus
-entradas en Personas (huecos 20, 25, 30) y Configuración (hueco 35).
+**koroshi_actividades** (desde la v2.4.2): en Personas, Actividades (portátil), Jornada por persona, Horas por
+actividad, Inversa: cajas leídas y Tramos de tiempo; en Configuración, Actividades: configuración. Está en `depends`:
+se instala antes que esta versión.
+
+- **v2.4.2 (17/11/2026):** menús de koroshi_actividades (colgaban de KOROSHI Operarios, archivado, y no se veían).
+  Sale de la 2.4.1, **no** de la 2.5.0 (menú de jefes, sin instalar): una 2.5.x tendrá que llevar estos menús.
 
 ## Cómo funciona
 

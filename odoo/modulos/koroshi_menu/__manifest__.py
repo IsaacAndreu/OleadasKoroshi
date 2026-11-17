@@ -36,9 +36,8 @@ iconos de aplicaciones archivados.
 ATENCIÓN: si un módulo KOROSHI añade un menú nuevo, sale dentro de su menú viejo (archivado) y NO se ve: hay que
 añadirlo aquí. Al desinstalar este módulo vuelven los menús de antes y los iconos de aplicaciones archivados.
 
-Pendiente: koroshi_actividades (Jornada por persona, Horas por actividad, Tramos de tiempo y Actividades) no está en
-«depends» porque aún no está instalado en el servidor. Cuando se instale, añadirlo y meter sus entradas en Personas
-(huecos 20, 25 y 30) y Configuración (hueco 35).
+koroshi_actividades (registro de tiempo de manipulaciones) está en «depends» desde la v2.4.2: sus informes van en
+Personas y su configuración en Configuración.
 
 v1.0.0 (12/11/2026): primera versión.
 v1.1.0 (12/11/2026): «Ajustes KOROSHI» (Configuración › KOROSHI, responsables de Inventario): los parámetros KOROSHI
@@ -74,8 +73,14 @@ Depende de koroshi_base.
 v2.4.1 (16/11/2026): la bandeja tambien como icono «Bandeja» en la pantalla de aplicaciones, solo para el grupo
 «KOROSHI: Bandeja del encargado en Aplicaciones». Al actualizar (o instalar) entra el usuario «Almacen 2»
 (almacen2@nath.es). Para darselo a otro: Ajustes > Usuarios. El menu de Hoy sigue igual.
+v2.4.2 (17/11/2026): menus de koroshi_actividades (manipulaciones), que colgaban de KOROSHI Operarios (archivado por
+este modulo) y no se veian. Personas: Actividades (portatil) 18, Jornada por persona 20, Horas por actividad 25,
+Inversa: cajas leidas 28 y Tramos de tiempo 30. Configuracion: Actividades: configuracion 35. Mismos grupos que en
+koroshi_actividades (la pantalla del portatil, Inventario; el resto, grupo de productividad). Nueva dependencia:
+koroshi_actividades (instalarlo antes). Sale de la 2.4.1 instalada, NO de la 2.5.0 (menu de jefes, sin instalar): una
+2.5.x tendra que llevar estos menus. Solo menus.
 """,
-    'version': '13.0.2.4.1',
+    'version': '13.0.2.4.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -91,6 +96,7 @@ v2.4.1 (16/11/2026): la bandeja tambien como icono «Bandeja» en la pantalla de
         'koroshi_consumibles',
         'koroshi_faltantes',
         'koroshi_contenedores',
+        'koroshi_actividades',   # v2.4.2
     ],
     'data': [
         'views/bandeja.xml',
