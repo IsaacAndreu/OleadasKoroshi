@@ -32,6 +32,7 @@ Isaac lo diga.
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |
 | Alarma PDA si el operario no lee | ? (operarios / preparacion) | PDA: alarma sonora | Rellenar |
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
+| Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
 | Correos pendientes | — | Correus per enviar | — |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
@@ -60,6 +61,6 @@ de `main`: una 2.5.x tendrá que llevar estos menús.
 **No instalar todavía** (decidido): koroshi_s4t_traspasos
 (crearía DEV de todo desde el 01/07), koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: actividades 1.3.0, menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.1, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.33.1, base 1.0.0, operarios 2.18.1, kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, contenedores 1.4.0, rendiment 1.1.0.
