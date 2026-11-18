@@ -23,7 +23,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Tema | Módulo cogido | Chat | Siguiente paso |
 |---|---|---|---|
 | Coordinación y traspaso de la auditoría | — | Traspaso KOROSHI: reparto por zonas | Plan v3 instalado entero el 17/11 por la tarde |
-| Cierre del camión XPO: formato de Erika | koroshi_monitor (1.34.0 instalada 18/11 15:53 hora local) | Resumen reunión 18/11 (lo coge del chat «Excel de envíos para tiendas», con el sí de Isaac) | Cambiar a mano `koroshi_monitor.manifiesto_para`/`_cc` (lista XPO; siguen los viejos: para marta.bernabeu@xpo.com, cc expediciones@koroshi.tv y betty@nath.es) y cerrar un camión de prueba |
+| Cierre del camión XPO: formato de Erika | koroshi_monitor (1.34.0 instalada 18/11 15:53 hora local) | Resumen reunión 18/11 (lo coge del chat «Excel de envíos para tiendas», con el sí de Isaac) | Destinatarios ya cambiados a la lista XPO (18/11 ~16:00). Falta cerrar un camión de prueba |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
 | Contenedores: compactar huecos | koroshi_contenedores (1.6.0, instalada 18/11 15:34 hora local: Atrás, sin teclado, dónde está un artículo, 15 min, «Se han movido N», cantidad al añadir) | Contenedores (compactar) | Ctrl+F5 en las PDA y probar en PDA real; pendiente: qué quieren «verificar» al compactar |
