@@ -35,7 +35,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
 | Correos pendientes | — | Correus per enviar | — |
-| Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (nuevo, **1.0.0 hecha sin instalar**) | Agrupaciones web por corte | Isaac: instalar (todo apagado), «Simular corte ahora» y encender `activo`; `cancelar` después |
+| Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 **instalada 18/11 16:25**, apagada) | Agrupaciones web por corte | Isaac: mirar KOROSHI > Pedidos web > Simular corte ahora; poner `koroshi_agrupaciones_web.activo` = 1 (agrupa a las 06:00 y 11:00) y, otro día, `cancelar` = 1 |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
@@ -52,11 +52,6 @@ Las filas con «?» las rellena su chat la próxima vez que se abra.
 
 ## Hecho y sin instalar
 
-**koroshi_agrupaciones_web 1.0.0** (18/11, módulo nuevo): a las 06:00 y 11:00 cancela las OUT web sin reserva completa
-(sin agrupar y sin nada leído; correo a betty@nath.es para el TPV, a S4T nada) y agrupa las reservadas del todo en
-`WEB_ddmmaa_NN` de hasta 100 uds, en orden de llegada (En curso, PedidosMultiples). Menú KOROSHI > Pedidos web.
-Se instala apagado (`activo` = 0, `cancelar` = 0). Depende de koroshi_menu (vale la 2.4.2 del servidor).
-
 El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) quedó instalado el 17/11 por la tarde:
 faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47) y 1.33.1 (15:08, cifra de u/h real), hora del almacén. **Antes de instalar algo nuevo,
 volver a leer la `installed_version`** (el servidor puede ir por delante del repo).
@@ -68,6 +63,6 @@ de `main`: una 2.5.x tendrá que llevar estos menús.
 **No instalar todavía** (decidido): koroshi_s4t_traspasos
 (crearía DEV de todo desde el 01/07), koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: contenedores 1.6.0 (mejoras de compactar, 18/11 15:34), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: agrupaciones_web 1.0.0 (nuevo, 18/11 16:25, apagado), contenedores 1.6.0 (mejoras de compactar, 18/11 15:34), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
