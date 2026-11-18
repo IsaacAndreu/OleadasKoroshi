@@ -640,7 +640,7 @@ class KoroshiOperarioAsignacion(models.Model):
             if ayuda._terminada():
                 continue
             if Tarea.search_count([('employee_id', '=', employee.id), ('picking_id', '=', ayuda.picking_id.id),
-                                   ('estado', '=', 'dejada')]):
+                                   ('estado', '=', 'dejada'), ('motivo_fin', '!=', 'inactividad')]):
                 continue   # ya ayudo y lo dejo: no se le vuelve a meter
             mia = Tarea.search([('employee_id', '=', employee.id), ('picking_id', '=', ayuda.picking_id.id),
                                 ('estado', '=', 'curso')], limit=1)

@@ -18,5 +18,11 @@
             <field name="key">koroshi_operarios.minutos_sin_leer</field>
             <field name="value">15</field>
         </record>
+        <!-- v2.19: minutos sin hacer nada para que el cron cierre sola la tarea en curso (dejada, inactividad), a la
+             hora de su ultima actividad: no cuenta para las u/h. No toca el pedido. 0 = nunca. -->
+        <record id="parametro_minutos_cierre_inactividad" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.minutos_cierre_inactividad</field>
+            <field name="value">15</field>
+        </record>
     </data>
 </odoo>

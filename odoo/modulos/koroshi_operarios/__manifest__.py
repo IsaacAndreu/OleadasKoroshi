@@ -127,8 +127,15 @@ Dos modelos temporales nuevos; sin campos en tablas existentes.
 v2.18.1 (17/11/2026): arregla el error rojo «Cannot read properties of undefined (reading 'getBoundingClientRect')»
 de Odoo 13 en los menus sin submenus (Lecturas (PDA)) con la ventana del PC estrecha: una regla CSS oculta la barra
 de submenus cuando esta vacia (static/src/css/operarios.css). Solo CSS.
+v2.19.0 (18/11/2026): cierre por inactividad (peticion de Isaac: sesiones olvidadas abiertas en la PDA hundian las
+u/h del Monitor). El cron de cada 5 min cierra como «dejada» (motivo nuevo «Sin actividad») la tarea en curso que
+lleva koroshi_operarios.minutos_cierre_inactividad min (15; 0 = nunca) sin hacer nada, con fin = su ultima
+actividad: ese rato no cuenta ni como trabajado ni como presencia. No toca el pedido (ni lineas, ni cajas, ni
+validar) y la asignacion sigue siendo suya. No se cierra si otro operario tiene la misma OUT en curso (a dos). Si
+vuelve a leer en Preparacion, el cron (o la validacion) abre otra tarea desde esa lectura. Un ayudante cerrado asi
+puede volver a ayudar. Parametro nuevo (noupdate); solo tablas propias.
 """,
-    'version': '13.0.2.18.1',
+    'version': '13.0.2.19.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

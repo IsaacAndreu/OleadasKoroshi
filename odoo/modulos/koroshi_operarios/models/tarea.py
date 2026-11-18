@@ -8,6 +8,9 @@
 #   - con "Dejar aqui" en la pantalla (tarjeta + boton)                        -> dejada
 #   - cuando el mismo operario empieza otro pedido                            -> dejada
 #   - a medianoche, si sigue abierta                                          -> sin cerrar
+#   - v2.19: tras koroshi_operarios.minutos_cierre_inactividad min (15) sin hacer nada -> dejada (inactividad), a la
+#     hora de su ultima actividad. No toca el pedido (ni lineas, ni cajas, ni validar): sigue siendo suyo. Si despues
+#     vuelve a leer en Preparacion, el cron abre otra tarea desde esa lectura.
 # Uds de la tarea = uds leidas (qty_done) del pedido al cerrar - uds leidas al empezar.
 # v2.12 (auditoria 13/11, fase 2): UNA sola cifra de productividad para todo (tarea, Productividad, correo de
 # koroshi_informe, KPI y PDA):
@@ -32,6 +35,9 @@ VENTANA_TARJETA = 90        # segundos que vale la tarjeta leida para leer el pe
 # v2.8: una tarea en curso sin leer nada en estos minutos ya no cuenta como «la esta haciendo ahora» (parametro
 # koroshi_operarios.minutos_sin_leer). Quien lee esa OUT se la queda sin preguntar; el monitor la marca en rojo.
 MINUTOS_SIN_LEER = 15
+# v2.19: una tarea en curso sin hacer nada en estos minutos se cierra sola (parametro
+# koroshi_operarios.minutos_cierre_inactividad; 0 = nunca). Peticion de Isaac 18/11: sesiones olvidadas abiertas.
+MINUTOS_CIERRE_INACTIVIDAD = 15
 RE_OP = re.compile(r'^([A-Za-z]+)0*(\d+)$')
 
 
@@ -98,6 +104,7 @@ class KoroshiOperarioTarea(models.Model):
         ('manual', 'A mano'),
         ('saltar', 'Saltada'),
         ('relevo', 'La siguio otro operario'),
+        ('inactividad', 'Sin actividad'),       # v2.19
     ], 'Como se cerro')
 
     uds_inicio = fields.Float('Uds leidas al empezar', digits=(16, 0))
@@ -441,8 +448,12 @@ class KoroshiOperarioTarea(models.Model):
 
     # ------------------------------------------------------------------ cron
     @api.model
-    def cron_cerrar(self):
-        """Cada 5 min: cierra las tareas cuyo pedido ya esta validado; las de dias anteriores, sin cerrar."""
+    def cron_cerrar(self, inactividad=False):
+        """Cada 5 min: cierra las tareas cuyo pedido ya esta validado; las de dias anteriores, sin cerrar.
+        v2.19: antes, reabre las cerradas por inactividad en las que el operario ha vuelto a leer (tambien cuando lo
+        llama koroshi_preparacion al validar, para no perder esas uds). Despues, solo desde el cron
+        (inactividad=True), cierra las que llevan koroshi_operarios.minutos_cierre_inactividad min sin hacer nada."""
+        self._reabrir_inactivas()
         medianoche_utc = comun.inicio_dia_utc(comun.hoy_local())
         for t in self.sudo().search([('estado', '=', 'curso')]):
             pickings = t._pickings()
@@ -453,9 +464,86 @@ class KoroshiOperarioTarea(models.Model):
                 t._cerrar('acabada', 'validada', fin)
             elif t.inicio < medianoche_utc:
                 t._cerrar('sin_cerrar', 'medianoche', self._ultima_lectura(pickings, t.inicio))
+        if inactividad:
+            self._cerrar_inactivas()
         # v2: las asignaciones de la cola cuyo pedido ya esta validado pasan a hechas
         self.env['koroshi.operario.asignacion'].cron_actualizar()
         return True
+
+    # ------------------------------------------------------------------ v2.19: cierre por inactividad
+    @api.model
+    def _minutos_cierre_inactividad(self):
+        valor = self.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.minutos_cierre_inactividad', '')
+        try:
+            return int(valor) if valor not in (False, None, '') else MINUTOS_CIERRE_INACTIVIDAD
+        except ValueError:
+            return MINUTOS_CIERRE_INACTIVIDAD
+
+    @api.model
+    def _cerrar_inactivas(self, ahora=None):
+        """Cierra como dejada (inactividad) cada tarea en curso sin actividad en N minutos, con fin = su ultima
+        actividad: ese rato no cuenta ni como trabajado ni como presencia. Solo escribe en esta tabla. No se cierra si
+        otro operario tiene la misma OUT en curso (preparar a dos: Preparacion parte la ruta por el orden de inicio y
+        al volver le cambiaria la mitad). Devuelve las tareas cerradas."""
+        minutos = self._minutos_cierre_inactividad()
+        cerradas = self.browse()
+        if minutos <= 0:
+            return cerradas
+        ahora = ahora or fields.Datetime.now()
+        abiertas = self.sudo().search([('estado', '=', 'curso')])
+        pickings = dict((t.id, t._pickings()) for t in abiertas)
+        for t in abiertas:
+            ultima = t._ultima_actividad() or t.inicio
+            if (ahora - ultima).total_seconds() / 60.0 < minutos:
+                continue
+            a_dos = any(o.id != t.id and o.employee_id != t.employee_id and (pickings[o.id] & pickings[t.id])
+                        for o in abiertas)
+            if a_dos:
+                continue
+            t._cerrar('dejada', 'inactividad', max(ultima, t.inicio))
+            t.write({'nota': ((t.nota or '') + ' Cerrada sola: %d min sin actividad.' % minutos).strip()})
+            cerradas |= t
+        return cerradas
+
+    @api.model
+    def _reabrir_inactivas(self):
+        """Tareas cerradas por inactividad (ultimas 24 h) en las que el operario ha vuelto a leer en Preparacion y no
+        ha empezado nada despues: otra tarea desde esa primera lectura, con uds_inicio = uds_fin de la cerrada (asi
+        cuenta lo que lea a partir de ahi). Si su asignacion apuntaba a la cerrada, pasa a la nueva."""
+        nuevas = self.browse()
+        if 'koroshi.preparacion.lectura' not in self.env:
+            return nuevas
+        Tarea = self.sudo()
+        Lectura = self.env['koroshi.preparacion.lectura'].sudo()
+        Asig = self.env['koroshi.operario.asignacion'].sudo()
+        desde = fields.Datetime.now() - datetime.timedelta(hours=24)
+        for t in Tarea.search([('estado', '=', 'dejada'), ('motivo_fin', '=', 'inactividad'), ('fin', '>=', desde)],
+                              order='fin asc'):
+            emp = t.employee_id
+            if Tarea.search_count([('employee_id', '=', emp.id), ('id', '!=', t.id), ('inicio', '>=', t.fin)]):
+                continue   # ya ha empezado otra cosa (o ya se reabrio)
+            if Tarea.abierta_de(emp):
+                continue
+            pickings = t._pickings()
+            primera = Lectura.search([('picking_id', 'in', pickings.ids), ('employee_id', '=', emp.id),
+                                      ('fecha', '>', t.fin)], order='fecha asc', limit=1)
+            if not primera:
+                continue
+            nueva = Tarea.create({
+                'employee_id': emp.id,
+                'tipo': t.tipo,
+                'picking_id': t.picking_id.id,
+                'batch_id': t.batch_id.id,
+                'referencia': t.referencia,
+                'company_id': t.company_id.id,
+                'inicio': primera.fecha,
+                'uds_inicio': t.uds_fin,
+                'uds_total': t.uds_total,
+                'nota': 'Sigue tras cerrarse por inactividad.',
+            })
+            Asig.search([('tarea_id', '=', t.id), ('estado', '=', 'curso')]).write({'tarea_id': nueva.id})
+            nuevas |= nueva
+        return nuevas
 
     # ------------------------------------------------------------------ informes
     @api.model
