@@ -1,6 +1,11 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Contenedores v1.5.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+/* KOROSHI Contenedores v1.6.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.6 (pruebas del almacén 18/11): botón «← Atrás» (un paso atrás: contenedor → hueco → lineal/artículo → inicio;
+ *   tras «Mover marcados» vuelve al hueco); el campo no saca el teclado de la PDA (inputmode=none, como Operarios) y
+ *   «⌨ Escribir» lo saca para teclear L94; leer una prenda dice dónde hay stock de ella; la persona se mantiene 15 min;
+ *   «Se han movido N contenedores»; al añadir prendas, dos lecturas seguidas del mismo EAN cuentan dos (antes la
+ *   segunda en menos de 0,7 s se perdía sin aviso) y «Cantidad» cambia las uds de la última lectura.
  * v1.5: en la lista del hueco cada contenedor tiene casilla: «Marcar vacíos», «Archivar marcados» (no archiva si
  *   alguno tiene prendas) y «Mover marcados» (el siguiente hueco escaneado es el destino). Tocar el nombre abre el
  *   contenedor: «Poner a cero» (no si hay reservas) y «Añadir prendas» (cada lectura = 1 ud, «Guardar»). Son ajustes
@@ -16,7 +21,7 @@ odoo.define('koroshi_contenedores.Pantalla', function (require) {
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
 var REPETIDA_MS = 700;
-var PERSONA_MS = 180000;
+var PERSONA_MS = 900000;         // v1.6: 15 min (antes 3) sin actividad
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
@@ -47,6 +52,11 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_quitar_ultima': '_onQuitarUltima',
         'click .o_kc_guardar_anadir': '_onGuardarAnadir',
         'click .o_kc_cancelar_anadir': '_onCancelarAnadir',
+        // v1.6
+        'click .o_kc_atras': '_onAtras',
+        'click .o_kc_teclado': '_onTeclado',
+        'click .o_kc_cantidad_ok': '_onCantidad',
+        'keydown .o_kc_cantidad': '_onCantidadKey',
     },
 
     init: function () {
@@ -64,7 +74,10 @@ var Pantalla = AbstractAction.extend({
         this.marcados = {};             // v1.5: id -> true (casillas de la lista del hueco)
         this.detalle = null;            // v1.5: contenedor abierto desde la lista del hueco
         this.anadiendo = null;          // v1.5: prendas leídas para añadir al contenedor abierto [{id, nombre, uds}]
-        this.lecturasAnadir = [];       // v1.5: orden de lectura (para «Quitar la última»)
+        this.lecturasAnadir = [];       // v1.5: orden de lectura (para «Quitar la última»); v1.6: [{id, uds}]
+        this.articulo = null;           // v1.6: dónde hay stock de la prenda leída
+        this.origenHueco = null;        // v1.6: hueco del que salen los «Mover marcados» (para «Atrás»)
+        this.teclado = false;           // v1.6: campo con teclado de la PDA (para escribir L94)
     },
 
     start: function () {
@@ -101,6 +114,8 @@ var Pantalla = AbstractAction.extend({
         this.detalle = null;
         this.anadiendo = null;
         this.lecturasAnadir = [];
+        this.articulo = null;
+        this.origenHueco = null;
         if (conPersona) { this.persona = null; }
         this._pintar();
     },
@@ -115,11 +130,24 @@ var Pantalla = AbstractAction.extend({
             ev.preventDefault();
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
-            this._leer(codigo);
+            if (this.teclado) { this._ponerTeclado(false); }   // v1.6: tras escribir, vuelve sin teclado
+            this._leer(codigo, false, 'campo');
         }
     },
 
-    _onBarcodeScanned: function (codigo) { this._leer(codigo); },
+    _onBarcodeScanned: function (codigo) { this._leer(codigo, false, 'bus'); },
+
+    // v1.6: sin teclado en pantalla salvo que se pida (el escáner escribe igual en el campo)
+    _ponerTeclado: function (si) {
+        this.teclado = si;
+        var $c = this.$('.o_kc_codigo');
+        $c.attr('inputmode', si ? null : 'none');
+        this.$('.o_kc_teclado').toggleClass('o_kc_teclado_on', si).text(si ? '⌨ Ocultar' : '⌨ Escribir');
+        $c.blur();
+        $c.focus();
+    },
+
+    _onTeclado: function () { this._ponerTeclado(!this.teclado); },
 
     _aviso: function (tipo, msg) {
         this.$('.o_kc_aviso').removeClass('o_kc_ok o_kc_mal o_kc_info').addClass(
@@ -160,14 +188,17 @@ var Pantalla = AbstractAction.extend({
 
     _sinConexion: function () { this._fin(); this._aviso('mal', 'Sin conexión con Odoo. Vuelve a probar.'); },
 
-    _leer: function (codigo, deCola) {
+    _leer: function (codigo, deCola, fuente) {
         var self = this;
         codigo = (codigo || '').trim();
         if (!codigo) { return; }
         var t = Date.now();
         if (!deCola) {
-            if (codigo === this.ultima.codigo && t - this.ultima.t < REPETIDA_MS) { return; }
-            this.ultima = {codigo: codigo, t: t};
+            // v1.6: una lectura llega dos veces (bus y campo): se descarta la copia de la OTRA vía. Dos lecturas de
+            // la misma vía son dos prendas (antes la segunda del mismo EAN en < 0,7 s se perdía al añadir prendas).
+            if (codigo === this.ultima.codigo && t - this.ultima.t < REPETIDA_MS &&
+                    (!fuente || !this.ultima.fuente || fuente !== this.ultima.fuente)) { return; }
+            this.ultima = {codigo: codigo, t: t, fuente: fuente};
         }
         if (this.ocupado) {
             // v1.4: antes se perdía sin avisar. Ahora espera su turno (o pita si ya hay demasiadas)
@@ -199,6 +230,15 @@ var Pantalla = AbstractAction.extend({
             }
             self.confirmando = false;
             self.detalle = null;
+            if (r.tipo === 'articulo') {    // v1.6: dónde hay stock de la prenda (no toca la cola de mover)
+                self.articulo = r.articulo;
+                self.hueco = null;
+                self.lineal = null;
+                self._aviso('', '');
+                self._pintar();
+                return;
+            }
+            self.articulo = null;
             if (r.tipo === 'lineal') {
                 self.conts = [];
                 self.hueco = null;
@@ -235,8 +275,9 @@ var Pantalla = AbstractAction.extend({
                     return;
                 }
                 self.conts = [];
+                self.origenHueco = null;
                 self._pintar();
-                self._aviso('ok', '✓ Movido. ' + m.msg);
+                self._aviso('ok', '✓ ' + m.msg);
             }, self._sinConexion.bind(self));
         }, self._sinConexion.bind(self));
     },
@@ -321,6 +362,7 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.conts = r.contenedores;
+            self.origenHueco = self.hueco;   // v1.6: «Atrás» vuelve aquí
             self.hueco = null;
             self.lineal = null;
             self.marcados = {};
@@ -421,7 +463,7 @@ var Pantalla = AbstractAction.extend({
             var p = r.producto;
             var fila = _.findWhere(self.anadiendo, {id: p.id});
             if (fila) { fila.uds += 1; } else { self.anadiendo.push({id: p.id, nombre: p.nombre, uds: 1}); }
-            self.lecturasAnadir.push(p.id);
+            self.lecturasAnadir.push({id: p.id, uds: 1});
             self._pitido(true);
             self._aviso('ok', '+1 ' + p.nombre);
             self._pintar();
@@ -430,14 +472,91 @@ var Pantalla = AbstractAction.extend({
 
     _onQuitarUltima: function () {
         if (!this.anadiendo || !this.lecturasAnadir.length) { return; }
-        var id = this.lecturasAnadir.pop();
-        var fila = _.findWhere(this.anadiendo, {id: id});
+        var lec = this.lecturasAnadir.pop();
+        var fila = _.findWhere(this.anadiendo, {id: lec.id});
         if (fila) {
-            fila.uds -= 1;
+            fila.uds -= lec.uds;
             if (fila.uds <= 0) { this.anadiendo = _.without(this.anadiendo, fila); }
-            this._aviso('info', '−1 ' + fila.nombre);
+            this._aviso('info', '−' + lec.uds + ' ' + fila.nombre);
         }
         this._pintar();
+        this._foco();
+    },
+
+    // v1.6: «Cantidad»: la última lectura pasa a ser N uds (leer una prenda y escribir 12)
+    _onCantidad: function () {
+        var $q = this.$('.o_kc_cantidad');
+        var n = parseInt($q.val(), 10);
+        if (!this.anadiendo || !this.lecturasAnadir.length) {
+            return this._aviso('mal', 'Lee antes una prenda; la cantidad es para la última leída.');
+        }
+        if (!(n >= 1 && n <= 500)) {
+            return this._aviso('mal', 'Escribe una cantidad entre 1 y 500.');
+        }
+        var lec = _.last(this.lecturasAnadir);
+        var fila = _.findWhere(this.anadiendo, {id: lec.id});
+        fila.uds += n - lec.uds;
+        lec.uds = n;
+        this.actividadEn = Date.now();
+        this._aviso('ok', n + ' uds de ' + fila.nombre);
+        this._pintar();
+        this._foco();
+    },
+
+    _onCantidadKey: function (ev) {
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var v = (ev.currentTarget.value || '').trim();
+        if (v.length > 4) {             // es una lectura del escáner (EAN), no una cantidad: va como prenda
+            ev.currentTarget.value = '';
+            this._foco();
+            return this._leer(v, false, 'campo');
+        }
+        this._onCantidad();
+    },
+
+    // v1.6: «← Atrás»: deshace un paso de la pantalla (nunca deshace lo guardado en Odoo)
+    _onAtras: function () {
+        if (this.ocupado) { return; }
+        this.actividadEn = Date.now();
+        if (this.anadiendo) {
+            if (this.anadiendo.length) {
+                return this._aviso('mal', 'Tienes prendas leídas sin guardar: «Guardar» o «Cancelar» antes.');
+            }
+            return this._onCancelarAnadir();
+        }
+        if (this.confirmando) { return this._onConfirmarNo(); }
+        if (this.detalle) { return this._onVolverHueco(); }
+        if (this.conts.length) {
+            if (this.origenHueco) {        // venía de «Mover marcados»: vuelve al hueco
+                this.hueco = this.origenHueco;
+                this.conts = [];
+                this.origenHueco = null;
+                this._aviso('', '');
+                return this._onVolverHueco();
+            }
+            var c = this.conts.pop();
+            this._aviso('info', 'Quitado ' + c.nombre + ' de la lista.');
+            this._pintar();
+            return this._foco();
+        }
+        if (this.hueco) {
+            if (this.lineal) { return this._onVolver(); }
+            this.hueco = null;             // si se abrió desde un artículo, vuelve a él
+            this.marcados = {};
+            this._aviso('', '');
+            this._pintar();
+            return this._foco();
+        }
+        if (this.lineal || this.articulo) {
+            this.lineal = null;
+            this.articulo = null;
+            this._aviso('', '');
+            this._pintar();
+            return this._foco();
+        }
+        this._aviso('info', 'Ya estás al principio.');
         this._foco();
     },
 
@@ -537,6 +656,24 @@ var Pantalla = AbstractAction.extend({
     },
 
     // ------------------------------------------------------------------ pintar
+    // v1.6: dónde hay stock de la prenda leída; tocar un hueco lo abre
+    _pintarArticulo: function () {
+        var a = this.articulo;
+        if (!a || this.hueco || this.lineal || this.detalle) { return ''; }
+        var html = '<div class="o_kc_card"><h3>' + _e(a.nombre) + '</h3><div>' + _n(a.uds) + ' uds en ' +
+            (a.filas.length + a.mas) + ' sitio(s)' + (a.reservadas ? ' · ' + _n(a.reservadas) + ' reservadas' : '') +
+            '. Toca un hueco para abrirlo.</div>';
+        if (!a.filas.length) {
+            return html + '<div class="o_kc_vacio">No hay stock de este artículo en ninguna ubicación.</div></div>';
+        }
+        html += '<table>' + a.filas.map(function (f) {
+            return '<tr class="o_kc_fila_hueco o_kc_con" data-id="' + f.hueco_id + '"><td>' + _e(f.hueco) +
+                (f.contenedor ? '<br/><small>' + _e(f.contenedor) + '</small>' : '') + '</td><td class="o_kc_n">' +
+                _n(f.uds) + ' uds' + (f.reservadas ? ' (res. ' + _n(f.reservadas) + ')' : '') + '</td></tr>';
+        }).join('') + (a.mas ? '<tr><td colspan="2">… y ' + a.mas + ' sitios más</td></tr>' : '') + '</table>';
+        return html + '</div>';
+    },
+
     _pintarLineal: function () {
         var l = this.lineal;
         if (!l || this.hueco) { return ''; }
@@ -624,7 +761,10 @@ var Pantalla = AbstractAction.extend({
         }
         if (this.anadiendo) {
             var total = _.reduce(this.anadiendo, function (s, f) { return s + f.uds; }, 0);
-            html += '<div class="o_kc_anadir_caja"><b>Añadir a ' + _e(c.nombre) + ': lee cada prenda</b>';
+            html += '<div class="o_kc_anadir_caja"><b>Añadir a ' + _e(c.nombre) + ': lee cada prenda</b>' +
+                '<div class="o_kc_cantidad_fila">Cantidad de la última: <input type="number" class="o_kc_cantidad" ' +
+                'inputmode="numeric" min="1" max="500" step="1"/><button type="button" class="o_kc_cantidad_ok">' +
+                'Poner</button></div>';
             html += this.anadiendo.length ? '<table>' + this.anadiendo.map(function (f) {
                 return '<tr><td>' + _e(f.nombre) + '</td><td class="o_kc_n">+' + f.uds + '</td></tr>';
             }).join('') + '</table>' : '<div>Aún nada leído.</div>';
@@ -664,8 +804,11 @@ var Pantalla = AbstractAction.extend({
             paso = 'Compactar: marca y archiva los vacíos; mueve los que tienen prendas';
         } else if (this.lineal) {
             paso = 'Inventario del lineal: toca un hueco para abrirlo';
+        } else if (this.articulo) {
+            paso = 'Dónde está este artículo: toca un hueco para abrirlo';
         } else {
-            paso = '1. Escanea el contenedor (KO_…) para mover, una ubicación para limpiarla o escribe un lineal (L94)';
+            paso = '1. Escanea el contenedor (KO_…) para mover, una ubicación para limpiarla, una prenda para ver ' +
+                'dónde está o escribe un lineal (L94)';
         }
         this.$('.o_kc_paso').text(paso);
         var html = this.conts.map(function (c) {
@@ -684,7 +827,8 @@ var Pantalla = AbstractAction.extend({
                 _e(c.hueco) + '</div>' + cuerpo + '</div>';
         }).join('');
         this.$('.o_kc_lista').html(html);
-        this.$('.o_kc_hueco_panel').html(this._pintarLineal() + this._pintarHueco() + this._pintarDetalle());
+        this.$('.o_kc_hueco_panel').html(this._pintarArticulo() + this._pintarLineal() + this._pintarHueco() +
+            this._pintarDetalle());
     },
 });
 

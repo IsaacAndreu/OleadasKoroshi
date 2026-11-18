@@ -36,8 +36,16 @@ v1.5.0 (18/11/2026): compactar un hueco (grabaciones del almacén del 18/11). En
   quedan en koroshi.contenedor.movimiento con quién, cuándo, artículo, uds y movimiento (campos nuevos producto_id y
   move_id, acciones «Poner a cero» y «Añadir prendas», solo en su tabla). Filtro «Ajustes de stock». /limpiar se
   queda para pantallas con el JS viejo en caché.
+v1.6.0 (18/11/2026): pruebas del almacén con la 1.5.0. Botón «← Atrás» (un paso atrás: contenedor → hueco →
+  lineal/artículo → inicio; tras «Mover marcados» vuelve al hueco; antes solo había «Empezar de nuevo»). El campo de
+  lectura ya no saca el teclado de la PDA en cada lectura (inputmode=none, como Operarios); «⌨ Escribir» lo saca para
+  teclear un lineal. Leer una prenda (EAN o referencia) dice dónde hay stock de ella, por hueco y contenedor, para
+  devolver al sitio lo que está fuera de lugar (solo lectura). La persona se mantiene 15 min sin actividad (antes 3).
+  Al mover: «Se han movido N contenedores». Añadir prendas: dos lecturas seguidas del mismo EAN cuentan dos (antes la
+  segunda en menos de 0,7 s se perdía sin aviso; ahora solo se descarta la copia bus/campo de una misma lectura) y
+  «Cantidad» pone N uds a la última lectura.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

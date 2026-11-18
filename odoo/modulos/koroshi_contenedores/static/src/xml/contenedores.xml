@@ -4,8 +4,9 @@
         <div class="o_koroshi_contenedores">
             <header class="o_kc_cab">
                 <div class="o_kc_titulo">Contenedores</div>
-                <input type="text" class="o_kc_codigo" autocomplete="off"
-                       placeholder="Tarjeta, contenedor KO_…, ubicación o lineal (L94)"/>
+                <input type="text" class="o_kc_codigo" autocomplete="off" inputmode="none"
+                       placeholder="Tarjeta, contenedor KO_…, ubicación, prenda o lineal (L94)"/>
+                <button type="button" class="o_kc_teclado">⌨ Escribir</button>
             </header>
             <div class="o_kc_persona"/>
             <div class="o_kc_aviso"/>
@@ -13,6 +14,7 @@
             <div class="o_kc_lista"/>
             <div class="o_kc_hueco_panel"/>
             <div class="o_kc_botones">
+                <button type="button" class="o_kc_atras">← Atrás</button>
                 <button type="button" class="o_kc_vaciar">Empezar de nuevo</button>
             </div>
         </div>

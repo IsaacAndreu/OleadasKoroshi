@@ -49,3 +49,10 @@
 .o_koroshi_contenedores .o_kc_tabla_hueco tr.o_kc_marcado { background: #e6f0fb; }
 .o_koroshi_contenedores .o_kc_volver_hueco { margin: 10px 16px 0; padding: 8px 14px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
 .o_koroshi_contenedores .o_kc_anadir_caja { margin-top: 12px; padding: 12px; background: #e6f0fb; border-radius: 8px; }
+/* v1.6: «← Atrás», «⌨ Escribir» y «Cantidad» */
+.o_koroshi_contenedores .o_kc_atras { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 2px solid #1e7b34; color: #1e7b34; background: #fff; border-radius: 8px; margin-right: 8px; }
+.o_koroshi_contenedores .o_kc_teclado { padding: 10px 12px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_teclado_on { background: #e8f3ea; border-color: #1e7b34; }
+.o_koroshi_contenedores .o_kc_cantidad_fila { margin: 8px 0; }
+.o_koroshi_contenedores .o_kc_cantidad { width: 90px; font-size: 18px; padding: 6px; margin: 0 8px; border: 2px solid #c4cbd3; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_cantidad_ok { padding: 8px 14px; font-size: 16px; border: 1px solid #1e7b34; background: #fff; border-radius: 8px; }

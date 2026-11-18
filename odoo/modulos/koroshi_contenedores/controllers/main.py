@@ -4,6 +4,7 @@
 # stock.location. Cambian location_id del contenedor (KO_/TT_), lo archivan y escriben en koroshi.contenedor.movimiento.
 # v1.5: /cero y /anadir hacen ajustes de inventario (stock.move hecho contra pérdidas de inventario); quién y cuándo
 # queda en koroshi.contenedor.movimiento, como en Lecturas y Faltantes.
+# v1.6: /leer con una prenda (EAN o referencia) dice dónde hay stock de ella; /mover dice cuántos contenedores movió.
 # =============================================================================
 import re
 
@@ -17,6 +18,7 @@ MAX_LINEAS = 40
 MAX_ANADIR = 500          # v1.5: uds de un artículo en un solo «Añadir» (más = lecturas de más)
 COMPANY_ID = 8            # EFFECTIVE LOGISTICS (si el contenedor no tiene empresa)
 MAX_HUECOS = 400
+MAX_DONDE = 60            # v1.6: ubicaciones como máximo al buscar dónde está un artículo
 LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
 
 
@@ -278,6 +280,39 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
+    def _buscar_producto(self, codigo):
+        """Prenda por EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna. Vacío si no hay."""
+        variantes = [codigo]
+        if codigo.isdigit() and len(codigo) == 12:
+            variantes.append('0' + codigo)
+        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
+            variantes.append(codigo[1:])
+        Product = request.env['product.product'].sudo()
+        p = Product.search([('barcode', 'in', variantes)], limit=1)
+        if not p and 'product.barcode' in request.env:
+            p = request.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1).product_id
+        if not p:
+            p = Product.search([('default_code', '=', codigo)], limit=1)
+        return p
+
+    def _donde(self, producto):
+        """v1.6: dónde hay stock de un artículo (ubicaciones internas de la compañía), por hueco y contenedor, para
+        devolver al sitio una prenda fuera de lugar. Solo lectura."""
+        quants = request.env['stock.quant'].sudo().search([
+            ('product_id', '=', producto.id), ('location_id.usage', '=', 'internal'),
+            ('company_id', '=', COMPANY_ID), ('quantity', '>', 0)])
+        filas = []
+        for q in quants:
+            loc = q.location_id
+            hueco = loc.location_id if _es_contenedor_nombre(loc.name) else loc
+            filas.append({'hueco_id': hueco.id, 'hueco': hueco.complete_name,
+                          'contenedor': loc.name if hueco != loc else '',
+                          'uds': q.quantity, 'reservadas': q.reserved_quantity})
+        filas.sort(key=lambda f: (f['hueco'], f['contenedor']))
+        return {'id': producto.id, 'nombre': producto.display_name, 'filas': filas[:MAX_DONDE],
+                'mas': max(0, len(filas) - MAX_DONDE), 'uds': sum(f['uds'] for f in filas),
+                'reservadas': sum(f['reservadas'] for f in filas)}
+
     @http.route('/koroshi/contenedores/producto', type='json', auth='user')
     def producto(self, codigo='', **kw):
         """Prenda leída para añadir: EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna."""
@@ -286,17 +321,7 @@ class KoroshiContenedores(http.Controller):
             codigo = (codigo or '').strip()
             if not codigo:
                 raise UserError('Código vacío.')
-            variantes = [codigo]
-            if codigo.isdigit() and len(codigo) == 12:
-                variantes.append('0' + codigo)
-            if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
-                variantes.append(codigo[1:])
-            Product = request.env['product.product'].sudo()
-            p = Product.search([('barcode', 'in', variantes)], limit=1)
-            if not p and 'product.barcode' in request.env:
-                p = request.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1).product_id
-            if not p:
-                p = Product.search([('default_code', '=', codigo)], limit=1)
+            p = self._buscar_producto(codigo)
             if not p:
                 raise UserError('%s no es una prenda conocida: no se añade.' % codigo)
             return {'ok': True, 'producto': {'id': p.id, 'nombre': p.display_name}}
@@ -380,7 +405,8 @@ class KoroshiContenedores(http.Controller):
 
     @http.route('/koroshi/contenedores/leer', type='json', auth='user')
     def leer(self, codigo='', **kw):
-        """Un código leído: contenedor (KO_/TT_) o ubicación de destino (código de barras del hueco)."""
+        """Un código leído: tarjeta, lineal, contenedor (KO_/TT_), ubicación (código de barras del hueco) o, v1.6,
+        prenda (EAN o referencia: dónde hay stock)."""
         try:
             self._comprobar_usuario()
             codigo = (codigo or '').strip()
@@ -404,7 +430,10 @@ class KoroshiContenedores(http.Controller):
                 return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(loc)}
             loc = Loc.search([('barcode', '=', codigo)])
             if not loc:
-                raise UserError('No conozco la ubicación %s.' % codigo)
+                producto = self._buscar_producto(codigo)   # v1.6: una prenda: dónde hay stock de ella
+                if producto:
+                    return {'ok': True, 'tipo': 'articulo', 'articulo': self._donde(producto)}
+                raise UserError('No conozco %s: no es tarjeta, contenedor, ubicación ni artículo.' % codigo)
             if len(loc) > 1:
                 raise UserError('Hay %d ubicaciones con el código %s. Avisa a IT.' % (len(loc), codigo))
             self._validar_destino(loc)
@@ -450,7 +479,8 @@ class KoroshiContenedores(http.Controller):
                 movidos.append(c.name)
             if not movidos:
                 raise UserError('%s ya estaba en %s.' % (', '.join(iguales), destino.complete_name))
-            msg = '%s: %s → %s' % (emp.name, ', '.join(movidos), destino.complete_name)
+            msg = 'Se han movido %d contenedor%s. %s: %s → %s' % (
+                len(movidos), '' if len(movidos) == 1 else 'es', emp.name, ', '.join(movidos), destino.complete_name)
             if iguales:
                 msg += ' (%s ya estaba allí)' % ', '.join(iguales)
             return {'ok': True, 'msg': msg}
