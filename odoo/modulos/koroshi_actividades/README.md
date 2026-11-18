@@ -4,6 +4,10 @@ Sustituye la hoja donde las personas de manipulaciones apuntaban a mano la hora 
 No cuenta unidades: solo **tiempo por persona y actividad**.
 
 
+## v1.3.1: icono propio (18/11/2026)
+
+- Cronómetro morado en la pantalla de inicio. Antes era una copia del de Lecturas y no se distinguían. Solo imagen.
+
 ## v1.3.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)
 
 - La hora del almacén sale de `koroshi_base.comun` (instalar koroshi_base antes). Mismo resultado; sin campos ni

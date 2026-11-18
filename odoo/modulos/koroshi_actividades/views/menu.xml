@@ -2,7 +2,9 @@
 <odoo>
     <!-- App en la pantalla de inicio para el portátil (para todos, sin grupos) -->
     <menuitem id="menu_koroshi_actividades_app" name="Actividades" action="action_koroshi_actividades_pantalla"
-              web_icon="koroshi_actividades,static/description/icon.png" sequence="2"/>
+              web_icon="koroshi_actividades,static/description/icon_actividades.png" sequence="2"/>
+    <!-- v1.3.1: icono propio (antes, el mismo que Lecturas) -->
+
 
     <!-- Dentro de Inventario > KOROSHI Operarios -->
     <menuitem id="menu_koroshi_actividades_root" name="Actividades (manipulaciones)"

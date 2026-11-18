@@ -37,8 +37,11 @@ comprueba: activa, con tarjeta y de una empresa del usuario.
 v1.3.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). La hora del almacen sale de
 koroshi_base.comun (antes, su propia ZONA_HORARIA). Mismo resultado. Sin campos ni vistas nuevas. Depende de
 koroshi_base.
+v1.3.1 (18/11/2026): icono propio (cronometro morado). Era una copia del de Lecturas (L con codigo de barras) y en la
+pantalla de inicio no se distinguian. El menu usa static/description/icon_actividades.png (nombre nuevo, para que
+Odoo vuelva a leer la imagen al actualizar); icon.png es la misma imagen. Solo imagen.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.3.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
