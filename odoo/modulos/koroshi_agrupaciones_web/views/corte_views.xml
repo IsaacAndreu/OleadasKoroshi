@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_web_corte_tree" model="ir.ui.view">
+        <field name="name">koroshi.web.corte.tree</field>
+        <field name="model">koroshi.web.corte</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="simulacion">
+                <field name="nombre"/>
+                <field name="fecha"/>
+                <field name="origen"/>
+                <field name="simulacion"/>
+                <field name="n_agrupadas"/>
+                <field name="uds_agrupadas"/>
+                <field name="n_canceladas"/>
+                <field name="batch_ids" widget="many2many_tags"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_web_corte_form" model="ir.ui.view">
+        <field name="name">koroshi.web.corte.form</field>
+        <field name="model">koroshi.web.corte</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false">
+                <sheet>
+                    <div class="oe_title"><h1><field name="nombre"/></h1></div>
+                    <div class="alert alert-info" role="alert" attrs="{'invisible': [('simulacion', '=', False)]}">
+                        Simulación: no se ha creado ni cancelado nada. Es lo que haría el corte ahora.
+                    </div>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="hora_corte"/>
+                            <field name="origen"/>
+                            <field name="simulacion"/>
+                            <field name="cancelacion_activa"/>
+                        </group>
+                        <group>
+                            <field name="n_agrupadas"/>
+                            <field name="uds_agrupadas"/>
+                            <field name="n_canceladas"/>
+                            <field name="batch_ids" widget="many2many_tags"/>
+                            <field name="mail_id"/>
+                        </group>
+                    </group>
+                    <field name="resumen"/>
+                    <field name="linea_ids">
+                        <tree decoration-danger="accion in ('cancelada', 'cancelaria')"
+                              decoration-warning="accion == 'leida'">
+                            <field name="accion"/>
+                            <field name="agrupacion"/>
+                            <field name="pedido"/>
+                            <field name="picking_id"/>
+                            <field name="creada"/>
+                            <field name="uds"/>
+                            <field name="falta"/>
+                            <field name="hay"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_web_corte" model="ir.actions.act_window">
+        <field name="name">Cortes de pedidos web</field>
+        <field name="res_model">koroshi.web.corte</field>
+        <field name="view_mode">tree,form</field>
+        <field name="help" type="html">
+            <p>Cada corte (06:00 y 11:00) cancela las OUT web sin reserva completa, avisa a Betty y agrupa las
+               reservadas del todo en WEB_ddmmaa_NN de hasta 100 uds.</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_web_simular" model="ir.actions.server">
+        <field name="name">Simular corte web ahora</field>
+        <field name="model_id" ref="model_koroshi_web_corte"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_simular_ahora()</field>
+    </record>
+
+    <record id="action_koroshi_web_corte_ahora" model="ir.actions.server">
+        <field name="name">Hacer corte web ahora</field>
+        <field name="model_id" ref="model_koroshi_web_corte"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_corte_ahora()</field>
+    </record>
+
+    <record id="action_koroshi_web_completas" model="ir.actions.server">
+        <field name="name">OUT web 100 % reservadas</field>
+        <field name="model_id" ref="model_koroshi_web_corte"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_ver_outs(True)</field>
+    </record>
+
+    <record id="action_koroshi_web_incompletas" model="ir.actions.server">
+        <field name="name">OUT web con reserva incompleta</field>
+        <field name="model_id" ref="model_koroshi_web_corte"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_ver_outs(False)</field>
+    </record>
+
+    <menuitem id="menu_koroshi_web" name="Pedidos web" parent="koroshi_menu.menu_koroshi_app" sequence="25"/>
+    <menuitem id="menu_koroshi_web_cortes" name="Cortes (agrupar y cancelar)" parent="menu_koroshi_web"
+              sequence="10" action="action_koroshi_web_corte"/>
+    <menuitem id="menu_koroshi_web_completas" name="OUT web 100 % reservadas (sin agrupar)" parent="menu_koroshi_web"
+              sequence="12" action="action_koroshi_web_completas"/>
+    <menuitem id="menu_koroshi_web_incompletas" name="OUT web con reserva incompleta (sin agrupar)"
+              parent="menu_koroshi_web" sequence="14" action="action_koroshi_web_incompletas"/>
+    <menuitem id="menu_koroshi_web_simular" name="Simular corte ahora" parent="menu_koroshi_web" sequence="20"
+              action="action_koroshi_web_simular"/>
+    <menuitem id="menu_koroshi_web_corte_ahora" name="Hacer corte ahora (agrupa y cancela)" parent="menu_koroshi_web"
+              sequence="30" action="action_koroshi_web_corte_ahora" groups="stock.group_stock_manager"/>
+</odoo>

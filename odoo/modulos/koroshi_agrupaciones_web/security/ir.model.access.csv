@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_web_corte_usuario,koroshi.web.corte usuario,model_koroshi_web_corte,stock.group_stock_user,1,0,0,0
+access_koroshi_web_corte_linea_usuario,koroshi.web.corte.linea usuario,model_koroshi_web_corte_linea,stock.group_stock_user,1,0,0,0
+access_koroshi_web_corte_admin,koroshi.web.corte admin,model_koroshi_web_corte,base.group_system,1,1,1,1
+access_koroshi_web_corte_linea_admin,koroshi.web.corte.linea admin,model_koroshi_web_corte_linea,base.group_system,1,1,1,1

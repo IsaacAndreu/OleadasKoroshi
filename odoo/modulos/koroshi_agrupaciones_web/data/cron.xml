@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada 15 min: hace el corte de hoy que toque (koroshi_agrupaciones_web.cortes). Con activo = 0 no hace nada. -->
+    <record id="cron_cortes_web" model="ir.cron">
+        <field name="name">KOROSHI Agrupaciones web: cortes</field>
+        <field name="model_id" ref="model_koroshi_web_corte"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_cortes()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

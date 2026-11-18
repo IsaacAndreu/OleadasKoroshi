@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Filtros en la busqueda de albaranes. Sin campos nuevos en stock.picking: son dominios sobre move_lines.
+         Las OUT web tienen move_type 'direct': «Preparada» no quiere decir reservada del todo.
+         «Reserva incompleta» = algun movimiento sin reservar (EXISTE, eso un dominio lo puede decir).
+         «100 % reservada» = NINGUNO sin reservar: en Odoo 13 un dominio sobre un one2many no lo puede decir (con '!'
+         o 'not in' sigue siendo «existe uno que...»; probado el 18/11 con EFFEC/OUT/26287). Por eso es un menu
+         (Pedidos web > OUT web 100 % reservadas) que calcula la lista, y no un filtro. -->
+    <record id="view_picking_search_reserva_web" model="ir.ui.view">
+        <field name="name">stock.picking.search.koroshi.agrupaciones.web</field>
+        <field name="model">stock.picking</field>
+        <field name="inherit_id" ref="stock.view_picking_internal_search"/>
+        <field name="arch" type="xml">
+            <xpath expr="//filter[@name='available']" position="after">
+                <separator/>
+                <filter name="koroshi_reserva_incompleta" string="Reserva incompleta"
+                        domain="[('state', 'in', ['confirmed', 'waiting', 'assigned']), ('move_lines.state', 'in', ['confirmed', 'waiting', 'partially_available'])]"/>
+                <separator/>
+                <filter name="koroshi_web_sin_agrupar" string="Web sin agrupar"
+                        domain="[('origin', '=like', 'W-%'), ('batch_id', '=', False), ('state', 'not in', ['done', 'cancel'])]"/>
+            </xpath>
+        </field>
+    </record>
+</odoo>

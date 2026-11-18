@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Parametros (Ajustes > Tecnico > Parametros del sistema). noupdate: al actualizar no se pisan.
+         Se instala APAGADO: activo = 0 (el cron no hace nada) y cancelar = 0 (los cortes solo apuntan cuales
+         cancelarian). ultimo_corte lo escribe el cron. -->
+    <data noupdate="1">
+        <record id="param_activo" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.activo</field>
+            <field name="value">0</field>
+        </record>
+        <record id="param_cancelar" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.cancelar</field>
+            <field name="value">0</field>
+        </record>
+        <record id="param_cortes" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.cortes</field>
+            <field name="value">06:00,11:00</field>
+        </record>
+        <record id="param_tope_uds" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.tope_uds</field>
+            <field name="value">100</field>
+        </record>
+        <record id="param_correo_canceladas" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.correo_canceladas</field>
+            <field name="value">betty@nath.es</field>
+        </record>
+        <record id="param_dias_atras" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.dias_atras</field>
+            <field name="value">3</field>
+        </record>
+        <record id="param_margen_minutos" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.margen_minutos</field>
+            <field name="value">120</field>
+        </record>
+        <record id="param_servidor" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.servidor</field>
+            <field name="value">NATH</field>
+        </record>
+    </data>
+</odoo>

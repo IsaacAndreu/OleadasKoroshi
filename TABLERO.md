@@ -35,6 +35,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
 | Correos pendientes | — | Correus per enviar | — |
+| Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (nuevo, **1.0.0 hecha sin instalar**) | Agrupaciones web por corte | Isaac: instalar (todo apagado), «Simular corte ahora» y encender `activo`; `cancelar` después |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
@@ -50,6 +51,11 @@ Las filas con «?» las rellena su chat la próxima vez que se abra.
 | Push forzado de la historia limpia (fase 6) | Isaac | 16/11 | `TRASPASO_AUDITORIA.md` |
 
 ## Hecho y sin instalar
+
+**koroshi_agrupaciones_web 1.0.0** (18/11, módulo nuevo): a las 06:00 y 11:00 cancela las OUT web sin reserva completa
+(sin agrupar y sin nada leído; correo a betty@nath.es para el TPV, a S4T nada) y agrupa las reservadas del todo en
+`WEB_ddmmaa_NN` de hasta 100 uds, en orden de llegada (En curso, PedidosMultiples). Menú KOROSHI > Pedidos web.
+Se instala apagado (`activo` = 0, `cancelar` = 0). Depende de koroshi_menu (vale la 2.4.2 del servidor).
 
 **koroshi_operarios 2.19.0** (18/11): el cron de cada 5 min cierra como «dejada» (motivo «Sin actividad») la tarea en
 curso que lleva 15 min sin hacer nada (parámetro `koroshi_operarios.minutos_cierre_inactividad`, 0 = nunca), con fin =
