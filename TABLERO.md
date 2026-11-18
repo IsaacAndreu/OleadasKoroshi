@@ -26,7 +26,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Excel de envíos para tiendas | koroshi_monitor (1.33.1, instalada 17/11 15:08) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
-| Contenedores: compactar huecos | koroshi_contenedores (1.5.0, instalada 18/11 09:43 hora local) | Contenedores (compactar) | Probar en PDA: marcar, archivar, mover, a cero y añadir; Ctrl+F5 en las PDA |
+| Contenedores: compactar huecos | koroshi_contenedores (1.5.0 instalada 18/11 09:43; **1.6.0 hecha sin instalar**: Atrás, sin teclado, dónde está un artículo, 15 min, «Se han movido N», cantidad al añadir) | Contenedores (compactar) | Instalar 1.6.0 (`desplegar.sh check koroshi_contenedores 1.6.0`), Ctrl+F5 en las PDA y probar; pendiente: qué quieren «verificar» al compactar |
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
 | Carga del camión por CJ | ? (monitor / s4t_envios) | Carga del camión por CJ | Rellenar; spec en `intent/carga-camion-bultos/` |
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |
