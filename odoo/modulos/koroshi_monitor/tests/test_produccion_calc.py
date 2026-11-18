@@ -72,19 +72,20 @@ class TestProduccion(unittest.TestCase):
         self.assertEqual(o['celdas']['11']['uds'], 8)
 
     def test_uh_real_y_perdido(self):
-        # v1.32: Diana de 9 a 10 hace 42 uds en 44 min efectivos (dos pedidos con 16 min entre ellos): u/h real 42
+        # v1.32: Diana de 9 a 9:54 hace 42 uds en 44 min efectivos (dos pedidos con 10 min entre ellos, cerrando
+        # caja): presencia 54, u/h real 47. (v1.35: con 15 min o mas entre ellos ese hueco ya no cuenta)
         a = {'op': 'Diana · OP2', 'codigo': 'OP2', 'tipo': 'tiendas', 'inicio': utc(9, 0), 'fin': utc(9, 20),
              'uds': 20, 'minutos': 20, 'efectivo': 20, 'huecos': [], 'lecturas': [(utc(9, 10), 20)]}
-        b = {'op': 'Diana · OP2', 'codigo': 'OP2', 'tipo': 'web', 'inicio': utc(9, 36), 'fin': utc(10, 0),
+        b = {'op': 'Diana · OP2', 'codigo': 'OP2', 'tipo': 'web', 'inicio': utc(9, 30), 'fin': utc(9, 54),
              'uds': 22, 'minutos': 24, 'efectivo': 24, 'huecos': [], 'lecturas': [(utc(9, 50), 22)]}
         r = calc.produccion([a, b], TZ)
         c = r['operarios'][0]['celdas']['9']
-        self.assertEqual((c['uds'], c['min'], c['pres'], c['perdido']), (42, 44, 60, 16))
-        self.assertEqual(c['uh_real'], 42)
+        self.assertEqual((c['uds'], c['min'], c['pres'], c['perdido']), (42, 44, 54, 10))
+        self.assertEqual(c['uh_real'], 47)
         self.assertEqual(c['uh'], 57)                   # mientras pica: 42 uds / 44 min
         self.assertEqual(c['color'], 'bajo')            # < 100 u/h real: rojo
         o = r['operarios'][0]
-        self.assertEqual((o['presencia'], o['perdido'], o['uh_real']), (60, 16, 42))
+        self.assertEqual((o['presencia'], o['perdido'], o['uh_real']), (54, 10, 47))
         self.assertEqual(r['tipos'], {'tiendas': 1, 'web': 1})
         self.assertEqual(r['equipo']['max_a_la_vez'], 1)
         # solo web: la presencia es solo el tiempo dentro de sus pedidos (24 min)
@@ -92,6 +93,36 @@ class TestProduccion(unittest.TestCase):
         ow = w['operarios'][0]
         self.assertEqual((ow['uds'], ow['presencia'], ow['perdido']), (22, 24, 0))
         self.assertEqual(ow['uh_real'], 55)
+
+    def test_hueco_largo_entre_pedidos_no_cuenta(self):
+        # v1.35: 30 min entre dos pedidos (desayuno, o se cerro sola por inactividad): no es presencia ni perdido
+        a = {'op': 'Ana · OP3', 'codigo': 'OP3', 'inicio': utc(9, 0), 'fin': utc(9, 20), 'uds': 20, 'minutos': 20,
+             'efectivo': 20, 'huecos': [], 'lecturas': [(utc(9, 10), 20)]}
+        b = {'op': 'Ana · OP3', 'codigo': 'OP3', 'inicio': utc(9, 50), 'fin': utc(10, 10), 'uds': 20, 'minutos': 20,
+             'efectivo': 20, 'huecos': [], 'lecturas': [(utc(10, 0), 20)]}
+        o = calc.produccion([a, b], TZ)['operarios'][0]
+        self.assertEqual((o['presencia'], o['perdido']), (40, 0))
+        self.assertEqual((o['celdas']['9']['pres'], o['celdas']['9']['perdido']), (30, 0))
+        # con 14 min entre ellos si cuenta (cerrar caja, palé)
+        b2 = dict(b, inicio=utc(9, 34), fin=utc(9, 54))
+        o2 = calc.produccion([a, b2], TZ)['operarios'][0]
+        self.assertEqual((o2['presencia'], o2['perdido']), (54, 14))
+
+    def test_sesion_olvidada_abierta(self):
+        # v1.35 (captura del 18/11): tarea abierta desde las 13:16, ultima lectura 13:57 y ahora son las 15:52. El
+        # controlador pasa fin = ahora y el «parado ahora» como hueco: de 14 a 16 ya no sale nada.
+        t = {'op': 'Sheyla · OP9', 'codigo': 'OP9', 'inicio': utc(13, 16), 'fin': utc(15, 52), 'uds': 47,
+             'minutos': 156, 'efectivo': 41, 'huecos': [(utc(13, 57), utc(15, 52), 115)],
+             'lecturas': [(utc(13, 30), 20), (utc(13, 55), 27)]}
+        o = calc.produccion([t], TZ)['operarios'][0]
+        self.assertEqual((o['presencia'], o['perdido'], o['efectivo']), (41, 0, 41))
+        self.assertEqual(o['celdas']['13']['pres'], 41)
+        self.assertEqual(o['celdas'].get('14', {}).get('pres', 0), 0)
+        self.assertEqual(o['celdas'].get('15', {}).get('pres', 0), 0)
+        # un parado de 15 min o mas dentro del pedido tampoco es presencia
+        t2 = dict(t, fin=utc(14, 30), huecos=[(utc(13, 30), utc(13, 50), 20)])
+        o2 = calc.produccion([t2], TZ)['operarios'][0]
+        self.assertEqual(o2['presencia'], 54)           # 13:16-13:30 + 13:50-14:30
 
     def test_color_ok(self):
         t = {'op': 'X', 'codigo': 'OP5', 'inicio': utc(8, 0), 'fin': utc(9, 0), 'uds': 120, 'minutos': 60,

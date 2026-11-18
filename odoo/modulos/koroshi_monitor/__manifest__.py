@@ -155,8 +155,15 @@ bultos = los declarados a XPO (mismas cuentas que el Excel de Tiendas), volumen 
 El Excel completo de Tiendas sigue en el boton de descarga. Destinatarios nuevos en parametros.xml (lista de XPO), pero
 por el noupdate hay que cambiarlos a mano en el servidor. Calculo en controllers/xpo_calc.py con tests sin Odoo
 (tests/test_xpo_calc.py). Solo lee: sin campos ni modelos nuevos.
+v1.35.0 (18/11/2026): «Produccion por hora» sin las sesiones olvidadas (peticion de Isaac: tareas abiertas sin leer
+salian cada hora con «0 min leyendo · 60 perd.» y hundian la u/h real). Los ratos de 15 min o mas sin hacer nada ya
+no son presencia: presencia = tiempo leyendo + huecos de menos de 15 min entre pedidos (cerrar caja, precintar, palé).
+Fuera los parados de 15 min o mas dentro de un pedido, lo que lleva ahora parado una tarea abierta y los huecos largos
+entre pedidos (desayuno incluido). Perdido = esos huecos cortos. Umbral = koroshi_operarios.minutos_sin_leer (15).
+Va con koroshi_operarios 2.19.0 (cierra sola la tarea a los 15 min). Calculo en controllers/produccion_calc.py, tests
+sin Odoo actualizados. Solo lee.
 """,
-    'version': '13.0.1.34.0',
+    'version': '13.0.1.35.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

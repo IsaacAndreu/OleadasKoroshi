@@ -225,9 +225,9 @@ var Produccion = AbstractAction.extend({
             '<td class="r"><b>' + n(eq.uds) + '</b></td><td class="r">' + hm(eq.presencia) + '</td><td class="r kp-perd">' + hm(eq.perdido) +
             '</td><td class="r kp-total' + claseColor(eq.color) + '"><b>' + n(eq.uh_real) + '</b></td><td class="r">' + n(eq.uh) + '</td></tr></tfoot></table></div>';
 
-        h += '<p class="kp-nota"><b>Cómo se cuenta.</b> <b>u/h real</b> (la grande) = uds entre el tiempo de presencia: de que el operario empieza su primer pedido del día a que acaba el último, ' +
-            'con cerrar cajas, precintar, palé y huecos dentro (la hora entera). En <span class="kp-ok-txt">verde</span> desde ' + (r.ritmo || 100) + ' u/h real, en <span class="kp-bajo-txt">rojo</span> por debajo. ' +
-            '<b>u/h picking</b> = solo los minutos leyendo (sin los ratos de 15 min o más sin leer). <b>Perdido</b> = presencia − minutos leyendo. ' +
+        h += '<p class="kp-nota"><b>Cómo se cuenta.</b> <b>u/h real</b> (la grande) = uds entre el tiempo de presencia: el tiempo leyendo más los huecos de menos de 15 min entre pedidos ' +
+            '(cerrar cajas, precintar, palé). Los ratos de 15 min o más sin hacer nada (una sesión olvidada abierta, el desayuno) no cuentan. En <span class="kp-ok-txt">verde</span> desde ' + (r.ritmo || 100) + ' u/h real, en <span class="kp-bajo-txt">rojo</span> por debajo. ' +
+            '<b>u/h picking</b> = solo los minutos leyendo (sin los ratos de 15 min o más sin leer). <b>Perdido</b> = presencia − minutos leyendo (los huecos cortos). ' +
             'Con menos de ' + (r.min_uh_hora || 5) + ' min en una hora no sale la u/h. Uds de cada hora = las uds de cada pedido repartidas según la hora de cada lectura en la PDA; ' +
             '<span class="kp-est">~</span> = pedido hecho con la app de siempre (sin lecturas): sus uds se reparten por el tiempo. ' +
             'Con un tipo elegido (Tiendas, Web…), la presencia es solo el tiempo dentro de esos pedidos. Solo sale lo que se hace con tarjeta en Lecturas. ' +

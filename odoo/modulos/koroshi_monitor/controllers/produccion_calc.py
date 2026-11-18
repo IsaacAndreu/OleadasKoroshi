@@ -13,6 +13,12 @@
 #   Con un filtro (solo tiendas, solo web, solo las OUT de una agrupacion...) los huecos entre pedidos no son de
 #   ningun tipo: la presencia es solo el tiempo dentro de los pedidos de ese filtro (de inicio a fin de cada uno).
 #   Color de la u/h real contra el ritmo estandar (100 u/h, «menos de 100 es rojo», Isaac 17/11).
+# v1.35.0 (18/11/2026, peticion de Isaac: sesiones olvidadas abiertas daban «0 min leyendo · 60 perd.» cada hora):
+#   los ratos de 15 min o mas sin hacer nada ya no son presencia. Presencia = el tiempo leyendo de sus pedidos (sin
+#   sus huecos parados ni lo que lleva ahora parado) mas los huecos entre ellos de menos de 15 min (cerrar caja,
+#   precintar, palé). Un hueco de 15 min o mas (dentro de un pedido o entre dos, desayuno incluido) no cuenta. Perdido =
+#   esos huecos cortos. Con un filtro, solo el tiempo leyendo de esos pedidos. koroshi_operarios 2.19 cierra sola la
+#   tarea a los 15 min sin hacer nada (fin = su ultima actividad).
 #
 # Entrada: tareas de koroshi_operarios ya medidas con tarea._medir() (la misma cifra que la tabla Operarios,
 # Productividad, el correo y el KPI):
@@ -29,6 +35,7 @@ import re
 import pytz
 
 MIN_UH_HORA = 5         # con menos de 5 min (efectivos o de presencia) en una hora no se ensena esa u/h
+MINUTOS_HUECO = 15      # v1.35: hueco sin hacer nada que ya no es presencia (koroshi_operarios.minutos_sin_leer)
 RITMO_ESTANDAR = 100    # u/h real: por debajo, en rojo
 
 
@@ -55,6 +62,17 @@ def unir(intervalos):
         if res and a <= res[-1][1]:
             if b > res[-1][1]:
                 res[-1] = (res[-1][0], b)
+        else:
+            res.append((a, b))
+    return res
+
+
+def unir_con_huecos(intervalos, minutos):
+    """v1.35: une los intervalos y rellena los huecos de menos de `minutos` entre ellos (cerrar caja, palé...)."""
+    res = []
+    for a, b in unir(intervalos):
+        if res and (a - res[-1][1]).total_seconds() / 60.0 < minutos:
+            res[-1] = (res[-1][0], b)
         else:
             res.append((a, b))
     return res
@@ -135,24 +153,28 @@ def _uh(uds, minutos):
     return int(round(uds * 60.0 / minutos)) if minutos >= MIN_UH_HORA else None
 
 
-def produccion(tareas, tz, filtrar=None, ritmo=RITMO_ESTANDAR):
+def produccion(tareas, tz, filtrar=None, ritmo=RITMO_ESTANDAR, minutos_hueco=MINUTOS_HUECO):
     """Resumen por operario y hora. filtrar(tarea) -> bool: solo esas tareas (presencia = dentro de sus pedidos).
+    minutos_hueco (v1.35): huecos sin hacer nada de estos minutos o mas no son presencia.
     Devuelve {horas: [7, 8, ...], operarios: [...], equipo: {...}, tipos: {tipo: n}, ritmo}."""
     tipos = {}
     for t in tareas:
         tipos[t.get('tipo') or 'otros'] = tipos.get(t.get('tipo') or 'otros', 0) + 1
     sel = [t for t in tareas if filtrar(t)] if filtrar else list(tareas)
 
-    # presencia de cada operario
+    # presencia de cada operario (v1.35: tiempo leyendo + huecos cortos entre pedidos; sin filtro)
     por_op = {}
     for t in sel:
         por_op.setdefault(t['op'], []).append(t)
     presencia = {}
     for op, ts in por_op.items():
+        activos = []
+        for t in ts:
+            activos += intervalos_activos(t['inicio'], t['fin'], t.get('huecos'))
         if filtrar:
-            presencia[op] = unir([(t['inicio'], t['fin']) for t in ts])
+            presencia[op] = unir(activos)
         else:
-            presencia[op] = unir([(min(t['inicio'] for t in ts), max(t['fin'] for t in ts))])
+            presencia[op] = unir_con_huecos(activos, minutos_hueco)
 
     ops = {}
     for t in sel:

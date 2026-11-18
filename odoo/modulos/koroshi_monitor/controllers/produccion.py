@@ -139,7 +139,10 @@ class KoroshiProduccion(http.Controller):
         if datos is None:
             return {'sin_modulo': True}
         filtrar = (lambda t: t['tipo'] == tipo) if tipo in TIPOS else None
-        res = calc.produccion(datos, self._tz(), filtrar=filtrar, ritmo=ritmo_estandar(env))
+        minutos_hueco = calc.MINUTOS_HUECO
+        if hasattr(env['koroshi.operario.tarea'], '_minutos_sin_leer_max'):
+            minutos_hueco = env['koroshi.operario.tarea'].sudo()._minutos_sin_leer_max()
+        res = calc.produccion(datos, self._tz(), filtrar=filtrar, ritmo=ritmo_estandar(env), minutos_hueco=minutos_hueco)
         res['sin_modulo'] = False
         res['tipo'] = tipo if tipo in TIPOS else 'todo'
         return res
