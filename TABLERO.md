@@ -30,6 +30,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
 | Carga del camión por CJ | ? (monitor / s4t_envios) | Carga del camión por CJ | Rellenar; spec en `intent/carga-camion-bultos/` |
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |
+| Cierre por inactividad (15 min) y u/h sin sesiones olvidadas | koroshi_operarios (2.19.0) + koroshi_monitor (1.35.0), sin instalar | Cierre por inactividad (pedido de la sesión «Resumen reunión 18/11») | Instalar con el sí de Isaac, uno cada vez y fuera de horas punta: primero operarios 2.19.0, después monitor 1.35.0. La 1.35.0 sale de la 1.34.0 (cierre camión), no la pisa |
 | Alarma PDA si el operario no lee | ? (operarios / preparacion) | PDA: alarma sonora | Rellenar |
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
@@ -50,8 +51,13 @@ Las filas con «?» las rellena su chat la próxima vez que se abra.
 
 ## Hecho y sin instalar
 
-**koroshi_monitor 1.34.0** (18/11): cierre del camión con asunto «PREVISIÓN XPO AMPOSTA dd/mm/aaaa» y Excel de 6
-columnas para XPO. Antes de instalar: cambiar a mano los dos parámetros de destinatarios (son `noupdate`).
+**koroshi_operarios 2.19.0** (18/11): el cron de cada 5 min cierra como «dejada» (motivo «Sin actividad») la tarea en
+curso que lleva 15 min sin hacer nada (parámetro `koroshi_operarios.minutos_cierre_inactividad`, 0 = nunca), con fin =
+su última actividad. No toca el pedido: ni líneas, ni cajas, ni validar. No se cierra si se prepara a dos. Si vuelve a
+leer, se abre otra tarea. ZIP `bin/20261118_koroshi_operarios_v2.19.0.zip`.
+
+**koroshi_monitor 1.35.0** (18/11, después de la 2.19.0): en «Producción por hora», los ratos de 15 min o más sin hacer
+nada (también el desayuno) ya no son presencia ni «perd.». ZIP `bin/20261118_koroshi_monitor_v1.35.0.zip`.
 
 El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) quedó instalado el 17/11 por la tarde:
 faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47) y 1.33.1 (15:08, cifra de u/h real), hora del almacén. **Antes de instalar algo nuevo,
