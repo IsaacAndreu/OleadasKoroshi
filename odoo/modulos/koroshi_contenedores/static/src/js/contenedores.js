@@ -1,6 +1,10 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Contenedores v1.4.0 - mover contenedores KO_/TT_, limpiar huecos y ver inventario por lineal.
+/* KOROSHI Contenedores v1.5.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.5: en la lista del hueco cada contenedor tiene casilla: «Marcar vacíos», «Archivar marcados» (no archiva si
+ *   alguno tiene prendas) y «Mover marcados» (el siguiente hueco escaneado es el destino). Tocar el nombre abre el
+ *   contenedor: «Poner a cero» (no si hay reservas) y «Añadir prendas» (cada lectura = 1 ud, «Guardar»). Son ajustes
+ *   de inventario y quedan apuntados con quién y cuándo.
  * v1.4: lo que se lee mientras la pantalla espera a Odoo ya no se pierde: va a una cola corta (EN_ESPERA_MAX) y se
  *   lee después, en orden. Si la cola está llena, pita y lo dice. Una lectura de la cola que falla también pita.
  * 0. Pasar la tarjeta de operario (se mantiene 3 min sin actividad; así queda apuntado quién lo hace).
@@ -31,6 +35,18 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_fila_hueco': '_onFilaHueco',
         'click .o_kc_solo_stock': '_onSoloStock',
         'click .o_kc_volver': '_onVolver',
+        // v1.5: compactar un hueco
+        'change .o_kc_marca': '_onMarca',
+        'click .o_kc_marcar_vacios': '_onMarcarVacios',
+        'click .o_kc_desmarcar': '_onDesmarcar',
+        'click .o_kc_mover_marcados': '_onMoverMarcados',
+        'click .o_kc_ver': '_onVer',
+        'click .o_kc_volver_hueco': '_onVolverHueco',
+        'click .o_kc_cero': '_onCero',
+        'click .o_kc_anadir': '_onAnadir',
+        'click .o_kc_quitar_ultima': '_onQuitarUltima',
+        'click .o_kc_guardar_anadir': '_onGuardarAnadir',
+        'click .o_kc_cancelar_anadir': '_onCancelarAnadir',
     },
 
     init: function () {
@@ -45,6 +61,10 @@ var Pantalla = AbstractAction.extend({
         this.ultima = {codigo: '', t: 0};
         this.actividadEn = Date.now();
         this.enEspera = [];             // v1.4
+        this.marcados = {};             // v1.5: id -> true (casillas de la lista del hueco)
+        this.detalle = null;            // v1.5: contenedor abierto desde la lista del hueco
+        this.anadiendo = null;          // v1.5: prendas leídas para añadir al contenedor abierto [{id, nombre, uds}]
+        this.lecturasAnadir = [];       // v1.5: orden de lectura (para «Quitar la última»)
     },
 
     start: function () {
@@ -64,7 +84,9 @@ var Pantalla = AbstractAction.extend({
     },
 
     _vigilar: function () {
-        if (this.persona && Date.now() - this.actividadEn > PERSONA_MS) {
+        // v1.5: con prendas leídas sin guardar no se cierra (se perderían)
+        if (this.persona && Date.now() - this.actividadEn > PERSONA_MS &&
+                !(this.anadiendo && this.anadiendo.length)) {
             this._reiniciar(true);
             this._aviso('', 'Sesión cerrada por inactividad. Pasa tu tarjeta.');
         }
@@ -75,6 +97,10 @@ var Pantalla = AbstractAction.extend({
         this.hueco = null;
         this.lineal = null;
         this.confirmando = false;
+        this.marcados = {};
+        this.detalle = null;
+        this.anadiendo = null;
+        this.lecturasAnadir = [];
         if (conPersona) { this.persona = null; }
         this._pintar();
     },
@@ -152,6 +178,7 @@ var Pantalla = AbstractAction.extend({
             this.enEspera.push(codigo);
             return this._aviso('info', codigo + ' leído: va en cuanto acabe lo anterior.');
         }
+        if (this.anadiendo) { return this._leerPrenda(codigo); }   // v1.5: modo «Añadir prendas»
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/leer', params: {codigo: codigo}}).then(function (r) {
             self._fin();
@@ -171,6 +198,7 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.confirmando = false;
+            self.detalle = null;
             if (r.tipo === 'lineal') {
                 self.conts = [];
                 self.hueco = null;
@@ -191,6 +219,7 @@ var Pantalla = AbstractAction.extend({
             }
             if (!self.conts.length) {
                 self.hueco = r.ubicacion;
+                self.marcados = {};
                 self.lineal = null;
                 self._aviso('', '');
                 self._pintar();
@@ -212,10 +241,40 @@ var Pantalla = AbstractAction.extend({
         }, self._sinConexion.bind(self));
     },
 
-    // ------------------------------------------------------------------ limpiar (con confirmación)
+    // ------------------------------------------------------------------ v1.5: compactar un hueco
+    // Archivar marcados (con confirmación). El servidor no archiva ninguno si alguno tiene prendas.
+    _idsMarcados: function () {
+        var self = this;
+        if (!this.hueco) { return []; }
+        return _.pluck(_.filter(this.hueco.contenedores, function (c) { return self.marcados[c.id]; }), 'id');
+    },
+
+    _onMarca: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (ev.currentTarget.checked) { this.marcados[id] = true; } else { delete this.marcados[id]; }
+        this.confirmando = false;
+        this._pintar();
+    },
+
+    _onMarcarVacios: function () {
+        var self = this;
+        if (!this.hueco) { return; }
+        _.each(this.hueco.contenedores, function (c) { if (c.vacio) { self.marcados[c.id] = true; } });
+        this.confirmando = false;
+        this._pintar();
+        this._foco();
+    },
+
+    _onDesmarcar: function () {
+        this.marcados = {};
+        this.confirmando = false;
+        this._pintar();
+        this._foco();
+    },
+
     _onArchivar: function () {
-        if (this.ocupado || !this.hueco || !this.persona) { return; }
-        this.confirmando = true;
+        if (this.ocupado || !this.hueco || !this.persona || !this._idsMarcados().length) { return; }
+        this.confirmando = 'archivar';
         this._pintar();
     },
 
@@ -226,21 +285,189 @@ var Pantalla = AbstractAction.extend({
     },
 
     _onConfirmarSi: function () {
+        if (this.confirmando === 'cero') { return this._hacerCero(); }
         var self = this;
-        if (this.ocupado || !this.hueco || !this.persona || !this.confirmando) { return; }
+        var ids = this._idsMarcados();
+        if (this.ocupado || !this.hueco || !this.persona || this.confirmando !== 'archivar' || !ids.length) { return; }
         this.ocupado = true;
-        return this._rpc({route: '/koroshi/contenedores/limpiar', params: {
-            ubicacion_id: this.hueco.id, employee_id: this.persona.id, confirmado: true}}).then(function (m) {
+        return this._rpc({route: '/koroshi/contenedores/archivar', params: {
+            contenedor_ids: ids, ubicacion_id: this.hueco.id, employee_id: this.persona.id,
+            confirmado: true}}).then(function (m) {
             self._fin();
             self.confirmando = false;
             if (!m || !m.ok) {
-                self._aviso('mal', (m && m.msg) || 'No se ha podido limpiar.');
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido archivar.');
                 self._pintar();
                 return;
             }
+            self.marcados = {};
+            self.hueco = m.ubicacion;
+            self._aviso('ok', '✓ ' + m.msg);
+            self._pintar();
+        }, self._sinConexion.bind(self));
+    },
+
+    // Mover marcados: pasan a la cola de mover y el siguiente hueco escaneado es el destino
+    _onMoverMarcados: function () {
+        var self = this;
+        var ids = this._idsMarcados();
+        if (this.ocupado || !this.persona || !ids.length) { return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/detalle', params: {contenedor_ids: ids}}).then(function (r) {
+            self._fin();
+            if (!r || !r.ok) {
+                self._aviso('mal', (r && r.msg) || 'No se han podido coger.');
+                return;
+            }
+            self.conts = r.contenedores;
             self.hueco = null;
-            self._aviso(m.quedan ? 'info' : 'ok', (m.quedan ? '⚠ ' : '✓ ') + m.msg);
-            self._refrescarLineal();
+            self.lineal = null;
+            self.marcados = {};
+            self.confirmando = false;
+            self._aviso('info', 'Ahora escanea la ubicación de destino.');
+            self._pintar();
+            self._foco();
+        }, self._sinConexion.bind(self));
+    },
+
+    // Abrir un contenedor de la lista: ver sus prendas, ponerlo a cero o añadir prendas
+    _onVer: function (ev) {
+        var self = this;
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (this.ocupado || !id) { return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/detalle', params: {contenedor_ids: [id]}}).then(function (r) {
+            self._fin();
+            if (!r || !r.ok) {
+                self._aviso('mal', (r && r.msg) || 'No se ha podido abrir.');
+                return;
+            }
+            self.detalle = r.contenedores[0];
+            self.confirmando = false;
+            self._aviso('', '');
+            self._pintar();
+        }, self._sinConexion.bind(self));
+    },
+
+    _onVolverHueco: function () {
+        var self = this;
+        if (this.anadiendo && this.anadiendo.length) {
+            return this._aviso('mal', 'Tienes prendas leídas sin guardar: «Guardar» o «Cancelar» antes.');
+        }
+        this.detalle = null;
+        this.anadiendo = null;
+        this.confirmando = false;
+        this._aviso('', '');
+        if (!this.hueco) { this._pintar(); return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/hueco', params: {ubicacion_id: this.hueco.id}}).then(function (r) {
+            self._fin();
+            if (r && r.ok) { self.hueco = r.ubicacion; }
+            self.marcados = _.pick(self.marcados, _.pluck(self.hueco.contenedores, 'id'));
+            self._pintar();
+            self._foco();
+        }, self._sinConexion.bind(self));
+    },
+
+    _onCero: function () {
+        if (this.ocupado || !this.detalle || !this.persona) { return; }
+        this.confirmando = 'cero';
+        this._pintar();
+    },
+
+    _hacerCero: function () {
+        var self = this;
+        if (this.ocupado || !this.detalle || !this.persona) { return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/cero', params: {
+            contenedor_id: this.detalle.id, employee_id: this.persona.id, confirmado: true}}).then(function (m) {
+            self._fin();
+            self.confirmando = false;
+            if (!m || !m.ok) {
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido poner a cero.');
+                self._pintar();
+                return;
+            }
+            self.detalle = m.contenedor;
+            self._aviso('ok', '✓ ' + m.msg + '. Ya se puede archivar.');
+            self._pintar();
+        }, self._sinConexion.bind(self));
+    },
+
+    // Añadir prendas: cada lectura es una prenda (1 ud) hasta «Guardar» o «Cancelar»
+    _onAnadir: function () {
+        if (!this.detalle || !this.persona) { return; }
+        this.anadiendo = [];
+        this.lecturasAnadir = [];
+        this.confirmando = false;
+        this._aviso('info', 'Lee las prendas que hay en ' + this.detalle.nombre + ' (una lectura = 1 ud).');
+        this._pintar();
+        this._foco();
+    },
+
+    _leerPrenda: function (codigo) {
+        var self = this;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/producto', params: {codigo: codigo}}).then(function (r) {
+            self._fin();
+            if (!self.anadiendo) { return; }
+            if (!r || !r.ok) {
+                self._pitido(false);
+                self._aviso('mal', (r && r.msg) || 'No se ha podido leer.');
+                return;
+            }
+            var p = r.producto;
+            var fila = _.findWhere(self.anadiendo, {id: p.id});
+            if (fila) { fila.uds += 1; } else { self.anadiendo.push({id: p.id, nombre: p.nombre, uds: 1}); }
+            self.lecturasAnadir.push(p.id);
+            self._pitido(true);
+            self._aviso('ok', '+1 ' + p.nombre);
+            self._pintar();
+        }, self._sinConexion.bind(self));
+    },
+
+    _onQuitarUltima: function () {
+        if (!this.anadiendo || !this.lecturasAnadir.length) { return; }
+        var id = this.lecturasAnadir.pop();
+        var fila = _.findWhere(this.anadiendo, {id: id});
+        if (fila) {
+            fila.uds -= 1;
+            if (fila.uds <= 0) { this.anadiendo = _.without(this.anadiendo, fila); }
+            this._aviso('info', '−1 ' + fila.nombre);
+        }
+        this._pintar();
+        this._foco();
+    },
+
+    _onCancelarAnadir: function () {
+        this.anadiendo = null;
+        this.lecturasAnadir = [];
+        this._aviso('', 'No se ha añadido nada.');
+        this._pintar();
+        this._foco();
+    },
+
+    _onGuardarAnadir: function () {
+        var self = this;
+        if (this.ocupado || !this.detalle || !this.persona || !this.anadiendo || !this.anadiendo.length) { return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/anadir', params: {
+            contenedor_id: this.detalle.id, employee_id: this.persona.id,
+            lineas: this.anadiendo.map(function (f) { return {producto_id: f.id, uds: f.uds}; })}}).then(function (m) {
+            self._fin();
+            if (!m || !m.ok) {
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido añadir.');
+                return;
+            }
+            self.anadiendo = null;
+            self.lecturasAnadir = [];
+            self.detalle = m.contenedor;
+            self._aviso('ok', '✓ ' + m.msg);
+            self._pintar();
+            self._foco();
         }, self._sinConexion.bind(self));
     },
 
@@ -266,6 +493,8 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.hueco = r.ubicacion;
+            self.marcados = {};
+            self.detalle = null;
             self.confirmando = false;
             self._aviso('', '');
             self._pintar();
@@ -280,6 +509,8 @@ var Pantalla = AbstractAction.extend({
 
     _onVolver: function () {
         this.hueco = null;
+        this.detalle = null;
+        this.marcados = {};
         this.confirmando = false;
         this._aviso('', '');
         this._refrescarLineal();
@@ -328,43 +559,90 @@ var Pantalla = AbstractAction.extend({
         return html + '</div>';
     },
 
+    // v1.5: lista del hueco con casillas; «Marcar vacíos», «Archivar marcados», «Mover marcados»
     _pintarHueco: function () {
+        var self = this;
         var h = this.hueco;
-        if (!h) { return ''; }
-        var vacios = _.where(h.contenedores, {vacio: true});
-        var llenos = _.where(h.contenedores, {vacio: false});
+        if (!h || this.detalle) { return ''; }
         var html = '';
         if (this.lineal) {
             html += '<button type="button" class="o_kc_volver">← Volver al lineal ' + _e(this.lineal.codigo) + '</button>';
         }
         html += '<div class="o_kc_card"><h3>' + _e(h.nombre) + '</h3>';
-        if (!h.contenedores.length) {
-            html += '<div>Sin contenedores KO_/TT_: ya está limpia.</div>';
-        }
         if (h.directo_n) {
             html += '<div class="o_kc_vacio">Hay ' + _n(h.directo_uds) + ' uds en el propio hueco (fuera de contenedores).</div>';
         }
-        if (llenos.length) {
-            html += '<div class="o_kc_vacio">Con stock (no se archivan: muévelos o regulariza):</div><table>' +
-                llenos.map(function (c) {
-                    return '<tr><td>' + _e(c.nombre) + '</td><td class="o_kc_n">' + c.n_lineas + ' ref. · ' +
-                        _n(c.uds) + ' uds' + (c.reservadas ? ' (res. ' + _n(c.reservadas) + ')' : '') + '</td></tr>';
-                }).join('') + '</table>';
+        if (!h.contenedores.length) {
+            return html + '<div>Sin contenedores KO_/TT_: ya está limpia.</div></div>';
         }
-        if (vacios.length) {
-            html += '<div>A cero (se pueden archivar):</div><table>' + vacios.map(function (c) {
-                return '<tr><td>' + _e(c.nombre) + '</td><td class="o_kc_n">vacío</td></tr>';
-            }).join('') + '</table>';
-            if (this.confirmando) {
-                html += '<div class="o_kc_confirmar"><div><b>¿Confirmas que esta ubicación está FÍSICAMENTE vacía?</b></div>' +
-                    '<button type="button" class="o_kc_confirmar_si">Sí, está vacía: archivar ' + vacios.length + '</button>' +
-                    '<button type="button" class="o_kc_confirmar_no">No</button></div>';
-            } else {
-                html += '<button type="button" class="o_kc_archivar">Archivar ' + vacios.length +
-                    ' contenedor(es) vacío(s)</button>';
-            }
-        } else if (h.contenedores.length) {
-            html += '<div>Ningún contenedor a cero: mueve antes lo que quede.</div>';
+        var nVacios = _.where(h.contenedores, {vacio: true}).length;
+        html += '<div>' + h.contenedores.length + ' contenedores · ' + nVacios + ' a cero · ' +
+            (h.contenedores.length - nVacios) + ' con prendas. Toca el nombre para ver, poner a cero o añadir.</div>' +
+            '<div class="o_kc_acciones"><button type="button" class="o_kc_marcar_vacios">Marcar vacíos</button>' +
+            '<button type="button" class="o_kc_desmarcar">Desmarcar</button></div>';
+        html += '<table class="o_kc_tabla_hueco">' + h.contenedores.map(function (c) {
+            var marcado = !!self.marcados[c.id];
+            return '<tr class="' + (c.vacio ? 'o_kc_sin' : 'o_kc_con') + (marcado ? ' o_kc_marcado' : '') + '">' +
+                '<td class="o_kc_td_marca"><input type="checkbox" class="o_kc_marca" data-id="' + c.id + '"' +
+                (marcado ? ' checked="checked"' : '') + '/></td>' +
+                '<td><button type="button" class="o_kc_ver" data-id="' + c.id + '">' + _e(c.nombre) + '</button></td>' +
+                '<td class="o_kc_n">' + (c.vacio ? 'VACÍO' : c.n_lineas + ' ref. · ' + _n(c.uds) + ' uds' +
+                    (c.reservadas ? ' (res. ' + _n(c.reservadas) + ')' : '')) + '</td></tr>';
+        }).join('') + '</table>';
+        var ids = this._idsMarcados();
+        if (this.confirmando === 'archivar') {
+            html += '<div class="o_kc_confirmar"><div><b>¿Confirmas que estos ' + ids.length +
+                ' contenedores están FÍSICAMENTE vacíos?</b></div>' +
+                '<button type="button" class="o_kc_confirmar_si">Sí, vacíos: archivar ' + ids.length + '</button>' +
+                '<button type="button" class="o_kc_confirmar_no">No</button></div>';
+        } else {
+            html += '<div class="o_kc_acciones">' +
+                '<button type="button" class="o_kc_archivar"' + (ids.length ? '' : ' disabled="disabled"') +
+                '>Archivar marcados (' + ids.length + ')</button>' +
+                '<button type="button" class="o_kc_mover_marcados"' + (ids.length ? '' : ' disabled="disabled"') +
+                '>Mover marcados (' + ids.length + ')</button></div>';
+        }
+        return html + '</div>';
+    },
+
+    // v1.5: un contenedor abierto desde la lista: prendas, «Poner a cero» y «Añadir prendas»
+    _pintarDetalle: function () {
+        var c = this.detalle;
+        if (!c) { return ''; }
+        var html = '<button type="button" class="o_kc_volver_hueco">← Volver al hueco</button>' +
+            '<div class="o_kc_card"><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">En: ' + _e(c.hueco) + '</div>';
+        if (c.n_lineas) {
+            html += '<div>' + c.n_lineas + ' ref. · ' + _n(c.uds) + ' uds' +
+                (c.reservadas ? ' · <b>' + _n(c.reservadas) + ' reservadas</b>' : '') + '</div><table>' +
+                c.lineas.map(function (l) {
+                    return '<tr><td>' + _e(l.producto) + '</td><td class="o_kc_n">' + _n(l.uds) +
+                        (l.reservadas ? ' (res. ' + _n(l.reservadas) + ')' : '') + '</td></tr>';
+                }).join('') + (c.mas ? '<tr><td colspan="2">… y ' + c.mas + ' referencias más</td></tr>' : '') +
+                '</table>';
+        } else {
+            html += '<div class="o_kc_vacio">Sin prendas en el sistema</div>';
+        }
+        if (this.anadiendo) {
+            var total = _.reduce(this.anadiendo, function (s, f) { return s + f.uds; }, 0);
+            html += '<div class="o_kc_anadir_caja"><b>Añadir a ' + _e(c.nombre) + ': lee cada prenda</b>';
+            html += this.anadiendo.length ? '<table>' + this.anadiendo.map(function (f) {
+                return '<tr><td>' + _e(f.nombre) + '</td><td class="o_kc_n">+' + f.uds + '</td></tr>';
+            }).join('') + '</table>' : '<div>Aún nada leído.</div>';
+            html += '<div class="o_kc_acciones">' +
+                '<button type="button" class="o_kc_guardar_anadir"' + (total ? '' : ' disabled="disabled"') +
+                '>Guardar (' + total + ' uds)</button>' +
+                '<button type="button" class="o_kc_quitar_ultima"' + (total ? '' : ' disabled="disabled"') +
+                '>Quitar la última</button>' +
+                '<button type="button" class="o_kc_cancelar_anadir">Cancelar</button></div></div>';
+        } else if (this.confirmando === 'cero') {
+            html += '<div class="o_kc_confirmar"><div><b>¿' + _e(c.nombre) + ' está FÍSICAMENTE vacío?</b> Las ' +
+                _n(c.uds) + ' uds saldrán del stock (ajuste de inventario, queda apuntado quién lo hace).</div>' +
+                '<button type="button" class="o_kc_confirmar_si">Sí, vacío: poner a cero</button>' +
+                '<button type="button" class="o_kc_confirmar_no">No</button></div>';
+        } else {
+            html += '<div class="o_kc_acciones">' +
+                (c.n_lineas ? '<button type="button" class="o_kc_cero">Poner a cero</button>' : '') +
+                '<button type="button" class="o_kc_anadir">Añadir prendas</button></div>';
         }
         return html + '</div>';
     },
@@ -378,8 +656,12 @@ var Pantalla = AbstractAction.extend({
             paso = '0. Pasa tu tarjeta de operario';
         } else if (this.conts.length) {
             paso = 'Ahora escanea la ubicación de destino (o más contenedores).';
+        } else if (this.anadiendo) {
+            paso = 'Añadir prendas: lee cada prenda y después «Guardar»';
+        } else if (this.detalle) {
+            paso = 'Contenedor: ponerlo a cero o añadir prendas';
         } else if (this.hueco) {
-            paso = 'Limpiar ubicación';
+            paso = 'Compactar: marca y archiva los vacíos; mueve los que tienen prendas';
         } else if (this.lineal) {
             paso = 'Inventario del lineal: toca un hueco para abrirlo';
         } else {
@@ -402,7 +684,7 @@ var Pantalla = AbstractAction.extend({
                 _e(c.hueco) + '</div>' + cuerpo + '</div>';
         }).join('');
         this.$('.o_kc_lista').html(html);
-        this.$('.o_kc_hueco_panel').html(this._pintarLineal() + this._pintarHueco());
+        this.$('.o_kc_hueco_panel').html(this._pintarLineal() + this._pintarHueco() + this._pintarDetalle());
     },
 });
 

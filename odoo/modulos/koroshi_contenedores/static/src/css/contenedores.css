@@ -1,4 +1,4 @@
-/* KOROSHI Contenedores v1.3.0. Todo dentro de .o_koroshi_contenedores. Sin aria-hidden (Odoo 13 lo oculta). */
+/* KOROSHI Contenedores v1.5.0. Todo dentro de .o_koroshi_contenedores. Sin aria-hidden (Odoo 13 lo oculta). */
 .o_koroshi_contenedores { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
 .o_koroshi_contenedores * { box-sizing: border-box; }
 .o_koroshi_contenedores .o_kc_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
@@ -33,3 +33,19 @@
 .o_koroshi_contenedores .o_kc_confirmar button { margin: 10px 10px 0 0; padding: 12px 18px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; }
 .o_koroshi_contenedores .o_kc_confirmar_si { background: #1e7b34; color: #fff; }
 .o_koroshi_contenedores .o_kc_confirmar_no { background: #e3e7ec; color: #111827; }
+/* v1.5: compactar un hueco (casillas, acciones, contenedor abierto, añadir prendas) */
+.o_koroshi_contenedores .o_kc_acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.o_koroshi_contenedores .o_kc_acciones button { padding: 12px 16px; font-size: 17px; font-weight: bold; border: 1px solid #c4cbd3; border-radius: 8px; background: #fff; color: #111827; }
+.o_koroshi_contenedores .o_kc_acciones button[disabled] { opacity: .45; }
+.o_koroshi_contenedores .o_kc_acciones .o_kc_archivar { margin-top: 0; background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.o_koroshi_contenedores .o_kc_mover_marcados, .o_koroshi_contenedores .o_kc_guardar_anadir { background: #0b4f9c !important; border-color: #0b4f9c !important; color: #fff !important; }
+.o_koroshi_contenedores .o_kc_cero { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; }
+.o_koroshi_contenedores .o_kc_tabla_hueco td { padding: 6px 4px; vertical-align: middle; }
+.o_koroshi_contenedores .o_kc_td_marca { width: 44px; }
+.o_koroshi_contenedores .o_kc_marca { width: 28px; height: 28px; }
+.o_koroshi_contenedores .o_kc_ver { border: 0; background: none; padding: 4px 0; font-size: 17px; font-weight: bold; color: #0b4f9c; text-decoration: underline; text-align: left; }
+.o_koroshi_contenedores .o_kc_tabla_hueco tr.o_kc_sin td.o_kc_n { color: #6b7280; }
+.o_koroshi_contenedores .o_kc_tabla_hueco tr.o_kc_con td.o_kc_n { color: #8c1014; font-weight: bold; }
+.o_koroshi_contenedores .o_kc_tabla_hueco tr.o_kc_marcado { background: #e6f0fb; }
+.o_koroshi_contenedores .o_kc_volver_hueco { margin: 10px 16px 0; padding: 8px 14px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_anadir_caja { margin-top: 12px; padding: 12px; background: #e6f0fb; border-radius: 8px; }

@@ -13,11 +13,10 @@ commit). El detalle de cada tema va en su chat, en `TRASPASO_AUDITORIA.md` o en 
 3. **Al acabar el tema**, borrar la línea de «En curso» y archivar el chat.
 4. **Ideas nuevas**: al chat coordinador («Traspaso KOROSHI: reparto por zonas»), que abre el chat que toque.
 
-## Congelación (desde el 17/11/2026)
+## Congelación (17/11/2026): levantada el 18/11/2026
 
-Hasta que Isaac lo levante **no se programan funciones nuevas** (lo pendiente ya está instalado): solo arreglos, correos, análisis y
-diseño. Cada versión nueva deja viejo el plan de actualización (el v2 ya está instalado; el vigente es el v3). Se levanta cuando
-Isaac lo diga.
+Isaac la levantó el 18/11 para koroshi_contenedores 1.5.0 (compactar huecos), que es urgente. Se vuelve a programar con
+las reglas de siempre: una versión, una instalación a la vez.
 
 ## En curso
 
@@ -27,6 +26,7 @@ Isaac lo diga.
 | Excel de envíos para tiendas | koroshi_monitor (1.33.1, instalada 17/11 15:08) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
+| Contenedores: compactar huecos | koroshi_contenedores (1.5.0 hecha, sin instalar; servidor en 1.4.0) | Contenedores (compactar) | Instalar con el sí de Isaac; probar en PDA: marcar, archivar, mover, a cero y añadir |
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
 | Carga del camión por CJ | ? (monitor / s4t_envios) | Carga del camión por CJ | Rellenar; spec en `intent/carga-camion-bultos/` |
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |

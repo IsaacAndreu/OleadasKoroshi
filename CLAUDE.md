@@ -5,8 +5,8 @@ nath.tuctuc.com. Los operarios preparan pedidos con PDA todo el día: cualquier 
 momento. El mapa de módulos y el despliegue están en [README.md](README.md).
 
 **Al empezar cada chat, leer [TABLERO.md](TABLERO.md)**: qué está en curso y quién tiene cada módulo, qué espera a
-alguien y qué está hecho sin instalar. Al acabar, actualizar su línea en el mismo commit. **Congelación desde el
-17/11/2026**: hasta instalar lo pendiente, nada de funciones nuevas (solo arreglos, correos, análisis y diseño).
+alguien y qué está hecho sin instalar. Al acabar, actualizar su línea en el mismo commit. La congelación del
+17/11/2026 la levantó Isaac el 18/11/2026 (contenedores 1.5.0, urgente).
 
 **Trabajo en curso**: corrección por fases de la auditoría del 13/11/2026. Detalle de las fases en
 [TRASPASO_AUDITORIA.md](TRASPASO_AUDITORIA.md).

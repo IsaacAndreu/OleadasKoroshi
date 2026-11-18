@@ -15,12 +15,34 @@
                 <field name="employee_id"/>
                 <field name="user_id" optional="hide"/>
                 <field name="contenedor"/>
+                <field name="producto_id" optional="show"/>
                 <field name="origen"/>
                 <field name="destino"/>
                 <field name="lineas"/>
                 <field name="uds"/>
                 <field name="reservadas"/>
+                <field name="move_id" optional="hide"/>
             </tree>
+        </field>
+    </record>
+    <!-- v1.5: buscar por contenedor, artículo, persona y acción (los ajustes de stock: «Poner a cero» / «Añadir») -->
+    <record id="view_koroshi_contenedor_mov_search" model="ir.ui.view">
+        <field name="name">koroshi.contenedor.movimiento.search</field>
+        <field name="model">koroshi.contenedor.movimiento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="contenedor"/>
+                <field name="producto_id"/>
+                <field name="employee_id"/>
+                <filter name="ajustes" string="Ajustes de stock (a cero / añadir)"
+                        domain="[('accion', 'in', ('cero', 'anadir'))]"/>
+                <filter name="hoy" string="Hoy"
+                        domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_accion" string="Acción" context="{'group_by': 'accion'}"/>
+                    <filter name="por_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
         </field>
     </record>
     <record id="action_koroshi_contenedor_mov" model="ir.actions.act_window">
