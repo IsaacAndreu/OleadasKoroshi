@@ -26,6 +26,7 @@ from odoo.http import content_disposition, request
 from odoo.addons.koroshi_base import comun   # v1.28: la empresa
 
 from .main import _comprobar_grupo   # v1.27: permiso de Inventario
+from . import xpo_calc               # v1.34.0: Excel «PREVISIÓN XPO AMPOSTA» del cierre
 
 
 COMPANY_ID = comun.COMPANY_ID   # v1.28: de koroshi_base
@@ -673,6 +674,32 @@ class KoroshiConsultaEnvios(http.Controller):
             'diferencias': diferencias,
         }
 
+    def _excel_xpo(self, env, picks, fechas, dia):
+        """v1.34.0: el Excel que va a XPO al cerrar el camión, con el formato del de Amposta y solo lo que XPO
+        necesita (Erika, 18/11): una fila por nº de expedición. Las cuentas, en xpo_calc.py."""
+        filas = xpo_calc.filas_xpo(self._agrupar(env, picks, fechas), self._declarados_xpo(env, picks))
+        salida = io.BytesIO()
+        libro = xlsxwriter.Workbook(salida, {'in_memory': True})
+        f = self._formatos_excel(libro)
+        fmt_fecha = libro.add_format({'font_name': 'Arial', 'font_size': 10, 'num_format': 'dd/mm/yyyy',
+                                      'bottom': 1, 'bottom_color': '#D9DEE5', 'align': 'left'})
+        fmt_m3 = libro.add_format({'font_name': 'Arial', 'font_size': 10, 'num_format': '0.00',
+                                   'bottom': 1, 'bottom_color': '#D9DEE5'})
+        hoja = libro.add_worksheet('Hoja1')
+        hoja.write_row(0, 0, xpo_calc.CABECERA, f['cab'])
+        for n, fila in enumerate(filas, start=1):
+            hoja.write_datetime(n, 0, datetime.datetime.combine(dia, datetime.time.min), fmt_fecha)
+            hoja.write(n, 1, fila['expedicion'], f['txt'])
+            hoja.write(n, 2, fila['tienda'], f['txt'])
+            hoja.write(n, 3, fila['bultos'], f['num'])
+            hoja.write(n, 4, fila['volumen'], fmt_m3)
+            hoja.write(n, 5, fila['peso'], f['num'])
+        for col, ancho in enumerate([13, 15, 30, 9, 11, 11]):
+            hoja.set_column(col, col, ancho)
+        hoja.freeze_panes(1, 0)
+        libro.close()
+        return salida.getvalue(), filas
+
     @staticmethod
     def _destinatarios(env):
         Param = env['ir.config_parameter'].sudo()
@@ -736,10 +763,11 @@ class KoroshiConsultaEnvios(http.Controller):
             return {'error': 'El camión del %s ya se cerró (%s). Si hay que mandarlo otra vez, usa «Reenviar».'
                     % (dia_fecha.strftime('%d/%m/%Y'), self._hora(cierre.fecha_envio)), 'ya_cerrado': True}
         resumen = self._resumen_xpo(env, picks, fechas, avisos)
-        contenido, _n = self._excel_tiendas(env, picks, NOMBRES_TRANSPORTISTA['xpo'], dia_fecha, dia_fecha, fechas,
-                                            manuales, avisos)
+        # v1.34.0: a XPO solo va lo que necesita (formato del Excel de Amposta). El Excel completo de Tiendas sigue
+        # en el botón de descarga de Consulta de envíos.
+        contenido, _filas = self._excel_xpo(env, picks, fechas, dia_fecha)
         texto_dia = dia_fecha.strftime('%d/%m/%Y')
-        nombre = 'manifiesto_XPO_KOROSHI_%s.xlsx' % dia_fecha.strftime('%Y-%m-%d')
+        nombre = 'Envios Koroshi AMPOSTA %s.xlsx' % dia_fecha.strftime('%d-%m-%Y')
         usuario = request.env.user
         try:
             with env.cr.savepoint():
@@ -775,13 +803,14 @@ class KoroshiConsultaEnvios(http.Controller):
                         ['<li>%s</li>' % escape(d) for d in resumen['diferencias']])
                 cuerpo = (
                     '<p>Hola,</p>'
-                    '<p>Os adjuntamos el manifiesto de KOROSHI del %s (Effective Logistics, NAU-2): '
+                    '<p>Os adjuntamos la relación de bultos de KOROSHI del %s (Effective Logistics, NAU-2): '
                     '%d tiendas, %d pedidos y <b>%d bultos</b>.</p>%s'
                     '<p>Un saludo,<br/>%s</p>'
                 ) % (texto_dia, resumen['tiendas'], resumen['pedidos'], resumen['bultos'], diferencias,
                      escape(usuario.name or ''))
                 correo = env['mail.mail'].sudo().create({
-                    'subject': 'Manifiesto KOROSHI %s%s' % (texto_dia, cierre.envios > 1 and ' (corregido)' or ''),
+                    # v1.34.0: el asunto que usa XPO (Erika, 18/11)
+                    'subject': 'PREVISIÓN XPO AMPOSTA %s%s' % (texto_dia, cierre.envios > 1 and ' (corregido)' or ''),
                     'body_html': cuerpo,
                     'email_from': usuario.email_formatted or env.company.email or False,
                     'email_to': ', '.join(para),

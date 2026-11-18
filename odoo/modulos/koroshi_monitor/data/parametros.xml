@@ -5,12 +5,14 @@
     <data noupdate="1">
         <record id="param_manifiesto_para" model="ir.config_parameter">
             <field name="key">koroshi_monitor.manifiesto_para</field>
-            <field name="value">marta.bernabeu@xpo.com</field>
+            <field name="value">luca.tarantolacamilleri@xpo.com</field>
         </record>
-        <!-- Falta el correo de Erika: anadirlo aqui (en el servidor) cuando lo tengamos. -->
+        <!-- v1.34.0 (18/11): la lista de XPO que usa Erika, solo ellos (decidido por Isaac). Por el noupdate, en un
+             servidor que ya tiene el modulo esto NO se aplica al actualizar: hay que cambiarlo a mano en los
+             parametros del sistema. -->
         <record id="param_manifiesto_cc" model="ir.config_parameter">
             <field name="key">koroshi_monitor.manifiesto_cc</field>
-            <field name="value">expediciones@koroshi.tv, betty@nath.es</field>
+            <field name="value">jessica.castillero@xpo.com, ndg.comprometido.barcelona@xpo.com, xpo.comprometido.salidas.barcelona@xpo.com, eloy.canoayora@xpo.com, marta.bernabeu@xpo.com</field>
         </record>
     </data>
 </odoo>

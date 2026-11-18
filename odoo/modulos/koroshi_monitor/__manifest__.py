@@ -147,8 +147,16 @@ NO; a XPO se declararon 7 y son 7. Del 12 al 17/11 solo cambia K1. Solo lee: sin
 v1.33.1 (17/11/2026): «Personas y horas»: la cifra de u/h real salia pequena y gris, no como las otras tarjetas, y
 sin el rojo/verde. La regla del texto de debajo (.km-kpi span) tambien pillaba el <span> de color de la cifra; ahora
 solo el hijo directo (.km-kpi > span). Solo CSS.
+v1.34.0 (18/11/2026): cierre del camion XPO con el formato que pide XPO (Erika, reunion del 18/11). El correo sale
+con el asunto «PREVISIÓN XPO AMPOSTA dd/mm/aaaa» y el Excel «Envios Koroshi AMPOSTA dd-mm-aaaa.xlsx» con solo 6 columnas,
+como el de Amposta: Fecha salida, Nº expedicion, Nombre tienda, Bultos, Volumen m3 y Peso Neto. Una fila por expedicion;
+bultos = los declarados a XPO (mismas cuentas que el Excel de Tiendas), volumen y peso con el criterio de XPO (0,09 m3 y
+15 kg por bulto, igual que koroshi_xpo_bultos). Provisional hasta que la informatica de KOROSHI lo mande desde su API.
+El Excel completo de Tiendas sigue en el boton de descarga. Destinatarios nuevos en parametros.xml (lista de XPO), pero
+por el noupdate hay que cambiarlos a mano en el servidor. Calculo en controllers/xpo_calc.py con tests sin Odoo
+(tests/test_xpo_calc.py). Solo lee: sin campos ni modelos nuevos.
 """,
-    'version': '13.0.1.33.1',
+    'version': '13.0.1.34.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

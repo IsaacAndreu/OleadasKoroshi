@@ -23,7 +23,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Tema | Módulo cogido | Chat | Siguiente paso |
 |---|---|---|---|
 | Coordinación y traspaso de la auditoría | — | Traspaso KOROSHI: reparto por zonas | Plan v3 instalado entero el 17/11 por la tarde |
-| Excel de envíos para tiendas | koroshi_monitor (1.33.1, instalada 17/11 15:08) | Excel de envíos para tiendas | Comprobar el Excel XPO del 17/11: K1 = 7 bultos y «SÍ» |
+| Cierre del camión XPO: formato de Erika | koroshi_monitor (1.33.1 instalada 17/11 15:08; **1.34.0 hecha sin instalar**) | Resumen reunión 18/11 (lo coge del chat «Excel de envíos para tiendas», con el sí de Isaac) | Cambiar a mano `koroshi_monitor.manifiesto_para`/`_cc` (lista XPO), instalar 1.34.0 y cerrar un camión de prueba |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
 | Contenedores: compactar huecos | koroshi_contenedores (1.5.0 instalada 18/11 09:43; **1.6.0 hecha sin instalar**: Atrás, sin teclado, dónde está un artículo, 15 min, «Se han movido N», cantidad al añadir) | Contenedores (compactar) | Instalar 1.6.0 (`desplegar.sh check koroshi_contenedores 1.6.0`), Ctrl+F5 en las PDA y probar; pendiente: qué quieren «verificar» al compactar |
@@ -50,7 +50,10 @@ Las filas con «?» las rellena su chat la próxima vez que se abra.
 
 ## Hecho y sin instalar
 
-Nada. El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) quedó instalado el 17/11 por la tarde:
+**koroshi_monitor 1.34.0** (18/11): cierre del camión con asunto «PREVISIÓN XPO AMPOSTA dd/mm/aaaa» y Excel de 6
+columnas para XPO. Antes de instalar: cambiar a mano los dos parámetros de destinatarios (son `noupdate`).
+
+El plan v3 (`bin/versiones/plan-actualizacion-koroshi_2026-11-17_v3.md`) quedó instalado el 17/11 por la tarde:
 faltantes 1.7.0 y preparacion 3.33.0 (14:45) y monitor 1.33.0 (14:47) y 1.33.1 (15:08, cifra de u/h real), hora del almacén. **Antes de instalar algo nuevo,
 volver a leer la `installed_version`** (el servidor puede ir por delante del repo).
 

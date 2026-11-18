@@ -210,3 +210,11 @@ Ficheros: `controllers/main.py` (datos, ruta `/koroshi_monitor/datos`), `static/
   121771266): daba 6 bultos y «NO»; a XPO se declararon 7 y son 7.
 - **v1.33.1 (17/11/2026):** «Personas y horas»: la cifra de **u/h real** salía pequeña y gris (sin el rojo/verde)
   porque la regla del texto de debajo de las tarjetas también se aplicaba a su `<span>` de color. Solo CSS.
+- **v1.34.0 (18/11/2026):** **Cerrar camión XPO** con el formato que pide XPO (Erika, reunión del 18/11). Asunto
+  **«PREVISIÓN XPO AMPOSTA dd/mm/aaaa»** y Excel **«Envios Koroshi AMPOSTA dd-mm-aaaa.xlsx»** con 6 columnas, como el de
+  Amposta: Fecha salida, Nº expedición, Nombre tienda, Bultos, Volumen m3 y Peso Neto. Una fila por expedición. Los
+  bultos son los declarados a XPO (las mismas cuentas que el Excel de Tiendas); el volumen y el peso salen con el
+  criterio de XPO: 0,09 m³ y 15 kg por bulto. El Excel completo de Tiendas sigue en el botón de descarga.
+  Destinatarios: para Luca Tarantola y en copia Jessica Castillero, BCN documentación, Castellbisbal salidas, Eloy Cano
+  y Marta Bernabeu (solo XPO). Son parámetros `noupdate`: **en el servidor se cambian a mano** (`koroshi_monitor.manifiesto_para`
+  y `koroshi_monitor.manifiesto_cc`). Cálculo en `controllers/xpo_calc.py` (tests en `tests/test_xpo_calc.py`).
