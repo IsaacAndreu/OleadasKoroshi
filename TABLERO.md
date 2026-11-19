@@ -38,6 +38,8 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Poner en marcha los traspasos S4T (2 palets de devoluciones web) | koroshi_s4t_traspasos (1.2.0, sin instalar) | Traspasos S4T (19/11) | Plan propuesto a Isaac: guardar todo y crear DEV solo desde una fecha o a mano. Falta saber si las devoluciones de los 2 palets salen en la API (el 17/11 solo había 3-4 desde julio) |
 | Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 instalada 18/11 16:25; `activo`=1 desde 18/11, `cancelar`=1 desde 19/11 08:30) | Agrupaciones web por corte | 19/11 06:00: primera WEB_191126_01 automática (45 OUT, 82 uds). Comprobar la primera cancelación de las 11:00 y el correo a isaac.andreu@nath.es y betty@nath.es |
 
+| Zonas: mejorar (acabar a la hora y pasar a real) | koroshi_zonas (1.4.0 en sombra; sin código nuevo) | Zonas: mejorar | 19/11: diagnóstico en `bin/versiones/zonas-diagnostico-y-mejoras_2026-11-19.md`. Esperando a que Isaac elija mejoras (propuesta: 1.5.0 con ensayo SIMULAR + aviso de hora de fin + previsto contra real) |
+
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
 ## Esperando a alguien
