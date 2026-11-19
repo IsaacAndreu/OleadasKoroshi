@@ -28,9 +28,10 @@
         <field name="comment">Ve el icono «Tablero» y reparte el trabajo de los operarios arrastrando tarjetas.</field>
     </record>
 
-    <!-- v2.21: los administradores (Ajustes) también tienen el tablero (petición de Isaac, 19/11): les sale el icono
-         «Tablero» en Aplicaciones. Al actualizar, Odoo mete en el grupo a los administradores que ya hay. -->
+    <!-- v2.21.0 hizo que los administradores tuvieran el tablero; v2.21.1 lo deshace: «Almacén Nath» (las PDA) es
+         administrador y entraba. El tablero va por usuario (migrations/13.0.2.21.1): Almacen 2, Departament IT e
+         Ismael. Quitar el vínculo no saca a nadie del grupo: lo hace la migración. -->
     <record id="base.group_system" model="res.groups">
-        <field name="implied_ids" eval="[(4, ref('koroshi_operarios.grupo_tablero'))]"/>
+        <field name="implied_ids" eval="[(3, ref('koroshi_operarios.grupo_tablero'))]"/>
     </record>
 </odoo>

@@ -152,8 +152,11 @@ operario con su estado (leyendo / parado X min / en el portátil / sin tarea) y 
 para escribirla. El kanban de la 2.20 sigue en el botón «Tablero clásico». Solo lectura y la tabla propia de
 asignaciones (models/tablero_formatos.py, static/src/js/tablero_formatos.js).
 Los administradores (Ajustes) tambien tienen el grupo del tablero (icono en Aplicaciones), ademas de Almacen 2.
+v2.21.1 (19/11/2026): el tablero ya no va con ser administrador: «Almacén Nath» (las PDA) es administrador y con la
+2.21.0 le salia el Tablero (se le quito a mano del grupo el 19/11 ~16:50). Ahora va por usuario: Almacen 2, Departament IT
+e Ismael (migrations/13.0.2.21.1); Almacén Nath fuera. Para darlo a otro: Ajustes > Usuarios > el usuario > el grupo.
 """,
-    'version': '13.0.2.21.0',
+    'version': '13.0.2.21.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
