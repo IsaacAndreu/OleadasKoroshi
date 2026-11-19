@@ -29,8 +29,11 @@ Todos los jobs van al canal root.s4t_sync (capacidad 1). Necesita la v7 del cron
 v1.0.0 (19/11/2026): primera version. S-6665004459 (K ZALANDO ZFS, 329 lineas) no entraba: serialize en
 stock_quant al reservar y en queue_job por dos copias del mismo job (diseno en
 bin/versiones/diseno-feed-s4t-sin-serialize_2026-11-19_v2.md).
+v1.0.1 (19/11/2026): sin el decorador @job. En el servidor queue_job es la 13.0.3.10.1: @job esta obsoleto y no
+hace falta para with_delay (Effective tampoco lo usa); aplicarlo podia crear registros de funcion/canal al instalar.
+La 1.0.0 no llego a subirse.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Sales',
     'license': 'LGPL-3',

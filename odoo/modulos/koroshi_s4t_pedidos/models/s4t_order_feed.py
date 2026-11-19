@@ -16,13 +16,8 @@ import logging
 
 from odoo import models
 
-try:
-    from odoo.addons.api_s4t_batch_update_PROD.models import s4t_order_feed as feed_effective
-except ImportError:  # pragma: no cover - nunca debe pasar (es dependencia), pero no puede tumbar el registro
-    feed_effective = None
-
 from .. import logica
-from .comun_jobs import candado, guardar, heredar_marcas_job
+from .comun_jobs import candado, guardar
 
 _logger = logging.getLogger(__name__)
 
@@ -42,6 +37,3 @@ class S4tOrderFeed(models.Model):
             res = super(S4tOrderFeed, self.with_context(koroshi_confirmar_diferido=diferir)).action_create_sale_order()
             guardar(self.env)
             return res
-
-    action_create_sale_order = heredar_marcas_job(
-        action_create_sale_order, feed_effective, 's4t.order.feed', 'action_create_sale_order')

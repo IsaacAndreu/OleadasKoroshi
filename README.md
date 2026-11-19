@@ -61,7 +61,7 @@ Versiones según el manifest del repo; la instalada en el servidor puede ir por 
 | `koroshi_xpo_bultos` | 1.3.0 | XPO: cajas distintas y 15 kg / 0,09 m3 por bulto. | base |
 | `koroshi_s4t_envios` | 1.2.0 | Envía a S4T (`POST /shipments`) transportista, tracking, bultos, peso y volumen. | Instalado, en modo diagnóstico |
 | `koroshi_s4t_traspasos` | 1.2.0 | Descarga de S4T devoluciones e-commerce y correcciones de traspasos. | base; sin instalar |
-| `koroshi_s4t_pedidos` | 1.0.0 | Pedidos S4T grandes sin «could not serialize»: candado por feed, confirmar y reservar en jobs aparte. | sin instalar; va con el cron 192 v7 |
+| `koroshi_s4t_pedidos` | 1.0.1 | Pedidos S4T grandes sin «could not serialize»: candado por feed, confirmar y reservar en jobs aparte. | sin instalar; va con el cron 192 v7 |
 
 Los dos de S4T usan host y `X-Api-Key` de `s4t.config` (módulo `api_s4t_batch_update_PROD`, de Effective).
 

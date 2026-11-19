@@ -122,36 +122,7 @@ class TestCandado(unittest.TestCase):
         self.assertEqual(CursorFalso.tomados, set())
 
 
-class TestMarcasJob(unittest.TestCase):
-
-    def test_copia_las_marcas_del_metodo_de_effective(self):
-        effective = types.ModuleType('feed_effective')
-
-        def action_create_sale_order(self):
-            return 'effective'
-        action_create_sale_order.delayable = True
-        action_create_sale_order.retry_pattern = {1: 60, 5: 300}
-        action_create_sale_order.default_channel = 'root.s4t_sync'
-
-        class SOrderFeed(object):
-            _name = 's4t.order.feed'
-        SOrderFeed.action_create_sale_order = action_create_sale_order
-        effective.SOrderFeed = SOrderFeed
-
-        def nuestro(self):
-            return 'koroshi'
-        res = cj.heredar_marcas_job(nuestro, effective, 's4t.order.feed', 'action_create_sale_order')
-        self.assertIs(res, nuestro)
-        self.assertTrue(res.delayable)
-        self.assertEqual(res.retry_pattern, {1: 60, 5: 300})
-        self.assertEqual(res.default_channel, 'root.s4t_sync')
-
-    def test_sin_original_se_marca_como_job_del_canal(self):
-        def nuestro(self):
-            return 'koroshi'
-        res = cj.heredar_marcas_job(nuestro, None, 's4t.order.feed', 'action_create_sale_order')
-        self.assertTrue(res.delayable)
-        self.assertEqual(res.default_channel, 'root.s4t_sync')
+class TestOpciones(unittest.TestCase):
 
     def test_opciones(self):
         op = cj.opciones_job('S4T Confirmar pedido S-1')

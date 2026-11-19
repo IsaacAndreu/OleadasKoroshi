@@ -23,7 +23,7 @@ from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 from odoo.addons.queue_job.exception import RetryableJobError
 
 from .. import logica
-from .comun_jobs import candado, como_job, entero_param, guardar, opciones_job
+from .comun_jobs import candado, entero_param, guardar, opciones_job
 
 _logger = logging.getLogger(__name__)
 
@@ -48,7 +48,6 @@ class SaleOrder(models.Model):
 
     # ---------------------------------------------------------------- paso 2
 
-    @como_job
     def koroshi_confirmar_s4t(self):
         self.ensure_one()
         pedido = self.with_context(koroshi_confirmar_diferido=False, koroshi_sin_reservar=False)
@@ -74,7 +73,6 @@ class SaleOrder(models.Model):
         return pickings.mapped('move_lines').filtered(
             lambda m: m.state in logica.ESTADOS_POR_RESERVAR).sorted('id')
 
-    @como_job
     def koroshi_reservar_s4t(self):
         self.ensure_one()
         nombre = self.name
