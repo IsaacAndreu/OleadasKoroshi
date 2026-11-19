@@ -153,6 +153,23 @@ en la 1.1 cuando se sepa cómo nace hoy la recepción del contenedor.
 8. **Tablet**: ¿cuál, y el muelle tiene buena wifi? ¿Hay una sola o varias a la vez en el mismo contenedor?
 9. **Quién carga el PL y quién pasa a stock**: ¿oficina, back office o el responsable del muelle? (Define los grupos.)
 
+### Respuestas de Isaac (19/11) y a quién preguntar
+
+Isaac aún no sabe ninguna; las va a preguntar. Para que cada uno reciba solo lo suyo:
+
+- **Maite** (pregunta 1): ¿puede mandar el packing list siempre en Excel, con una fila por rango de cajas y las
+  columnas `caja_desde, caja_hasta, referencia, color, talla, uds_por_caja, EAN`? Y que nos pase el ejemplo que ya
+  mandó.
+- **José Luis** (preguntas 2, 3 y 4): ¿cómo se crea hoy en Odoo la recepción de un contenedor, desde una PO, desde S4T
+  o a mano? ¿Qué es la pantalla del «shipping», con recibido, teórico y en tránsito? ¿Back office quiere que la tablet
+  le deje la recepción de Odoo rellenada (sin validar) o le basta con el Excel de discrepancias?
+- **Almacén** (preguntas 5 a 8): los puestos, ¿son sitios del muelle o huecos donde se queda la mercancía? ¿Se cuenta
+  dentro de alguna caja? ¿Se agrupa por referencia o por referencia y color? ¿Qué tablet, cuántas a la vez y hay buena
+  wifi en el muelle?
+- **Isaac** (pregunta 9): quién carga el packing list y quién pasa a stock.
+
+Mientras tanto no se programa nada. La fase 1 (sin paso a stock) solo necesita las respuestas de Maite y del almacén.
+
 ## 9. Estimación
 
 - Fase 1 (tablas, importación, pantalla de la tablet y exportación): un módulo nuevo, sin riesgo para la PDA.
