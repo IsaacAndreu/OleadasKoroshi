@@ -5,7 +5,7 @@
         <field name="model">koroshi.s4t.traspaso</field>
         <field name="arch" type="xml">
             <tree decoration-danger="state == 'error'" decoration-success="state in ('recepcion', 'registrado')"
-                  decoration-info="state == 'nuevo'">
+                  decoration-info="state == 'nuevo'" decoration-muted="state == 'descartado'">
                 <field name="tipo"/>
                 <field name="name"/>
                 <field name="transfer_date"/>
@@ -30,7 +30,11 @@
                     <button name="action_procesar" type="object" string="Procesar" class="btn-primary"
                             groups="stock.group_stock_manager"
                             attrs="{'invisible': [('state', 'not in', ('nuevo', 'error'))]}"/>
-                    <field name="state" widget="statusbar"/>
+                    <button name="action_descartar" type="object" string="Sin DEV"
+                            groups="stock.group_stock_manager"
+                            confirm="Este traspaso no creara recepcion DEV. ¿Seguro?"
+                            attrs="{'invisible': [('state', 'not in', ('nuevo', 'error'))]}"/>
+                    <field name="state" widget="statusbar" statusbar_visible="nuevo,recepcion,registrado"/>
                 </header>
                 <sheet>
                     <h1><field name="name"/></h1>
@@ -82,6 +86,7 @@
                 <filter name="f_dev" string="Devoluciones" domain="[('tipo', '=', 'devolucion')]"/>
                 <filter name="f_cor" string="Correcciones" domain="[('tipo', '=', 'correccion')]"/>
                 <separator/>
+                <filter name="f_nuevo" string="Pendientes" domain="[('state', '=', 'nuevo')]"/>
                 <filter name="f_error" string="Con error" domain="[('state', '=', 'error')]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>

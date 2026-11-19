@@ -1,8 +1,18 @@
-# KOROSHI Traspasos S4T (v1.2, 16/11/2026)
+# KOROSHI Traspasos S4T (v1.3, 19/11/2026)
 
 Descarga de S4T las devoluciones e-commerce (`/transfers/return-ecommerce`) y las correcciones
 (`/transfers/corrections`). Cada devolución crea una recepción DEV de 6665 lista para validar; las correcciones solo
 se registran. **Sin instalar**; al instalar, el cron queda archivado: primera descarga con «Ejecutar manualmente».
+
+## v1.3 (19/11/2026, puesta en marcha)
+
+- Parámetro `koroshi_s4t_traspasos.modo`. Al instalar queda en `guardar`: el cron descarga y guarda, pero **no crea
+  DEV**. Con `real`, crea la DEV de cada devolución e-commerce.
+- Botón «Sin DEV» (estado «Sin DEV (descartado)») para las que no deben crear recepción.
+- «Recuperar por fecha» ya no procesa todos los nuevos: solo los que acaba de guardar y solo en modo real.
+
+Puesta en marcha: instalar → «Ejecutar manualmente» el cron (guarda todo lo pendiente desde el 01/07) → revisar la
+lista y marcar «Sin DEV» las que ya se recibieron → poner `modo` = `real` → activar el cron.
 
 ## v1.2 (16/11/2026, auditoría 13/11, fase 6)
 

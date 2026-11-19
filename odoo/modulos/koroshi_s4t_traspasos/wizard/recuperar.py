@@ -13,8 +13,11 @@ class KoroshiS4tTraspasoRecuperar(models.TransientModel):
     def action_recuperar(self):
         self.ensure_one()
         Traspaso = self.env['koroshi.s4t.traspaso']
-        nuevos = Traspaso.recuperar_por_fecha(self.tipo, fields.Date.to_string(self.fecha))
-        Traspaso.search([('state', '=', 'nuevo')]).action_procesar()
+        creados = []
+        nuevos = Traspaso.recuperar_por_fecha(self.tipo, fields.Date.to_string(self.fecha), creados)
+        # v1.3: solo en modo real y solo los que se acaban de guardar (antes procesaba todos los 'nuevo')
+        if Traspaso._modo() == 'real':
+            Traspaso.browse(creados).action_procesar()
         # v1.1: Odoo 13 no tiene la accion display_notification: se abre la lista con el resultado en el titulo
         return {
             'type': 'ir.actions.act_window',

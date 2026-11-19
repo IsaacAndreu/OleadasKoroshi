@@ -20,6 +20,13 @@
 #   - Conciliacion diaria: una vez al dia (desde koroshi_s4t_traspasos.hora_conciliacion, 06:00) se vuelven a pedir
 #     por fecha los de hoy y ayer y se guardan los que falten.
 #   - Los que dan error se reintentan en cada pasada hasta MAX_INTENTOS veces.
+#
+# v1.3 (19/11/2026, puesta en marcha):
+#   - Parametro koroshi_s4t_traspasos.modo: 'guardar' (al instalar) descarga y guarda, pero NO crea DEV;
+#     'real' crea la DEV de cada devolucion e-commerce. Asi la primera descarga (todo lo pendiente desde el 01/07)
+#     se revisa antes de crear nada. Cualquier valor que no sea 'real' cuenta como 'guardar'.
+#   - Boton 'Sin DEV' (estado 'descartado'): para los traspasos que no deben crear DEV (ya recibidos a mano).
+#   - 'Recuperar por fecha' solo procesa en modo real y solo los traspasos que acaba de guardar.
 # =============================================================================
 import datetime
 import hashlib
@@ -41,6 +48,7 @@ LIMITE_PAGINA = 100
 MAX_PAGINAS = 50                   # proteccion: 5.000 traspasos por pasada como mucho
 MAX_INTENTOS = 5                   # v1.1: veces que se reintenta procesar uno con error
 P = 'koroshi_s4t_traspasos.'
+PARAM_MODO = P + 'modo'            # v1.3: 'guardar' (no crea DEV) o 'real'
 ENDPOINTS = {
     'devolucion': '/transfers/return-ecommerce',
     'correccion': '/transfers/corrections',
@@ -71,6 +79,7 @@ class KoroshiS4tTraspaso(models.Model):
         ('nuevo', 'Nuevo'),
         ('recepcion', 'Recepcion creada'),
         ('registrado', 'Registrado'),
+        ('descartado', 'Sin DEV (descartado)'),   # v1.3
         ('error', 'Error'),
     ], string='Estado', default='nuevo', readonly=True, index=True)
     error = fields.Text(string='Error', readonly=True)
@@ -80,6 +89,15 @@ class KoroshiS4tTraspaso(models.Model):
     _sql_constraints = [
         ('traspaso_uniq', 'unique (name, tipo)', 'Este traspaso de S4T ya esta guardado.'),
     ]
+
+    # ------------------------------------------------------------------
+    # Modo (v1.3)
+    # ------------------------------------------------------------------
+    @api.model
+    def _modo(self):
+        """'real' solo si el parametro lo dice exactamente; cualquier otra cosa es 'guardar'."""
+        valor = (self.env['ir.config_parameter'].sudo().get_param(PARAM_MODO) or '').strip().lower()
+        return 'real' if valor == 'real' else 'guardar'
 
     # ------------------------------------------------------------------
     # API
@@ -106,9 +124,10 @@ class KoroshiS4tTraspaso(models.Model):
     # Guardar
     # ------------------------------------------------------------------
     @api.model
-    def _guardar(self, tipo, transfers):
+    def _guardar(self, tipo, transfers, creados=None):
         """Crea los traspasos que no esten ya guardados. Devuelve cuantos son nuevos.
-        v1.1: uno a uno, cada uno en su savepoint. Si uno falla, se guarda igual con su JSON en 'error'."""
+        v1.1: uno a uno, cada uno en su savepoint. Si uno falla, se guarda igual con su JSON en 'error'.
+        v1.3: si se pasa la lista `creados`, se le anaden los ids creados."""
         nuevos = 0
         for t in transfers:
             crudo = json.dumps(t, ensure_ascii=False, default=str)
@@ -118,7 +137,9 @@ class KoroshiS4tTraspaso(models.Model):
                 continue
             try:
                 with self.env.cr.savepoint():
-                    self.create(self._valores(tipo, tid, t, crudo))
+                    rec = self.create(self._valores(tipo, tid, t, crudo))
+                if creados is not None:
+                    creados.append(rec.id)
             except Exception as e:
                 _logger.exception('KOROSHI S4T TRASPASOS: %s %s no se ha podido guardar entero', tipo, tid)
                 with self.env.cr.savepoint():
@@ -175,7 +196,7 @@ class KoroshiS4tTraspaso(models.Model):
         return total
 
     @api.model
-    def recuperar_por_fecha(self, tipo, fecha):
+    def recuperar_por_fecha(self, tipo, fecha, creados=None):
         """Vuelve a pedir los traspasos de un dia (sin viewed) y guarda solo los que falten."""
         total = 0
         skip = 0
@@ -183,7 +204,7 @@ class KoroshiS4tTraspaso(models.Model):
             transfers = self._get(tipo, {'transfer_date': fecha, 'skip': skip, 'limit': LIMITE_PAGINA})
             if not transfers:
                 break
-            total += self._guardar(tipo, transfers)
+            total += self._guardar(tipo, transfers, creados)
             skip += len(transfers)
         return total
 
@@ -240,6 +261,14 @@ class KoroshiS4tTraspaso(models.Model):
                              % (self.name, self.transfer_date or '', self.total_quantity))
         self.write({'state': 'recepcion', 'picking_id': picking.id, 'error': False})
 
+    def action_descartar(self):
+        """v1.3: marca como 'Sin DEV' los traspasos nuevos o con error que no deben crear recepcion."""
+        self.filtered(lambda r: r.state in ('nuevo', 'error')).write({
+            'state': 'descartado',
+            'error': _('Marcado sin DEV por %s el %s') % (self.env.user.name, fields.Datetime.now()),
+        })
+        return True
+
     def action_procesar(self):
         hechos = 0
         for rec in self.filtered(lambda r: r.state in ('nuevo', 'error')):
@@ -295,6 +324,10 @@ class KoroshiS4tTraspaso(models.Model):
                 self.env.cr.rollback()
                 _logger.exception('KOROSHI S4T TRASPASOS: error descargando %s: %s', tipo, e)
         self.conciliar()                    # v1.1: una vez al dia
+        if self._modo() != 'real':          # v1.3: en 'guardar' no se crea nada
+            _logger.info('KOROSHI S4T TRASPASOS: modo guardar, no se crean DEV (%d pendientes)',
+                         self.search_count([('state', '=', 'nuevo')]))
+            return True
         # v1.1: tambien los que dieron error, hasta MAX_INTENTOS veces
         pendientes = self.search(['|', ('state', '=', 'nuevo'),
                                   '&', ('state', '=', 'error'), ('intentos', '<', MAX_INTENTOS)])

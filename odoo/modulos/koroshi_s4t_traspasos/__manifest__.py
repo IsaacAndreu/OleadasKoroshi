@@ -21,8 +21,13 @@ hora_conciliacion, 06:00). Los que dan error se reintentan hasta 5 veces. «Recu
 display_notification (no existe en Odoo 13). Sigue sin instalar y con el cron archivado.
 v1.2.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). Empresa y hora del almacen salen de
 koroshi_base.comun. Mismo resultado; sin campos ni vistas nuevas. Depende de koroshi_base.
+v1.3.0 (19/11/2026): puesta en marcha para dar entrada a las devoluciones web. Parametro koroshi_s4t_traspasos.modo:
+'guardar' al instalar (descarga y guarda todo lo pendiente desde el 01/07 sin crear DEV, para revisarlo) y 'real'
+(DEV automatica de cada devolucion e-commerce). Boton 'Sin DEV' para las que no deben crear recepcion. 'Recuperar por
+fecha' ya no procesa todos los nuevos: solo los que acaba de guardar y solo en modo real. Sin campos en tablas
+compartidas (solo un estado nuevo en el modelo propio).
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',
