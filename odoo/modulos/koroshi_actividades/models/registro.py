@@ -18,12 +18,15 @@
 # Solo escribe en esta tabla.
 # =============================================================================
 import datetime
+import logging
 
 import pytz
 
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 from odoo.addons.koroshi_base import comun   # v1.3: hora del almacen
+
+_logger = logging.getLogger(__name__)
 
 MOTIVOS = [
     ('cambio', 'Cambió de actividad'),
@@ -249,6 +252,25 @@ class KoroshiActividadRegistro(models.Model):
 
     @api.model
     def acabar(self, employee):
+        registro = self._acabar(employee)
+        self._tablero_fin(employee, registro.actividad_id)   # v1.5.0
+        return registro
+
+    def _tablero_fin(self, employee, actividad):
+        """v1.5.0: «Fin» acaba la tarjeta de actividad del tablero (koroshi_operarios 2.20). Nunca impide el Fin: si
+        falla, se apunta en el log y la tarjeta la quita el responsable."""
+        Asig = self.env['koroshi.operario.asignacion'].sudo()
+        if not hasattr(Asig, 'actividad_acabada'):
+            return
+        try:
+            self.flush()
+            with self.env.cr.savepoint():
+                Asig.actividad_acabada(employee, actividad)
+                Asig.flush()
+        except Exception:
+            _logger.exception('KOROSHI ACTIVIDADES: no se ha podido acabar la tarjeta del tablero de %s', employee.name)
+
+    def _acabar(self, employee):
         abierto = self.abierto_de(employee)
         if abierto:
             abierto._cerrar('fin')

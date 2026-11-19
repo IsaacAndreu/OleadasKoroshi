@@ -48,8 +48,16 @@ cada minuto. Pasar la tarjeta es «Sigo». Si en minutos_respuesta (15) nadie la
 motivo nuevo «No contesto ¿Sigues?» (queda en pausa; con «Seguir» vuelve): a las 13:00 si no dio señal desde entonces,
 si no a la hora en que se le pregunto. Campo nuevo «Ultima señal» (confirmado) en koroshi.actividad.registro (tabla
 propia). Tres parametros nuevos (noupdate). El cierre de las 17:00 sigue como red.
+v1.5.0 (19/11/2026): tarjetas de actividad en el tablero del responsable (koroshi_operarios 2.20.0, que tiene que
+estar instalada ANTES; diseño bin/versiones/diseno-tablero-responsable_2026-11-19_v5.md). En «Por repartir» sale una
+pieza por cada actividad activa; Almacén 2 la arrastra a la columna de un operario. Cuando le toca, su PDA no abre
+nada: «Tu responsable te pide · Manipulación devoluciones · Ve al portátil de Actividades», sin botones. La tarjeta
+se acaba cuando la persona pulsa «Fin» en el portátil (acabar(): la de esa actividad o, si no, la primera; cambiar
+de actividad o la pausa no la acaban). La PDA lo mira cada 30 s y pasa sola a lo siguiente. La tarjeta no cuenta
+como pedido ni abre tarea de productividad (el tiempo es el del portátil). Tipo «actividad» y campo actividad_id en
+la tabla propia de asignaciones de koroshi_operarios; nada en stock.*. Si el tablero falla, el Fin se hace igual.
 """,
-    'version': '13.0.1.4.0',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -61,6 +69,7 @@ propia). Tres parametros nuevos (noupdate). El cierre de las 17:00 sigue como re
         'data/cron.xml',
         'views/assets.xml',
         'views/views.xml',
+        'views/tablero_views.xml',   # v1.5.0
         'views/menu.xml',
     ],
     'qweb': [

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.5.0: tarjetas de actividad en el tablero del responsable (koroshi_operarios 2.20.0): su icono -->
+    <record id="view_koroshi_tablero_kanban_actividad" model="ir.ui.view">
+        <field name="name">koroshi.operario.asignacion.tablero.kanban.actividad</field>
+        <field name="model">koroshi.operario.asignacion</field>
+        <field name="inherit_id" ref="koroshi_operarios.view_koroshi_tablero_kanban"/>
+        <field name="arch" type="xml">
+            <xpath expr="//t[@t-elif=&quot;record.tipo.raw_value == 'nota'&quot;]" position="after">
+                <t t-elif="record.tipo.raw_value == 'actividad'">⏱</t>
+            </xpath>
+        </field>
+    </record>
+</odoo>
