@@ -144,8 +144,16 @@ pasa a hecha. Una nota sale en la PDA con «Hecho, siguiente». Lo que se esta h
 tarjeta). Barra por columna y progreso por tarjeta. Columna vacia: lo de siempre (modo del dia). Tipos «lote» y
 «nota», estado «pieza», origen «tablero» y campos texto, tarjeta_id y sequence en la tabla propia de asignaciones;
 nada en stock.* (models/tablero.py, static/src/js/tablero.js).
+v2.21.0 (19/11/2026): el icono «Tablero» abre una pantalla con cinco formatos para que el jefe elija mañana (maqueta
+bin/versiones/tablero-responsable-formatos_2026-11-19.html): A columnas, B zonas arriba y operarios en rejilla, C una
+fila por operario, D columnas por zona (se arrastra a la persona; va la primera de su cola) y E fichas grandes. Cada
+operario con su estado (leyendo / parado X min / en el portátil / sin tarea) y uds de hoy. Mismas reglas que la 2.20
+(se mueve con tablero_mover, que pasa por el mismo write); clic en una tarjeta = su ficha; al dar una nota se abre
+para escribirla. El kanban de la 2.20 sigue en el botón «Tablero clásico». Solo lectura y la tabla propia de
+asignaciones (models/tablero_formatos.py, static/src/js/tablero_formatos.js).
+Los administradores (Ajustes) tambien tienen el grupo del tablero (icono en Aplicaciones), ademas de Almacen 2.
 """,
-    'version': '13.0.2.20.0',
+    'version': '13.0.2.21.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

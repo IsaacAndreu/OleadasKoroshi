@@ -9,6 +9,9 @@
             <!-- v2.20: tablero del responsable (vista kanban js_class="koroshi_tablero") -->
             <link rel="stylesheet" type="text/css" href="/koroshi_operarios/static/src/css/tablero.css"/>
             <script type="text/javascript" src="/koroshi_operarios/static/src/js/tablero.js"/>
+            <!-- v2.21: tablero con cinco formatos para elegir -->
+            <link rel="stylesheet" type="text/css" href="/koroshi_operarios/static/src/css/tablero_formatos.css"/>
+            <script type="text/javascript" src="/koroshi_operarios/static/src/js/tablero_formatos.js"/>
         </xpath>
     </template>
 </odoo>

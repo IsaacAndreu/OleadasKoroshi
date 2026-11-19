@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tablero: formatos</title>
+<style>
+:root{--fondo:#eef1f4;--carta:#fff;--borde:#d4dae0;--texto:#111827;--suave:#5b6470;--azul:#0b4f9c;--azul2:#dcebfb;--verde:#1e7b34;--verde2:#d3f4dc;--naranja:#c25e00;--naranja2:#fff1c7;--morado:#6b3fa0;--morado2:#eee6f8;--gris:#9aa4ae;--rojo:#b3171c;--rojo2:#ffe1e1}
+*{box-sizing:border-box}
+body{margin:0;background:var(--fondo);color:var(--texto);font:13px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.nav{position:sticky;top:0;z-index:5;background:#1f2937;color:#fff;padding:10px 16px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.nav b{margin-right:8px}
+.nav a{color:#fff;text-decoration:none;padding:5px 10px;border-radius:6px;background:#374151}
+.nav a:hover{background:#4b5563}
+section{padding:18px 16px 30px;border-bottom:3px solid #c4cbd3}
+h2{margin:0 0 4px;font-size:20px}
+.expl{color:var(--suave);margin:0 0 12px;max-width:900px}
+.barra{height:6px;background:#dde3e9;border-radius:3px;overflow:hidden}
+.barra i{display:block;height:100%;background:var(--verde)}
+.barra i.tarde{background:var(--naranja)}
+.barra i.web{background:var(--azul)}
+.mut{color:var(--suave);font-size:12px}
+.av{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:600;font-size:12px;flex:none}
+.p-ok{background:var(--verde2);color:var(--verde)}.p-par{background:var(--naranja2);color:var(--naranja)}.p-sin{background:#e5e7eb;color:#374151}
+.punto{display:inline-block;width:8px;height:8px;border-radius:50%;margin-right:4px}
+.boton{display:inline-block;padding:6px 12px;border-radius:6px;background:var(--azul);color:#fff;font-weight:600}
+/* tarjetas comunes */
+.t{background:var(--carta);border:1px solid var(--borde);border-left:5px solid var(--gris);padding:7px 9px;margin-bottom:6px}
+.t b{display:block}
+.t.zona{border-left-color:var(--azul)}.t.act{border-left-color:var(--morado);background:var(--morado2)}
+.t.nota{border-left-color:var(--naranja)}.t.ahora{border-left-color:var(--verde);background:var(--verde2)}
+.t.hecha{opacity:.55}
+.chip{display:inline-block;padding:3px 8px;border-radius:12px;background:var(--morado2);color:var(--morado);font-size:12px;margin:0 4px 4px 0;border:1px solid #d9c9ef}
+.sec{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--suave);margin:10px 0 4px}
+.soltar{border:2px dashed #b9c2cc;color:var(--suave);text-align:center;padding:10px;border-radius:6px}
+/* A */
+.a-cols{display:flex;gap:10px;overflow-x:auto}
+.a-col{flex:0 0 240px;background:#f6f8fa;border:1px solid var(--borde);border-radius:8px;padding:8px}
+.a-col.piezas{background:#fff7e0;flex-basis:220px}
+.a-hd{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+/* B */
+.b-zonas{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;margin-bottom:12px}
+.b-z{background:#fff;border:1px solid var(--borde);border-radius:8px;padding:8px}
+.b-z .gente{margin-top:6px;display:flex;gap:3px}
+.b-z .gente .av{width:22px;height:22px;font-size:10px}
+.b-main{display:flex;gap:10px}
+.b-piezas{flex:0 0 210px;background:#fff7e0;border:1px solid var(--borde);border-radius:8px;padding:8px}
+.b-cols{flex:1;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:8px}
+.b-col{background:#f6f8fa;border:1px solid var(--borde);border-radius:8px;padding:8px}
+/* C */
+.c-wrap{display:flex;gap:10px}
+.c-filas{flex:1}
+.c-fila{display:flex;align-items:stretch;background:#fff;border:1px solid var(--borde);border-radius:8px;margin-bottom:8px;overflow:hidden}
+.c-quien{flex:0 0 190px;padding:8px;border-right:1px solid var(--borde);display:flex;gap:8px;align-items:center}
+.c-tareas{flex:1;display:flex;gap:6px;padding:8px;overflow-x:auto;align-items:center}
+.c-tareas .t{margin:0;flex:0 0 170px}
+.c-flecha{color:var(--gris);flex:none}
+/* D */
+.d-cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px}
+.d-col{background:#fff;border:1px solid var(--borde);border-radius:8px;padding:10px}
+.d-col h3{margin:0 0 2px;font-size:16px}
+.d-p{display:flex;align-items:center;gap:8px;padding:6px;border-radius:6px;background:#f6f8fa;margin-top:6px}
+.d-libre{background:#fff7e0;border:1px solid #f0d899}
+/* E */
+.e-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
+.e-card{background:#fff;border:1px solid var(--borde);border-radius:10px;padding:10px}
+.e-card .ahora{font-size:16px;font-weight:700;margin:6px 0 2px}
+.e-sig{font-size:12px;color:var(--suave);border-top:1px solid var(--borde);margin-top:8px;padding-top:6px}
+.e-sig span{display:inline-block;background:#f1f3f5;border-radius:4px;padding:1px 6px;margin:2px 2px 0 0}
+.e-alerta{border-color:var(--naranja);box-shadow:0 0 0 2px var(--naranja2)}
+</style>
+</head>
+<body>
+<div class="nav"><b>Tablero del responsable · formatos (datos inventados)</b>
+<a href="#a">A · Columnas (como ahora, mejorado)</a>
+<a href="#b">B · Zonas arriba + columnas</a>
+<a href="#c">C · Filas por operario</a>
+<a href="#d">D · Por zonas</a>
+<a href="#e">E · Fichas de operario</a>
+</div>
+
+<!-- ============================================================ A -->
+<section id="a">
+<h2>A · Columnas, como ahora pero más claro</h2>
+<p class="expl">Lo instalado, ordenado: «Por repartir» agrupado (zonas, actividades como fichas pequeñas, 22 OUT plegadas), cabecera de cada operario con su estado y uds de hoy, la tarea de ahora en verde arriba.</p>
+<div class="a-cols">
+ <div class="a-col piezas">
+  <div class="a-hd"><b>Por repartir</b><span class="boton" style="margin-left:auto;padding:3px 8px">Actualizar</span></div>
+  <div class="sec">Zonas</div>
+  <div class="t zona"><b>Z-1911-D2</b><div class="barra"><i class="tarde" style="width:40%"></i></div><span class="mut">8/20 OUT · 12 libres</span></div>
+  <div class="t zona"><b>WEB_191126_01</b><div class="barra"><i class="web" style="width:66%"></i></div><span class="mut">30/45 · 15 libres</span></div>
+  <div class="sec">Actividades</div>
+  <span class="chip">Marketplace</span><span class="chip">Tiendas</span><span class="chip">Web</span><span class="chip">Devoluciones</span><span class="chip">Inversa</span><span class="chip">Bolsas</span>
+  <div class="sec">Otros</div>
+  <div class="t nota"><b>✎ Nota</b></div>
+  <div class="t"><b>22 OUT sueltas ▾</b></div>
+ </div>
+ <div class="a-col">
+  <div class="a-hd"><span class="av p-ok">DC</span><div><b>Diana</b><div class="mut"><span class="punto" style="background:var(--verde)"></span>leyendo · 412 uds</div></div></div>
+  <div class="t ahora"><b>EFFEC/OUT/26437</b><span class="mut">Ahora · K34 · 2/3 uds</span></div>
+  <div class="t zona"><b>Zona D1</b><div class="barra"><i style="width:72%"></i></div><span class="mut">7 libres · también Sheyla</span></div>
+  <div class="t act"><b>Manipulación devoluciones</b></div>
+ </div>
+ <div class="a-col">
+  <div class="a-hd"><span class="av p-par">SH</span><div><b>Sheyla</b><div class="mut"><span class="punto" style="background:var(--naranja)"></span>parada 9 min</div></div></div>
+  <div class="t zona"><b>Zona D1</b><div class="barra"><i style="width:72%"></i></div><span class="mut">7 libres · también Diana</span></div>
+  <div class="t nota"><b>Ayuda a descargar el camión</b></div>
+ </div>
+ <div class="a-col">
+  <div class="a-hd"><span class="av p-sin">AG</span><div><b>Andy</b><div class="mut"><span class="punto" style="background:var(--gris)"></span>casi acaba · 288 uds</div></div></div>
+  <div class="t ahora"><b>Zona MU1</b><span class="mut">Ahora · 1 libre</span></div>
+  <div class="soltar">Arrastra aquí</div>
+ </div>
+</div>
+</section>
+
+<!-- ============================================================ B -->
+<section id="b">
+<h2>B · Zonas arriba, columnas abajo</h2>
+<p class="expl">Arriba, cómo va cada zona y quién está en ella (para ver de un golpe qué zona va tarde). Abajo, las columnas de operarios en rejilla, para que quepan todos sin barra lateral. Se arrastra una zona de arriba a una persona para reforzar.</p>
+<div class="b-zonas">
+ <div class="b-z"><b>D1</b> <span class="mut">18/25 OUT</span><div class="barra"><i style="width:72%"></i></div><div class="gente"><span class="av p-ok">DC</span><span class="av p-par">SH</span></div></div>
+ <div class="b-z" style="border-color:var(--naranja)"><b>D2</b> <span class="mut">8/20 · va tarde</span><div class="barra"><i class="tarde" style="width:40%"></i></div><div class="gente"><span class="av p-ok">CR</span></div></div>
+ <div class="b-z"><b>D3</b> <span class="mut">14/19</span><div class="barra"><i style="width:74%"></i></div><div class="gente"><span class="av p-ok">DZ</span><span class="av p-ok">EA</span></div></div>
+ <div class="b-z"><b>MU1</b> <span class="mut">5/6</span><div class="barra"><i style="width:83%"></i></div><div class="gente"><span class="av p-sin">AG</span></div></div>
+ <div class="b-z"><b>WEB_01</b> <span class="mut">30/45</span><div class="barra"><i class="web" style="width:66%"></i></div><div class="gente"><span class="av p-ok">DW</span></div></div>
+</div>
+<div class="b-main">
+ <div class="b-piezas"><b>Por repartir</b>
+  <div class="sec">Actividades</div>
+  <span class="chip">Marketplace</span><span class="chip">Tiendas</span><span class="chip">Web</span><span class="chip">Devoluciones</span><span class="chip">Inversa</span><span class="chip">Bolsas</span>
+  <div class="sec">Otros</div><div class="t nota"><b>✎ Nota</b></div><div class="t"><b>22 OUT sueltas ▾</b></div>
+ </div>
+ <div class="b-cols">
+  <div class="b-col"><div class="a-hd"><span class="av p-ok">DC</span><b>Diana</b><span class="mut" style="margin-left:auto">412 uds</span></div><div class="t ahora"><b>OUT/26437</b><span class="mut">D1 · 2/3 uds</span></div><div class="t act"><b>Devoluciones</b></div></div>
+  <div class="b-col"><div class="a-hd"><span class="av p-par">SH</span><b>Sheyla</b><span class="mut" style="margin-left:auto;color:var(--naranja)">parada 9′</span></div><div class="t zona"><b>Zona D1</b></div><div class="t nota"><b>Camión</b></div></div>
+  <div class="b-col"><div class="a-hd"><span class="av p-ok">CR</span><b>Carlos</b><span class="mut" style="margin-left:auto">350 uds</span></div><div class="t ahora"><b>Zona D2</b><span class="mut">OUT/26502</span></div></div>
+  <div class="b-col"><div class="a-hd"><span class="av p-sin">AG</span><b>Andy</b><span class="mut" style="margin-left:auto">casi acaba</span></div><div class="t ahora"><b>Zona MU1</b></div><div class="soltar">Arrastra aquí</div></div>
+  <div class="b-col"><div class="a-hd"><span class="av p-ok">DZ</span><b>Dayana</b><span class="mut" style="margin-left:auto">301 uds</span></div><div class="t ahora"><b>Zona D3</b></div></div>
+  <div class="b-col"><div class="a-hd"><span class="av p-ok">EA</span><b>Erika</b><span class="mut" style="margin-left:auto">277 uds</span></div><div class="t ahora"><b>Zona D3</b></div><div class="t act"><b>Bolsas</b></div></div>
+ </div>
+</div>
+</section>
+
+<!-- ============================================================ C -->
+<section id="c">
+<h2>C · Una fila por operario (de izquierda a derecha)</h2>
+<p class="expl">Cada persona es una fila y sus tareas van en orden hacia la derecha, como una cola. Caben muchas personas en la pantalla sin desplazarse a los lados. «Por repartir» a la derecha.</p>
+<div class="c-wrap">
+ <div class="c-filas">
+  <div class="c-fila"><div class="c-quien"><span class="av p-ok">DC</span><div><b>Diana</b><div class="mut">leyendo · 412 uds</div></div></div>
+   <div class="c-tareas"><div class="t ahora"><b>OUT/26437</b><span class="mut">ahora · D1</span></div><span class="c-flecha">→</span><div class="t zona"><b>Zona D1</b><span class="mut">7 libres</span></div><span class="c-flecha">→</span><div class="t act"><b>Devoluciones</b></div></div></div>
+  <div class="c-fila"><div class="c-quien"><span class="av p-par">SH</span><div><b>Sheyla</b><div class="mut" style="color:var(--naranja)">parada 9 min</div></div></div>
+   <div class="c-tareas"><div class="t zona"><b>Zona D1</b><span class="mut">7 libres</span></div><span class="c-flecha">→</span><div class="t nota"><b>Descargar camión</b></div></div></div>
+  <div class="c-fila"><div class="c-quien"><span class="av p-ok">CR</span><div><b>Carlos</b><div class="mut">leyendo · 350 uds</div></div></div>
+   <div class="c-tareas"><div class="t ahora"><b>Zona D2</b><span class="mut">ahora · OUT/26502</span></div></div></div>
+  <div class="c-fila"><div class="c-quien"><span class="av p-sin">AG</span><div><b>Andy</b><div class="mut">casi acaba</div></div></div>
+   <div class="c-tareas"><div class="t ahora"><b>Zona MU1</b><span class="mut">1 libre</span></div><span class="c-flecha">→</span><div class="soltar" style="flex:0 0 150px">Arrastra aquí</div></div></div>
+ </div>
+ <div class="b-piezas"><b>Por repartir</b>
+  <div class="sec">Zonas</div><div class="t zona"><b>D2</b><span class="mut">12 libres</span></div><div class="t zona"><b>WEB_01</b><span class="mut">15 libres</span></div>
+  <div class="sec">Actividades</div><span class="chip">Marketplace</span><span class="chip">Tiendas</span><span class="chip">Devoluciones</span><span class="chip">Bolsas</span>
+  <div class="sec">Otros</div><div class="t nota"><b>✎ Nota</b></div><div class="t"><b>22 OUT sueltas ▾</b></div>
+ </div>
+</div>
+</section>
+
+<!-- ============================================================ D -->
+<section id="d">
+<h2>D · Por zonas: cada columna es una zona y se arrastra a la gente</h2>
+<p class="expl">Al revés: las columnas son las zonas (y las actividades) y dentro van las personas. Para mandar a alguien a reforzar D2 se arrastra su nombre a la columna D2. Muy claro para el reparto de la mañana; menos para ordenar varias tareas seguidas de una misma persona.</p>
+<div class="d-cols">
+ <div class="d-col"><h3>D1</h3><span class="mut">18/25 OUT · 7 libres</span><div class="barra"><i style="width:72%"></i></div>
+  <div class="d-p"><span class="av p-ok">DC</span><b>Diana</b><span class="mut" style="margin-left:auto">OUT/26437</span></div>
+  <div class="d-p"><span class="av p-par">SH</span><b>Sheyla</b><span class="mut" style="margin-left:auto;color:var(--naranja)">parada</span></div></div>
+ <div class="d-col" style="border-color:var(--naranja)"><h3>D2</h3><span class="mut">8/20 · 12 libres · va tarde</span><div class="barra"><i class="tarde" style="width:40%"></i></div>
+  <div class="d-p"><span class="av p-ok">CR</span><b>Carlos</b></div><div class="soltar" style="margin-top:6px">Arrastra a alguien</div></div>
+ <div class="d-col"><h3>MU1</h3><span class="mut">5/6 · 1 libre</span><div class="barra"><i style="width:83%"></i></div>
+  <div class="d-p"><span class="av p-sin">AG</span><b>Andy</b><span class="mut" style="margin-left:auto">casi acaba</span></div></div>
+ <div class="d-col"><h3>Devoluciones</h3><span class="mut">actividad (portátil)</span>
+  <div class="d-p"><span class="av p-ok">EA</span><b>Erika</b><span class="mut" style="margin-left:auto">desde 14:10</span></div></div>
+ <div class="d-col d-libre"><h3>Sin tarea</h3><span class="mut">pasan a la siguiente OUT libre</span>
+  <div class="d-p"><span class="av p-sin">DW</span><b>Darwin</b></div></div>
+</div>
+</section>
+
+<!-- ============================================================ E -->
+<section id="e">
+<h2>E · Fichas de operario (para mirar de lejos)</h2>
+<p class="expl">Una ficha grande por persona: qué hace ahora en letra grande, cuánto lleva y lo siguiente en pequeño. Pensado para ver en la tele o de un vistazo; se reparte arrastrando las piezas a la ficha. En naranja, quien lleva rato parado.</p>
+<div class="e-grid">
+ <div class="e-card"><div class="a-hd"><span class="av p-ok">DC</span><b>Diana</b><span class="mut" style="margin-left:auto">412 uds hoy</span></div>
+  <div class="ahora">OUT/26437 · D1</div><div class="barra"><i style="width:66%"></i></div><span class="mut">2 de 3 uds · 4 min</span>
+  <div class="e-sig">Después: <span>Zona D1</span><span>Devoluciones</span></div></div>
+ <div class="e-card e-alerta"><div class="a-hd"><span class="av p-par">SH</span><b>Sheyla</b><span class="mut" style="margin-left:auto;color:var(--naranja)">parada 9 min</span></div>
+  <div class="ahora">Zona D1</div><span class="mut">última lectura 16:02</span>
+  <div class="e-sig">Después: <span>Descargar camión</span></div></div>
+ <div class="e-card"><div class="a-hd"><span class="av p-ok">CR</span><b>Carlos</b><span class="mut" style="margin-left:auto">350 uds</span></div>
+  <div class="ahora">Zona D2</div><div class="barra"><i class="tarde" style="width:40%"></i></div><span class="mut">zona 8/20 · va tarde</span>
+  <div class="e-sig">Después: <span>(siguiente libre)</span></div></div>
+ <div class="e-card"><div class="a-hd"><span class="av p-sin">AG</span><b>Andy</b><span class="mut" style="margin-left:auto">288 uds</span></div>
+  <div class="ahora">Zona MU1</div><div class="barra"><i style="width:83%"></i></div><span class="mut">queda 1 OUT · casi acaba</span>
+  <div class="e-sig">Después: <span style="background:#fff7e0">arrastra aquí</span></div></div>
+</div>
+</section>
+</body>
+</html>

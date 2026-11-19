@@ -94,8 +94,15 @@
         <field name="code">action = model.action_abrir_tablero()</field>
     </record>
 
-    <!-- icono propio en Aplicaciones, solo para el grupo del tablero (Almacén 2) -->
-    <menuitem id="menu_koroshi_tablero_app" name="Tablero" sequence="7" action="action_koroshi_tablero"
+    <!-- v2.21: pantalla con los cinco formatos (A-E) para que el jefe elija (static/src/js/tablero_formatos.js).
+         El kanban de la 2.20 sigue: botón «Tablero clásico» de la pantalla (action_koroshi_tablero). -->
+    <record id="action_koroshi_tablero_formatos" model="ir.actions.client">
+        <field name="name">Tablero</field>
+        <field name="tag">koroshi_tablero_formatos</field>
+    </record>
+
+    <!-- icono propio en Aplicaciones, solo para el grupo del tablero (Almacén 2); v2.21: abre los formatos -->
+    <menuitem id="menu_koroshi_tablero_app" name="Tablero" sequence="7" action="action_koroshi_tablero_formatos"
               groups="koroshi_operarios.grupo_tablero"
               web_icon="koroshi_operarios,static/description/icon_tablero.png"/>
 </odoo>
