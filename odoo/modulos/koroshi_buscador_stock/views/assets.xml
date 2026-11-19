@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="KOROSHI Buscador de stock assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/koroshi_buscador_stock/static/src/css/buscador_stock.css"/>
+            <script type="text/javascript" src="/koroshi_buscador_stock/static/src/js/buscador_stock.js"/>
+        </xpath>
+    </template>
+</odoo>

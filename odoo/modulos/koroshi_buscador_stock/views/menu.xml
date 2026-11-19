@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_koroshi_buscador_stock" model="ir.actions.client">
+        <field name="name">Buscador de stock</field>
+        <field name="tag">koroshi_buscador_stock_pantalla</field>
+    </record>
+    <!-- KOROSHI > Almacén (sección de koroshi_menu, también en la 2.4.2 instalada), la primera -->
+    <menuitem id="menu_koroshi_buscador_stock" name="Buscador de stock" parent="koroshi_menu.menu_koroshi_sec_almacen"
+              action="action_koroshi_buscador_stock" sequence="5" groups="stock.group_stock_user"/>
+</odoo>

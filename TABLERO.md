@@ -39,7 +39,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 instalada 18/11 16:25; `activo`=1 desde 18/11, `cancelar`=1 desde 19/11 08:30) | Agrupaciones web por corte | 19/11 06:00: primera WEB_191126_01 automática (45 OUT, 82 uds). Comprobar la primera cancelación de las 11:00 y el correo a isaac.andreu@nath.es y betty@nath.es |
 
 | Zonas: mejorar (acabar a la hora y pasar a real) | koroshi_zonas (1.5.0 HECHA, SIN INSTALAR; en el servidor la 1.4.0 en sombra) | Zonas: mejorar | 1.5.0: la sombra pasa a ser un SIMULAR (ensayo de partir), aviso de hora de fin y personas que faltan, y previsto contra real con las lecturas de la PDA. Instalar con el sí de Isaac (no a la vez que otra actualización); después, rellenar los destinatarios del correo y activar el cron 210 si se quiere el aviso por correo. Diagnóstico: `bin/versiones/zonas-diagnostico-y-mejoras_2026-11-19.md` |
-| Buscador de stock (oficina, solo lectura) | koroshi_buscador_stock (módulo nuevo; 1.0.0 en preparación) | Buscador de stock | Diseño aprobado (opción A): `bin/versiones/diseno-buscador-stock_2026-11-19.md`. Sacar la 1.0.0 e instalarla con el sí de Isaac, sola (no a la vez que contenedores, traspasos ni zonas) |
+| Buscador de stock (oficina, solo lectura) | koroshi_buscador_stock (módulo nuevo; **1.0.0 hecha sin instalar** 19/11) | Buscador de stock | Diseño aprobado (opción A): `bin/versiones/diseno-buscador-stock_2026-11-19.md`. Instalar la 1.0.0 (`-i`) con el sí de Isaac, sola (no a la vez que contenedores, traspasos ni zonas) |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
