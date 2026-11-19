@@ -35,6 +35,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
 | Correos pendientes | — | Correus per enviar | — |
+| Poner en marcha los traspasos S4T (2 palets de devoluciones web) | koroshi_s4t_traspasos (1.2.0, sin instalar) | Traspasos S4T (19/11) | Plan propuesto a Isaac: guardar todo y crear DEV solo desde una fecha o a mano. Falta saber si las devoluciones de los 2 palets salen en la API (el 17/11 solo había 3-4 desde julio) |
 | Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 instalada 18/11 16:25; `activo`=1 desde 18/11, `cancelar`=1 desde 19/11 08:30) | Agrupaciones web por corte | 19/11 06:00: primera WEB_191126_01 automática (45 OUT, 82 uds). Comprobar la primera cancelación de las 11:00 y el correo a isaac.andreu@nath.es y betty@nath.es |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
