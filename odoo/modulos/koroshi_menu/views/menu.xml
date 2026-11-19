@@ -21,7 +21,7 @@
 
     <!-- v2.5 (16/11/2026): lo que solo interesa a los jefes de almacén va con grupo_jefes (views/bandeja.xml). El
          picking entra con el usuario «Almacén Nath», que no está en ese grupo: le quedan Monitor, Hoja de carga XPO,
-         Consulta de envíos, Faltante (PDA) y Registrar consumo (más Lecturas, código de barras, Actividades y
+         Faltante (PDA) y Registrar consumo (Consulta de envíos, hasta la v2.5.1; más Lecturas, código de barras, Actividades y
          Contenedores, que son de sus módulos). «-grupo» quita el grupo de antes: al actualizar, Odoo solo AÑADE los
          grupos de un menuitem, no quita los que ya tenía. -->
     <!-- ===== Hoy ===== -->
@@ -45,8 +45,9 @@
               action="koroshi_warehouse_map.action_koroshi_warehouse_map" groups="-stock.group_stock_user,grupo_jefes"/>
     <menuitem id="menu_koroshi_hoja_carga" name="Hoja de carga XPO de hoy" parent="menu_koroshi" sequence="50"
               action="koroshi_kpi.action_koroshi_hoja_carga_hoy" groups="stock.group_stock_user"/>
+    <!-- v2.5.2: solo jefes (con koroshi_monitor 1.37 el monitor no la abre a quien no es jefe) -->
     <menuitem id="menu_koroshi_consulta_envios" name="Consulta de envíos" parent="menu_koroshi" sequence="60"
-              action="koroshi_monitor.action_koroshi_consulta_envios" groups="stock.group_stock_user"/>
+              action="koroshi_monitor.action_koroshi_consulta_envios" groups="-stock.group_stock_user,grupo_jefes"/>
 
     <!-- ===== Faltantes ===== -->
     <menuitem id="menu_koroshi_sec_faltantes" name="Faltantes" parent="menu_koroshi_app" sequence="20"

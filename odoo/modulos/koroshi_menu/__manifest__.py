@@ -87,8 +87,14 @@ koroshi_actividades en depends. Ademas los jefes de almacen entran en «S4T API 
 Almacen 2 no veia Registro de Matriculas de Caja ni el packing feed de S4T porque no tenia ese grupo; Almacen Nath (PDA)
 ya lo tenia y lo sigue teniendo. Solo anade usuarios a ese grupo (migracion 13.0.2.5.1 y post_init_hook); si el modulo
 S4T no esta, no hace nada. No toca «S4T API / Admin» (configuracion con la clave de la API).
+v2.5.2 (19/11/2026): «Consulta de envios» (KOROSHI > Hoy) solo para jefes de almacen: Isaac no quiere que los
+operarios (Almacen Nath) vean los envios ni la produccion. Va con koroshi_monitor 1.37.0, que a quien no es jefe le
+ensena el monitor con el codigo del operario en vez del nombre y sin Produccion por hora ni Consulta de envios. Las
+entradas del monitor en Inventario (Consulta de envios, Produccion por hora) cuelgan de KOROSHI · Operaciones, que
+este modulo archiva: no se ven. Almacen Nath sigue viendo Monitor picking, Hoja de carga XPO, Faltante (PDA) y
+Registrar consumo. Solo menus.
 """,
-    'version': '13.0.2.5.1',
+    'version': '13.0.2.5.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
