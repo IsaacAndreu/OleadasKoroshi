@@ -7,6 +7,12 @@
 #     aviso, jobs fallidos, envíos S4T rechazados, traspasos S4T con error, tramos de actividad por revisar.
 #   - Integraciones: crons KOROSHI y S4T (si van con retraso), cola root.s4t_sync, OUT de XPO sin etiqueta y el
 #     resumen de la última pasada del sync de pedidos S4T.
+# v2.6 (19/11/2026, Isaac): lo de arriba era de IT, no del jefe de almacén. Tres pestañas:
+#   - Hoy (jefe): tiendas de hoy, camión XPO, leído sin caja, validado fuera de caja, operarios parados.
+#   - Pendiente (jefe): faltantes, stock 0 con pedidos esperando, web (reservas y canceladas), S4T que afecta a
+#     clientes (envíos y traspasos), OUT de XPO sin etiqueta, tramos de actividad por revisar.
+#   - IT (solo administradores): Lecturas paradas, lecturas rechazadas de cola, pedidos sin OUT, reparto de zonas
+#     con aviso, jobs fallidos, sync y cola S4T, crons.
 # Cada línea: semáforo, qué es, cuántas, detalle y «Abrir» (lleva a la lista donde se resuelve).
 #
 # Solo LEE (con sudo). Las tablas son transitorias y propias (koroshi.bandeja y koroshi.bandeja.linea): se calculan
@@ -29,6 +35,11 @@ MINUTOS_CRON_AMBAR = 15         # un cron que debía haber pasado hace más de e
 MINUTOS_CRON_ROJO = 60          # y más de esto: rojo
 MINUTOS_COLA_AMBAR = 30         # un job pendiente más viejo que esto: ámbar
 ORDEN = {'rojo': 0, 'ambar': 1, 'gris': 2, 'verde': 3}
+# v2.6
+TIPO_TIENDAS = 'PED. TIENDAS'   # sale.order.s_order_type_id.name de los pedidos de tienda (como monitor y zonas)
+HORA_TIENDAS = '13:00'          # a esta hora las OUT de tienda con reserva deberían estar hechas (koroshi_menu.hora_tiendas)
+HORA_CAMION = '15:00'           # a esta hora el camión XPO debería estar cerrado (koroshi_menu.hora_camion)
+MINUTOS_SIN_CAJA = 60           # una lectura fuera de caja más vieja que esto, en una OUT sin validar: rojo
 
 
 def _hm(dt):
@@ -51,7 +62,7 @@ class KoroshiBandejaLinea(models.TransientModel):
     _order = 'orden, secuencia'
 
     bandeja_id = fields.Many2one('koroshi.bandeja', ondelete='cascade')
-    pestana = fields.Selection([('pendiente', 'Pendiente'), ('integraciones', 'Integraciones')], 'Pestaña')
+    pestana = fields.Selection([('hoy', 'Hoy'), ('pendiente', 'Pendiente'), ('it', 'IT')], 'Pestaña')
     secuencia = fields.Integer()
     orden = fields.Integer()
     semaforo = fields.Selection([('rojo', 'Rojo'), ('ambar', 'Ámbar'), ('verde', 'Verde'), ('gris', 'Sin datos')],
@@ -90,10 +101,13 @@ class KoroshiBandeja(models.TransientModel):
 
     generado = fields.Datetime('Calculado el', readonly=True)
     resumen = fields.Char('Resumen', readonly=True)
+    resumen_it = fields.Char('Resumen IT', readonly=True)
+    hoy_ids = fields.One2many('koroshi.bandeja.linea', 'bandeja_id', 'Hoy', domain=[('pestana', '=', 'hoy')],
+                              readonly=True)
     pendiente_ids = fields.One2many('koroshi.bandeja.linea', 'bandeja_id', 'Pendiente',
                                     domain=[('pestana', '=', 'pendiente')], readonly=True)
-    integracion_ids = fields.One2many('koroshi.bandeja.linea', 'bandeja_id', 'Integraciones',
-                                      domain=[('pestana', '=', 'integraciones')], readonly=True)
+    it_ids = fields.One2many('koroshi.bandeja.linea', 'bandeja_id', 'IT', domain=[('pestana', '=', 'it')],
+                             readonly=True)
 
     # ------------------------------------------------------------------ abrir
     @api.model
@@ -127,11 +141,14 @@ class KoroshiBandeja(models.TransientModel):
         ahora = fields.Datetime.now()
         lineas = []
         fuentes = [
-            ('pendiente', self._lecturas_paradas), ('pendiente', self._faltantes), ('pendiente', self._rechazadas),
-            ('pendiente', self._pedidos_sin_out), ('pendiente', self._zonas), ('pendiente', self._jobs_fallidos),
-            ('pendiente', self._s4t_envios), ('pendiente', self._s4t_traspasos), ('pendiente', self._actividades),
-            ('integraciones', self._sync_s4t), ('integraciones', self._cola_s4t), ('integraciones', self._xpo),
-            ('integraciones', self._crons),
+            ('hoy', self._tiendas_hoy), ('hoy', self._camion), ('hoy', self._leido_sin_caja),
+            ('hoy', self._validado_sin_caja), ('hoy', self._operarios_parados),
+            ('pendiente', self._faltantes), ('pendiente', self._stock_cero), ('pendiente', self._web),
+            ('pendiente', self._s4t_envios), ('pendiente', self._s4t_traspasos), ('pendiente', self._xpo),
+            ('pendiente', self._actividades),
+            ('it', self._lecturas_paradas), ('it', self._rechazadas), ('it', self._pedidos_sin_out),
+            ('it', self._zonas), ('it', self._jobs_fallidos), ('it', self._sync_s4t), ('it', self._cola_s4t),
+            ('it', self._crons),
         ]
         for pestana, fuente in fuentes:
             try:
@@ -153,10 +170,15 @@ class KoroshiBandeja(models.TransientModel):
                 'que': r.get('que'), 'cuantos': r.get('cuantos') or 0, 'detalle': (r.get('detalle') or '')[:250],
                 'accion': json.dumps(r['accion']) if r.get('accion') else False,
             })
+        self.write({'generado': ahora,
+                    'resumen': self._texto_resumen([r for r in lineas if r['pestana'] != 'it']),
+                    'resumen_it': self._texto_resumen([r for r in lineas if r['pestana'] == 'it'])})
+
+    @staticmethod
+    def _texto_resumen(lineas):
         rojos = len([r for r in lineas if r.get('semaforo') == 'rojo'])
         ambar = len([r for r in lineas if r.get('semaforo') == 'ambar'])
-        self.write({'generado': ahora,
-                    'resumen': '%d en rojo, %d en ámbar' % (rojos, ambar) if (rojos or ambar) else 'Todo en verde'})
+        return '%d en rojo, %d en ámbar' % (rojos, ambar) if (rojos or ambar) else 'Todo en verde'
 
     @staticmethod
     def _contar(n, que, detalle='', accion=None, rojo=True):
@@ -197,6 +219,212 @@ class KoroshiBandeja(models.TransientModel):
                  'detalle': '%d min de horario sin ninguna lectura guardada con %d operarios hoy en Lecturas. %s. '
                             'Mirar si la PDA da error al guardar.' % (sin, trabajando, texto),
                  'accion': {'res_model': 'koroshi.preparacion.lectura', 'domain': [], 'name': 'Lecturas'}}]
+
+    # ------------------------------------------------------------------ v2.6: Hoy (jefe de almacén)
+    def _param_hora(self, clave, defecto):
+        """'13:00' -> (minutos desde las 00:00, texto). Hora del almacén."""
+        texto = self.env['ir.config_parameter'].sudo().get_param(P + clave, defecto) or defecto
+        try:
+            h, m = [int(x) for x in texto.strip().split(':')]
+            return h * 60 + m, '%02d:%02d' % (h, m)
+        except (ValueError, TypeError):
+            h, m = [int(x) for x in defecto.split(':')]
+            return h * 60 + m, defecto
+
+    def _es_tarde(self, ahora, clave, defecto):
+        limite, texto = self._param_hora(clave, defecto)
+        loc = comun.a_local(ahora)
+        return loc.hour * 60 + loc.minute >= limite, texto
+
+    def _dom_tiendas(self):
+        """OUT de pedidos de tienda (los mismos que monitor y zonas: tipo de pedido «PED. TIENDAS»)."""
+        dom = [('company_id', '=', comun.COMPANY_ID), ('picking_type_code', '=', 'outgoing')]
+        if 's_order_type_id' in self.env['sale.order']._fields:
+            dom.append(('sale_id.s_order_type_id.name', '=', TIPO_TIENDAS))
+        else:
+            dom.append(('origin', 'not like', 'W-%'))
+        return dom
+
+    @staticmethod
+    def _nombres(recs, n=6):
+        return ', '.join(recs[:n].mapped('name')) + (len(recs) > n and '…' or '')
+
+    def _tiendas_hoy(self, ahora):
+        """OUT de tienda: cuántas quedan con reserva (por preparar), cuántas esperan stock y cuántas se validaron hoy."""
+        Pk = self.env['stock.picking'].sudo()
+        dom = self._dom_tiendas()
+        hoy_ini = comun.inicio_dia_utc(comun.hoy_local())
+        listas = Pk.search(dom + [('state', '=', 'assigned')], order='scheduled_date asc')
+        sin_stock = Pk.search_count(dom + [('state', 'in', ('confirmed', 'waiting'))])
+        hechas = Pk.search_count(dom + [('state', '=', 'done'), ('date_done', '>=', hoy_ini)])
+        tarde, hora = self._es_tarde(ahora, 'hora_tiendas', HORA_TIENDAS)
+        detalle = '%d por preparar (con reserva), %d esperando stock, %d validadas hoy.' % (
+            len(listas), sin_stock, hechas)
+        if listas and tarde:
+            detalle += ' Son más de las %s.' % hora
+        return [{'semaforo': listas and tarde and 'rojo' or 'verde', 'que': 'Tiendas: OUT por preparar',
+                 'cuantos': len(listas), 'detalle': detalle,
+                 'accion': listas and {'res_model': 'stock.picking', 'domain': [('id', 'in', listas.ids)],
+                                       'name': 'OUT de tienda por preparar'} or None}]
+
+    def _camion(self, ahora):
+        """Camión XPO de hoy: cerrado y correo a XPO enviado (Monitor > Consulta de envíos > Cerrar camión)."""
+        if 'koroshi.envio.cierre' not in self.env:
+            return []
+        que = 'Camión XPO de hoy'
+        hoy = comun.hoy_local()
+        cierre = self.env['koroshi.envio.cierre'].sudo().search(
+            [('dia', '=', hoy), ('company_id', '=', comun.COMPANY_ID)], limit=1)
+        if cierre:
+            correo = cierre.mail_id
+            mal = bool(correo) and correo.state == 'exception'
+            if mal:
+                texto_correo = 'El correo a XPO NO ha salido: %s' % (correo.failure_reason or '')[:80]
+            else:
+                texto_correo = 'Correo a XPO enviado%s.' % (cierre.envios > 1 and ' (%d veces)' % cierre.envios or '')
+            return [{'semaforo': mal and 'rojo' or 'verde', 'que': que, 'cuantos': cierre.bultos,
+                     'detalle': 'Cerrado a las %s por %s: %d tiendas, %d bultos. %s' % (
+                         _hm(cierre.fecha_envio)[-5:], cierre.usuario_id.name or '-', cierre.tiendas, cierre.bultos,
+                         texto_correo),
+                     'accion': {'res_model': 'koroshi.envio.cierre', 'domain': [('id', '=', cierre.id)],
+                                'name': 'Cierre del camión de hoy'}}]
+        hoy_ini = comun.inicio_dia_utc(hoy)
+        validadas = self.env['stock.picking'].sudo().search_count(self._dom_tiendas() + [
+            ('state', '=', 'done'), ('date_done', '>=', hoy_ini), ('carrier_id.name', 'ilike', 'XPO')])
+        if not validadas:
+            return [{'semaforo': 'gris', 'que': que,
+                     'detalle': 'Sin cerrar: hoy aún no hay OUT de tienda de XPO validadas.'}]
+        tarde, hora = self._es_tarde(ahora, 'hora_camion', HORA_CAMION)
+        return [{'semaforo': tarde and 'rojo' or 'ambar', 'que': que, 'cuantos': validadas,
+                 'detalle': 'SIN CERRAR: %d OUT de tienda de XPO validadas hoy y el correo a XPO no ha salido%s. '
+                            'Monitor > Consulta de envíos > Cerrar camión.' % (
+                                validadas, tarde and ' (son más de las %s)' % hora or '')}]
+
+    def _leido_sin_caja(self, ahora):
+        """Prendas leídas en la PDA que no están en ninguna caja, en OUT sin validar (las MU2 del 18/11)."""
+        if 'koroshi.preparacion.lectura' not in self.env:
+            return []
+        L = self.env['koroshi.preparacion.lectura'].sudo()
+        if 'en_caja' not in L._fields:
+            return []
+        dom = [('tipo', '=', 'leer'), ('resultado', '=', 'ok'), ('deshecha', '=', False), ('en_caja', '=', False),
+               ('move_line_id', '!=', False), ('move_line_id.result_package_id', '=', False),
+               ('picking_id.state', 'not in', ('done', 'cancel'))]
+        lecturas = L.search(dom, order='fecha asc')
+        outs = lecturas.mapped('picking_id')
+        vieja = lecturas[:1]
+        minutos = vieja and vieja.fecha and _minutos(vieja.fecha, ahora) or 0
+        sem = not outs and 'verde' or (minutos > MINUTOS_SIN_CAJA and 'rojo' or 'ambar')
+        return [{'semaforo': sem, 'que': 'Leído sin caja (OUT sin validar)', 'cuantos': len(outs),
+                 'detalle': outs and '%d prendas leídas fuera de caja en %d OUT (la más vieja hace %d min): %s' % (
+                     len(lecturas), len(outs), minutos, self._nombres(outs)) or '',
+                 'accion': outs and {'res_model': 'stock.picking', 'domain': [('id', 'in', outs.ids)],
+                                     'name': 'OUT leídas sin caja'} or None}]
+
+    def _validado_sin_caja(self, ahora):
+        """OUT de tienda validadas hoy con prendas servidas fuera de caja: a S4T llegan sin caja (Excel de Miguel)."""
+        que = 'Tiendas: validadas con prendas sin caja'
+        hoy_ini = comun.inicio_dia_utc(comun.hoy_local())
+        outs = self.env['stock.picking'].sudo().search(self._dom_tiendas() + [
+            ('state', '=', 'done'), ('date_done', '>=', hoy_ini)])
+        if not outs:
+            return [self._contar(0, que)]
+        lineas = self.env['stock.move.line'].sudo().search([
+            ('picking_id', 'in', outs.ids), ('qty_done', '>', 0), ('result_package_id', '=', False),
+            ('state', '!=', 'cancel')])
+        malas = lineas.mapped('picking_id')
+        return [self._contar(len(malas), que, '%d uds sin caja en %d OUT validadas hoy: %s' % (
+            int(sum(lineas.mapped('qty_done'))), len(malas), self._nombres(malas)),
+            {'res_model': 'stock.picking', 'domain': [('id', 'in', malas.ids)],
+             'name': 'OUT validadas con prendas sin caja'})]
+
+    def _operarios_parados(self, ahora):
+        """Operarios con una OUT abierta que llevan rato sin leer, y tareas o actividades abiertas de otro día."""
+        env = self.env
+        res = []
+        hoy_ini = comun.inicio_dia_utc(comun.hoy_local())
+        if 'koroshi.operario.tarea' in env:
+            T = env['koroshi.operario.tarea'].sudo()
+            limite = hasattr(T, '_minutos_sin_leer_max') and T._minutos_sin_leer_max() or 15
+            parados = []
+            for t in T.search([('estado', '=', 'curso'), ('inicio', '>=', hoy_ini)]):
+                minutos = int(t._minutos_sin_leer(ahora)) if hasattr(t, '_minutos_sin_leer') else 0
+                if minutos >= limite:
+                    parados.append((minutos, t))
+            parados.sort(key=lambda x: -x[0])
+            texto = ', '.join('%s (%d min, %s)' % (t.employee_id.name or '?', m,
+                                                    t.picking_id.name or t.batch_id.name or '')
+                              for m, t in parados[:6])
+            res.append({'semaforo': parados and 'ambar' or 'verde', 'que': 'Operarios parados',
+                        'cuantos': len(parados),
+                        'detalle': parados and 'Con una OUT abierta y sin leer hace más de %d min: %s' % (
+                            limite, texto) or '',
+                        'accion': parados and {'res_model': 'koroshi.operario.tarea',
+                                               'domain': [('id', 'in', [t.id for _m, t in parados])],
+                                               'name': 'Operarios parados'} or None})
+        viejas = []
+        if 'koroshi.operario.tarea' in env:
+            viejas += [t.employee_id.name for t in env['koroshi.operario.tarea'].sudo().search(
+                [('estado', '=', 'curso'), ('inicio', '<', hoy_ini)])]
+        if 'koroshi.actividad.registro' in env:
+            viejas += [r.employee_id.name for r in env['koroshi.actividad.registro'].sudo().search(
+                [('estado', '=', 'curso'), ('inicio', '<', hoy_ini)])]
+        if viejas:
+            res.append({'semaforo': 'ambar', 'que': 'Abiertos de otro día', 'cuantos': len(viejas),
+                        'detalle': ', '.join(n or '?' for n in viejas[:8])})
+        return res
+
+    # ------------------------------------------------------------------ v2.6: Pendiente (jefe de almacén)
+    def _stock_cero(self, ahora):
+        """Artículos con pedidos esperando stock y 0 uds en el almacén según Odoo: hay que buscarlos o ajustarlos."""
+        que = 'Stock 0 con pedidos esperando'
+        M = self.env['stock.move'].sudo()
+        dom = [('company_id', '=', comun.COMPANY_ID), ('picking_code', '=', 'outgoing'),
+               ('state', 'in', ('confirmed', 'partially_available')),
+               ('picking_id.state', 'not in', ('done', 'cancel', 'draft'))]
+        esperan = {g['product_id'][0]: g['product_uom_qty']
+                   for g in M.read_group(dom, ['product_id', 'product_uom_qty'], ['product_id']) if g['product_id']}
+        if not esperan:
+            return [self._contar(0, que)]
+        con = set(g['product_id'][0] for g in self.env['stock.quant'].sudo().read_group(
+            [('product_id', 'in', list(esperan)), ('location_id.usage', '=', 'internal'),
+             ('company_id', '=', comun.COMPANY_ID), ('quantity', '>', 0)], ['product_id'], ['product_id'])
+            if g['product_id'])
+        sin = [pid for pid in esperan if pid not in con]
+        uds = int(sum(esperan[pid] for pid in sin))
+        return [self._contar(len(sin), que,
+                             '%d artículos a 0 en Odoo con %d uds pedidas: buscarlos o ajustar el stock.' % (
+                                 len(sin), uds),
+                             {'res_model': 'stock.move', 'domain': dom + [('product_id', 'in', sin)],
+                              'name': 'Pedidos esperando artículos a 0'}, rojo=False)]
+
+    def _web(self, ahora):
+        """Pedidos web: OUT sin agrupar (completas y con reserva incompleta) y canceladas de hoy (correo a Betty)."""
+        if 'koroshi.web.corte' not in self.env:
+            return []
+        C = self.env['koroshi.web.corte'].sudo()
+        res = []
+        outs = C._candidatas(ahora)
+        incompletas = outs.filtered(lambda p: not C._reserva_completa(p))
+        completas = outs - incompletas
+        res.append({'semaforo': incompletas and 'ambar' or 'verde', 'que': 'Web: OUT sin agrupar',
+                    'cuantos': len(outs),
+                    'detalle': outs and '%d completas, %d con reserva incompleta: %s' % (
+                        len(completas), len(incompletas), self._nombres(incompletas or completas)) or '',
+                    'accion': outs and {'res_model': 'stock.picking', 'domain': [('id', 'in', outs.ids)],
+                                        'name': 'OUT web sin agrupar'} or None})
+        hoy_ini = comun.inicio_dia_utc(comun.hoy_local())
+        cortes = C.search([('fecha', '>=', hoy_ini), ('n_canceladas', '>', 0)])
+        if cortes:
+            n = sum(cortes.mapped('n_canceladas'))
+            mal = cortes.filtered(lambda c: not c.mail_id or c.mail_id.state == 'exception')
+            res.append({'semaforo': mal and 'rojo' or 'verde', 'que': 'Web: canceladas hoy', 'cuantos': n,
+                        'detalle': mal and 'El correo a Betty de %d corte(s) no ha salido.' % len(mal)
+                        or '%d OUT canceladas; correo a Betty enviado.' % n,
+                        'accion': {'res_model': 'koroshi.web.corte', 'domain': [('id', 'in', cortes.ids)],
+                                   'name': 'Cortes web de hoy'}})
+        return res
+
 
     def _faltantes(self, ahora):
         if 'koroshi.faltante' not in self.env:
@@ -257,18 +485,24 @@ class KoroshiBandeja(models.TransientModel):
     def _s4t_envios(self, ahora):
         if 'koroshi.s4t.envio' not in self.env:
             return []
-        dom = [('state', '=', 'rechazado')]
+        dom = [('state', 'in', ('rechazado', 'error', 'corregir'))]   # v2.6: también error y por corregir
         n = self.env['koroshi.s4t.envio'].sudo().search_count(dom)
-        return [self._contar(n, 'Envíos rechazados por S4T', '', {'res_model': 'koroshi.s4t.envio', 'domain': dom,
-                                                                   'name': 'Envíos rechazados por S4T'})]
+        return [self._contar(n, 'Envíos a S4T rechazados o con error', 'Pedidos que S4T no tiene como enviados',
+                             {'res_model': 'koroshi.s4t.envio', 'domain': dom,
+                              'name': 'Envíos a S4T rechazados o con error'})]
 
     def _s4t_traspasos(self, ahora):
         if 'koroshi.s4t.traspaso' not in self.env:
             return []
-        dom = [('state', '=', 'error')]
-        n = self.env['koroshi.s4t.traspaso'].sudo().search_count(dom)
-        return [self._contar(n, 'Traspasos S4T con error', '', {'res_model': 'koroshi.s4t.traspaso', 'domain': dom,
-                                                                 'name': 'Traspasos S4T con error'})]
+        T = self.env['koroshi.s4t.traspaso'].sudo()   # v2.6: también los pendientes de entrar
+        err = [('state', '=', 'error')]
+        nuevos = [('state', '=', 'nuevo')]
+        n_err, n_nuevo = T.search_count(err), T.search_count(nuevos)
+        return [self._contar(n_err, 'Traspasos S4T con error', 'Devoluciones o correcciones que no han entrado',
+                             {'res_model': 'koroshi.s4t.traspaso', 'domain': err, 'name': 'Traspasos S4T con error'}),
+                self._contar(n_nuevo, 'Traspasos S4T pendientes de entrar', 'Sin recepción creada todavía',
+                             {'res_model': 'koroshi.s4t.traspaso', 'domain': nuevos,
+                              'name': 'Traspasos S4T pendientes'}, rojo=False)]
 
     def _actividades(self, ahora):
         if 'koroshi.actividad.registro' not in self.env:
@@ -279,7 +513,7 @@ class KoroshiBandeja(models.TransientModel):
                              {'res_model': 'koroshi.actividad.registro', 'domain': dom,
                               'name': 'Tramos por revisar'}, rojo=False)]
 
-    # ------------------------------------------------------------------ Integraciones
+    # ------------------------------------------------------------------ IT (antes «Integraciones»)
     def _sync_s4t(self, ahora):
         """Resumen de la última pasada del sync de pedidos S4T (cron 186): lo deja en ir.logging con func = nombre."""
         cron = self.env['ir.cron'].sudo().with_context(active_test=False).search(

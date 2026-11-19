@@ -93,8 +93,19 @@ ensena el monitor con el codigo del operario en vez del nombre y sin Produccion 
 entradas del monitor en Inventario (Consulta de envios, Produccion por hora) cuelgan de KOROSHI · Operaciones, que
 este modulo archiva: no se ven. Almacen Nath sigue viendo Monitor picking, Hoja de carga XPO, Faltante (PDA) y
 Registrar consumo. Solo menus.
+v2.6.0 (19/11/2026): bandeja del encargado para el jefe de almacen (Isaac: lo que habia era importante para IT, no
+para el jefe). Tres pestanas. Hoy: tiendas por preparar (rojo si quedan con reserva pasada la hora
+koroshi_menu.hora_tiendas, 13:00), camion XPO de hoy (cerrado y correo a XPO enviado; rojo sin cerrar pasada
+koroshi_menu.hora_camion, 15:00), leido sin caja en OUT sin validar (las MU2 del 18/11; rojo con mas de 60 min), OUT
+de tienda validadas hoy con prendas sin caja (el Excel de Miguel del 19/11), operarios parados y tareas o actividades
+abiertas de otro dia. Pendiente: faltantes, stock 0 con pedidos esperando, web (OUT sin agrupar con reserva completa
+o incompleta y canceladas de hoy con el correo a Betty), envios a S4T rechazados/error/por corregir, traspasos S4T con
+error y pendientes de entrar, OUT de XPO sin etiqueta y tramos de actividad por revisar. IT (grupo nuevo «KOROSHI:
+IT», solo Departament IT; no vale el de administracion porque Almacen Nath tambien lo es): Lecturas de la PDA
+paradas, lecturas rechazadas de cola, pedidos sin OUT, reparto de zonas con aviso, jobs fallidos, sync y cola S4T y
+crons. Solo lee; tablas transitorias propias. Migracion 13.0.2.6.0 (Departament IT al grupo IT).
 """,
-    'version': '13.0.2.5.2',
+    'version': '13.0.2.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

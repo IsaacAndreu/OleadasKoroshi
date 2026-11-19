@@ -43,6 +43,18 @@ def dar_s4t(env):
     return nuevos
 
 
+USUARIO_IT = 'departamentit@nath.es'   # v2.6: ve la pestaña IT de la bandeja
+
+
+def dar_it(env):
+    """v2.6: mete a «Departament IT» en «KOROSHI: IT» (la pestaña IT de la bandeja). Solo añade."""
+    grupo = env.ref('koroshi_menu.grupo_it', raise_if_not_found=False)
+    usuario = env['res.users'].with_context(active_test=False).search([('login', '=', USUARIO_IT)], limit=1)
+    if grupo and usuario and usuario not in grupo.users:
+        grupo.write({'users': [(4, usuario.id)]})
+    return usuario
+
+
 USUARIO_PICKING = 'almacen@nath.es'   # v2.5: «Almacén Nath», el usuario de las PDA y el picking: NO es jefe
 
 
@@ -66,6 +78,7 @@ def post_init_hook(cr, registry):
     dar_bandeja_en_apps(env)
     dar_jefes(env)
     dar_s4t(env)   # v2.5.1
+    dar_it(env)    # v2.6.0
 
 
 def uninstall_hook(cr, registry):

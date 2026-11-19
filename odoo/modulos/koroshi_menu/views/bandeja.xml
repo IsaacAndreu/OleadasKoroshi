@@ -1,6 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- v2.4 (auditoría 13/11, fase 7, ideas 2 y 3): Bandeja del encargado. Se calcula al abrir (models/bandeja.py). -->
+    <!-- v2.6: la pestaña IT de la bandeja (antes que la vista, que lo usa). Al instalar o actualizar entra «Departament IT» (departamentit@nath.es). -->
+    <record id="grupo_it" model="res.groups">
+        <field name="name">KOROSHI: IT</field>
+        <field name="comment">Ve la pestaña IT de la bandeja del encargado (crons, colas, jobs, sync S4T, lecturas de la PDA).</field>
+    </record>
+
     <record id="view_koroshi_bandeja_linea_tree" model="ir.ui.view">
         <field name="name">koroshi.bandeja.linea.tree</field>
         <field name="model">koroshi.bandeja.linea</field>
@@ -34,7 +40,25 @@
                         <div class="text-muted">Calculado el <field name="generado" class="oe_inline"/>.
                             Solo lee: para resolver, «Abrir» en cada línea.</div>
                     </div>
+                    <!-- v2.6 (19/11/2026): Hoy y Pendiente son del jefe de almacén; IT solo la ve el grupo
+                         «KOROSHI: IT» (Departament IT). No vale base.group_system: Almacén Nath también es administrador. -->
                     <notebook>
+                        <page string="Hoy" name="hoy">
+                            <field name="hoy_ids" nolabel="1">
+                                <tree create="false" edit="false" delete="false"
+                                      decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'"
+                                      decoration-success="semaforo == 'verde'" decoration-muted="semaforo == 'gris'">
+                                    <field name="semaforo" invisible="1"/>
+                                    <field name="accion" invisible="1"/>
+                                    <field name="marca"/>
+                                    <field name="que"/>
+                                    <field name="cuantos"/>
+                                    <field name="detalle"/>
+                                    <button name="action_abrir" type="object" string="Abrir" icon="fa-arrow-right"
+                                            attrs="{'invisible': [('accion', '=', False)]}"/>
+                                </tree>
+                            </field>
+                        </page>
                         <page string="Pendiente" name="pendiente">
                             <field name="pendiente_ids" nolabel="1">
                                 <tree create="false" edit="false" delete="false"
@@ -51,8 +75,9 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="Integraciones" name="integraciones">
-                            <field name="integracion_ids" nolabel="1">
+                        <page string="IT" name="it" groups="grupo_it">
+                            <div class="text-muted">IT: <field name="resumen_it" class="oe_inline"/></div>
+                            <field name="it_ids" nolabel="1">
                                 <tree create="false" edit="false" delete="false"
                                       decoration-danger="semaforo == 'rojo'" decoration-warning="semaforo == 'ambar'"
                                       decoration-success="semaforo == 'verde'" decoration-muted="semaforo == 'gris'">
