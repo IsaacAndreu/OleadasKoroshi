@@ -7,4 +7,7 @@
     <!-- KOROSHI > Almacén (sección de koroshi_menu, también en la 2.4.2 instalada), la primera -->
     <menuitem id="menu_koroshi_buscador_stock" name="Buscador de stock" parent="koroshi_menu.menu_koroshi_sec_almacen"
               action="action_koroshi_buscador_stock" sequence="5" groups="stock.group_stock_user"/>
+    <!-- v1.1: también en la barra de arriba de Inventario, para la oficina (Betty), pedido de Isaac 19/11 -->
+    <menuitem id="menu_koroshi_buscador_stock_inventario" name="Buscador de stock" parent="stock.menu_stock_root"
+              action="action_koroshi_buscador_stock" sequence="1" groups="stock.group_stock_user"/>
 </odoo>

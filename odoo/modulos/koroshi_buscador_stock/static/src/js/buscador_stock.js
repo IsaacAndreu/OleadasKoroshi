@@ -1,6 +1,7 @@
 odoo.define('koroshi_buscador_stock.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Buscador de stock v1.0.0 - pantalla de la oficina, SOLO LECTURA.
+/* KOROSHI Buscador de stock v1.1.0 - pantalla de la oficina, SOLO LECTURA.
+ * v1.1: el modelo enseña dónde están todas sus tallas sin pulsar ninguna; un solo modelo encontrado se abre solo.
  * Una caja: lineal (L94), contenedor KO_/TT_ (o un trozo), código de hueco, EAN o referencia, o un trozo de la
  * referencia o la descripción (lista de modelos). Un modelo enseña sus tallas/colores con stock, reservado, libre y
  * entradas pendientes; una talla, dónde está, qué OUT la reservan y qué recepciones la traen. Un hueco o contenedor,
@@ -155,9 +156,27 @@ var Pantalla = AbstractAction.extend({
         });
         h += '</tbody><tfoot><tr><td colspan="3">Total</td>' + _celdaN(m.total.uds) + _celdaN(m.total.reservadas) +
             _celdaN(m.total.libres, 'o_kb_libre') + _celdaN(m.total.entradas) + '</tr></tfoot></table>';
-        h += '<p class="o_kb_nota">Pulsa una talla o color para ver dónde está, quién la reserva y qué entradas la traen.</p></div>';
-        if (prenda) { h += this._htmlPrenda(prenda); }
-        return h;
+        h += '<p class="o_kb_nota">Pulsa una talla o color para ver quién la reserva y qué entradas la traen.</p></div>';
+        if (prenda) { return h + this._htmlPrenda(prenda); }
+        // v1.1: ubicaciones de todo el modelo (todas las tallas), sin pulsar ninguna
+        h += '<div class="o_kb_card"><h4>Dónde está (todas las tallas)</h4>';
+        if (!m.donde.length) {
+            h += '<p class="o_kb_vacio">No hay stock en ninguna ubicación interna.</p>';
+        } else {
+            h += '<table><thead><tr><th>Hueco</th><th>Contenedor</th><th>Talla / color</th><th class="o_kb_n">Uds</th>' +
+                '<th class="o_kb_n">Reservadas</th><th class="o_kb_n">Libres</th></tr></thead><tbody>';
+            _.each(m.donde, function (d) {
+                h += '<tr><td><a href="#" class="o_kb_ir_ubicacion" data-id="' + d.hueco_id + '">' + _e(d.hueco) +
+                    '</a></td><td>' + (d.contenedor ? '<a href="#" class="o_kb_ir_ubicacion" data-id="' +
+                    d.ubicacion_id + '">' + _e(d.contenedor) + '</a>' : '') + '</td><td><a href="#" ' +
+                    'class="o_kb_ir_prenda" data-id="' + d.producto_id + '" data-plantilla="' + m.id + '">' +
+                    _e(d.variante) + '</a></td>' + _celdaN(d.uds) + _celdaN(d.reservadas) +
+                    _celdaN(d.libres, 'o_kb_libre') + '</tr>';
+            });
+            h += '</tbody></table>';
+            if (m.donde_mas) { h += '<p class="o_kb_mas">Se ven las primeras 200 ubicaciones.</p>'; }
+        }
+        return h + '</div>';
     },
 
     _htmlPrenda: function (p) {

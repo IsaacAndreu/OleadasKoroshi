@@ -154,8 +154,22 @@ class KoroshiBuscadorStock(http.Controller):
                           'libres': _redondear(uds - res),
                           'entradas': _redondear((entradas.get(p.id) or {}).get('product_qty', 0.0))})
         total = {k: _redondear(sum(f[k] for f in filas)) for k in ('uds', 'reservadas', 'libres', 'entradas')}
+        # v1.1: dónde está el modelo entero (todas las tallas), sin tener que pulsar cada talla (pedido de Isaac 19/11)
+        quants = self._env('stock.quant').search(
+            self._dominio_quant() + [('product_id', 'in', variantes.ids), ('quantity', '!=', 0)],
+            limit=MAX_UBICACIONES + 1)
+        donde = []
+        for q in quants[:MAX_UBICACIONES]:
+            hueco, cont = self._hueco_y_contenedor(q.location_id)
+            donde.append({'hueco_id': hueco.id, 'hueco': hueco.complete_name, 'contenedor': cont,
+                          'ubicacion_id': q.location_id.id, 'producto_id': q.product_id.id,
+                          'variante': self._nombre_variante(q.product_id), 'uds': _redondear(q.quantity),
+                          'reservadas': _redondear(q.reserved_quantity),
+                          'libres': _redondear(q.quantity - q.reserved_quantity)})
+        donde.sort(key=lambda f: (f['hueco'], f['contenedor'], f['variante']))
         return {'id': plantilla.id, 'nombre': plantilla.display_name, 'referencia': plantilla.default_code or '',
-                'filas': filas, 'total': total, 'producto_id': producto_id or False}
+                'filas': filas, 'total': total, 'producto_id': producto_id or False,
+                'donde': donde, 'donde_mas': len(quants) > MAX_UBICACIONES}
 
     def _dominio_entradas(self):
         return [('picking_type_id.code', '=', 'incoming'), ('state', 'in', ESTADOS_ABIERTOS),
@@ -338,6 +352,9 @@ class KoroshiBuscadorStock(http.Controller):
             locs, cont_mas = self._contenedores_por_trozo(texto)
             if not modelos and not locs:
                 raise UserError('No encuentro nada con «%s»: ni prenda, ni hueco, ni contenedor.' % texto)
+            if len(modelos) == 1 and not locs:      # v1.1: un solo modelo con ese nombre: se abre directamente
+                t = self._env('product.template').browse(modelos[0]['id'])
+                return {'ok': True, 'tipo': 'modelo', 'modelo': self._datos_modelo(t), 'prenda': False}
             return {'ok': True, 'tipo': 'lista', 'texto': texto, 'modelos': modelos, 'modelos_mas': modelos_mas,
                     'contenedores': self._lista_contenedores(locs), 'contenedores_mas': cont_mas}
         except UserError as e:

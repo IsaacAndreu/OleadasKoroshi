@@ -4,7 +4,7 @@
     'summary': 'Pantalla de la oficina para buscar stock por EAN, referencia, trozo, hueco, lineal o contenedor. '
                'Solo lectura.',
     'description': """
-Buscador de stock para la oficina (KOROSHI > Almacén > Buscador de stock). SOLO LECTURA: no cambia nada.
+Buscador de stock para la oficina (Inventario > Buscador de stock, arriba; y KOROSHI > Almacén > Buscador de stock). SOLO LECTURA: no cambia nada.
 
 Una sola caja de búsqueda. Lo escrito se entiende, por este orden, como:
 - lineal (L94): sus huecos con contenedores y unidades;
@@ -23,8 +23,11 @@ están copiadas de su 1.7.0 (se pasarán a koroshi_base en otra versión). Dise�
 bin/versiones/diseno-buscador-stock_2026-11-19.md
 
 v1.0.0 (19/11/2026): primera versión (pedido de Isaac del 19/11: buscador de stock aparte para la oficina).
+v1.1.0 (19/11/2026): antes de instalar la 1.0.0, pedido de Isaac para Betty: «Buscador de stock» también en la barra
+  de arriba de Inventario; un modelo enseña ya dónde está (hueco, contenedor, talla, uds, reservadas y libres de todas
+  las tallas) sin pulsar ninguna; si el nombre o la referencia escritos dan un solo modelo, se abre directamente.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
