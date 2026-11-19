@@ -48,7 +48,8 @@ class KoroshiZonasCorreo(models.AbstractModel):
         extra = ej.comparacion and (' | sombra: %s' % dict(ej._fields['comparacion'].selection)[ej.comparacion]) or ''
         # v1.3.0: el aviso de hora de fin (y las OUT de dias anteriores), arriba del correo
         for l in (ej.informe or '').split('\n'):
-            if l.startswith('AVISO:') or l.startswith('OUT de dias anteriores'):
+            # v1.5.0: y las lineas HORA DE FIN (a que hora se acaba y cuantas personas harian falta)
+            if l.startswith('AVISO:') or l.startswith('OUT de dias anteriores') or l.startswith('HORA DE FIN:'):
                 extra += ' | %s' % l
         return '%s (%s)%s' % (primera, ej.name, extra), ej.informe or ''
 

@@ -42,6 +42,16 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.5.0 (19/11/2026): acabar a la hora y preparar el paso a real (bin/versiones/zonas-diagnostico-y-mejoras_2026-11-19.md).
+  Ensayo: en modo sombra, el calculo que se compara con el cron 202 es un SIMULAR (parte dentro de un savepoint, pasa
+  las comprobaciones y lo deshace), no un DIAGNOSTICO: el camino que parte no se habia ejecutado nunca con OUT de
+  verdad. La comparacion de las 04:30 dice si el ensayo ha ido bien. Al SIMULAR, las OUT nuevas se llaman
+  '<OUT>-SIM-<zona>' y no gastan numeros de la secuencia EFFEC/OUT/ (no vuelve atras al deshacer: dejaria huecos).
+  Aviso: el informe y el correo del dia dicen a que hora se acaba con las personas de la configuracion y, si es
+  despues de la hora de fin, cuantas personas harian falta por zona. Solo texto: el reparto no cambia.
+  Previsto contra real: cada noche, con las lecturas de la PDA (koroshi_preparacion, si esta), primera lectura,
+  95 % y ultima por zona, personas que han leido y desvio de la zona mas larga contra lo previsto.
+  Campos nuevos solo en koroshi.zonas.ejecucion (tabla propia).
 v1.4.0 (14/11/2026): auditoria 13/11, fase 6. Primer modulo con koroshi_base: COMPANY_ID, la hora del almacen,
   hoy y el rango de dias en UTC salen de koroshi_base.comun (antes, copiados aqui). Mismo comportamiento.
   Nueva dependencia: koroshi_base (instalarlo antes).
@@ -62,7 +72,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.4.0',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

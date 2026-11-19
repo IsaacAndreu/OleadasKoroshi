@@ -9,8 +9,11 @@
 from . import lector
 
 
-def aplicar(env, rep):
-    """Parte las OUT segun rep (motor.modelo.Reparto). Devuelve (lineas de informe, fallos, OUT, out_de)."""
+def aplicar(env, rep, simular=False):
+    """Parte las OUT segun rep (motor.modelo.Reparto). Devuelve (lineas de informe, fallos, OUT, out_de).
+    v1.5.0: simular=True (SIMULAR, que siempre se deshace) pone el nombre a las OUT nuevas ('<OUT>-SIM-<zona>') en
+    vez de sacarlo de la secuencia EFFEC/OUT/: la secuencia de Postgres no vuelve atras al deshacer y cada ensayo
+    dejaria huecos en la numeracion de las OUT."""
     COMPANY_ID = rep.parametros['COMPANY_ID']
     ctx = lector.contexto_compania(env)
     Picking = env['stock.picking'].with_context(ctx)
@@ -51,14 +54,17 @@ def aplicar(env, rep):
         for zn in orden_zonas:
             if zn == principal or uds_z.get(zn, 0.0) <= 0:
                 continue
-            nueva = p.copy({
+            vals_copia = {
                 'move_lines': [],
                 'move_line_ids': [],
                 'package_level_ids': [],
                 'batch_id': False,
                 'backorder_id': False,
                 'origin': p.origin,
-            })
+            }
+            if simular:
+                vals_copia['name'] = '%s-SIM-%s' % (p.name, zn)
+            nueva = p.copy(vals_copia)
             out_de[(p.id, zn)] = nueva
         for m in p.move_lines:
             if m.state in ('done', 'cancel'):

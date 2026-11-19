@@ -49,7 +49,23 @@ partido todo. **El camino que escribe (partir, agrupar, nota) no se ha ejecutado
 - El modelo de litros sigue previendo un 10–20 % más de cajas de las reales (80 L contra los ~93 L del MASTER). Esto es
   la fase 5 (litros); Isaac no lo ha elegido ahora.
 
-### Tiempo: previsto contra real (hora del almacén)
+### Corrección del 19/11 por la tarde: tiempos con las lecturas de la PDA
+
+La tabla de abajo salió de la hora de modificación de las líneas (`write_date`). Esa hora cambia también al meter en
+caja y al validar, así que **la «cola» de 1-2 h era en buena parte falsa**. Con las lecturas de la PDA
+(`koroshi.preparacion.lectura`: hora exacta y operario) sale esto:
+
+| Día | Previsto | Primera lectura | 95 % de las uds | Última lectura | Personas que leen |
+|---|---|---|---|---|---|
+| 17/11 | ~4 h de trabajo (D3 248 min) | 08:19 (D1 leyó algo suelto a las 06:07) | 12:17–12:21 | **12:34** (4 h 15 desde las 08:19) | 10 (María hace MU y luego ayuda en D1) |
+| 19/11 | **9:49** | 06:02 | 09:15–09:23 | **09:31** | 10 |
+| 13/11 | 11:26 | — | — | — | casi sin lecturas: ese día aún no se leía en Lecturas |
+
+**El modelo de tiempo acierta.** El 19/11 se acabó 18 min antes de lo previsto, y el 17/11 la duración fue la prevista.
+Lo que hace acabar tarde es **la hora de empezar** (el 17/11, a las 08:19) y **los días que no caben** (16/11). El
+muelle no es la cola: María lo acaba pronto y pasa a ayudar. La mejora E pierde prioridad.
+
+### Tiempo: previsto contra real (hora del almacén), primera versión con `write_date`
 
 Sacado de la hora de lectura de las líneas de cada agrupación. Todas se leen con el usuario compartido «Almacén», así que
 **no se sabe cuántas personas había de verdad** en cada zona (la configuración dice 12).

@@ -22,6 +22,10 @@
                 <field name="cajas_compartidas" sum="Compartidas" optional="show"/>
                 <field name="pct_cajas_cerradas"/>
                 <field name="pct_outs_cerradas" optional="show"/>
+                <field name="fin_previsto" optional="show"/>
+                <field name="fin_real" optional="show"/>
+                <field name="personas_reales" optional="hide"/>
+                <field name="desvio_min" optional="show"/>
                 <field name="medido_el" optional="hide"/>
                 <button name="action_medir" type="object" string="Medir" icon="fa-refresh"/>
             </tree>
@@ -71,6 +75,17 @@
                             <field name="cajas_compartidas"/>
                             <field name="pct_cajas_cerradas"/>
                         </group>
+                        <!-- v1.5.0: hora de fin prevista y real -->
+                        <group>
+                            <field name="fin_previsto"/>
+                            <field name="personas_necesarias"/>
+                        </group>
+                        <group>
+                            <field name="inicio_real"/>
+                            <field name="fin_real"/>
+                            <field name="personas_reales"/>
+                            <field name="desvio_min"/>
+                        </group>
                     </group>
                     <notebook>
                         <page string="Informe del reparto" attrs="{'invisible': [('informe', '=', False)]}">
@@ -83,6 +98,10 @@
                         </page>
                         <page string="Informe de la medición">
                             <field name="informe_medicion" nolabel="1"
+                                   style="font-family: monospace; white-space: pre; font-size: 12px;"/>
+                        </page>
+                        <page string="Previsto contra real" attrs="{'invisible': [('informe_tiempos', '=', False)]}">
+                            <field name="informe_tiempos" nolabel="1"
                                    style="font-family: monospace; white-space: pre; font-size: 12px;"/>
                         </page>
                         <page string="OUT">

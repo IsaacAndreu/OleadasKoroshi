@@ -20,6 +20,7 @@ from odoo.addons.koroshi_base import comun
 
 from ..motor import medir as motor_medir
 from ..motor import modelo
+from ..motor import tiempos as motor_tiempos
 from ..motor import v12f
 from . import escritor
 from . import lector
@@ -77,6 +78,21 @@ class KoroshiZonasEjecucion(models.Model):
     comparacion = fields.Selection([('igual', 'Igual que el cron 202'), ('distinta', 'Distinta del cron 202'),
                                     ('sin_202', 'El cron 202 no ha partido')], 'Comparación', readonly=True)
     informe_comparacion = fields.Text('Informe de la comparación', readonly=True)
+
+    # v1.5.0: aviso de hora de fin (al calcular) y previsto contra real (al medir)
+    fin_previsto = fields.Char('Fin previsto', readonly=True, help='Hora a la que acaba la zona más larga (HH:MM)')
+    personas_necesarias = fields.Integer('Personas para la hora de fin', readonly=True,
+                                         help='Personas que harían falta para acabar a la hora de fin de la '
+                                              'configuración (0 = no hacen falta más o no se ha calculado)')
+    prevision_zonas = fields.Text('Previsión por zona', readonly=True,
+                                  help='JSON con la hora de inicio y de fin previstas y los minutos y personas de '
+                                       'cada zona: con ella se compara lo real al medir')
+    inicio_real = fields.Char('Inicio real', readonly=True, help='Primera lectura de la PDA en estas zonas (HH:MM)')
+    fin_real = fields.Char('Fin real', readonly=True, help='Última lectura de la PDA en estas zonas (HH:MM)')
+    personas_reales = fields.Integer('Personas reales', readonly=True, help='Operarios distintos que han leído')
+    desvio_min = fields.Integer('Desvío (min)', readonly=True,
+                                help='Duración real de la zona más larga menos la prevista (positivo = más lenta)')
+    informe_tiempos = fields.Text('Previsto contra real', readonly=True)
 
     # Medicion (fase 1)
     medicion = fields.Selection([('sin_medir', 'Sin medir'), ('parcial', 'En parte (hay OUT sin validar)'),
@@ -310,6 +326,49 @@ class KoroshiZonasEjecucion(models.Model):
             'pct_cajas_cerradas': tot['pct_cajas_cerradas'],
             'pct_outs_cerradas': tot['pct_outs_cerradas'],
         })
+        self._medir_tiempos(zona_de)
+
+    def _prevision_del_dia(self):
+        """v1.5.0: la prevision por zona de este prefijo: la suya (modo real) o la de la sombra de ese dia."""
+        self.ensure_one()
+        if self.prevision_zonas:
+            return json.loads(self.prevision_zonas)
+        sombra = self.search([('fecha', '=', self.fecha), ('prefijo', '=', self.prefijo), ('sombra', '=', True),
+                              ('prevision_zonas', '!=', False), ('company_id', '=', self.company_id.id)],
+                             order='id desc', limit=1)
+        return sombra and json.loads(sombra.prevision_zonas) or None
+
+    def _medir_tiempos(self, zona_de):
+        """v1.5.0 (B): previsto contra real con las lecturas de la PDA (koroshi_preparacion). Si ese modulo no
+        esta, no hace nada. zona_de: {OUT id: zona}. Solo escribe en esta ejecucion."""
+        self.ensure_one()
+        if 'koroshi.preparacion.lectura' not in self.env or not zona_de:
+            return
+        tz = pytz.timezone(TZ)
+        dia0 = tz.localize(datetime.datetime.combine(self.fecha, datetime.time(0, 0)))
+        lecturas = self.env['koroshi.preparacion.lectura'].sudo().search_read(
+            [('picking_id', 'in', list(zona_de.keys())), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
+             ('deshecha', '=', False)], ['fecha', 'cantidad', 'employee_id', 'picking_id'])
+        por_zona = {}
+        operarios = set()
+        for l in lecturas:
+            minuto = (pytz.utc.localize(l['fecha']).astimezone(tz) - dia0).total_seconds() / 60.0
+            quien = l['employee_id'] and l['employee_id'][0] or 0
+            if quien:
+                operarios.add(quien)
+            zona = zona_de.get(l['picking_id'][0], '')
+            por_zona.setdefault(zona, []).append((minuto, l['cantidad'] or 0.0, quien))
+        real = dict((zn, motor_tiempos.resumen_lecturas(ls)) for zn, ls in por_zona.items())
+        previsto = self._prevision_del_dia()
+        lineas, res = motor_tiempos.comparar(previsto, real, len(operarios))
+        self.write({
+            'fin_previsto': self.fin_previsto or (previsto and motor_tiempos.reloj(previsto['fin'])) or False,
+            'inicio_real': res.get('inicio') is not None and motor_tiempos.reloj(res['inicio']) or False,
+            'fin_real': res.get('fin') is not None and motor_tiempos.reloj(res['fin']) or False,
+            'personas_reales': res.get('personas') or 0,
+            'desvio_min': res.get('desvio') or 0,
+            'informe_tiempos': '\n'.join(lineas),
+        })
 
     def _texto_informe(self, tot, por_zona, filas, regla, medidas):
         lin = []
@@ -421,7 +480,24 @@ class KoroshiZonasEjecucion(models.Model):
         datos = lector.datos_reparto(self.env, contexto, ahora, p)
         datos['contexto'] = contexto
         rep = v12f.repartir(datos, cambios, contexto)
-        ej = self.create({
+        # v1.5.0 (A): aviso de hora de fin y personas que harian falta. Solo texto: el reparto no cambia.
+        vals_tiempos = {}
+        if rep.estado == 'listo':
+            fin_min = v12f.minutos(p['HORA_FIN'])
+            aviso = motor_tiempos.lineas_aviso(rep, fin_min, p['PERSONAS'])
+            pos = 1
+            for i, l in enumerate(rep.lineas):
+                if l.startswith('Acaba previsto') or l.startswith('Personas por zona') or l.startswith('AVISO:'):
+                    pos = i + 1
+            rep.lineas[pos:pos] = aviso
+            total, _por_zona = motor_tiempos.personas_necesarias(rep, fin_min)
+            prev = motor_tiempos.prevision(rep)
+            vals_tiempos = {
+                'fin_previsto': motor_tiempos.reloj(prev['fin']),
+                'personas_necesarias': total and total > p['PERSONAS'] and total or 0,
+                'prevision_zonas': json.dumps(prev, sort_keys=True),
+            }
+        ej = self.create(dict(vals_tiempos, **{
             'modo': rep.modo.lower(),
             'fecha': ahora.date(),
             'prefijo': rep.prefijo,
@@ -433,7 +509,7 @@ class KoroshiZonasEjecucion(models.Model):
             'datos_entrada_nombre': 'koroshi_zonas_%s_%s.json' % (ahora.strftime('%Y%m%d_%H%M'), rep.modo.lower()),
             'reparto_lineas': json.dumps(dict((str(k), v) for k, v in rep.zona_fin.items()), sort_keys=True),
             'sombra': sombra,
-        })
+        }))
         lineas = list(rep.lineas)
         out_de = None
         n_nuevas = 0
@@ -446,7 +522,7 @@ class KoroshiZonasEjecucion(models.Model):
             fallos = []
             try:
                 with self.env.cr.savepoint():
-                    extra, fallos, todas_out, out_de = escritor.aplicar(self.env, rep)
+                    extra, fallos, todas_out, out_de = escritor.aplicar(self.env, rep, simular=rep.modo != 'REAL')
                     lineas += extra
                     n_nuevas = len(todas_out) - len(rep.plan)
                     self.env['base'].flush()
@@ -554,7 +630,10 @@ class KoroshiZonasEjecucion(models.Model):
         # v1.3.0: la sombra que se compara con el 202 se calcula como la 1883 (si no, nunca saldria igual). Despues,
         # un diagnostico con lo nuevo (OUT de dias anteriores, orden por urgencia, aviso de hora de fin) para ver
         # que cambiaria al pasar a real. No se compara.
-        ej = self.lanzar('DIAGNOSTICO', sombra=True, como_1883=True)
+        # v1.5.0 (F): la sombra es un SIMULAR, no un DIAGNOSTICO: parte de verdad dentro de un savepoint, pasa las
+        # comprobaciones y lo deshace todo. Asi cada manana se ensaya lo que hara el modo real, antes del cron 202
+        # (04:00 UTC). Las OUT nuevas del ensayo no gastan numeros de la secuencia (escritor, simular=True).
+        ej = self.lanzar('SIMULAR', sombra=True, como_1883=True)
         try:
             with self.env.cr.savepoint():
                 self.lanzar('DIAGNOSTICO')
@@ -590,6 +669,10 @@ class KoroshiZonasEjecucion(models.Model):
                 continue
             res = motor_comparar.comparar(modulo, real)
             texto = motor_comparar.texto(res, ej.prefijo, prefijos)
+            if ej.modo == 'simular':     # v1.5.0: como ha ido el ensayo de partir
+                texto += '\nEnsayo de partir (SIMULAR, deshecho): %s' % (
+                    ej.estado == 'simulado' and 'BIEN, sin fallos' or
+                    ('MAL (%s). Mirar el informe del reparto' % dict(self._fields['estado'].selection).get(ej.estado)))
             ej.write({'comparacion': motor_comparar.es_igual(res) and 'igual' or 'distinta',
                       'informe_comparacion': texto})
             ej._publicar(texto)
