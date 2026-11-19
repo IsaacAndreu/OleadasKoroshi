@@ -32,7 +32,19 @@ MAX_TIPO = 8              # v1.8: resultados como máximo de cada tipo (contened
 # (UBRAN/STOCK/N1/07828 - L94 P35 C1): sin esto, leer «L94 P35 C1» daba «Hay 2 ubicaciones» y el lineal y la
 # búsqueda mezclaban huecos de las dos.
 DE_LA_COMPANIA = ('company_id', 'in', [COMPANY_ID, False])
-LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
+# v1.8.2: también los lineales de MU (MU-01…MU-14): sus huecos se llaman «MU-01 P00 C1», sin número delante
+LINEAL_RE = re.compile(r'^(L\d{1,4}|MU-? ?\d{1,2})$', re.I)
+LINEAL_DELANTE_RE = re.compile(r'^(L\d{1,4}|MU-\d{1,2})(\s|$)', re.I)   # «MU-00 P» o «L70 P3»: se ofrece el lineal
+
+
+def _lineal(texto):
+    """Código del lineal normalizado (L94, MU-01) o None. «mu1», «MU 01» y «MU-1» son MU-01."""
+    t = (texto or '').strip().upper()
+    if not LINEAL_RE.match(t):
+        return None
+    if t.startswith('MU'):
+        return 'MU-%02d' % int(re.sub(r'\D', '', t))
+    return t
 
 
 def _es_contenedor_nombre(nombre):
@@ -107,8 +119,9 @@ class KoroshiContenedores(http.Controller):
         Loc = request.env['stock.location'].sudo()
         Quant = request.env['stock.quant'].sudo()
         clave = ' %s ' % lineal
-        huecos = Loc.search([('usage', '=', 'internal'), DE_LA_COMPANIA, ('name', 'ilike', clave)], order='name',
-                            limit=MAX_HUECOS + 1)
+        # «07828 - L94 P35 C1» lleva el lineal en medio; «MU-01 P00 C1» (v1.8.2), al principio
+        huecos = Loc.search([('usage', '=', 'internal'), DE_LA_COMPANIA, '|', ('name', 'ilike', clave),
+                             ('name', '=ilike', _literal(lineal) + ' %')], order='name', limit=MAX_HUECOS + 1)
         huecos = huecos.filtered(lambda l: not _es_contenedor_nombre(l.name) and clave in (' %s ' % l.name.upper()))
         truncado = len(huecos) > MAX_HUECOS
         huecos = huecos[:MAX_HUECOS]
@@ -476,8 +489,10 @@ class KoroshiContenedores(http.Controller):
         texto = (texto or '').strip()
         items, mas = [], False
         Loc = request.env['stock.location'].sudo()
-        if LINEAL_RE.match(texto):
-            items.append({'tipo': 'lineal', 'id': 0, 'codigo': texto.upper(), 'nombre': 'Lineal ' + texto.upper(),
+        m = LINEAL_DELANTE_RE.match(texto)
+        lineal = _lineal(texto) or (m and _lineal(m.group(1)))   # v1.8.2: MU y «MU-00 P» también ofrecen el lineal
+        if lineal:
+            items.append({'tipo': 'lineal', 'id': 0, 'codigo': lineal, 'nombre': 'Lineal ' + lineal,
                           'detalle': 'Inventario del lineal'})
         conts, mas_c = self._por_trozo(texto)
         conts = conts[:MAX_TIPO]
@@ -570,8 +585,8 @@ class KoroshiContenedores(http.Controller):
             if not codigo:
                 raise UserError('Código vacío.')
             Loc = request.env['stock.location'].sudo()
-            if LINEAL_RE.match(codigo):
-                return {'ok': True, 'tipo': 'lineal', 'lineal': self._datos_lineal(codigo.upper())}
+            if _lineal(codigo):
+                return {'ok': True, 'tipo': 'lineal', 'lineal': self._datos_lineal(_lineal(codigo))}
             if not _es_contenedor_nombre(codigo):
                 emp =request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
                 if emp:

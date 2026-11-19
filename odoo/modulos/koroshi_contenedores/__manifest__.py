@@ -64,8 +64,13 @@ v1.8.1 (19/11/2026): solo ubicaciones de EFFECTIVE (compañía 8). UBRAN tiene l
   (fallo desde la 1.0 en los lineales que existen en las dos) y el inventario de un lineal y la búsqueda de la 1.8.0
   enseñaban huecos de las dos. Ahora toda búsqueda de ubicación (código leído, contenedor, lineal, trozo) se queda en
   la compañía 8 (o sin compañía).
+v1.8.2 (19/11/2026): lineales de MU (MU-00…MU-14). Escribir «L70» ofrecía «Lineal L70» (inventario del lineal), pero
+  con MU no salía: el lineal solo se reconocía como L + número, y sus huecos se llaman «MU-01 P00 C1» (el lineal al
+  principio, sin «07828 - » delante), así que tampoco se encontraban. Ahora «MU-01» (o «mu1», «MU 01») abre el
+  inventario de los 72 huecos de MU-01, y escribir el principio de un hueco («MU-00 P», «L70 P3») también ofrece su
+  lineal arriba de la lista. Solo lectura.
 """,
-    'version': '13.0.1.8.1',
+    'version': '13.0.1.8.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
