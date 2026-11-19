@@ -26,7 +26,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Cierre del camión XPO: formato de Erika | koroshi_monitor (1.34.0 instalada 18/11 15:53 hora local) | Resumen reunión 18/11 (lo coge del chat «Excel de envíos para tiendas», con el sí de Isaac) | Destinatarios ya cambiados a la lista XPO (18/11 ~16:00). Falta cerrar un camión de prueba |
 | Mejoras del Monitor de picking | — (suelta koroshi_monitor) | Millores del Monitor picking | Hecho: instaló la 1.32.0 el 17/11 a las 12:37 y dejó el servidor libre. Archivar |
 | Ronda de faltantes en Lecturas | koroshi_faltantes (1.7.0) + koroshi_preparacion (3.33.0), instaladas 17/11 14:45 | Faltantes (la sesión de los faltantes y la sync S4T) | Probar una ronda pequeña en una PDA; la oficina decide cuándo «Pasar los puestos a 0» |
-| Contenedores: compactar huecos | koroshi_contenedores (1.6.0 instalada 18/11 15:34; **1.7.0 hecha sin instalar** 19/11: «Cambiar» uds de un artículo del contenedor, buscar por trozo del nombre / sugerencias, «Abrir» desde la lista de mover) | Contenedores (compactar) | Instalar la 1.7.0 con el sí de Isaac (no a la vez que traspasos ni zonas); después Ctrl+F5 y probar en PDA; pendiente: qué quieren «verificar» al compactar |
+| Contenedores: compactar huecos | koroshi_contenedores (**1.7.0 instalada 19/11 ~09:50 hora local**: «Cambiar» uds de un artículo del contenedor, buscar por trozo del nombre / sugerencias, «Abrir» desde la lista de mover) | Contenedores (compactar) | Ctrl+F5 en las PDA y probar en PDA real «Cambiar» cantidad y buscar por trozo; pendiente: qué quieren «verificar» al compactar |
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
 | Carga del camión por CJ | ? (monitor / s4t_envios) | Carga del camión por CJ | Rellenar; spec en `intent/carga-camion-bultos/` |
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |
@@ -65,6 +65,6 @@ de `main`: una 2.5.x tendrá que llevar estos menús.
 
 **No instalar todavía** (decidido): koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo guardar), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.6.0 (mejoras de compactar, 18/11 15:34), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo guardar), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.7.0 (cambiar cantidad y buscar por trozo, 19/11 ~09:50), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
