@@ -23,6 +23,29 @@ def numero_k(nombre):
     return num and int(num) or 9999
 
 
+SIN_PEDIDO = 10 ** 12
+
+
+def numero_pedido(origin):
+    """v1.6.0: 'S-6665004409' -> 6665004409 (el orden en que KOROSHI manda los pedidos). Sin numero: al final."""
+    num = ''
+    for ch in origin or '':
+        if ch.isdigit():
+            num += ch
+        elif num:
+            break
+    return num and int(num) or SIN_PEDIDO
+
+
+def clave_orden(p, out):
+    """v1.6.0: orden de las OUT para numerar las CAJA y, si no cabe todo, para decidir cuales entran.
+    ORDEN_PEDIDO: por numero de pedido (lo que pide KOROSHI, 19/11); si no, por numero de tienda, como la 1883.
+    Se desempata por el nombre de la OUT (varias OUT del mismo pedido)."""
+    if p.get('ORDEN_PEDIDO'):
+        return numero_pedido(out.get('origin'))
+    return numero_k(out.get('partner_name') or '')
+
+
 class Calculo(object):
 
     def __init__(self, p):
@@ -171,7 +194,7 @@ class Calculo(object):
         pares = []
         for pid in self.orden[:k]:
             q = self.out_rec[pid]
-            pares.append((numero_k(q['partner_name'] or ''), q['name'], pid))
+            pares.append((clave_orden(p, q), q['name'], pid))      # v1.6.0: por pedido o por tienda
         pares.sort()
         pids = []
         for par in pares:

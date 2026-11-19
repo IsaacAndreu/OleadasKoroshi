@@ -25,6 +25,7 @@
                             <field name="hora_fin"/>
                             <field name="una_ronda"/>
                             <field name="orden_urgencia" attrs="{'invisible': [('una_ronda', '=', True)]}"/>
+                            <field name="orden_pedido"/>
                             <field name="dias_atras"/>
                             <field name="rendimiento"/>
                             <field name="seg_lectura"/>

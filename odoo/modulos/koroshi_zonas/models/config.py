@@ -71,8 +71,14 @@ class KoroshiZonasConfig(models.Model):
                                      'agrupación de zona y sin nada leído). 0 = solo las de hoy, como la acción 1883')
     orden_urgencia = fields.Boolean('Si no cabe todo, primero lo urgente', default=True,
                                     help='Sin "Todo en una ronda": entran primero las OUT de días anteriores y las '
-                                         'tiendas de 48 h; después, por número de tienda. Sin marcar: solo por '
-                                         'número de tienda, como la acción 1883')
+                                         'tiendas de 48 h; después, por número de pedido o de tienda (v1.6.0). Sin '
+                                         'marcar: solo por ese orden, como la acción 1883')
+    # v1.6.0 (19/11/2026): lo pide KOROSHI
+    orden_pedido = fields.Boolean('Ordenar por número de pedido', default=True,
+                                  help='Las CAJA del carro y de las etiquetas se numeran por número de pedido '
+                                       '(S-6665..., el primero que entra es la CAJA 01) y, si no cabe todo, entran '
+                                       'antes los pedidos más antiguos. Sin marcar: por número de tienda (K1, K2...), '
+                                       'como la acción 1883')
     ver_out = fields.Integer('OUT que se listan en el informe', default=400)
 
     _sql_constraints = [('company_uniq', 'unique(company_id)', 'Ya hay una configuración para esta compañía.')]

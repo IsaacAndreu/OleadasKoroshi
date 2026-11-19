@@ -17,7 +17,7 @@
 import datetime
 
 from . import modelo
-from .evaluar import Calculo, numero_k
+from .evaluar import Calculo, clave_orden, numero_k
 
 
 def minutos(hhmm):
@@ -122,7 +122,6 @@ def repartir(datos, cambios=None, contexto=None):
     prio = []
     for p_ in validas:
         calc.out_rec[p_['id']] = p_
-        knum = numero_k(p_['partner_name'] or '')
         cp = {}
         zx = {}
         uds = 0.0
@@ -164,15 +163,17 @@ def repartir(datos, cambios=None, contexto=None):
         calc.coste_out[p_['id']] = cp
         calc.zx_out[p_['id']] = zx
         calc.uds_out[p_['id']] = uds
-        prio.append((knum, '', 0, p_['name'], p_['id']))
+        # v1.6.0: con ORDEN_PEDIDO, por numero de pedido (S-6665...); sin el, por tienda como la 1883 (knum)
+        prio.append((clave_orden(p, p_), '', 0, p_['name'], p_['id']))
     if p['ORDEN_URGENCIA'] and not p['UNA_RONDA']:
         # v1.3.0: primero las de dias anteriores (la mas antigua antes), despues las tiendas de 48 h, despues el
-        # resto; dentro de cada grupo, por tienda como antes. Con UNA_RONDA entran todas: se deja el orden de la 1883.
+        # resto; dentro de cada grupo, por pedido (v1.6.0) o por tienda. Con UNA_RONDA entran todas.
         urg = []
         for x in prio:
             q = calc.out_rec[x[4]]
             antes = q.get('de_antes') and (q.get('create_date') or '')[:10] or '9999-99-99'
-            urg.append((antes, x[0] not in p['TIENDAS_48H'] and 1 or 0) + x)
+            k48 = numero_k(q['partner_name'] or '') in p['TIENDAS_48H']
+            urg.append((antes, not k48 and 1 or 0) + x)
         urg.sort()
         prio = [x[2:] for x in urg]
     else:

@@ -15,7 +15,7 @@ sys.path.insert(0, AQUI)
 
 from motor import modelo  # noqa: E402
 from motor import v12f  # noqa: E402
-from motor.evaluar import numero_k  # noqa: E402
+from motor.evaluar import numero_k, numero_pedido  # noqa: E402
 import sintetico  # noqa: E402
 
 
@@ -32,14 +32,14 @@ class TestV130(unittest.TestCase):
             datos = sintetico.generar(semilla, n_pedidos=90)
             with self.subTest(semilla=semilla):
                 a = v12f.repartir(datos, dict(modelo.COMO_1883, MODO='DIAGNOSTICO'))
-                b = v12f.repartir(datos, {'MODO': 'DIAGNOSTICO'})
+                b = v12f.repartir(datos, {'MODO': 'DIAGNOSTICO', 'ORDEN_PEDIDO': False})   # v1.6.0: aparte
                 self.assertEqual(a.zona_fin, b.zona_fin)
                 self.assertEqual(a.plan, b.plan)
 
     def test_aviso_hora_fin(self):
         datos = sintetico.generar(21, n_pedidos=90)
         ctx = {'hora_inicio': '06:00', 'hora_fin': '06:30', 'una_ronda': True}
-        nuevo = v12f.repartir(datos, {'MODO': 'DIAGNOSTICO'}, ctx)
+        nuevo = v12f.repartir(datos, {'MODO': 'DIAGNOSTICO', 'ORDEN_PEDIDO': False}, ctx)   # v1.6.0: aparte
         self.assertGreater(nuevo.pasa_hora_fin, 0)
         avisos = [l for l in nuevo.lineas if l.startswith('AVISO:')]
         self.assertEqual(len(avisos), 1)
@@ -74,8 +74,8 @@ class TestV130(unittest.TestCase):
         self.assertNotIn(alta['id'], nuevo.no_entran)
         self.assertIn(alta['id'], nuevo.R['pids'])
         self.assertTrue([l for l in nuevo.lineas if l.startswith('OUT de dias anteriores')])
-        # las que entran se numeran por tienda, como siempre
-        ks = [numero_k(datos_out['partner_name']) for datos_out in
+        # v1.6.0: las que entran se numeran por numero de pedido
+        ks = [numero_pedido(datos_out['origin']) for datos_out in
               [next(o for o in datos['outs'] if o['id'] == pid) for pid in nuevo.R['pids']]]
         self.assertEqual(ks, sorted(ks))
 

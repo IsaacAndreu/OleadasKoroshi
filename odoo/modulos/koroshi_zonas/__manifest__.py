@@ -42,6 +42,13 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.6.0 (19/11/2026): orden por numero de pedido. KOROSHI (Sonia) pide que las tiendas vayan en el orden en que entran
+  los pedidos (S-6665..., ascendente), no por numero de tienda (K##): el 19/11 se hicieron pedidos de detras antes que
+  otros de delante. Nuevo ajuste 'Ordenar por numero de pedido' (marcado): las CAJA del carro de la PDA y de las
+  etiquetas se numeran por pedido (CAJA 01 = el pedido mas antiguo) y, sin 'Todo en una ronda', dentro de cada grupo
+  de urgencia entran antes los pedidos mas antiguos. En los tests el reparto da las mismas cajas cerradas (+-1 caja).
+  El calculo 'como la 1883' (comparacion con el cron 202) sigue por tienda: en almacen no cambia nada hasta pasar a
+  real o cambiar la 1883. Incluye la 1.5.0 (sin instalar). Campo nuevo solo en koroshi.zonas.config (tabla propia).
 v1.5.0 (19/11/2026): acabar a la hora y preparar el paso a real (bin/versiones/zonas-diagnostico-y-mejoras_2026-11-19.md).
   Ensayo: en modo sombra, el calculo que se compara con el cron 202 es un SIMULAR (parte dentro de un savepoint, pasa
   las comprobaciones y lo deshace), no un DIAGNOSTICO: el camino que parte no se habia ejecutado nunca con OUT de
@@ -72,7 +79,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

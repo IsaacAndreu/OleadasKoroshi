@@ -54,11 +54,14 @@ POR_DEFECTO = {
     'DIAS_ATRAS': 7,            # OUT abiertas de hasta N dias antes tambien son candidatas (0 = solo las de hoy)
     'ORDEN_URGENCIA': True,     # si no cabe todo: primero las de dias anteriores y las tiendas de 48 h
     'AVISO_HORA_FIN': True,     # con UNA_RONDA, avisar en el informe si se acaba despues de HORA_FIN
+    # v1.6.0 (19/11/2026): KOROSHI (Sonia) pide el orden del numero de pedido (S-6665...), no el de la tienda: numera
+    # las CAJA (carro de la PDA y etiquetas) y, si no cabe todo, decide que entra antes.
+    'ORDEN_PEDIDO': True,
 }
 
 # v1.3.0: con estos cambios el motor hace lo mismo que la accion 1883 (tests y calculo en sombra que se compara con
-# el cron 202).
-COMO_1883 = {'DIAS_ATRAS': 0, 'ORDEN_URGENCIA': False, 'AVISO_HORA_FIN': False}
+# el cron 202). v1.6.0: la 1883 ordena por tienda.
+COMO_1883 = {'DIAS_ATRAS': 0, 'ORDEN_URGENCIA': False, 'AVISO_HORA_FIN': False, 'ORDEN_PEDIDO': False}
 
 
 def parametros(cambios=None, contexto=None):
@@ -103,6 +106,7 @@ CAMPOS_CONFIG = {
     'ver_out': 'VER_OUT',
     'dias_atras': 'DIAS_ATRAS',            # v1.3.0
     'orden_urgencia': 'ORDEN_URGENCIA',    # v1.3.0
+    'orden_pedido': 'ORDEN_PEDIDO',        # v1.6.0
 }
 
 
