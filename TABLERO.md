@@ -30,7 +30,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Resumen de productividad por correo | ? (informe / kpi) | Resumen de productividad por correo | Rellenar |
 | Carga del camión por CJ | ? (monitor / s4t_envios) | Carga del camión por CJ | Rellenar; spec en `intent/carga-camion-bultos/` |
 | Pedidos pendientes por reasignar | ? | Pedidos pendientes por reasignar | Rellenar |
-| Cierre por inactividad (15 min) y u/h sin sesiones olvidadas | koroshi_operarios 2.19.0 + koroshi_monitor 1.35.0 (instaladas 18/11; el cron cierra solo, visto el 19/11) y **koroshi_actividades 1.4.0** («¿Sigues?», sin instalar) | Cierre por inactividad | Instalar actividades 1.4.0 con el sí de Isaac y probar en el portátil de manipulaciones: fila que parpadea, pitido, pasar la tarjeta = sigo. Después la coge el Tablero para la 1.5.0 |
+| Cierre por inactividad (15 min) y u/h sin sesiones olvidadas | Ninguno (suelta koroshi_actividades: ya lo puede coger el Tablero para la 1.5.0). Instaladas: operarios 2.19.0 + monitor 1.35.0 (18/11) y actividades 1.4.0 «¿Sigues?» (19/11 15:42 hora local) | Cierre por inactividad | Probar en el portátil de manipulaciones mañana después de las 13:00: fila que parpadea, pitido, pasar la tarjeta = sigo |
 | Alarma PDA si el operario no lee | ? (operarios / preparacion) | PDA: alarma sonora | Rellenar |
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
@@ -79,6 +79,6 @@ con Almacen 2 (jefe). Falta: Ctrl+F5 y mirarlo con Almacén Nath en una PDA.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
-**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.5.2 (19/11 15:41), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.4.0 («¿Sigues?», 19/11 15:42), menu 2.5.2 (19/11 15:41), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
