@@ -1,6 +1,7 @@
 odoo.define('koroshi_buscador_stock.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Buscador de stock v1.1.0 - pantalla de la oficina, SOLO LECTURA.
+/* KOROSHI Buscador de stock v1.2.0 - pantalla de la oficina, SOLO LECTURA.
+ * v1.2: buscar por un trozo (2621JA) enseña primero lo que tiene stock, de más a menos; lo que está a 0 no sale.
  * v1.1: el modelo enseña dónde están todas sus tallas sin pulsar ninguna; un solo modelo encontrado se abre solo.
  * Una caja: lineal (L94), contenedor KO_/TT_ (o un trozo), código de hueco, EAN o referencia, o un trozo de la
  * referencia o la descripción (lista de modelos). Un modelo enseña sus tallas/colores con stock, reservado, libre y
@@ -119,7 +120,7 @@ var Pantalla = AbstractAction.extend({
     _htmlLista: function (r) {
         var h = '<div class="o_kb_card"><h3>Resultados de «' + _e(r.texto) + '»</h3>';
         if (r.modelos.length) {
-            h += '<h4>Modelos</h4><table><thead><tr><th>Modelo</th><th>Referencia</th><th class="o_kb_n">Tallas</th>' +
+            h += '<h4>Artículos</h4><table><thead><tr><th>Artículo</th><th>Referencia</th><th class="o_kb_n">Tallas</th>' +
                 '<th class="o_kb_n">Stock</th><th class="o_kb_n">Reservado</th><th class="o_kb_n">Libre</th>' +
                 '</tr></thead><tbody>';
             _.each(r.modelos, function (m) {
@@ -128,7 +129,14 @@ var Pantalla = AbstractAction.extend({
                     _celdaN(m.reservadas) + _celdaN(m.libres, 'o_kb_libre') + '</tr>';
             });
             h += '</tbody></table>';
-            if (r.modelos_mas) { h += '<p class="o_kb_mas">Hay más modelos: escribe algo más concreto.</p>'; }
+            if (r.modelos_mas) { h += '<p class="o_kb_mas">Hay más: escribe algo más concreto.</p>'; }
+        }
+        // v1.2: primero los que tienen stock; los que están a 0 no se enseñan
+        if (r.ocultos_cero) {
+            h += '<p class="o_kb_nota">' + r.ocultos_cero + ' más con «' + _e(r.texto) + '» sin stock: no se enseñan.</p>';
+        }
+        if (r.ninguno_con_stock && r.modelos.length) {
+            h += '<p class="o_kb_vacio">Ninguno tiene stock ahora.</p>';
         }
         if (r.contenedores.length) {
             h += '<h4>Contenedores</h4><table><thead><tr><th>Contenedor</th><th>Hueco</th></tr></thead><tbody>';

@@ -17,8 +17,8 @@ PREFIJOS = ('KO_', 'TT_')
 LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
 MIN_TROZO = 3             # caracteres mínimos para buscar por un trozo de referencia o descripción
 MIN_TROZO_CONT = 2        # como Contenedores 1.7 (MIN_BUSCAR)
-MAX_MODELOS = 50          # modelos en la lista de un trozo
-MAX_PRODUCTOS_TROZO = 600 # variantes leídas para sacar esos modelos
+MAX_MODELOS = 100         # modelos en la lista de un trozo (v1.2: 100; antes 50)
+MAX_PRODUCTOS_TROZO = 3000  # variantes leídas para sacar esos modelos (v1.2: 3000; antes 600)
 MAX_CONTENEDORES = 20     # contenedores en la lista de un trozo
 MAX_UBICACIONES = 200     # ubicaciones con stock de una prenda
 MAX_OUT = 100             # OUT que reservan una prenda (o desde un hueco)
@@ -106,18 +106,20 @@ class KoroshiBuscadorStock(http.Controller):
         return [{'id': l.id, 'nombre': l.name, 'hueco': l.location_id.complete_name or ''} for l in locs]
 
     def _modelos_por_trozo(self, texto):
-        """Modelos (product.template) cuya referencia, descripción o EAN contiene todas las palabras escritas."""
+        """Modelos (product.template) cuya referencia, descripción o EAN contiene todas las palabras escritas.
+        v1.2: en KOROSHI cada talla es un modelo aparte («2621JA54-000006-L»): primero los que tienen stock (de más a
+        menos) y los que están a 0 no se enseñan, salvo que ninguno tenga stock. Devuelve (filas, hay más, a 0
+        ocultos, ninguno con stock)."""
         palabras = [w for w in texto.split() if w]
         dominio = [('type', '=', 'product')]
         for w in palabras:
             lit = '%' + _literal(w) + '%'
             dominio += ['|', '|', ('default_code', '=ilike', lit), ('name', '=ilike', lit), ('barcode', '=ilike', lit)]
         productos = self._env('product.product').search(dominio, limit=MAX_PRODUCTOS_TROZO)
+        cortado = len(productos) >= MAX_PRODUCTOS_TROZO
         plantillas = productos.mapped('product_tmpl_id')
-        mas = len(plantillas) > MAX_MODELOS
-        plantillas = plantillas[:MAX_MODELOS]
         if not plantillas:
-            return [], False
+            return [], False, 0, False
         todos = plantillas.mapped('product_variant_ids')
         stock = {}
         for g in self._env('stock.quant').read_group(
@@ -131,8 +133,15 @@ class KoroshiBuscadorStock(http.Controller):
             filas.append({'id': t.id, 'nombre': t.display_name, 'referencia': t.default_code or '',
                           'variantes': len(t.product_variant_ids), 'uds': _redondear(uds),
                           'reservadas': _redondear(res), 'libres': _redondear(uds - res)})
-        filas.sort(key=lambda f: f['nombre'])
-        return filas, mas
+        con = [f for f in filas if f['uds'] > 0]
+        if con:
+            con.sort(key=lambda f: (-f['uds'], f['nombre']))
+            ocultos, ninguno = len(filas) - len(con), False
+            filas = con
+        else:
+            filas.sort(key=lambda f: f['nombre'])
+            ocultos, ninguno = 0, True
+        return filas[:MAX_MODELOS], cortado or len(filas) > MAX_MODELOS, ocultos, ninguno
 
     # ------------------------------------------------------------------ datos
     def _datos_modelo(self, plantilla, producto_id=False):
@@ -334,7 +343,7 @@ class KoroshiBuscadorStock(http.Controller):
                 locs, mas = self._contenedores_por_trozo(texto)
                 if locs:
                     return {'ok': True, 'tipo': 'lista', 'texto': texto, 'modelos': [], 'modelos_mas': False,
-                            'contenedores': self._lista_contenedores(locs), 'contenedores_mas': mas}
+                            'ocultos_cero': 0, 'ninguno_con_stock': False, 'contenedores': self._lista_contenedores(locs), 'contenedores_mas': mas}
                 raise UserError('No encuentro el contenedor %s (o está archivado).' % texto)
             loc = Loc.search([('barcode', '=', texto), ('usage', '=', 'internal')])
             if len(loc) == 1:
@@ -348,14 +357,15 @@ class KoroshiBuscadorStock(http.Controller):
                         'prenda': self._datos_prenda(producto)}
             if len(texto) < MIN_TROZO:
                 raise UserError('Escribe al menos %d caracteres para buscar por un trozo.' % MIN_TROZO)
-            modelos, modelos_mas = self._modelos_por_trozo(texto)
+            modelos, modelos_mas, ocultos, ninguno = self._modelos_por_trozo(texto)
             locs, cont_mas = self._contenedores_por_trozo(texto)
             if not modelos and not locs:
                 raise UserError('No encuentro nada con «%s»: ni prenda, ni hueco, ni contenedor.' % texto)
-            if len(modelos) == 1 and not locs:      # v1.1: un solo modelo con ese nombre: se abre directamente
+            if len(modelos) == 1 and not locs:      # v1.1: uno solo (v1.2: uno solo con stock): se abre directamente
                 t = self._env('product.template').browse(modelos[0]['id'])
                 return {'ok': True, 'tipo': 'modelo', 'modelo': self._datos_modelo(t), 'prenda': False}
             return {'ok': True, 'tipo': 'lista', 'texto': texto, 'modelos': modelos, 'modelos_mas': modelos_mas,
+                    'ocultos_cero': ocultos, 'ninguno_con_stock': ninguno,
                     'contenedores': self._lista_contenedores(locs), 'contenedores_mas': cont_mas}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}

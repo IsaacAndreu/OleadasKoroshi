@@ -26,8 +26,11 @@ v1.0.0 (19/11/2026): primera versión (pedido de Isaac del 19/11: buscador de st
 v1.1.0 (19/11/2026): antes de instalar la 1.0.0, pedido de Isaac para Betty: «Buscador de stock» también en la barra
   de arriba de Inventario; un modelo enseña ya dónde está (hueco, contenedor, talla, uds, reservadas y libres de todas
   las tallas) sin pulsar ninguna; si el nombre o la referencia escritos dan un solo modelo, se abre directamente.
+v1.2.0 (19/11/2026): en KOROSHI cada talla es un artículo aparte (2621JA54-000006-L): buscar por un trozo (2621JA,
+  «sudadera») daba 50 filas en orden alfabético, muchas a 0. Ahora salen primero las que tienen stock, de más a
+  menos, y las que están a 0 no se enseñan (dice cuántas); hasta 100 filas. Si solo una tiene stock, se abre.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
