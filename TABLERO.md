@@ -77,13 +77,13 @@ Monitor y S4T siguen igual, y con Almacen 2 que abre matrículas y packing feed 
 sin Personas y horas, Producción ni Envíos) y koroshi_menu **2.5.2** («Consulta de envíos» solo jefes). La TV entra
 con Almacen 2 (jefe). Falta: Ctrl+F5 y mirarlo con Almacén Nath en una PDA.
 
-**Hecho, sin instalar (19/11)**: koroshi_menu **2.6.0**: bandeja del encargado para el jefe (Hoy: tiendas, camión XPO,
-leído sin caja, validadas sin caja, operarios parados; Pendiente: faltantes, stock 0, web, S4T, XPO sin etiqueta) y
-pestaña IT solo para el grupo nuevo «KOROSHI: IT» (Departament IT). Instalar con el sí de Isaac, solo, sin otra
-actualización a la vez.
+**Instalado el 19/11 a las 16:31**: koroshi_menu **2.6.1** (la 2.6.0 falló al actualizar: grupo sin módulo en la
+vista; nueva comprobación E8). Bandeja del encargado para el jefe: Hoy y Pendiente; IT solo para «KOROSHI: IT»
+(Departament IT). Horas en koroshi_menu.hora_tiendas (13:00) y koroshi_menu.hora_camion (15:00). Falta: verla con
+Almacen 2 después de Ctrl+F5.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
-**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.4.0 («¿Sigues?», 19/11 15:42), menu 2.5.2 (19/11 15:41), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.4.0 («¿Sigues?», 19/11 15:42), menu 2.6.1 (bandeja del jefe, 19/11 16:31), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
