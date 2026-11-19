@@ -35,7 +35,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Sync S4T (acción 1800 v6.3, koroshi_s4t_sync) | koroshi_s4t_sync | Sincronización de pedidos con transportista | Rellenar |
 | Envíos a S4T en REAL (koroshi_s4t_envios 1.3.0) | — (sin código) | Esta | 17/11 ~16:50: `modo=real`, cron «Envios a S4T» ACTIVO cada 15 min, `desde`=17/11 23:00 UTC (pedidos con fecha de pedido desde el 18/11 00:00). Probado con S-6665004194 (XPO, 3 bultos): S4T READY. Vigilar los primeros envíos del 18/11 (GLS pasa a SHIPPED) |
 | Correos pendientes | — | Correus per enviar | — |
-| Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 **instalada 18/11 16:25**, apagada) | Agrupaciones web por corte | Isaac: mirar KOROSHI > Pedidos web > Simular corte ahora; poner `koroshi_agrupaciones_web.activo` = 1 (agrupa a las 06:00 y 11:00) y, otro día, `cancelar` = 1 |
+| Agrupaciones web por corte (06:00 y 11:00) y cancelación de las no reservadas | koroshi_agrupaciones_web (1.0.0 instalada 18/11 16:25; `activo`=1 desde 18/11, `cancelar`=1 desde 19/11 08:30) | Agrupaciones web por corte | 19/11 06:00: primera WEB_191126_01 automática (45 OUT, 82 uds). Comprobar la primera cancelación de las 11:00 y el correo a isaac.andreu@nath.es y betty@nath.es |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
@@ -63,6 +63,6 @@ de `main`: una 2.5.x tendrá que llevar estos menús.
 **No instalar todavía** (decidido): koroshi_s4t_traspasos
 (crearía DEV de todo desde el 01/07), koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
 
-**Al día**: agrupaciones_web 1.0.0 (nuevo, 18/11 16:25, apagado), contenedores 1.6.0 (mejoras de compactar, 18/11 15:34), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.6.0 (mejoras de compactar, 18/11 15:34), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
