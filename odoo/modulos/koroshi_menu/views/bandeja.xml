@@ -75,7 +75,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="IT" name="it" groups="grupo_it">
+                        <page string="IT" name="it" groups="koroshi_menu.grupo_it">
                             <div class="text-muted">IT: <field name="resumen_it" class="oe_inline"/></div>
                             <field name="it_ids" nolabel="1">
                                 <tree create="false" edit="false" delete="false"

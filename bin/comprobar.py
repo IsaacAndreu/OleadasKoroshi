@@ -18,6 +18,8 @@ ERRORES (paran):
   E5 Modulo cambiado desde su ultima etiqueta y version sin subir (nunca se sobrescribe una version).
   E6 Version nueva sin su linea de historial en el manifest: 'vX.Y.Z (dd/mm/aaaa): ...'.
   E7 Un .py que no compila.
+  E8 groups="grupo" sin el modulo delante dentro de una vista (arch): «External ID must be fully qualified» y no se
+     actualiza (koroshi_menu 2.6.0, 19/11). En un <menuitem> si vale sin modulo.
 AVISOS (no paran):
   A1 <function> dentro de noupdate="1": solo corre al INSTALAR, no al actualizar.
 
@@ -192,6 +194,15 @@ def comprobar_modulo(modulo, ok_campos=None):
                 for f in rec.iter('field'):
                     if f.get('name') == 'report_name' and '.' not in (f.text or ''):
                         errores.append('E3 %s: report_name "%s" sin punto (modulo.plantilla)' % (rel, f.text))
+            for f in arbol.iter('field'):   # E8: groups dentro del arch de una vista
+                if f.get('name') != 'arch':
+                    continue
+                for el in f.iter():
+                    for g in (el.get('groups') or '').split(','):
+                        g = g.strip().lstrip('-')
+                        if g and '.' not in g:
+                            errores.append('E8 %s: groups="%s" en una vista sin el modulo delante (modulo.%s)'
+                                           % (rel, el.get('groups'), g))
             bloques = [arbol] if arbol.get('noupdate') in ('1', 'True', 'true') else []
             bloques += [d for d in arbol.iter('data') if d.get('noupdate') in ('1', 'True', 'true')]
             for b in bloques:

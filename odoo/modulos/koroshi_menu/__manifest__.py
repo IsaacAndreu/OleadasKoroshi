@@ -104,8 +104,11 @@ error y pendientes de entrar, OUT de XPO sin etiqueta y tramos de actividad por 
 IT», solo Departament IT; no vale el de administracion porque Almacen Nath tambien lo es): Lecturas de la PDA
 paradas, lecturas rechazadas de cola, pedidos sin OUT, reparto de zonas con aviso, jobs fallidos, sync y cola S4T y
 crons. Solo lee; tablas transitorias propias. Migracion 13.0.2.6.0 (Departament IT al grupo IT).
+v2.6.1 (19/11/2026): la 2.6.0 no se pudo actualizar en el servidor («External ID 'grupo_it' must be fully
+qualified»): en los groups de una vista el grupo va con el modulo delante (koroshi_menu.grupo_it). Odoo deshizo la
+actualizacion y siguio en la 2.5.2. Solo cambia eso.
 """,
-    'version': '13.0.2.6.0',
+    'version': '13.0.2.6.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
