@@ -59,8 +59,13 @@ v1.8.0 (19/11/2026): el almacén pide que el buscador sirva para todo lo que tie
   contenedores en lista). «Atrás» vuelve a la lista de resultados. Leer la referencia entera de un artículo
   (2622JA00-000003-L) ya lo encuentra: 9.116 artículos no tienen referencia interna y la referencia está en el nombre.
   Solo lectura: no cambia nada del stock.
+v1.8.1 (19/11/2026): solo ubicaciones de EFFECTIVE (compañía 8). UBRAN tiene los mismos huecos con el mismo código de
+  barras (UBRAN/STOCK/N1/07828 - L94 P35 C1): leer «L94 P35 C1» daba «Hay 2 ubicaciones con el código… Avisa a IT»
+  (fallo desde la 1.0 en los lineales que existen en las dos) y el inventario de un lineal y la búsqueda de la 1.8.0
+  enseñaban huecos de las dos. Ahora toda búsqueda de ubicación (código leído, contenedor, lineal, trozo) se queda en
+  la compañía 8 (o sin compañía).
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.8.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

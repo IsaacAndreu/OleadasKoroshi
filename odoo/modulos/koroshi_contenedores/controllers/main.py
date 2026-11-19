@@ -28,6 +28,10 @@ MAX_BUSCAR = 20           # v1.7: contenedores como máximo al buscar por un tro
 MIN_BUSCAR = 2            # v1.7: caracteres mínimos para buscar por un trozo
 MIN_BUSCAR_OTROS = 3      # v1.8: huecos y artículos, a partir de 3 caracteres
 MAX_TIPO = 8              # v1.8: resultados como máximo de cada tipo (contenedor, hueco, artículo)
+# v1.8.1: solo ubicaciones de esta compañía. UBRAN (otra compañía) tiene los mismos huecos con el mismo código de barras
+# (UBRAN/STOCK/N1/07828 - L94 P35 C1): sin esto, leer «L94 P35 C1» daba «Hay 2 ubicaciones» y el lineal y la
+# búsqueda mezclaban huecos de las dos.
+DE_LA_COMPANIA = ('company_id', 'in', [COMPANY_ID, False])
 LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
 
 
@@ -103,7 +107,8 @@ class KoroshiContenedores(http.Controller):
         Loc = request.env['stock.location'].sudo()
         Quant = request.env['stock.quant'].sudo()
         clave = ' %s ' % lineal
-        huecos = Loc.search([('usage', '=', 'internal'), ('name', 'ilike', clave)], order='name', limit=MAX_HUECOS + 1)
+        huecos = Loc.search([('usage', '=', 'internal'), DE_LA_COMPANIA, ('name', 'ilike', clave)], order='name',
+                            limit=MAX_HUECOS + 1)
         huecos = huecos.filtered(lambda l: not _es_contenedor_nombre(l.name) and clave in (' %s ' % l.name.upper()))
         truncado = len(huecos) > MAX_HUECOS
         huecos = huecos[:MAX_HUECOS]
@@ -460,7 +465,7 @@ class KoroshiContenedores(http.Controller):
         texto = (texto or '').strip()
         if len(texto) < MIN_BUSCAR:
             return request.env['stock.location'].sudo(), False
-        dominio = [('usage', '=', 'internal'), ('name', '=ilike', '%' + _literal(texto) + '%'), '|',
+        dominio = [('usage', '=', 'internal'), DE_LA_COMPANIA, ('name', '=ilike', '%' + _literal(texto) + '%'), '|',
                    ('name', '=ilike', 'KO\\_%'), ('name', '=ilike', 'TT\\_%')]
         locs = request.env['stock.location'].sudo().search(dominio, order='name', limit=MAX_BUSCAR + 1)
         return locs[:MAX_BUSCAR], len(locs) > MAX_BUSCAR
@@ -481,7 +486,8 @@ class KoroshiContenedores(http.Controller):
                   for l in conts]
         if len(texto) >= MIN_BUSCAR_OTROS:
             lit = '%' + _literal(texto) + '%'
-            huecos = Loc.search([('usage', '=', 'internal'), '|', ('barcode', '=ilike', lit), ('name', '=ilike', lit)],
+            huecos = Loc.search([('usage', '=', 'internal'), DE_LA_COMPANIA, '|', ('barcode', '=ilike', lit),
+                                 ('name', '=ilike', lit)],
                                 order='name', limit=MAX_TIPO * 3)
             huecos = huecos.filtered(lambda l: not _es_contenedor_nombre(l.name))
             mas = mas or len(huecos) > MAX_TIPO
@@ -571,7 +577,7 @@ class KoroshiContenedores(http.Controller):
                 if emp:
                     return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
             if _es_contenedor_nombre(codigo):
-                loc = Loc.search([('usage', '=', 'internal'), '|',
+                loc = Loc.search([('usage', '=', 'internal'), DE_LA_COMPANIA, '|',
                                   ('name', '=ilike', _literal(codigo)), ('barcode', '=ilike', _literal(codigo))])
                 loc = loc.filtered(lambda l: _es_contenedor_nombre(l.name))
                 if not loc:
@@ -582,7 +588,7 @@ class KoroshiContenedores(http.Controller):
                 if len(loc) > 1:
                     raise UserError('Hay %d contenedores llamados %s. Avisa a IT.' % (len(loc), codigo))
                 return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(loc)}
-            loc = Loc.search([('barcode', '=', codigo)])
+            loc = Loc.search([('barcode', '=', codigo), DE_LA_COMPANIA])
             if not loc:
                 producto = self._buscar_producto(codigo)   # v1.6: una prenda: dónde hay stock de ella
                 if producto:
