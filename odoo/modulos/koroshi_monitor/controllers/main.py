@@ -43,6 +43,8 @@ _cache = {}
 _lock = threading.Lock()
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # OUT en curso sin cerrar caja en estos minutos = parada (no cuenta como persona activa)
+PRIO_DIAS_ABIERTAS = 30  # v1.36.0: OUT de tienda abiertas creadas en estos dias (las mas viejas no marcan el orden)
+PRIO_DIAS_CERRADOS = 3   # v1.36.0: pedidos validados en estos dias para «Sacar estas antes»
 PERSONA_INACTIVA_MIN = 5  # tiendas: una OUT sin lecturas/cajas durante este tiempo deja de contar como persona
 # zonas (v1.20.1): entre dos cajas de la misma OUT, hasta PARADA_MIN minutos se sigue cogiendo (ver _personas)
 
@@ -143,6 +145,7 @@ class KoroshiMonitor(http.Controller):
                 'tienda': (RE_TIENDA.search(nombre) and RE_TIENDA.search(nombre).group(0)) or nombre.split(', ')[-1],
                 'pedido': p.origin or '',
                 'u': 0.0, 'leido': 0.0, 'disp': 0.0, 'faltas': [],
+                'en_caja': 0.0,     # v1.36.0: uds leidas ya metidas en una caja CJ (para «Sacar estas antes»)
                 '_huecos': set(), '_l': [], '_mu': set(),
                 '_a': None, '_b': None, '_cajas': set(),
                 '_estado': p.state, '_done': p.date_done,
@@ -209,6 +212,8 @@ class KoroshiMonitor(http.Controller):
                 if mu:
                     f['_mu'].add(mu.group(1))
             f['leido'] += ml['qty_done']
+            if ml['result_package_id']:
+                f['en_caja'] += ml['qty_done']
             if ml['qty_done'] > 0:
                 if ml['result_package_id'] and dueno_caja.get(ml['result_package_id'][0],
                                                                ml['picking_id'][0]) == ml['picking_id'][0]:
@@ -362,7 +367,7 @@ class KoroshiMonitor(http.Controller):
             'leido': f['leido'], 'est': est, 'ini': self._hora(f['_a']), 'fin': self._hora(fin_dt),
             'min': mins, 'cajas': len(f['_cajas']), 'bultos': f['_bultos'], '_a': f['_a'], '_b': f['_b'],
             'disp': f['disp'], 'falta': (est != 'hecha' or sin_validar) and falta or 0.0, 'faltas': f['faltas'],
-            'sin_validar': sin_validar,
+            'sin_validar': sin_validar, 'en_caja': f['en_caja'],
         }
 
     def _operarios(self, env, dominio, filas_por_id, dia=None):
@@ -554,6 +559,31 @@ class KoroshiMonitor(http.Controller):
             'uds_persona': int(round(eq['uds'] / eq['operarios'])),
         }
 
+    def _prioridad(self, env):
+        """v1.36.0: «Siguiente tienda» y «Sacar estas antes» (orden por numero de pedido S-6665..., ver prioridad_calc).
+        Solo pedidos de tienda (PED. TIENDAS), nunca Zalando ni web, y sin los pedidos pendientes (backorders): esos
+        salen cuando llega el stock y no marcan el orden. Solo lee. Si falla, None y el monitor sale como siempre."""
+        from . import prioridad_calc
+        try:
+            ahora = fields.Datetime.now()
+            base = [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
+                    ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO), ('backorder_id', '=', False)]
+            Picking = env['stock.picking'].sudo()
+            abiertas = Picking.search(base + [('state', 'not in', ('done', 'cancel')),
+                                              ('create_date', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_ABIERTAS))])
+            hechas = Picking.search_read(base + [('state', '=', 'done'), (
+                'date_done', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_CERRADOS))], ['origin'])
+            lista = []
+            if abiertas:
+                for f in self._filas(env, abiertas, None)[0].values():
+                    d = self._fila(f)
+                    lista.append({k: d[k] for k in ('id', 'out', 'pedido', 'tienda', 'lote', 'caja', 'est', 'u', 'disp',
+                                                     'leido', 'en_caja')})
+            return prioridad_calc.prioridad(lista, [h['origin'] for h in hechas])
+        except Exception:
+            _logger.exception('KOROSHI Monitor: no se ha podido calcular la siguiente tienda')
+            return None
+
     def _calcular_datos(self, prefijo=None, forzar=False, abiertas_antes=False):
         """v1.32.0: forzar = acepta cualquier 'TIENDAS:aaaa-mm-dd' (Producción por hora, dias de su desplegable);
         abiertas_antes = suma las OUT de tienda abiertas creadas antes de ese dia (lo pendiente a primera hora)."""
@@ -584,6 +614,8 @@ class KoroshiMonitor(http.Controller):
         res = {'prefijos': prefijos, 'etiquetas': etiquetas, 'prefijo': prefijo, 'D': [], 'pedidos': 0,
                'hora': self._hora(ahora), 'modo': prefijo.startswith('TIENDAS:') and 'tiendas' or 'zonas',
                'sin_leer_min': self._sin_leer_min(env)}
+        if not forzar:      # v1.36.0: en las dos pantallas (zonas y tiendas); no en Producción por hora
+            res['prioridad'] = self._prioridad(env)
 
         if res['modo'] == 'zonas':
             # Personas y horas: solo las cajas cerradas el dia de la agrupacion (Z-ddmm-), no las que se

@@ -161,3 +161,18 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.32.0: u/h real contra el ritmo estandar */
 .o_koroshi_monitor .km-uh-ok { color: #1e7b3a; }
 .o_koroshi_monitor .km-uh-bajo { color: #c62828; }
+/* v1.36.0: «Siguiente tienda» (por nº de pedido) y «Sacar estas antes» */
+.o_koroshi_monitor .km-prio { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; border-left: 6px solid #1f5fbf; }
+.o_koroshi_monitor .km-prio-tit { align-self: center; font-size: 18px; font-weight: 800; min-width: 130px; }
+.o_koroshi_monitor .km-prio-tit small { display: block; font-size: 12px; font-weight: 400; color: var(--km-muted); }
+.o_koroshi_monitor .km-prio-ped { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 8px 12px; border: 1px solid var(--km-line); border-radius: 8px; min-width: 210px; flex: 1 1 210px; }
+.o_koroshi_monitor .km-prio-ped small { flex-basis: 100%; color: var(--km-muted); font-size: 12.5px; }
+.o_koroshi_monitor .km-prio-1 { background: #e8f0fb; border-color: #1f5fbf; }
+.o_koroshi_monitor .km-prio-n { display: inline-block; width: 24px; height: 24px; line-height: 24px; text-align: center; border-radius: 12px; background: #1f5fbf; color: #fff; font-weight: 700; font-size: 13px; }
+.o_koroshi_monitor .km-prio-k { font-size: 24px; }
+.o_koroshi_monitor .km-prio-1 .km-prio-k { font-size: 30px; }
+.o_koroshi_monitor .km-prio-mas { align-self: center; color: var(--km-muted); font-size: 13px; }
+.o_koroshi_monitor .km-sacar table { margin-top: 8px; background: #fff; }
+.o_koroshi_monitor .km-sin-caja { color: #c62828; }
+.km-tv .o_koroshi_monitor .km-prio-k { font-size: 34px; }
+.km-tv .o_koroshi_monitor .km-prio-1 .km-prio-k { font-size: 44px; }

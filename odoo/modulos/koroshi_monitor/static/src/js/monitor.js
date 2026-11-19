@@ -73,6 +73,42 @@ function avisoParados(r, tv) {
         ps.map(function (o) { return '<b class="km-op km-op-parado">' + e(o.op) + '</b> ' + e(o.ahora) + ' (' + o.sin_leer + ' min)'; }).join(' · ') +
         (tv ? '' : '. ¿Se ha parado o se ha ido sin «Dejar aquí»? Si otro operario lee ese pedido, se lo queda sin preguntar.') + '</div>';
 }
+// v1.36.0: las tiendas van por numero de pedido (S-6665..., de menor a mayor), no por K##. «Siguiente tienda» = los
+// pedidos de tienda abiertos con el numero mas bajo; «Sacar estas antes» = OUT abiertas de pedidos anteriores a uno ya
+// cerrado del todo (19/11: 6 OUT de MU2 leidas sin caja mientras pedidos posteriores ya estaban hechos).
+function zonaCaja(o) {
+    var t = (o.zona ? o.zona + ' ' : '') + (o.caja ? 'caja ' + o.caja : '');
+    return t || ('OUT ' + (o.out || ''));
+}
+function prioridadHtml(pr, tv) {
+    if (!pr || !pr.siguiente || !pr.siguiente.length) { return ''; }
+    var h = '<div class="km-card km-prio"><div class="km-prio-tit">Siguiente tienda<small>por nº de pedido</small></div>';
+    pr.siguiente.forEach(function (p, i) {
+        var quedan = Math.max((p.disp || 0) - (p.leido || 0), 0);
+        h += '<div class="km-prio-ped' + (i === 0 ? ' km-prio-1' : '') + '"><span class="km-prio-n">' + (i + 1) + '</span>' +
+            '<b class="km-prio-k">' + e(p.k) + '</b><span class="m">' + e(p.pedido) + '</span>' +
+            '<small>' + p.outs.map(function (o) { return aOut(o, e(zonaCaja(o))); }).join(' · ') +
+            '<br>' + (quedan ? n(quedan) + ' u por coger' : 'todo leído: cerrar caja y validar') +
+            (p.leido > p.en_caja ? ' · ' + n(p.leido - p.en_caja) + ' u sin caja' : '') + '</small></div>';
+    });
+    if (!tv && pr.abiertos > pr.siguiente.length) {
+        h += '<div class="km-prio-mas">+ ' + (pr.abiertos - pr.siguiente.length) + ' pedidos de tienda abiertos detrás</div>';
+    }
+    h += '</div>';
+    var sa = pr.sacar_antes || [];
+    if (sa.length) {
+        h += '<div class="km-card km-aviso km-alarma km-sacar"><b>Sacar estas antes (' + sa.length + ' OUT):</b> son de pedidos anteriores al ' +
+            e(pr.ultimo_cerrado) + ', que ya está cerrado entero.' +
+            '<table><thead><tr><th>Tienda</th><th>Pedido</th><th>Zona</th><th>Caja</th><th>OUT</th><th class="r">Leídas</th><th class="r">En caja</th><th class="r">Uds</th></tr></thead><tbody>' +
+            sa.map(function (o) {
+                return '<tr><td><b>' + e(o.k) + '</b></td><td class="m">' + e(o.pedido) + '</td><td>' + e(o.zona || '–') + '</td><td>' + e(o.caja || '–') +
+                    '</td><td class="m">' + aOut(o, e(o.out)) + '</td><td class="r">' + n(o.leido) + '</td><td class="r">' +
+                    (o.sin_caja ? '<b class="km-sin-caja">' + n(o.en_caja) + '</b>' : n(o.en_caja)) + '</td><td class="r">' + n(o.u) + '</td></tr>';
+            }).join('') + '</tbody></table>' +
+            (tv ? '' : '<p class="km-nota">En rojo, «En caja» por debajo de lo leído: está leído pero falta cerrar la caja. Después, validar la OUT.</p>') + '</div>';
+    }
+    return h;
+}
 function tablaOperarios(ops, tv) {
     if (!ops || !ops.length) { return ''; }
     var h = '<h2>Operarios (' + ops.length + ')</h2><div class="km-card km-scroll"><table class="km-ops"><thead><tr><th>Operario</th><th>Ahora</th><th>Desde</th>' +
@@ -378,6 +414,7 @@ var Monitor = AbstractAction.extend({
         h += this._selector(r) + '</div>';
         h += '<p class="km-sub">' + r.pedidos + ' pedidos de tienda partidos por zona (' + D.length + ' OUT). Datos de Odoo a las <b>' + e(r.hora) +
             '</b>, se refresca solo cada minuto. Unidades reales (movimientos), no las columnas «Demanded/Reserved» de la lista de Odoo, que están mal en las OUT partidas.</p>';
+        h += prioridadHtml(r.prioridad, false);     // v1.36.0
         if (!D.length) {
             this.$el.html(h + '<p>No hay OUT en esta agrupación.</p></main>');
             return;
@@ -615,6 +652,7 @@ Monitor.include({
                 '</b>, se refresca solo cada minuto. El ritmo es del equipo entero (todas las PDA usan el mismo usuario).' +
                 (r.sin_stock ? ' No salen ' + r.sin_stock + ' pedidos pendientes en espera (lo que faltaba al validar, sin stock): no son trabajo de hoy.' : '') + '</p>';
         }
+        h += prioridadHtml(r.prioridad, tv);     // v1.36.0
         if (!D.length) {
             this.$el.html(h + '<p>No hay OUT de tiendas ese día.</p></main>');
             return;

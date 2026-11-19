@@ -162,8 +162,16 @@ Fuera los parados de 15 min o mas dentro de un pedido, lo que lleva ahora parado
 entre pedidos (desayuno incluido). Perdido = esos huecos cortos. Umbral = koroshi_operarios.minutos_sin_leer (15).
 Va con koroshi_operarios 2.19.0 (cierra sola la tarea a los 15 min). Calculo en controllers/produccion_calc.py, tests
 sin Odoo actualizados. Solo lee.
+v1.36.0 (19/11/2026): las tiendas por numero de pedido (peticion de Sonia y de Isaac: se preparan por el nº S-6665...,
+de menor a mayor, no por K##). Arriba del Monitor (zonas y tiendas, tambien en modo pantalla), «Siguiente tienda»: los
+3 pedidos de tienda abiertos con el numero mas bajo (K, nº de pedido, zona y caja de cada OUT, uds por coger y uds
+leidas sin caja); al cerrarse todas sus OUT pasa el siguiente. Debajo, en rojo, «Sacar estas antes»: OUT abiertas de
+pedidos con numero menor que el de un pedido ya cerrado del todo (con zona, caja, uds leidas y en caja). El 19/11
+habria salido con las OUT de Z-1911-MU2 leidas a las 6:30 sin caja ni validar. Solo PED. TIENDAS (nunca Zalando ni
+web) y sin los pedidos pendientes en espera ni los backorders. Calculo en controllers/prioridad_calc.py con tests sin
+Odoo (tests/test_prioridad_calc.py). Solo lee: sin campos ni modelos nuevos.
 """,
-    'version': '13.0.1.35.0',
+    'version': '13.0.1.36.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
