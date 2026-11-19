@@ -43,6 +43,7 @@ las reglas de siempre: una versión, una instalación a la vez.
 | Recepción por packing list (tablet en el muelle: caja a caja a un puesto, avance y discrepancias) | koroshi_recepcion_pl (módulo nuevo, **solo diseño**) | Recepciones por packing list | Diseño en `bin/versiones/diseno-recepciones-packing-list_2026-11-19.md`. **Espera** (19/11): Isaac lo pregunta a Maite (packing list y plantilla), a José Luis (cómo nace hoy la recepción del contenedor, el «shipping», paso a stock) y al almacén (puestos, tablet). Preguntas repartidas al final del punto 8 |
 | Buscador de stock (oficina, solo lectura) | koroshi_buscador_stock (1.2.0 instalada 19/11 12:50 hora local: buscar por trozo enseña primero lo que tiene stock y oculta lo que está a 0) | Buscador de stock | Probado en producción (solo lectura): EAN, trozo, lineal L94, hueco y KO_. Falta que Betty lo use (Inventario > Buscador de stock, arriba) y Ctrl+F5 en la oficina. |
 | Tablero del responsable: columna por operario con tareas que se arrastran (zonas, agrupaciones, manipular) | — (**solo diseño**; propone koroshi_operarios 2.20.0 + koroshi_actividades 1.4.0; no coge ningún módulo hasta el sí) | Tablero del responsable (19/11) | Diseño **v3** en `bin/versiones/diseno-tablero-responsable_2026-11-19_v3.md`: solo para Almacén 2 (PC); kanban sobre la cola que ya existe (`koroshi.operario.asignacion`); tarjeta de zona = «tus siguientes OUT salen de D2» (4-5 personas por zona, OUT a OUT, sin tocar preparación); columna vacía = siguiente libre. Incluye Almacén 2 sin S4T ni validar (sin confirmar: falta leer sus grupos en el servidor). Orden de las OUT = el de koroshi_zonas; manipular acaba con «Fin» del portátil; solo Almacén 2 asigna. Espera P2b, P7, P8 y P9 (permiso para leer grupos de Almacén 2). Antes de codificar, avisar a «Cierre por inactividad» (operarios) y pedir la `installed_version` |
+| Revisar caja en la PDA (partir una CJ en dos cuando se juntan dos cajas) | — (**solo diseño**; propone koroshi_preparacion, hoy cogido por «Ronda de faltantes») | Revisar box (19/11) | Diseño v1 en `bin/versiones/diseno-revisar-box-partir_2026-11-19.md`. Espera a Isaac: P1 (¿se descubre antes o después de validar?) a P5. Recomendado: primero solo OUT sin validar (reutiliza `mover_caja`) y bloquear con el pedido READY en S4T |
 
 Las filas con «?» las rellena su chat la próxima vez que se abra.
 
@@ -67,14 +68,13 @@ volver a leer la `installed_version`** (el servidor puede ir por delante del rep
 Configuración). La 2.4.2 sale de la 2.4.1 en la rama `koroshi_menu-2.4` (etiqueta `koroshi_menu/v2.4.2`), no de la 2.5.0
 de `main`: una 2.5.x tendrá que llevar estos menús.
 
-**Para instalar al final del turno del 19/11** (Isaac): koroshi_menu **2.5.1** = 2.5.0 (menú de jefes) + menús de
-actividades de la 2.4.2 + jefes en «S4T API / User» (Almacen 2 no veía matrículas ni packing feed de S4T). Desde la
-2.4.2 corren las migraciones 2.5.0 y 2.5.1. Después: Ctrl+F5 y comprobar con Almacén Nath (PDA) que Lecturas,
-Contenedores, Actividades, Monitor y S4T siguen igual. Orden de hoy: monitor 1.36.0 → zonas 1.6.0 → buscador_stock
-1.0.0 → menu 2.5.1, uno a uno y con ~5 min entre cada uno.
+**Instalado el 19/11 a las 14:24**: koroshi_menu **2.5.1** (menú de jefes + menús de actividades + jefes en «S4T API /
+User»). Jefes: Administración, Almacen 2, BackOffice, Departament IT y Jose Ismael Fonollosa. Almacén Nath (PDA) sigue
+en S4T API / User y Admin. Falta: Ctrl+F5 y comprobar con Almacén Nath que Lecturas, Contenedores, Actividades,
+Monitor y S4T siguen igual, y con Almacen 2 que abre matrículas y packing feed de S4T.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
-**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.36.0 (Siguiente tienda por nº de pedido, 19/11 12:03), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.5.1 (19/11 14:24), faltantes 1.7.0, preparacion 3.33.0, monitor 1.36.0 (Siguiente tienda por nº de pedido, 19/11 12:03), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
