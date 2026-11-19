@@ -44,8 +44,15 @@ v1.6.0 (18/11/2026): pruebas del almacén con la 1.5.0. Botón «← Atrás» (u
   Al mover: «Se han movido N contenedores». Añadir prendas: dos lecturas seguidas del mismo EAN cuentan dos (antes la
   segunda en menos de 0,7 s se perdía sin aviso; ahora solo se descarta la copia bus/campo de una misma lectura) y
   «Cantidad» pone N uds a la última lectura.
+v1.7.0 (19/11/2026): pruebas del almacén con la 1.6.0. En el contenedor abierto, «Cambiar» al lado de cada artículo
+  pone las uds reales (p. ej. 50 → 45): ajuste de inventario de la diferencia, + o −, como «Poner a cero»; no deja
+  bajar de lo reservado para una OUT y dice cuál; queda en el registro como «Cambiar cantidad» (valor nuevo del campo
+  acción de su propia tabla; entra en el filtro «Ajustes de stock»). Antes solo se podía poner a cero o añadir.
+  Etiqueta rota: escribir un trozo del nombre (290726_44, sin KO_) lo busca: si hay uno (o el nombre entero existe)
+  se abre; si hay varios, lista para elegir (20 como máximo). Con «⌨ Escribir», sugerencias desde 4 caracteres.
+  Antes había que escribir el nombre entero con KO_. Los contenedores de la lista de mover tienen «Abrir».
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

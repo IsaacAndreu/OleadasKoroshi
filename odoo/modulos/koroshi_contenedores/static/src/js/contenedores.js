@@ -1,6 +1,10 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Contenedores v1.6.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+/* KOROSHI Contenedores v1.7.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.7 (almacén 19/11): en el contenedor abierto, «Cambiar» al lado de cada artículo pone las uds reales (ajuste de
+ *   la diferencia, nunca por debajo de lo reservado). Buscar por un trozo del nombre (etiqueta rota): al pulsar
+ *   Intro, uno = ese contenedor, varios = lista para elegir; con «⌨ Escribir», sugerencias desde 4 caracteres.
+ *   Los contenedores de la lista de mover tienen «Abrir» (cantidades, poner a cero, añadir).
  * v1.6 (pruebas del almacén 18/11): botón «← Atrás» (un paso atrás: contenedor → hueco → lineal/artículo → inicio;
  *   tras «Mover marcados» vuelve al hueco); el campo no saca el teclado de la PDA (inputmode=none, como Operarios) y
  *   «⌨ Escribir» lo saca para teclear L94; leer una prenda dice dónde hay stock de ella; la persona se mantiene 15 min;
@@ -57,6 +61,14 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_teclado': '_onTeclado',
         'click .o_kc_cantidad_ok': '_onCantidad',
         'keydown .o_kc_cantidad': '_onCantidadKey',
+        // v1.7
+        'click .o_kc_editar': '_onEditar',
+        'click .o_kc_editar_ok': '_onEditarOk',
+        'click .o_kc_editar_no': '_onEditarNo',
+        'keydown .o_kc_editar_uds': '_onEditarKey',
+        'input .o_kc_codigo': '_onEscribe',
+        'click .o_kc_sugerencia': '_onSugerencia',
+        'click .o_kc_abrir': '_onVer',
     },
 
     init: function () {
@@ -78,6 +90,9 @@ var Pantalla = AbstractAction.extend({
         this.articulo = null;           // v1.6: dónde hay stock de la prenda leída
         this.origenHueco = null;        // v1.6: hueco del que salen los «Mover marcados» (para «Atrás»)
         this.teclado = false;           // v1.6: campo con teclado de la PDA (para escribir L94)
+        this.editando = null;           // v1.7: artículo del contenedor abierto al que se cambia la cantidad
+        this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
+        this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
     },
 
     start: function () {
@@ -93,6 +108,7 @@ var Pantalla = AbstractAction.extend({
     destroy: function () {
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearInterval(this.timer);
+        clearTimeout(this.buscarTimer);
         this._super.apply(this, arguments);
     },
 
@@ -116,6 +132,8 @@ var Pantalla = AbstractAction.extend({
         this.lecturasAnadir = [];
         this.articulo = null;
         this.origenHueco = null;
+        this.editando = null;
+        this.candidatos = null;
         if (conPersona) { this.persona = null; }
         this._pintar();
     },
@@ -130,6 +148,7 @@ var Pantalla = AbstractAction.extend({
             ev.preventDefault();
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
+            this._sugerencias(null);            // v1.7
             if (this.teclado) { this._ponerTeclado(false); }   // v1.6: tras escribir, vuelve sin teclado
             this._leer(codigo, false, 'campo');
         }
@@ -230,6 +249,18 @@ var Pantalla = AbstractAction.extend({
             }
             self.confirmando = false;
             self.detalle = null;
+            self.editando = null;
+            self.candidatos = null;
+            if (r.tipo === 'candidatos') {  // v1.7: varios contenedores con ese trozo: elegir uno
+                self.candidatos = r;
+                self.hueco = null;
+                self.lineal = null;
+                self.articulo = null;
+                self._aviso('info', r.contenedores.length + (r.mas ? '+' : '') + ' contenedores con «' + r.texto +
+                    '». Toca el tuyo.');
+                self._pintar();
+                return;
+            }
             if (r.tipo === 'articulo') {    // v1.6: dónde hay stock de la prenda (no toca la cola de mover)
                 self.articulo = r.articulo;
                 self.hueco = null;
@@ -433,6 +464,7 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.detalle = m.contenedor;
+            self._refrescarCont(m.contenedor);
             self._aviso('ok', '✓ ' + m.msg + '. Ya se puede archivar.');
             self._pintar();
         }, self._sinConexion.bind(self));
@@ -527,6 +559,13 @@ var Pantalla = AbstractAction.extend({
             return this._onCancelarAnadir();
         }
         if (this.confirmando) { return this._onConfirmarNo(); }
+        if (this.editando) { return this._onEditarNo(); }       // v1.7
+        if (this.candidatos) {                                   // v1.7
+            this.candidatos = null;
+            this._aviso('', '');
+            this._pintar();
+            return this._foco();
+        }
         if (this.detalle) { return this._onVolverHueco(); }
         if (this.conts.length) {
             if (this.origenHueco) {        // venía de «Mover marcados»: vuelve al hueco
@@ -584,10 +623,132 @@ var Pantalla = AbstractAction.extend({
             self.anadiendo = null;
             self.lecturasAnadir = [];
             self.detalle = m.contenedor;
+            self._refrescarCont(m.contenedor);
             self._aviso('ok', '✓ ' + m.msg);
             self._pintar();
             self._foco();
         }, self._sinConexion.bind(self));
+    },
+
+    // ------------------------------------------------------------------ v1.7: cambiar la cantidad
+    _refrescarCont: function (c) {
+        this.conts = this.conts.map(function (x) { return x.id === c.id ? c : x; });
+    },
+
+    _onEditar: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('producto'), 10);
+        if (this.ocupado || !this.detalle || !this.persona || this.anadiendo || !id) { return; }
+        var lineas = _.filter(this.detalle.lineas, function (l) { return l.producto_id === id; });
+        if (!lineas.length) { return; }
+        this.editando = {
+            id: id, nombre: lineas[0].producto,
+            uds: _.reduce(lineas, function (s, l) { return s + l.uds; }, 0),
+            reservadas: _.reduce(lineas, function (s, l) { return s + l.reservadas; }, 0),
+        };
+        this.confirmando = false;
+        this.actividadEn = Date.now();
+        this._aviso('info', 'Escribe las uds que hay de verdad y «Guardar».');
+        this._pintar();
+        var $q = this.$('.o_kc_editar_uds');
+        $q.focus();
+        $q.select();
+    },
+
+    _onEditarNo: function () {
+        this.editando = null;
+        this._aviso('', '');
+        this._pintar();
+        this._foco();
+    },
+
+    _onEditarKey: function (ev) {
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        if ((ev.currentTarget.value || '').trim().length > 5) {   // una lectura del escáner, no una cantidad
+            ev.currentTarget.value = '';
+            return this._aviso('mal', 'Escribe la cantidad con el teclado (no leas aquí).');
+        }
+        this._onEditarOk();
+    },
+
+    _onEditarOk: function () {
+        var self = this;
+        var e = this.editando;
+        if (this.ocupado || !e || !this.detalle || !this.persona) { return; }
+        var v = (this.$('.o_kc_editar_uds').val() || '').trim();
+        var n = parseInt(v, 10);
+        if (!/^\d+$/.test(v) || !(n >= 0)) {
+            return this._aviso('mal', 'Escribe un número de uds (0 o más).');
+        }
+        if (n < e.reservadas) {
+            return this._aviso('mal', 'No se puede bajar de ' + _n(e.reservadas) + ' uds: están reservadas para ' +
+                'un pedido.');
+        }
+        if (n === e.uds) {
+            return this._aviso('info', 'Ya tiene ' + n + ' uds: no se cambia nada.');
+        }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/cantidad', params: {
+            contenedor_id: this.detalle.id, employee_id: this.persona.id, producto_id: e.id,
+            uds: n}}).then(function (m) {
+            self._fin();
+            if (!m || !m.ok) {
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido cambiar.');
+                return;
+            }
+            self.editando = null;
+            self.detalle = m.contenedor;
+            self._refrescarCont(m.contenedor);
+            self._pitido(true);
+            self._aviso('ok', '✓ ' + m.msg);
+            self._pintar();
+            self._foco();
+        }, self._sinConexion.bind(self));
+    },
+
+    // ------------------------------------------------------------------ v1.7: buscar por un trozo del nombre
+    // Con «⌨ Escribir»: desde 4 caracteres salen los contenedores que lo contienen (no con el escáner)
+    _onEscribe: function (ev) {
+        var self = this;
+        clearTimeout(this.buscarTimer);
+        var v = (ev.currentTarget.value || '').trim();
+        if (!this.teclado || v.length < 4) { return this._sugerencias(null); }
+        this.buscarTimer = setTimeout(function () {
+            self._rpc({route: '/koroshi/contenedores/buscar', params: {texto: v}}).then(function (r) {
+                if ((self.$('.o_kc_codigo').val() || '').trim() !== v) { return; }   // ya ha escrito más
+                self._sugerencias(r && r.ok ? r : null);
+            }, function () { self._sugerencias(null); });
+        }, 350);
+    },
+
+    _sugerencias: function (r) {
+        var $s = this.$('.o_kc_sugerencias');
+        if (!r || !r.contenedores.length) { return $s.html(''); }
+        $s.html(r.contenedores.map(function (c) {
+            return '<button type="button" class="o_kc_sugerencia" data-nombre="' + _e(c.nombre) + '">' +
+                _e(c.nombre) + '<br/><small>' + _e(c.hueco) + '</small></button>';
+        }).join('') + (r.mas ? '<div class="o_kc_vacio">Hay más: escribe más números.</div>' : ''));
+    },
+
+    _onSugerencia: function (ev) {
+        var nombre = String($(ev.currentTarget).data('nombre') || '');
+        clearTimeout(this.buscarTimer);
+        this.$('.o_kc_codigo').val('');
+        this._sugerencias(null);
+        if (this.teclado) { this._ponerTeclado(false); }
+        this._leer(nombre, false, 'toque');
+    },
+
+    _pintarCandidatos: function () {
+        var r = this.candidatos;
+        if (!r || this.hueco || this.lineal || this.detalle || this.articulo) { return ''; }
+        return '<div class="o_kc_card"><h3>Contenedores con «' + _e(r.texto) + '»</h3>' +
+            r.contenedores.map(function (c) {
+                return '<button type="button" class="o_kc_sugerencia" data-nombre="' + _e(c.nombre) + '">' +
+                    _e(c.nombre) + '<br/><small>' + _e(c.hueco) + '</small></button>';
+            }).join('') + (r.mas ? '<div class="o_kc_vacio">Hay más: escribe más números.</div>' : '') + '</div>';
     },
 
     // ------------------------------------------------------------------ inventario por lineal
@@ -746,18 +907,32 @@ var Pantalla = AbstractAction.extend({
     _pintarDetalle: function () {
         var c = this.detalle;
         if (!c) { return ''; }
-        var html = '<button type="button" class="o_kc_volver_hueco">← Volver al hueco</button>' +
+        var e = this.editando;
+        var puedeEditar = !this.anadiendo && !this.confirmando && !e;
+        var html = '<button type="button" class="o_kc_volver_hueco">' + (this.hueco ? '← Volver al hueco' : '← Volver') +
+            '</button>' +
             '<div class="o_kc_card"><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">En: ' + _e(c.hueco) + '</div>';
         if (c.n_lineas) {
             html += '<div>' + c.n_lineas + ' ref. · ' + _n(c.uds) + ' uds' +
                 (c.reservadas ? ' · <b>' + _n(c.reservadas) + ' reservadas</b>' : '') + '</div><table>' +
                 c.lineas.map(function (l) {
                     return '<tr><td>' + _e(l.producto) + '</td><td class="o_kc_n">' + _n(l.uds) +
-                        (l.reservadas ? ' (res. ' + _n(l.reservadas) + ')' : '') + '</td></tr>';
+                        (l.reservadas ? ' (res. ' + _n(l.reservadas) + ')' : '') +
+                        (puedeEditar ? '<button type="button" class="o_kc_editar" data-producto="' + l.producto_id +
+                            '">Cambiar</button>' : '') + '</td></tr>';
                 }).join('') + (c.mas ? '<tr><td colspan="2">… y ' + c.mas + ' referencias más</td></tr>' : '') +
                 '</table>';
         } else {
             html += '<div class="o_kc_vacio">Sin prendas en el sistema</div>';
+        }
+        if (e) {                        // v1.7: uds reales de un artículo
+            html += '<div class="o_kc_editar_caja"><b>' + _e(e.nombre) + '</b><div>Ahora: ' + _n(e.uds) + ' uds' +
+                (e.reservadas ? ' · ' + _n(e.reservadas) + ' reservadas (no se puede bajar de ahí)' : '') +
+                '</div>Hay de verdad: <input type="number" class="o_kc_editar_uds" inputmode="numeric" min="' +
+                Math.ceil(e.reservadas) + '" step="1" value="' + Math.round(e.uds) + '"/>' +
+                '<div><button type="button" class="o_kc_editar_ok">Guardar</button>' +
+                '<button type="button" class="o_kc_editar_no">Cancelar</button></div></div>';
+            return html + '</div>';
         }
         if (this.anadiendo) {
             var total = _.reduce(this.anadiendo, function (s, f) { return s + f.uds; }, 0);
@@ -799,7 +974,9 @@ var Pantalla = AbstractAction.extend({
         } else if (this.anadiendo) {
             paso = 'Añadir prendas: lee cada prenda y después «Guardar»';
         } else if (this.detalle) {
-            paso = 'Contenedor: ponerlo a cero o añadir prendas';
+            paso = 'Contenedor: «Cambiar» la cantidad de un artículo, ponerlo a cero o añadir prendas';
+        } else if (this.candidatos) {
+            paso = 'Toca el contenedor que buscas';
         } else if (this.hueco) {
             paso = 'Compactar: marca y archiva los vacíos; mueve los que tienen prendas';
         } else if (this.lineal) {
@@ -811,7 +988,7 @@ var Pantalla = AbstractAction.extend({
                 'dónde está o escribe un lineal (L94)';
         }
         this.$('.o_kc_paso').text(paso);
-        var html = this.conts.map(function (c) {
+        var html = this.detalle ? '' : this.conts.map(function (c) {   // v1.7: con uno abierto, solo ese
             var filas = c.lineas.map(function (l) {
                 return '<tr><td>' + _e(l.producto) + '</td><td class="o_kc_n">' + _n(l.uds) +
                     (l.reservadas ? ' (res. ' + _n(l.reservadas) + ')' : '') + '</td></tr>';
@@ -823,12 +1000,12 @@ var Pantalla = AbstractAction.extend({
                     '</div><table>' + filas + '</table>'
                 : '<div class="o_kc_vacio">Sin prendas en el sistema</div>';
             return '<div class="o_kc_card"><button type="button" class="o_kc_quitar" data-id="' + c.id +
-                '">Quitar</button><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">Ahora en: ' +
+                '">Quitar</button><button type="button" class="o_kc_abrir" data-id="' + c.id + '">Abrir</button><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">Ahora en: ' +
                 _e(c.hueco) + '</div>' + cuerpo + '</div>';
         }).join('');
         this.$('.o_kc_lista').html(html);
-        this.$('.o_kc_hueco_panel').html(this._pintarArticulo() + this._pintarLineal() + this._pintarHueco() +
-            this._pintarDetalle());
+        this.$('.o_kc_hueco_panel').html(this._pintarCandidatos() + this._pintarArticulo() + this._pintarLineal() +
+            this._pintarHueco() + this._pintarDetalle());
     },
 });
 

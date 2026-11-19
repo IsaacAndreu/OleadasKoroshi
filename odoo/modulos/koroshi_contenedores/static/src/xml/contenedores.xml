@@ -8,6 +8,7 @@
                        placeholder="Tarjeta, contenedor KO_…, ubicación, prenda o lineal (L94)"/>
                 <button type="button" class="o_kc_teclado">⌨ Escribir</button>
             </header>
+            <div class="o_kc_sugerencias"/>
             <div class="o_kc_persona"/>
             <div class="o_kc_aviso"/>
             <div class="o_kc_paso"/>

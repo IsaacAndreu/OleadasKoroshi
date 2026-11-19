@@ -8,8 +8,10 @@ class KoroshiContenedorMovimiento(models.Model):
     _order = 'id desc'
 
     # v1.5: 'cero' y 'anadir' son ajustes de inventario (cambian el stock): una línea por artículo, con su movimiento
+    # v1.7: 'cantidad' también (uds reales de un artículo del contenedor; uds = diferencia, + o -)
     accion = fields.Selection([('mover', 'Mover'), ('archivar', 'Archivar vacío'), ('cero', 'Poner a cero'),
-                               ('anadir', 'Añadir prendas')], 'Acción', default='mover', required=True)
+                               ('anadir', 'Añadir prendas'), ('cantidad', 'Cambiar cantidad')], 'Acción',
+                              default='mover', required=True)
     contenedor = fields.Char('Contenedor', required=True, index=True)
     origen_id = fields.Many2one('stock.location', 'Origen (hueco)', ondelete='set null')
     destino_id = fields.Many2one('stock.location', 'Destino (hueco)', ondelete='set null')

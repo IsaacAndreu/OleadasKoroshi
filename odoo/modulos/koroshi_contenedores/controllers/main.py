@@ -5,6 +5,8 @@
 # v1.5: /cero y /anadir hacen ajustes de inventario (stock.move hecho contra pérdidas de inventario); quién y cuándo
 # queda en koroshi.contenedor.movimiento, como en Lecturas y Faltantes.
 # v1.6: /leer con una prenda (EAN o referencia) dice dónde hay stock de ella; /mover dice cuántos contenedores movió.
+# v1.7: /cantidad pone las uds reales de un artículo del contenedor (ajuste de la diferencia, + o -, nunca por debajo
+# de lo reservado). /buscar y /leer encuentran el contenedor por un trozo del nombre (etiqueta rota: «290726_44»).
 # =============================================================================
 import re
 
@@ -19,6 +21,8 @@ MAX_ANADIR = 500          # v1.5: uds de un artículo en un solo «Añadir» (m�
 COMPANY_ID = 8            # EFFECTIVE LOGISTICS (si el contenedor no tiene empresa)
 MAX_HUECOS = 400
 MAX_DONDE = 60            # v1.6: ubicaciones como máximo al buscar dónde está un artículo
+MAX_BUSCAR = 20           # v1.7: contenedores como máximo al buscar por un trozo del nombre
+MIN_BUSCAR = 2            # v1.7: caracteres mínimos para buscar por un trozo
 LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
 
 
@@ -49,7 +53,8 @@ class KoroshiContenedores(http.Controller):
     def _datos_contenedor(self, loc):
         Quant = request.env['stock.quant'].sudo()
         quants = Quant.search([('location_id', '=', loc.id), ('quantity', '!=', 0)])
-        lineas = [{'producto': q.product_id.display_name, 'uds': q.quantity, 'reservadas': q.reserved_quantity}
+        lineas = [{'producto': q.product_id.display_name, 'producto_id': q.product_id.id,   # v1.7: para «Cambiar»
+                   'uds': q.quantity, 'reservadas': q.reserved_quantity}
                   for q in quants[:MAX_LINEAS]]
         return {
             'id': loc.id,
@@ -189,10 +194,12 @@ class KoroshiContenedores(http.Controller):
         return request.env['stock.quant'].sudo().search([('location_id', '=', contenedor.id), '|',
                                                          ('quantity', '!=', 0), ('reserved_quantity', '!=', 0)])
 
-    def _pedidos_reservados(self, contenedor):
-        """OUT (y su pedido) que tienen reservadas prendas de este contenedor."""
-        mls = request.env['stock.move.line'].sudo().search([
-            ('location_id', '=', contenedor.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)])
+    def _pedidos_reservados(self, contenedor, producto=None):
+        """OUT (y su pedido) que tienen reservadas prendas de este contenedor (v1.7: o solo de un artículo)."""
+        dominio = [('location_id', '=', contenedor.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)]
+        if producto:
+            dominio.append(('product_id', '=', producto.id))
+        mls = request.env['stock.move.line'].sudo().search(dominio)
         return ['%s%s' % (p.name, ' (%s)' % p.origin if p.origin else '') for p in mls.mapped('picking_id')]
 
     def _ajuste(self, producto, qty, contenedor, company, emp, accion, nombre):
@@ -397,6 +404,91 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
+    @http.route('/koroshi/contenedores/cantidad', type='json', auth='user')
+    def cantidad(self, contenedor_id=False, employee_id=False, producto_id=False, uds=None, **kw):
+        """v1.7: uds reales de un artículo en el contenedor (se ha contado y no cuadra). Ajuste de inventario de la
+        diferencia (+ entra, - sale), como /cero y /anadir. No se baja de lo reservado para una OUT."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            c = self._contenedor(contenedor_id)
+            p = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
+            if not p:
+                raise UserError('Artículo no válido. Vuelve a abrir el contenedor.')
+            try:
+                nuevas = int(uds)
+            except (TypeError, ValueError):
+                raise UserError('Escribe las uds que hay (un número).')
+            if nuevas < 0:
+                raise UserError('Las uds no pueden ser negativas.')
+            quants = self._quants(c).filtered(lambda q: q.product_id == p)
+            if quants.filtered(lambda q: q.lot_id or q.package_id or q.owner_id):
+                raise UserError('%s tiene prendas con lote, paquete o propietario: hazlo desde Odoo o avisa a IT.'
+                                % c.name)
+            actual = sum(quants.mapped('quantity'))
+            reservadas = sum(quants.mapped('reserved_quantity'))
+            if nuevas < reservadas:
+                pedidos = self._pedidos_reservados(c, p)
+                raise UserError('No se baja a %d: %s uds de %s están reservadas para %s. Quita antes la reserva '
+                                'desde el pedido.' % (nuevas, _num(reservadas), p.display_name,
+                                                      ', '.join(pedidos) or 'un pedido'))
+            diferencia = nuevas - actual
+            if float_is_zero(diferencia, precision_rounding=p.uom_id.rounding):
+                raise UserError('%s ya tiene %d uds de %s: no se cambia nada.' % (c.name, nuevas, p.display_name))
+            if abs(diferencia) > MAX_ANADIR:
+                raise UserError('Cambio de más de %d uds: revisa la cantidad.' % MAX_ANADIR)
+            company = quants[:1].company_id or c.company_id or request.env['res.company'].sudo().browse(COMPANY_ID)
+            with request.env.cr.savepoint():
+                self._ajuste(p, diferencia, c, company, emp, 'cantidad',
+                             'KOROSHI contenedor %s: cambiar cantidad (%s)' % (c.name, emp.name))
+            return {'ok': True, 'msg': '%s: %s en %s pasa de %s a %d uds (%s%s)' % (
+                emp.name, p.display_name, c.name, _num(actual), nuevas, '+' if diferencia > 0 else '−',
+                _num(abs(diferencia))), 'contenedor': self._datos_contenedor(c)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _por_trozo(self, texto):
+        """v1.7: contenedores KO_/TT_ activos cuyo nombre contiene el texto (etiqueta rota, escrito a mano).
+        Devuelve (encontrados hasta MAX_BUSCAR, hay más)."""
+        texto = (texto or '').strip()
+        if len(texto) < MIN_BUSCAR:
+            return request.env['stock.location'].sudo(), False
+        dominio = [('usage', '=', 'internal'), ('name', '=ilike', '%' + _literal(texto) + '%'), '|',
+                   ('name', '=ilike', 'KO\\_%'), ('name', '=ilike', 'TT\\_%')]
+        locs = request.env['stock.location'].sudo().search(dominio, order='name', limit=MAX_BUSCAR + 1)
+        return locs[:MAX_BUSCAR], len(locs) > MAX_BUSCAR
+
+    def _candidatos(self, locs, mas):
+        return {'contenedores': [{'id': l.id, 'nombre': l.name, 'hueco': l.location_id.complete_name or ''}
+                                 for l in locs], 'mas': mas}
+
+    @http.route('/koroshi/contenedores/buscar', type='json', auth='user')
+    def buscar(self, texto='', **kw):
+        """v1.7: sugerencias mientras se escribe (solo lectura)."""
+        try:
+            self._comprobar_usuario()
+            locs, mas = self._por_trozo(texto)
+            r = self._candidatos(locs, mas)
+            r['ok'] = True
+            return r
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _por_trozo_leer(self, codigo):
+        """v1.7: /leer sin coincidencia exacta: uno por trozo = ese contenedor; varios = la lista para elegir."""
+        locs, mas = self._por_trozo(codigo)
+        # «290726_44» también encuentra KO_290726_440…449: si existe KO_290726_44 (nombre entero), es ese
+        exacto = locs.filtered(lambda l: l.name.upper()[3:] == codigo.strip().upper())
+        if len(exacto) == 1:
+            locs = exacto
+        if len(locs) == 1:
+            return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(locs)}
+        if locs:
+            r = self._candidatos(locs, mas)
+            r.update({'ok': True, 'tipo': 'candidatos', 'texto': codigo})
+            return r
+        return None
+
     def _validar_destino(self, destino):
         if destino.usage != 'internal':
             raise UserError('%s no es una ubicación interna.' % destino.complete_name)
@@ -424,6 +516,9 @@ class KoroshiContenedores(http.Controller):
                                   ('name', '=ilike', _literal(codigo)), ('barcode', '=ilike', _literal(codigo))])
                 loc = loc.filtered(lambda l: _es_contenedor_nombre(l.name))
                 if not loc:
+                    r = self._por_trozo_leer(codigo)    # v1.7: KO_290726_44 escrito a medias
+                    if r:
+                        return r
                     raise UserError('No encuentro el contenedor %s (o está archivado).' % codigo)
                 if len(loc) > 1:
                     raise UserError('Hay %d contenedores llamados %s. Avisa a IT.' % (len(loc), codigo))
@@ -433,6 +528,9 @@ class KoroshiContenedores(http.Controller):
                 producto = self._buscar_producto(codigo)   # v1.6: una prenda: dónde hay stock de ella
                 if producto:
                     return {'ok': True, 'tipo': 'articulo', 'articulo': self._donde(producto)}
+                r = self._por_trozo_leer(codigo)        # v1.7: trozo del nombre de un contenedor (290726_44)
+                if r:
+                    return r
                 raise UserError('No conozco %s: no es tarjeta, contenedor, ubicación ni artículo.' % codigo)
             if len(loc) > 1:
                 raise UserError('Hay %d ubicaciones con el código %s. Avisa a IT.' % (len(loc), codigo))
