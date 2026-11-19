@@ -170,8 +170,16 @@ pedidos con numero menor que el de un pedido ya cerrado del todo (con zona, caja
 habria salido con las OUT de Z-1911-MU2 leidas a las 6:30 sin caja ni validar. Solo PED. TIENDAS (nunca Zalando ni
 web) y sin los pedidos pendientes en espera ni los backorders. Calculo en controllers/prioridad_calc.py con tests sin
 Odoo (tests/test_prioridad_calc.py). Solo lee: sin campos ni modelos nuevos.
+v1.37.0 (19/11/2026): los operarios no ven nombres ni productividad (peticion de Isaac). Quien no esta en el grupo
+koroshi_menu.grupo_jefes (el usuario «Almacén Nath» de las PDA) ve el Monitor con el codigo de cada operario (OP3) en vez
+del nombre, sin «Personas y horas», sin los minutos ni la u/h de cada operario y sin los botones «Producción por hora» y
+«Consulta envíos / Excel». Esas dos pantallas (y el cierre del camion y el Excel de envios, que van dentro) dan «solo
+para responsables» si se abren igualmente: se comprueba en el servidor, no solo en la pantalla. Los nombres ni siquiera
+salen del servidor (cache separada para jefes y operarios). Los jefes (y la tele, que entra con Almacen 2) lo ven todo
+como antes. Sin el grupo en la base de datos (koroshi_menu sin instalar), todos lo ven todo. Sin dependencia nueva.
+Los menus para Almacén Nath se quitan en koroshi_menu.
 """,
-    'version': '13.0.1.36.0',
+    'version': '13.0.1.37.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

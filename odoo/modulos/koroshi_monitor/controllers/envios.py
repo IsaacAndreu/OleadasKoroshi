@@ -25,7 +25,7 @@ from odoo.exceptions import UserError
 from odoo.http import content_disposition, request
 from odoo.addons.koroshi_base import comun   # v1.28: la empresa
 
-from .main import _comprobar_grupo   # v1.27: permiso de Inventario
+from .main import _comprobar_jefe   # v1.27: permiso de Inventario; v1.37.0: solo jefes
 from . import xpo_calc               # v1.34.0: Excel «PREVISIÓN XPO AMPOSTA» del cierre
 
 
@@ -162,7 +162,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @http.route('/koroshi_monitor/consulta_envios', type='json', auth='user')
     def consulta_envios(self, texto=None, apartado='tiendas', **kw):
-        _comprobar_grupo()   # v1.27
+        _comprobar_jefe()   # v1.37.0: solo jefes   # v1.27
         texto = (texto or '').strip()
         apartado = apartado if apartado in ('tiendas', 'web') else 'tiendas'
         if len(texto) < 2:
@@ -614,7 +614,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @http.route('/koroshi_monitor/consulta_envios.xlsx', type='http', auth='user')
     def consulta_envios_excel(self, apartado='tiendas', transportista=None, desde=None, hasta=None, **kw):
-        _comprobar_grupo()   # v1.27
+        _comprobar_jefe()   # v1.37.0: solo jefes   # v1.27
         apartado = apartado if apartado in PERMITIDOS else 'tiendas'
         transportista = transportista if transportista in PERMITIDOS[apartado] else PERMITIDOS[apartado][0]
         etiqueta = NOMBRES_TRANSPORTISTA[transportista]
@@ -732,7 +732,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @http.route('/koroshi_monitor/cierre/resumen', type='json', auth='user')
     def cierre_resumen(self, dia=None, **kw):
-        _comprobar_grupo()
+        _comprobar_jefe()   # v1.37.0: solo jefes
         env = self._env()
         dia_fecha, picks, fechas, _manuales, avisos = self._datos_cierre(env, dia)
         para, cc = self._destinatarios(env)
@@ -749,7 +749,7 @@ class KoroshiConsultaEnvios(http.Controller):
     @http.route('/koroshi_monitor/cierre/enviar', type='json', auth='user')
     def cierre_enviar(self, dia=None, reenviar=False, **kw):
         """Manda el Excel XPO del día a XPO (para/cc en parámetros) y guarda el cierre. No sale nada si no se pulsa."""
-        _comprobar_grupo()
+        _comprobar_jefe()   # v1.37.0: solo jefes
         env = self._env()
         dia_fecha, picks, fechas, manuales, avisos = self._datos_cierre(env, dia)
         if not picks:
@@ -862,7 +862,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @http.route('/koroshi_monitor/envios_extra/lista', type='json', auth='user')
     def envios_extra_lista(self, apartado='tiendas', desde=None, hasta=None, **kw):
-        _comprobar_grupo()   # v1.27
+        _comprobar_jefe()   # v1.37.0: solo jefes   # v1.27
         apartado = apartado if apartado in PERMITIDOS else 'tiendas'
         return {'extras': self._lista_extras(self._env(), apartado, desde, hasta)}
 
@@ -884,7 +884,7 @@ class KoroshiConsultaEnvios(http.Controller):
     @http.route('/koroshi_monitor/envios_extra/anadir', type='json', auth='user')
     def envios_extra_anadir(self, apartado='tiendas', transportista=None, texto=None, dia=None,
                             desde=None, hasta=None, **kw):
-        _comprobar_grupo()   # v1.27
+        _comprobar_jefe()   # v1.37.0: solo jefes   # v1.27
         apartado = apartado if apartado in PERMITIDOS else 'tiendas'
         texto = (texto or '').strip()
         env = self._env()
@@ -933,7 +933,7 @@ class KoroshiConsultaEnvios(http.Controller):
 
     @http.route('/koroshi_monitor/envios_extra/quitar', type='json', auth='user')
     def envios_extra_quitar(self, extra_id=None, apartado='tiendas', desde=None, hasta=None, **kw):
-        _comprobar_grupo()   # v1.27
+        _comprobar_jefe()   # v1.37.0: solo jefes   # v1.27
         apartado = apartado if apartado in PERMITIDOS else 'tiendas'
         env = self._env()
         try:

@@ -23,7 +23,7 @@ from odoo.addons.koroshi_base import comun
 import logging
 
 from . import produccion_calc as calc
-from .main import _comprobar_grupo, codigo_op, etiqueta_op
+from .main import _comprobar_jefe, codigo_op, etiqueta_op   # v1.37.0: solo jefes
 
 _logger = logging.getLogger(__name__)
 COMPANY_ID = comun.COMPANY_ID
@@ -172,7 +172,7 @@ class KoroshiProduccion(http.Controller):
 
     @http.route('/koroshi_monitor/produccion', type='json', auth='user')
     def produccion(self, dia=None, tipo=None, **kw):
-        _comprobar_grupo()
+        _comprobar_jefe()   # v1.37.0: solo jefes
         hoy = self._hoy()
         d = self._fecha(dia, hoy)
         tipo = tipo if tipo in TIPOS else None
@@ -197,7 +197,7 @@ class KoroshiProduccion(http.Controller):
 
     @http.route('/koroshi_monitor/produccion.xlsx', type='http', auth='user')
     def produccion_excel(self, desde=None, hasta=None, **kw):
-        _comprobar_grupo()
+        _comprobar_jefe()   # v1.37.0: solo jefes
         hoy = self._hoy()
         d1 = self._fecha(desde, hoy)
         d2 = self._fecha(hasta, d1)

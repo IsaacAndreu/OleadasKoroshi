@@ -66,6 +66,27 @@ def _comprobar_grupo():
         raise AccessError('Hace falta el permiso de Inventario para usar esta pantalla.')
 
 
+# v1.37.0 (19/11/2026, Isaac): los operarios (usuario «Almacén Nath» de las PDA) ven el Monitor con el codigo de cada
+# operario (OP3), sin nombres, y sin Producción por hora, Consulta de envíos ni la u/h de cada persona. Jefe = grupo
+# koroshi_menu.grupo_jefes (koroshi_menu 2.5.1). Sin ese grupo en la base de datos (koroshi_menu sin instalar), todos
+# ven todo, como antes. Sin dependencia de koroshi_menu.
+GRUPO_JEFES = 'koroshi_menu.grupo_jefes'
+
+
+def es_jefe():
+    grupo = request.env.ref(GRUPO_JEFES, raise_if_not_found=False)
+    if not grupo:
+        return True
+    return request.env.user.has_group(GRUPO_JEFES)
+
+
+def _comprobar_jefe():
+    """v1.37.0: Producción por hora y Consulta de envíos (con el cierre del camión), solo jefes."""
+    _comprobar_grupo()
+    if not es_jefe():
+        raise AccessError('Esta pantalla es solo para responsables.')
+
+
 def codigo_op(emp):
     """v1.18: codigo corto del operario (tarjeta OP0003 -> OP3). En el monitor nunca sale el nombre."""
     b = (emp.barcode or '').strip()
@@ -370,7 +391,7 @@ class KoroshiMonitor(http.Controller):
             'sin_validar': sin_validar, 'en_caja': f['en_caja'],
         }
 
-    def _operarios(self, env, dominio, filas_por_id, dia=None):
+    def _operarios(self, env, dominio, filas_por_id, dia=None, nombres=True):
         """v1.18: quien coge cada OUT, con el modulo koroshi_operarios (si esta instalado; si no, nada).
         v1.30: nombre + codigo ('Ana Garcia · OP3'); hasta la 1.29, solo codigos. Devuelve (por_picking, por_lote, resumen)."""
         if 'koroshi.operario.tarea' not in env.registry:
@@ -381,7 +402,8 @@ class KoroshiMonitor(http.Controller):
         por_picking, por_lote, ops = {}, {}, {}
         for t in tareas:
             codigo = codigo_op(t.employee_id)
-            cod = etiqueta_op(t.employee_id)    # v1.30: lo que se ensena (nombre + codigo)
+            # v1.30: lo que se ensena (nombre + codigo); v1.37.0: sin nombres (operarios), solo el codigo
+            cod = etiqueta_op(t.employee_id) if nombres else codigo
             abierta = t.estado == 'curso'
             fin_real = None
             if abierta:
@@ -448,7 +470,7 @@ class KoroshiMonitor(http.Controller):
                 hasattr(env['koroshi.operario.asignacion'], 'en_pausa'):
             try:
                 for a in env['koroshi.operario.asignacion'].sudo().en_pausa():
-                    o = ops.get(etiqueta_op(a.employee_id))
+                    o = ops.get(etiqueta_op(a.employee_id) if nombres else codigo_op(a.employee_id))
                     if o is not None and not o['ahora']:
                         o['pausa'] = self._hora(a.fecha_salto)
                         o['pausa_ref'] = (a.name or '').replace('EFFEC/OUT/', '')
@@ -521,12 +543,20 @@ class KoroshiMonitor(http.Controller):
     def datos(self, prefijo=None, **kw):
         _comprobar_grupo()   # v1.27
         # v1.27: si otra pantalla esta calculando lo mismo, se espera y se usa su resultado
-        clave = (request.env.cr.dbname, prefijo or '')
+        jefe = es_jefe()     # v1.37.0: los operarios ven otro resultado (sin nombres ni u/h por persona)
+        clave = (request.env.cr.dbname, prefijo or '', jefe)
         with _lock:
             guardado = _cache.get(clave)
             if guardado and time.time() - guardado[0] < CACHE_SEG:
                 return guardado[1]
-            res = self._calcular_datos(prefijo)
+            res = self._calcular_datos(prefijo, nombres=jefe)
+            res['jefe'] = jefe
+            if not jefe:
+                # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
+                res.pop('personas', None)
+                res.pop('personas_op', None)
+                res['operarios'] = [{k: v for k, v in o.items() if k not in ('uh', 'min')}
+                                    for o in res.get('operarios') or []]
             ahora = time.time()
             _cache[clave] = (ahora, res)
             for k in [k for k, v in _cache.items() if ahora - v[0] > 600]:
@@ -584,7 +614,7 @@ class KoroshiMonitor(http.Controller):
             _logger.exception('KOROSHI Monitor: no se ha podido calcular la siguiente tienda')
             return None
 
-    def _calcular_datos(self, prefijo=None, forzar=False, abiertas_antes=False):
+    def _calcular_datos(self, prefijo=None, forzar=False, abiertas_antes=False, nombres=True):
         """v1.32.0: forzar = acepta cualquier 'TIENDAS:aaaa-mm-dd' (Producción por hora, dias de su desplegable);
         abiertas_antes = suma las OUT de tienda abiertas creadas antes de ese dia (lo pendiente a primera hora)."""
         env = request.env(context=dict(request.env.context, allowed_company_ids=[COMPANY_ID]))
@@ -653,7 +683,8 @@ class KoroshiMonitor(http.Controller):
                 D.append(d)
             D.sort(key=lambda d: d['out'])
             # v1.18: operarios de las agrupaciones de este prefijo (v1.30: nombre + codigo)
-            pp, pl, res['operarios'] = self._operarios(env, [('batch_id.name', '=like', prefijo + '%')], filas)
+            pp, pl, res['operarios'] = self._operarios(env, [('batch_id.name', '=like', prefijo + '%')], filas,
+                                                        nombres=nombres)
             self._poner_ops(D, pp, pl)
             res['D'] = D
             res['pedidos'] = len(set([d['pedido'] for d in D]))
@@ -746,7 +777,7 @@ class KoroshiMonitor(http.Controller):
                 if pendientes > 0 and equipo['uh'] > 0 and dia == self._hoy_local():
                     equipo['fin_previsto'] = self._hora(ahora + datetime.timedelta(hours=pendientes / equipo['uh']))
         # v1.18: operarios del dia (v1.30: nombre + codigo)
-        pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas, dia=dia)
+        pp, pl, res['operarios'] = self._operarios(env, [('dia', '=', dia)], filas, dia=dia, nombres=nombres)
         self._poner_ops(D, pp, pl)
         # v1.20.2: personas cogiendo ahora = operarios de Lecturas con una tarea abierta (OUT, INT o agrupacion) +
         # OUT de tiendas cogiendose sin operario de Lecturas (app de siempre). Cada persona cuenta UNA vez: la OUT

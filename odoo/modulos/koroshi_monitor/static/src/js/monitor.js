@@ -109,11 +109,13 @@ function prioridadHtml(pr, tv) {
     }
     return h;
 }
-function tablaOperarios(ops, tv) {
+function tablaOperarios(ops, tv, jefe) {
     if (!ops || !ops.length) { return ''; }
+    // v1.37.0: los operarios (no jefes) ven solo el codigo, sin minutos ni u/h de cada persona
+    var conUh = jefe !== false;
     var h = '<h2>Operarios (' + ops.length + ')</h2><div class="km-card km-scroll"><table class="km-ops"><thead><tr><th>Operario</th><th>Ahora</th><th>Desde</th>' +
         (tv ? '' : '<th class="r">Pedidos</th><th class="r">Acabados</th><th class="r">Dejados</th>') +
-        '<th class="r">Uds</th><th class="r">Min</th><th class="r">u/h</th></tr></thead><tbody>';
+        '<th class="r">Uds</th>' + (conUh ? '<th class="r">Min</th><th class="r">u/h</th>' : '') + '</tr></thead><tbody>';
     ops.forEach(function (o) {
         // v1.25: o.alarma = la PDA le está pitando (alarma de parado): la fila entera en rojo
         h += '<tr' + (o.ahora ? ' class="km-op-activo' + (o.alarma ? ' km-op-alarma-fila' : (o.parado ? ' km-op-parado-fila' : '')) + '"' : '') + '><td><b class="km-op' + (o.parado || o.alarma ? ' km-op-parado' : '') + '">' + e(o.op) + '</b></td><td class="m">' +
@@ -123,9 +125,9 @@ function tablaOperarios(ops, tv) {
              '<span class="km-muted">–</span>') +
             '</td><td>' + e(o.ahora ? o.desde : (o.pausa || o.desde)) + '</td>' +
             (tv ? '' : '<td class="r">' + o.tareas + '</td><td class="r">' + o.acabadas + '</td><td class="r">' + (o.dejadas || '') + '</td>') +
-            '<td class="r">' + n(o.uds) + '</td><td class="r">' + n(o.min) + '</td><td class="r"><b>' + (o.uh || '') + '</b></td></tr>';
+            '<td class="r">' + n(o.uds) + '</td>' + (conUh ? '<td class="r">' + n(o.min) + '</td><td class="r"><b>' + (o.uh || '') + '</b></td>' : '') + '</tr>';
     });
-    return h + '</tbody></table></div>' + (tv ? '' : '<p class="km-nota">Nombre y código de la tarjeta de cada operario (KOROSHI Operarios). Uds = uds leídas entre que lee la OUT y la valida o la deja; en curso, hasta ahora.</p>');
+    return h + '</tbody></table></div>' + (tv ? '' : '<p class="km-nota">' + (conUh ? 'Nombre y código' : 'Código') + ' de la tarjeta de cada operario (KOROSHI Operarios). Uds = uds leídas entre que lee la OUT y la valida o la deja; en curso, hasta ahora.</p>');
 }
 // Personas y horas estimadas por las cajas cerradas (v1.3): sale para cualquier dia, no solo hoy
 // v1.32.0: con KOROSHI Operarios, «Personas y horas» sale de las tareas de cada operario (tarjeta en Lecturas), con la
@@ -383,9 +385,11 @@ var Monitor = AbstractAction.extend({
                 '</select><input class="km-buscar" type="search" placeholder="Buscar tienda, OUT o etiqueta…" value="' + e(f.texto || '') + '">' +
                 '<button class="btn btn-secondary km-limpiar-filtros" title="Limpiar filtros y orden">Limpiar</button>';
         }
+        // v1.37.0: Producción por hora y Consulta de envíos, solo jefes (r.jefe; sin el dato, como antes)
+        var jefe = r.jefe !== false;
         return ctl + '<button class="btn btn-secondary km-refrescar">Refrescar</button>' +
-            '<button class="btn btn-info km-produccion">Producción por hora</button>' +   // v1.31.0
-            '<button class="btn btn-success km-envios">Consulta envíos / Excel</button>' +
+            (jefe ? '<button class="btn btn-info km-produccion">Producción por hora</button>' : '') +   // v1.31.0
+            (jefe ? '<button class="btn btn-success km-envios">Consulta envíos / Excel</button>' : '') +
             '<button class="btn btn-primary km-mapa">Abrir mapa operativo</button></div>';
     },
 
@@ -428,7 +432,7 @@ var Monitor = AbstractAction.extend({
         ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
         h += avisoParados(r, false);
         h += personas(r.personas, 'OUT', r.personas_op);
-        h += tablaOperarios(r.operarios, false);
+        h += tablaOperarios(r.operarios, false, r.jefe);
 
         // Totales
         h += '<h2>Totales: lo que llevan y lo que les falta</h2><div class="km-card km-scroll"><table><thead><tr><th>Zona</th><th class="r">Uds total</th><th class="r">Uds cogidas</th><th class="r">Uds que faltan</th><th class="r">%</th><th class="r">OUT total</th><th class="r">OUT hechas</th><th class="r">OUT cogiéndose</th><th class="r">OUT que faltan</th><th>Operario</th></tr></thead><tbody>';
@@ -688,7 +692,7 @@ Monitor.include({
                     ': ' + (eq.activas_op || 0) + ' con Lecturas' + (eq.activas_otras ? ' (' + eq.activas_otras + ' en INT u otro trabajo)' : '') +
                     ' + ' + (eq.activas_sin_op || 0) + ' OUT sin operario (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)' :
                     ' (caja cerrada en los últimos ' + (eq.parada_min || 20) + ' min)') +
-                    ((eq.activas_tiendas || eq.activas) && eq.uh ? ' · ~' + n(eq.uh / (eq.activas_tiendas || eq.activas)) + ' u/h por persona' : '')],
+                    (r.jefe !== false && (eq.activas_tiendas || eq.activas) && eq.uh ? ' · ~' + n(eq.uh / (eq.activas_tiendas || eq.activas)) + ' u/h por persona' : '')],
                 [n(eq.cajas || 0), 'cajas cerradas' + (eq.cajas ? ' · ' + (T.l / eq.cajas).toFixed(1).replace('.', ',') + ' u por caja' : '')],
                 [D.filter(function (o) { return o.sin_validar; }).length, 'hechas sin validar (con faltas de stock)'],
             ].map(function (k) { return '<div class="km-card km-kpi"><b>' + k[0] + '</b><span>' + k[1] + '</span></div>'; }).join('') + '</div>';
@@ -702,7 +706,7 @@ Monitor.include({
         pend.sort(porK);
         hechas.sort(porK);
 
-        h += tablaOperarios(r.operarios, tv);
+        h += tablaOperarios(r.operarios, tv, r.jefe);
         h += '<h2>Cogiéndose ahora (' + marcha.length + ')</h2>';
         h += '<div class="km-card">' + (marcha.length ? this._tablaOut(marcha) : '<p class="km-nota">Ahora no se está cogiendo ninguna OUT.</p>') + '</div>';
 
