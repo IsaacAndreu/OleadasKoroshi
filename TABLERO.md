@@ -73,12 +73,12 @@ User»). Jefes: Administración, Almacen 2, BackOffice, Departament IT y Jose Is
 en S4T API / User y Admin. Falta: Ctrl+F5 y comprobar con Almacén Nath que Lecturas, Contenedores, Actividades,
 Monitor y S4T siguen igual, y con Almacen 2 que abre matrículas y packing feed de S4T.
 
-**Hecho, sin instalar (19/11)**: koroshi_menu **2.5.2** («Consulta de envíos» solo jefes). Va con koroshi_monitor
-1.37.0 (monitor sin nombres ni producción para quien no es jefe): instalar los dos, uno detrás de otro, con el sí de
-Isaac.
+**Instalado el 19/11 a las 15:36 y 15:41**: koroshi_monitor **1.37.0** (quien no es jefe ve el monitor con códigos,
+sin Personas y horas, Producción ni Envíos) y koroshi_menu **2.5.2** («Consulta de envíos» solo jefes). La TV entra
+con Almacen 2 (jefe). Falta: Ctrl+F5 y mirarlo con Almacén Nath en una PDA.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
-**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.5.1 (19/11 14:24), faltantes 1.7.0, preparacion 3.33.0, monitor 1.36.0 (Siguiente tienda por nº de pedido, 19/11 12:03), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
+**Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.5.2 (19/11 15:41), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,
 s4t_sync 1.0.0, sesiones 1.0.0, rendiment 1.1.0.
