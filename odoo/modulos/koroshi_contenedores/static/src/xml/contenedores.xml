@@ -5,7 +5,7 @@
             <header class="o_kc_cab">
                 <div class="o_kc_titulo">Contenedores</div>
                 <input type="text" class="o_kc_codigo" autocomplete="off" inputmode="none"
-                       placeholder="Tarjeta, contenedor KO_…, ubicación, prenda o lineal (L94)"/>
+                       placeholder="Contenedor, ubicación, lineal (L94) o artículo: código o un trozo"/>
                 <button type="button" class="o_kc_teclado">⌨ Escribir</button>
             </header>
             <div class="o_kc_sugerencias"/>

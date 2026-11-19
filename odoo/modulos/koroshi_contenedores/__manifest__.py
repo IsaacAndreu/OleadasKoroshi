@@ -51,8 +51,16 @@ v1.7.0 (19/11/2026): pruebas del almacén con la 1.6.0. En el contenedor abierto
   Etiqueta rota: escribir un trozo del nombre (290726_44, sin KO_) lo busca: si hay uno (o el nombre entero existe)
   se abre; si hay varios, lista para elegir (20 como máximo). Con «⌨ Escribir», sugerencias desde 4 caracteres.
   Antes había que escribir el nombre entero con KO_. Los contenedores de la lista de mover tienen «Abrir».
+v1.8.0 (19/11/2026): el almacén pide que el buscador sirva para todo lo que tiene código, no solo contenedores. La
+  búsqueda por trozo (Intro) y las sugerencias (con «⌨ Escribir», desde 3 caracteres) dan contenedores, ubicaciones
+  (código de barras o nombre: «L94 P35»), lineales (L94) y artículos (EAN, referencia o nombre: «2622JA00»), cada uno
+  con su tipo. Tocar uno lo abre: el contenedor va a la lista de mover, la ubicación se abre, el lineal da su inventario
+  y el artículo dice dónde está (ruta nueva /donde). Una ubicación nunca se abre sola por trozo (sería el destino de los
+  contenedores en lista). «Atrás» vuelve a la lista de resultados. Leer la referencia entera de un artículo
+  (2622JA00-000003-L) ya lo encuentra: 9.116 artículos no tienen referencia interna y la referencia está en el nombre.
+  Solo lectura: no cambia nada del stock.
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -7,6 +7,9 @@
 # v1.6: /leer con una prenda (EAN o referencia) dice dónde hay stock de ella; /mover dice cuántos contenedores movió.
 # v1.7: /cantidad pone las uds reales de un artículo del contenedor (ajuste de la diferencia, + o -, nunca por debajo
 # de lo reservado). /buscar y /leer encuentran el contenedor por un trozo del nombre (etiqueta rota: «290726_44»).
+# v1.8: /buscar y /leer por trozo buscan todo lo que tiene código: contenedores, huecos (código de barras o nombre),
+# lineales y artículos (EAN, referencia o nombre); /donde dice dónde está un artículo por su id. Leer la referencia
+# entera de un artículo (2622JA00-000003-L) ya lo encuentra: en muchos artículos la referencia solo está en el nombre.
 # =============================================================================
 import re
 
@@ -23,6 +26,8 @@ MAX_HUECOS = 400
 MAX_DONDE = 60            # v1.6: ubicaciones como máximo al buscar dónde está un artículo
 MAX_BUSCAR = 20           # v1.7: contenedores como máximo al buscar por un trozo del nombre
 MIN_BUSCAR = 2            # v1.7: caracteres mínimos para buscar por un trozo
+MIN_BUSCAR_OTROS = 3      # v1.8: huecos y artículos, a partir de 3 caracteres
+MAX_TIPO = 8              # v1.8: resultados como máximo de cada tipo (contenedor, hueco, artículo)
 LINEAL_RE = re.compile(r'^L\d{1,4}$', re.I)
 
 
@@ -300,6 +305,8 @@ class KoroshiContenedores(http.Controller):
             p = request.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1).product_id
         if not p:
             p = Product.search([('default_code', '=', codigo)], limit=1)
+        if not p:   # v1.8: muchos artículos no tienen referencia interna: la referencia es el nombre
+            p = Product.search([('name', '=', codigo), ('company_id', 'in', [COMPANY_ID, False])], limit=1)
         return p
 
     def _donde(self, producto):
@@ -458,35 +465,87 @@ class KoroshiContenedores(http.Controller):
         locs = request.env['stock.location'].sudo().search(dominio, order='name', limit=MAX_BUSCAR + 1)
         return locs[:MAX_BUSCAR], len(locs) > MAX_BUSCAR
 
-    def _candidatos(self, locs, mas):
-        return {'contenedores': [{'id': l.id, 'nombre': l.name, 'hueco': l.location_id.complete_name or ''}
-                                 for l in locs], 'mas': mas}
+    def _sugerir(self, texto):
+        """v1.8: todo lo que tiene código y contiene el texto: lineal, contenedores, huecos y artículos (solo lectura).
+        Devuelve (items, hay más, contenedores encontrados)."""
+        texto = (texto or '').strip()
+        items, mas = [], False
+        Loc = request.env['stock.location'].sudo()
+        if LINEAL_RE.match(texto):
+            items.append({'tipo': 'lineal', 'id': 0, 'codigo': texto.upper(), 'nombre': 'Lineal ' + texto.upper(),
+                          'detalle': 'Inventario del lineal'})
+        conts, mas_c = self._por_trozo(texto)
+        conts = conts[:MAX_TIPO]
+        mas = mas or mas_c
+        items += [{'tipo': 'contenedor', 'id': l.id, 'nombre': l.name, 'detalle': l.location_id.complete_name or ''}
+                  for l in conts]
+        if len(texto) >= MIN_BUSCAR_OTROS:
+            lit = '%' + _literal(texto) + '%'
+            huecos = Loc.search([('usage', '=', 'internal'), '|', ('barcode', '=ilike', lit), ('name', '=ilike', lit)],
+                                order='name', limit=MAX_TIPO * 3)
+            huecos = huecos.filtered(lambda l: not _es_contenedor_nombre(l.name))
+            mas = mas or len(huecos) > MAX_TIPO
+            items += [{'tipo': 'hueco', 'id': l.id, 'nombre': l.barcode or l.name, 'detalle': l.complete_name}
+                      for l in huecos[:MAX_TIPO]]
+            pre = _literal(texto) + '%'
+            # un hueco (L94 P35), un lineal o un contenedor no es un artículo: no se busca (la búsqueda de artículos
+            # tarda ~1 s, la de huecos ~0,2 s)
+            sin_articulos = bool(re.match(r'^(L\d|MU-|KO_|TT_)', texto, re.I))
+            Product = request.env['product.product'].sudo()
+            prods = Product.browse() if sin_articulos else Product.search([
+                ('company_id', 'in', [COMPANY_ID, False]), '|', '|',
+                ('name', '=ilike', pre), ('default_code', '=ilike', pre), ('barcode', '=ilike', pre)],
+                order='name', limit=MAX_TIPO + 1)
+            mas = mas or len(prods) > MAX_TIPO
+            prods = prods[:MAX_TIPO]
+            stock = {}
+            if prods:
+                for g in request.env['stock.quant'].sudo().read_group(
+                        [('product_id', 'in', prods.ids), ('location_id.usage', '=', 'internal'),
+                         ('company_id', '=', COMPANY_ID)], ['quantity'], ['product_id']):
+                    stock[g['product_id'][0]] = g['quantity']
+            items += [{'tipo': 'articulo', 'id': p.id, 'nombre': p.display_name,
+                       'detalle': '%s uds en almacén' % _num(stock.get(p.id, 0))} for p in prods]
+        return items, mas, conts
 
     @http.route('/koroshi/contenedores/buscar', type='json', auth='user')
     def buscar(self, texto='', **kw):
-        """v1.7: sugerencias mientras se escribe (solo lectura)."""
+        """v1.7: sugerencias mientras se escribe (solo lectura). v1.8: de todo lo que tiene código."""
         try:
             self._comprobar_usuario()
-            locs, mas = self._por_trozo(texto)
-            r = self._candidatos(locs, mas)
-            r['ok'] = True
-            return r
+            items, mas, _c = self._sugerir(texto)
+            return {'ok': True, 'items': items, 'mas': mas}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/donde', type='json', auth='user')
+    def donde(self, producto_id=False, **kw):
+        """v1.8: dónde está un artículo elegido de la lista (solo lectura)."""
+        try:
+            self._comprobar_usuario()
+            p = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
+            if not p:
+                raise UserError('Artículo no válido.')
+            return {'ok': True, 'tipo': 'articulo', 'articulo': self._donde(p)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
     def _por_trozo_leer(self, codigo):
-        """v1.7: /leer sin coincidencia exacta: uno por trozo = ese contenedor; varios = la lista para elegir."""
-        locs, mas = self._por_trozo(codigo)
+        """v1.7: /leer sin coincidencia exacta: un contenedor = se abre; varios = lista para elegir. v1.8: también
+        huecos, lineales y artículos; un solo artículo se abre (dónde está). Un hueco nunca se abre solo: con
+        contenedores en la lista de mover sería el destino, así que se elige tocándolo."""
+        items, mas, conts = self._sugerir(codigo)
         # «290726_44» también encuentra KO_290726_440…449: si existe KO_290726_44 (nombre entero), es ese
-        exacto = locs.filtered(lambda l: l.name.upper()[3:] == codigo.strip().upper())
+        exacto = conts.filtered(lambda l: l.name.upper()[3:] == codigo.strip().upper())
         if len(exacto) == 1:
-            locs = exacto
-        if len(locs) == 1:
-            return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(locs)}
-        if locs:
-            r = self._candidatos(locs, mas)
-            r.update({'ok': True, 'tipo': 'candidatos', 'texto': codigo})
-            return r
+            return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(exacto)}
+        if len(items) == 1 and items[0]['tipo'] == 'contenedor':
+            return {'ok': True, 'tipo': 'contenedor', 'contenedor': self._datos_contenedor(conts)}
+        if len(items) == 1 and items[0]['tipo'] == 'articulo':
+            p = request.env['product.product'].sudo().browse(items[0]['id'])
+            return {'ok': True, 'tipo': 'articulo', 'articulo': self._donde(p)}
+        if items:
+            return {'ok': True, 'tipo': 'candidatos', 'texto': codigo, 'items': items, 'mas': mas}
         return None
 
     def _validar_destino(self, destino):
@@ -531,7 +590,8 @@ class KoroshiContenedores(http.Controller):
                 r = self._por_trozo_leer(codigo)        # v1.7: trozo del nombre de un contenedor (290726_44)
                 if r:
                     return r
-                raise UserError('No conozco %s: no es tarjeta, contenedor, ubicación ni artículo.' % codigo)
+                raise UserError('No encuentro nada con «%s»: ni tarjeta, contenedor, ubicación, lineal ni artículo.'
+                                % codigo)
             if len(loc) > 1:
                 raise UserError('Hay %d ubicaciones con el código %s. Avisa a IT.' % (len(loc), codigo))
             self._validar_destino(loc)

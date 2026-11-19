@@ -73,3 +73,11 @@
 .o_koroshi_contenedores .o_kc_sugerencia { display: block; width: 100%; text-align: left; padding: 10px 12px;
     border: 0; border-bottom: 1px solid #e0e0e0; background: #fff; font-size: 16px; }
 .o_koroshi_contenedores .o_kc_sugerencia small { color: #666; }
+
+/* v1.8: tipo de cada resultado de la búsqueda */
+.o_koroshi_contenedores .o_kc_tipo { display: inline-block; min-width: 74px; margin-right: 8px; padding: 1px 6px;
+    border-radius: 4px; background: #eceff1; color: #455a64; font-size: 12px; text-align: center; }
+.o_koroshi_contenedores .o_kc_tipo_contenedor { background: #fff3e0; color: #e65100; }
+.o_koroshi_contenedores .o_kc_tipo_hueco { background: #e8f5e9; color: #2e7d32; }
+.o_koroshi_contenedores .o_kc_tipo_lineal { background: #ede7f6; color: #4527a0; }
+.o_koroshi_contenedores .o_kc_tipo_articulo { background: #e3f2fd; color: #1565c0; }
