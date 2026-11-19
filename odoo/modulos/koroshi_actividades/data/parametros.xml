@@ -12,6 +12,21 @@
             <field name="key">koroshi_actividades.hora_cierre</field>
             <field name="value">17:00</field>
         </record>
+        <!-- v1.4.0 «¿Sigues?»: desde esta hora, a quien lleva minutos_sigues sin pasar la tarjeta (ni leer una
+             matrícula) se le pregunta en el portátil; si en minutos_respuesta nadie la pasa, el tramo se cierra solo.
+             sigues_desde '' o minutos_sigues 0 = no se pregunta. -->
+        <record id="parametro_sigues_desde" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.sigues_desde</field>
+            <field name="value">13:00</field>
+        </record>
+        <record id="parametro_minutos_sigues" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.minutos_sigues</field>
+            <field name="value">30</field>
+        </record>
+        <record id="parametro_minutos_respuesta" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.minutos_respuesta</field>
+            <field name="value">15</field>
+        </record>
         <!-- '1' = en el portátil se puede abrir a una persona tocando su nombre en la lista (sin tarjeta). -->
         <record id="parametro_sin_tarjeta" model="ir.config_parameter">
             <field name="key">koroshi_actividades.sin_tarjeta</field>

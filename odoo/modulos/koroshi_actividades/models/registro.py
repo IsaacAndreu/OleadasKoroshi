@@ -10,6 +10,11 @@
 #                      a la hora_cierre (17:00) se cierran a las 17:00 exactas («cierre 17:00»)
 #                      los de días anteriores se cierran a la hora_cierre de su día (o a medianoche)
 # Como se cierra a la hora exacta, da igual que el cron pase unos minutos tarde.
+# v1.4.0 «¿Sigues?» (Isaac 19/11: se van a las 14:00 sin «Fin» y el tramo seguía abierto hasta las 17:00). Estas
+#   actividades no leen nada, así que no se sabe si alguien sigue: se le pregunta. Desde sigues_desde (13:00), a quien
+#   lleva minutos_sigues (30) sin dar señal (pasar la tarjeta, empezar, seguir o leer una matrícula) su fila del portátil
+#   pide «¿Sigues? Pasa tu tarjeta». Si en minutos_respuesta (15) nadie la pasa, el cron cierra el tramo («No contestó
+#   ¿Sigues?», queda en pausa): a las 13:00 si no dio señal desde entonces, si no a la hora en que se le preguntó.
 # Solo escribe en esta tabla.
 # =============================================================================
 import datetime
@@ -27,8 +32,13 @@ MOTIVOS = [
     ('fin', 'Fin'),
     ('fin_auto', 'Cierre automático (fin de jornada)'),
     ('manual', 'A mano'),
+    ('sin_respuesta', 'No contestó «¿Sigues?»'),      # v1.4.0
 ]
-MOTIVOS_PAUSA = ('pausa', 'pausa_auto')
+MOTIVOS_PAUSA = ('pausa', 'pausa_auto', 'sin_respuesta')
+# v1.4.0: «¿Sigues?» (parámetros koroshi_actividades.sigues_desde / minutos_sigues / minutos_respuesta)
+SIGUES_DESDE = '13:00'
+MINUTOS_SIGUES = 30
+MINUTOS_RESPUESTA = 15
 MOTIVOS_FIN = ('fin', 'fin_auto', 'manual')
 
 
@@ -73,6 +83,9 @@ class KoroshiActividadRegistro(models.Model):
     minutos = fields.Float('Minutos', compute='_compute_tiempo', store=True, digits=(16, 1), group_operator='sum')
     horas = fields.Float('Horas', compute='_compute_tiempo', store=True, digits=(16, 2), group_operator='sum')
     nota = fields.Char('Nota')
+    # v1.4.0: última vez que se sabe que la persona estaba (tarjeta, matrícula). Vacío = el inicio del tramo.
+    confirmado = fields.Datetime('Última señal', help='Última vez que pasó la tarjeta o leyó una matrícula con este '
+                                                     'tramo abierto. Lo usa el «¿Sigues?».')
 
     # ------------------------------------------------------------------ computes
     @api.depends('employee_id', 'actividad_id')
@@ -107,6 +120,45 @@ class KoroshiActividadRegistro(models.Model):
     def abierto_de(self, employee):
         return self.search([('employee_id', '=', employee.id), ('estado', '=', 'curso')], order='inicio desc', limit=1)
 
+    @api.model
+    def _minutos_param(self, clave, defecto):
+        try:
+            return int(self._param(clave, str(defecto)) or 0)
+        except ValueError:
+            return defecto
+
+    def _sigues(self, ahora=None):
+        """v1.4.0: «¿Sigues?» de un tramo en curso. None si no toca preguntar todavía; si toca,
+        {'pregunta': cuándo se le preguntó, 'cierre': a qué hora se cerraría, 'cerrar': ya pasó el tiempo de respuesta}
+        (fechas naive UTC, como en Odoo)."""
+        self.ensure_one()
+        cada = self._minutos_param('minutos_sigues', MINUTOS_SIGUES)
+        if self.estado != 'curso' or cada <= 0 or not self.inicio:
+            return None
+        desde_l = hora_del_dia(a_local(self.inicio).date(), self._param('sigues_desde', SIGUES_DESDE))
+        if not desde_l:
+            return None
+        espera = max(self._minutos_param('minutos_respuesta', MINUTOS_RESPUESTA), 0)
+        ahora = ahora or fields.Datetime.now()
+        desde = a_utc(desde_l)
+        senal = max(self.confirmado or self.inicio, self.inicio)
+        pregunta = max(senal, desde) + datetime.timedelta(minutes=cada)
+        if ahora < pregunta:
+            return None
+        return {'pregunta': pregunta, 'cierre': desde if senal <= desde else pregunta,
+                'cerrar': ahora >= pregunta + datetime.timedelta(minutes=espera)}
+
+    @api.model
+    def confirmar(self, employee):
+        """v1.4.0: la persona está (pasó la tarjeta o leyó una matrícula). Devuelve el tramo abierto si tenía
+        pendiente el «¿Sigues?» (para darle las gracias), si no un registro vacío."""
+        abierto = self.abierto_de(employee)
+        if not abierto:
+            return self.browse()
+        pendiente = bool(abierto._sigues())
+        abierto.write({'confirmado': fields.Datetime.now()})
+        return abierto if pendiente else self.browse()
+
     def init(self):
         # v1.1.0 (auditoría 13/11, fase 2.8): un solo tramo abierto por persona, también con dos toques a la vez
         self.env.cr.execute("""
@@ -139,6 +191,7 @@ class KoroshiActividadRegistro(models.Model):
             situacion = 'terminado'
         # v1.1.0: inversa (cajas de hoy; la caja abierta solo si está trabajando en una actividad que lee matrículas)
         pide = bool(situacion == 'trabajando' and ultimo.actividad_id.pide_matricula)
+        sigues = ultimo._sigues(ahora) if situacion == 'trabajando' else None     # v1.4.0
         Caja = self.env['koroshi.inversa.caja']
         inversa = Caja.resumen(employee) if (pide or Caja.search_count(
             [('employee_id', '=', employee.id), ('dia', '=', hoy)])) else False
@@ -155,6 +208,9 @@ class KoroshiActividadRegistro(models.Model):
             (fields.Datetime.to_string(ultimo.fin) if ultimo.fin else False),
             'pausa_auto': ultimo.motivo_fin == 'pausa_auto',
             'fin_auto': ultimo.motivo_fin == 'fin_auto',
+            'sigues': bool(sigues),                                       # v1.4.0: hay que pasar la tarjeta
+            'sigues_desde': fields.Datetime.to_string(sigues['pregunta']) if sigues else False,
+            'sin_respuesta': ultimo.motivo_fin == 'sin_respuesta',
             'entrada': fields.Datetime.to_string(tramos[0].inicio) if tramos else False,
             'minutos_hoy': round(minutos, 1),
         }
@@ -209,7 +265,8 @@ class KoroshiActividadRegistro(models.Model):
     # ------------------------------------------------------------------ cron
     @api.model
     def cron_cerrar(self):
-        """Pausa de la comida y cierre de la jornada a su hora exacta. También cierra lo que quedó de otros días."""
+        """Pausa de la comida y cierre de la jornada a su hora exacta. También cierra lo que quedó de otros días.
+        v1.4.0: y los tramos con el «¿Sigues?» sin contestar (ver _sigues)."""
         hora_pausa = self._param('hora_pausa', '13:00')
         hora_cierre = self._param('hora_cierre', '17:00')
         ahora = comun.ahora_local()
@@ -218,8 +275,11 @@ class KoroshiActividadRegistro(models.Model):
             dia = inicio.date()
             pausa = hora_del_dia(dia, hora_pausa)
             cierre = hora_del_dia(dia, hora_cierre)
+            sigues = r._sigues()
             if pausa and inicio < pausa <= ahora:
                 r._cerrar('pausa_auto', a_utc(pausa))
+            elif sigues and sigues['cerrar'] and (not cierre or sigues['cierre'] < a_utc(cierre)):
+                r._cerrar('sin_respuesta', sigues['cierre'])
             elif cierre and inicio < cierre <= ahora:
                 r._cerrar('fin_auto', a_utc(cierre))
             elif dia < ahora.date():

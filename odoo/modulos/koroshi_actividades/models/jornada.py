@@ -45,7 +45,7 @@ class KoroshiActividadJornada(models.Model):
                     COUNT(*) AS tramos,
                     COUNT(DISTINCT r.actividad_id) AS actividades,
                     BOOL_OR(r.estado = 'curso') AS abierta,
-                    BOOL_OR(r.motivo_fin IN ('pausa_auto', 'fin_auto')) AS automatica
+                    BOOL_OR(r.motivo_fin IN ('pausa_auto', 'fin_auto', 'sin_respuesta')) AS automatica
                 FROM koroshi_actividad_registro r
                 GROUP BY r.employee_id, r.dia
             )

@@ -40,8 +40,16 @@ koroshi_base.
 v1.3.1 (18/11/2026): icono propio (cronometro morado). Era una copia del de Lecturas (L con codigo de barras) y en la
 pantalla de inicio no se distinguian. El menu usa static/description/icon_actividades.png (nombre nuevo, para que
 Odoo vuelva a leer la imagen al actualizar); icon.png es la misma imagen. Solo imagen.
+v1.4.0 (19/11/2026): «¿Sigues?» (peticion de Isaac: se van a las 14:00 sin pulsar «Fin» y el tramo seguia abierto
+hasta el cierre de las 17:00, contando horas que no se trabajaron). Estas actividades no leen nada, asi que se pregunta:
+desde koroshi_actividades.sigues_desde (13:00), a quien lleva minutos_sigues (30) sin dar señal (pasar la tarjeta,
+empezar, seguir o leer una matricula) su fila del portatil parpadea con «¿Sigues? Pasa tu tarjeta» y el portatil pita
+cada minuto. Pasar la tarjeta es «Sigo». Si en minutos_respuesta (15) nadie la pasa, el cron cierra el tramo con el
+motivo nuevo «No contesto ¿Sigues?» (queda en pausa; con «Seguir» vuelve): a las 13:00 si no dio señal desde entonces,
+si no a la hora en que se le pregunto. Campo nuevo «Ultima señal» (confirmado) en koroshi.actividad.registro (tabla
+propia). Tres parametros nuevos (noupdate). El cierre de las 17:00 sigue como red.
 """,
-    'version': '13.0.1.3.1',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -51,6 +51,11 @@ class KoroshiActividades(http.Controller):
     def _respuesta(self, emp, msg=''):
         return {'ok': True, 'persona': self._registro().estado_de(emp), 'msg': msg}
 
+    def _confirmar(self, emp):
+        """v1.4.0: la persona está: cuenta como «Sigo». Texto de gracias si tenía el «¿Sigues?» pendiente."""
+        tramo = self._registro().confirmar(emp)
+        return ('%s: sigues con %s. ¡Gracias!' % (emp.name, tramo.actividad_id.name)) if tramo else ''
+
     @http.route('/koroshi/actividades/estado', type='json', auth='user')
     def estado(self, **kw):
         """Actividades para los botones y quién está trabajando o en pausa hoy."""
@@ -63,7 +68,8 @@ class KoroshiActividades(http.Controller):
         sin_tarjeta = Reg._param('sin_tarjeta', '0') == '1'
         return {'ok': True, 'actividades': self._actividades(), 'personas': personas,
                 'ahora': fields.Datetime.to_string(fields.Datetime.now()), 'sin_tarjeta': sin_tarjeta,
-                'hora_pausa': Reg._param('hora_pausa', '13:00'), 'hora_cierre': Reg._param('hora_cierre', '17:00')}
+                'hora_pausa': Reg._param('hora_pausa', '13:00'), 'hora_cierre': Reg._param('hora_cierre', '17:00'),
+                'sigues_desde': Reg._param('sigues_desde', '13:00')}     # v1.4.0
 
     @http.route('/koroshi/actividades/tarjeta', type='json', auth='user')
     def tarjeta(self, codigo='', **kw):
@@ -74,7 +80,7 @@ class KoroshiActividades(http.Controller):
         emp = request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
         if not _empleado_valido(emp):           # v1.2
             return {'ok': False, 'msg': 'No conozco la tarjeta %s. Pide a tu responsable que te dé de alta.' % codigo}
-        return self._respuesta(emp)
+        return self._respuesta(emp, self._confirmar(emp))
 
     @http.route('/koroshi/actividades/persona', type='json', auth='user')
     def persona(self, employee_id=False, **kw):
@@ -84,9 +90,10 @@ class KoroshiActividades(http.Controller):
         if Reg._param('sin_tarjeta', '0') != '1':
             return {'ok': False, 'msg': 'Pasa tu tarjeta.'}
         try:
-            return self._respuesta(self._persona(employee_id))
+            emp = self._persona(employee_id)
         except UserError as e:
             return _error(e)
+        return self._respuesta(emp, self._confirmar(emp))
 
     @http.route('/koroshi/actividades/empezar', type='json', auth='user')
     def empezar(self, employee_id=False, actividad_id=False, **kw):
@@ -149,6 +156,7 @@ class KoroshiActividades(http.Controller):
             # ya leída antes: la pantalla pregunta si se cuenta otra vez
             return {'ok': False, 'repetida': aviso, 'codigo': aviso['matricula'],
                     'msg': '%s ya la leyó %s.' % (aviso['matricula'], aviso['quien'])}
+        self._confirmar(emp)    # v1.4.0: leer una matrícula también es «Sigo»
         res = self._respuesta(emp, aviso or '%s · %s uds' % (caja.name, caja.uds))
         res['aviso_tipo'] = 'warn' if aviso else 'ok'
         return res

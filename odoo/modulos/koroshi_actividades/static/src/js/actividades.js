@@ -14,6 +14,10 @@ odoo.define('koroshi_actividades.Pantalla', function (require) {
  *   se abre la suya; una matrícula va a quien tenga el panel abierto si está en Inversa, si no a la de la pantalla.
  * - Panel de inversa: caja abierta (uds del teórico, familias y su palet), tiempo de la caja, cajas y uds de hoy,
  *   últimas cajas y «Anular última lectura». Matrícula ya leída: pregunta si se cuenta otra vez.
+ *
+ * v1.4.0 «¿Sigues?»: desde las 13:00, quien lleva 30 min sin dar señal sale en la lista con «¿Sigues? Pasa tu
+ * tarjeta», la fila parpadea y el portátil pita cada minuto. Pasar la tarjeta (o leer una matrícula) es «Sigo». Si en
+ * 15 min nadie la pasa, el servidor cierra el tramo (koroshi.actividad.registro._sigues).
  */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
@@ -25,6 +29,7 @@ var REFRESCO_MS = 30000;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 var RE_MATRICULA = /^CJ\d{9}$/i;          // matrícula de caja (igual que koroshi_preparacion)
 var CLAVE_FIJO = 'koroshi_actividades_fijo';
+var PITIDO_SIGUES_MS = 60000;   // v1.4.0: con alguien por contestar «¿Sigues?», un pitido como mucho cada minuto
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
 
@@ -79,6 +84,41 @@ var Pantalla = AbstractAction.extend({
         this.confirmar = null;     // 'fin' | 'anular' | null
         this.repetida = null;      // {codigo, quien, cuando}: matrícula ya leída, pendiente de confirmar
         this.fijo = this._leerFijo();   // v1.1.0: persona de esta pantalla (inversa) {id, nombre}
+        this.pitadoEn = 0;              // v1.4.0: último pitido del «¿Sigues?»
+    },
+
+    // ------------------------------------------------------------------ v1.4.0: «¿Sigues?»
+    _pitar: function () {
+        // tres pitidos cortos con el altavoz del portátil (sin ficheros de sonido)
+        try {
+            var Ctx = window.AudioContext || window.webkitAudioContext;
+            if (!Ctx) {
+                return;
+            }
+            var ctx = this.audio || (this.audio = new Ctx());
+            if (ctx.state === 'suspended' && ctx.resume) {
+                ctx.resume();
+            }
+            var t = ctx.currentTime;
+            _.each([0, 0.3, 0.6], function (d) {
+                var o = ctx.createOscillator(), g = ctx.createGain();
+                o.type = 'square';
+                o.frequency.value = 1800;
+                g.gain.value = 0.3;
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(t + d);
+                o.stop(t + d + 0.18);
+            });
+        } catch (e) { /* sin sonido: queda el parpadeo */ }
+    },
+
+    _avisarSigues: function () {
+        var hay = _.some(this.personas, function (p) { return p.situacion === 'trabajando' && p.sigues; });
+        if (hay && Date.now() - this.pitadoEn >= PITIDO_SIGUES_MS) {
+            this.pitadoEn = Date.now();
+            this._pitar();
+        }
     },
 
     // ------------------------------------------------------------------ v1.1.0: persona de esta pantalla
@@ -196,6 +236,10 @@ var Pantalla = AbstractAction.extend({
         return this._llamar('/koroshi/actividades/tarjeta', {codigo: codigo}).then(function (r) {
             if (r) {
                 self._abrirPersona(r.persona);
+                if (r.msg) {        // v1.4.0: tenía el «¿Sigues?» pendiente
+                    self._aviso('ok', r.msg);
+                    self._refrescar();
+                }
             }
         });
     },
@@ -266,6 +310,10 @@ var Pantalla = AbstractAction.extend({
         return this._llamar('/koroshi/actividades/persona', {employee_id: id}).then(function (r) {
             if (r) {
                 self._abrirPersona(r.persona);
+                if (r.msg) {        // v1.4.0
+                    self._aviso('ok', r.msg);
+                    self._refrescar();
+                }
             }
         });
     },
@@ -309,9 +357,10 @@ var Pantalla = AbstractAction.extend({
                 self.desfase = srv.getTime() - Date.now();
             }
             self.$('.o_ka_horario').text('Pausa sola a las ' + (r.hora_pausa || '–') + ' · cierre a las ' +
-                (r.hora_cierre || '–'));
+                (r.hora_cierre || '–') + (r.sigues_desde ? ' · «¿Sigues?» desde las ' + r.sigues_desde : ''));
             self.$el.toggleClass('o_ka_sin_conexion', false);
             self._pintarLista();
+            self._avisarSigues();       // v1.4.0
             if (self.persona) {
                 self._pintarPersona();
             }
@@ -436,6 +485,7 @@ var Pantalla = AbstractAction.extend({
         if (p.situacion === 'pausa') {
             return '<span class="o_ka_estado o_ka_pausa">En pausa</span> desde las ' + _hora(p.desde) +
                 (p.pausa_auto ? ' <span class="o_ka_auto">(pausa automática de la comida)</span>' : '') +
+                (p.sin_respuesta ? ' <span class="o_ka_auto">(no contestó «¿Sigues?»)</span>' : '') +
                 ' · estaba en <b>' + _e(p.actividad) + '</b>';
         }
         if (p.situacion === 'terminado') {
@@ -557,7 +607,11 @@ var Pantalla = AbstractAction.extend({
         });
         var clic = this.sinTarjeta ? ' o_ka_fila_clic' : '';
         var fila = function (p, extra) {
-            return '<div class="o_ka_fila' + clic + '" data-id="' + p.employee_id + '">' +
+            var sigues = p.situacion === 'trabajando' && p.sigues;      // v1.4.0
+            if (sigues) {
+                extra = '<span class="o_ka_sigues_txt">¿Sigues? Pasa tu tarjeta</span> · ' + extra;
+            }
+            return '<div class="o_ka_fila' + clic + (sigues ? ' o_ka_sigues' : '') + '" data-id="' + p.employee_id + '">' +
                 '<span class="o_ka_fila_nombre">' + _e(p.nombre) + '</span>' +
                 '<span class="o_ka_fila_extra">' + extra + '</span>' +
                 '<span class="o_ka_fila_min" data-min="' + (p.minutos_hoy || 0) + '" data-corre="' +
@@ -597,7 +651,8 @@ var Pantalla = AbstractAction.extend({
             html += '<div class="o_ka_grupo o_ka_grupo_pausa"><div class="o_ka_grupo_cab">En pausa <span>' +
                 grupos.pausa.length + '</span></div>';
             _.each(grupos.pausa, function (p) {
-                html += fila(p, (p.pausa_auto ? 'pausa automática' : 'desde ' + _hora(p.desde)) + ' · ' + _e(p.actividad));
+                html += fila(p, (p.pausa_auto ? 'pausa automática' : (p.sin_respuesta ? 'no contestó «¿Sigues?»' :
+                    'desde ' + _hora(p.desde))) + ' · ' + _e(p.actividad));
             });
             html += '</div>';
         }

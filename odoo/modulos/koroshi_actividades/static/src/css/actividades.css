@@ -134,6 +134,9 @@
 .o_koroshi_actividades .o_ka_fila_clic:hover { background: #f4f6f8; }
 .o_koroshi_actividades .o_ka_fila_nombre { font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .o_koroshi_actividades .o_ka_fila_extra { color: var(--ka-suave); font-size: 14px; }
+.o_koroshi_actividades .o_ka_fila.o_ka_sigues { background: #fff3cd; animation: o_ka_parpadeo 1s step-end infinite; }   /* v1.4.0 */
+.o_koroshi_actividades .o_ka_sigues_txt { color: #b45309; font-weight: bold; }
+@keyframes o_ka_parpadeo { 50% { background: #fcd34d; } }
 .o_koroshi_actividades .o_ka_fila_min { font-variant-numeric: tabular-nums; min-width: 90px; text-align: right; }
 .o_koroshi_actividades .o_ka_vacio { color: var(--ka-suave); }
 
