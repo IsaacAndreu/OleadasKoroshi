@@ -36,9 +36,8 @@ iconos de aplicaciones archivados.
 ATENCIÓN: si un módulo KOROSHI añade un menú nuevo, sale dentro de su menú viejo (archivado) y NO se ve: hay que
 añadirlo aquí. Al desinstalar este módulo vuelven los menús de antes y los iconos de aplicaciones archivados.
 
-Pendiente: koroshi_actividades (Jornada por persona, Horas por actividad, Tramos de tiempo y Actividades) no está en
-«depends» porque aún no está instalado en el servidor. Cuando se instale, añadirlo y meter sus entradas en Personas
-(huecos 20, 25 y 30) y Configuración (hueco 35).
+koroshi_actividades (registro de tiempo de manipulaciones) está en «depends» desde la v2.4.2 (y la 2.5.1): sus
+informes van en Personas y su configuración en Configuración.
 
 v1.0.0 (12/11/2026): primera versión.
 v1.1.0 (12/11/2026): «Ajustes KOROSHI» (Configuración › KOROSHI, responsables de Inventario): los parámetros KOROSHI
@@ -82,8 +81,14 @@ quedan Monitor, Hoja de carga XPO, Consulta de envios, Faltante (PDA) y Registra
 barras, Actividades y Contenedores, de sus modulos). Al actualizar o instalar entran todos los usuarios internos de
 la empresa 8 con Inventario menos Almacen Nath. Los menus llevan «-grupo» para quitar el de antes (Odoo solo anade
 grupos al actualizar). Solo menus: los permisos de los datos no cambian.
+v2.5.1 (19/11/2026): la 2.5.0 mas los menus de koroshi_actividades de la 2.4.2 (instalada desde el 17/11; la 2.5.0
+salio antes y no los llevaba): Personas 18, 20, 25, 28 y 30 y Configuracion 35, mismos grupos que en la 2.4.2, y
+koroshi_actividades en depends. Ademas los jefes de almacen entran en «S4T API / User» (modulo S4T de Effective):
+Almacen 2 no veia Registro de Matriculas de Caja ni el packing feed de S4T porque no tenia ese grupo; Almacen Nath (PDA)
+ya lo tenia y lo sigue teniendo. Solo anade usuarios a ese grupo (migracion 13.0.2.5.1 y post_init_hook); si el modulo
+S4T no esta, no hace nada. No toca «S4T API / Admin» (configuracion con la clave de la API).
 """,
-    'version': '13.0.2.5.0',
+    'version': '13.0.2.5.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -99,6 +104,7 @@ grupos al actualizar). Solo menus: los permisos de los datos no cambian.
         'koroshi_consumibles',
         'koroshi_faltantes',
         'koroshi_contenedores',
+        'koroshi_actividades',   # v2.4.2 / v2.5.1
     ],
     'data': [
         'views/bandeja.xml',

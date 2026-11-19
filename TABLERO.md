@@ -67,7 +67,13 @@ volver a leer la `installed_version`** (el servidor puede ir por delante del rep
 Configuración). La 2.4.2 sale de la 2.4.1 en la rama `koroshi_menu-2.4` (etiqueta `koroshi_menu/v2.4.2`), no de la 2.5.0
 de `main`: una 2.5.x tendrá que llevar estos menús.
 
-**No instalar todavía** (decidido): koroshi_delegacion, koroshi_menu 2.5.0 (en el servidor está la 2.4.1).
+**Para instalar al final del turno del 19/11** (Isaac): koroshi_menu **2.5.1** = 2.5.0 (menú de jefes) + menús de
+actividades de la 2.4.2 + jefes en «S4T API / User» (Almacen 2 no veía matrículas ni packing feed de S4T). Desde la
+2.4.2 corren las migraciones 2.5.0 y 2.5.1. Después: Ctrl+F5 y comprobar con Almacén Nath (PDA) que Lecturas,
+Contenedores, Actividades, Monitor y S4T siguen igual. Orden de hoy: monitor 1.36.0 → zonas 1.6.0 → buscador_stock
+1.0.0 → menu 2.5.1, uno a uno y con ~5 min entre cada uno.
+
+**No instalar todavía** (decidido): koroshi_delegacion.
 
 **Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.1 (buscador de todo lo que tiene código; solo ubicaciones de EFFEC, 19/11 ~11:50), actividades 1.3.1 (icono propio, 18/11 08:37), menu 2.4.2, faltantes 1.7.0, preparacion 3.33.0, monitor 1.35.0 (sin huecos de 15 min en Producción por hora, 18/11 16:17), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
 pda_app 1.1.0, caja_existente 1.4.0, zonas 1.4.0 (en sombra), informe 1.2.0, s4t_envios 1.3.0,

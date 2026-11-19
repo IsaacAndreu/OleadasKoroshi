@@ -27,6 +27,22 @@ def dar_bandeja_en_apps(env):
     return usuario
 
 
+GRUPO_S4T = 'api_s4t_batch_update_PROD.group_s4t_integration_user'   # v2.5.1: «S4T API / User» (módulo de Effective)
+
+
+def dar_s4t(env):
+    """v2.5.1: los jefes de almacén entran en «S4T API / User» para ver lo de la integración S4T (matrículas de caja,
+    packing feed). «Almacén Nath» ya lo tiene. Solo añade; si el módulo S4T no está, no hace nada."""
+    s4t = env.ref(GRUPO_S4T, raise_if_not_found=False)
+    jefes = env.ref('koroshi_menu.grupo_jefes', raise_if_not_found=False)
+    if not s4t or not jefes:
+        return env['res.users']
+    nuevos = jefes.users - s4t.users
+    if nuevos:
+        s4t.write({'users': [(4, u.id) for u in nuevos]})
+    return nuevos
+
+
 USUARIO_PICKING = 'almacen@nath.es'   # v2.5: «Almacén Nath», el usuario de las PDA y el picking: NO es jefe
 
 
@@ -49,6 +65,7 @@ def post_init_hook(cr, registry):
     env = api.Environment(cr, SUPERUSER_ID, {})
     dar_bandeja_en_apps(env)
     dar_jefes(env)
+    dar_s4t(env)   # v2.5.1
 
 
 def uninstall_hook(cr, registry):

@@ -92,9 +92,13 @@ S4T, Koroshi Zebra y Job Queue. Para volver a mostrar una: quitarla de la lista 
 
 En Inventario no queda nada KOROSHI salvo lo de S4T (Inventario › Operaciones), que sigue en sus módulos.
 
-**Pendiente:** koroshi_actividades (Jornada por persona, Horas por actividad, Tramos de tiempo, Actividades) no está
-instalado en el servidor (13/11/2026) y no está en `depends`. Al instalarlo: añadirlo a `depends` y meter sus
-entradas en Personas (huecos 20, 25, 30) y Configuración (hueco 35).
+**koroshi_actividades** (desde la v2.4.2 y en la 2.5.1): en Personas, Actividades (portátil), Jornada por persona,
+Horas por actividad, Inversa: cajas leídas y Tramos de tiempo; en Configuración, Actividades: configuración. Está en
+`depends`.
+
+- **v2.5.1 (19/11/2026):** la 2.5.0 con los menús de actividades de la 2.4.2 (la que está instalada). Los jefes de
+  almacén entran en «S4T API / User» (Almacen 2 no veía matrículas de caja ni el packing feed de S4T). Almacén Nath
+  ya lo tenía. No toca «S4T API / Admin».
 
 ## Cómo funciona
 
