@@ -72,7 +72,7 @@
 
                 <!-- pedido que esta haciendo -->
                 <div class="o_ko_actual o_ko_caja" style="display: none;">
-                    <span class="o_ko_sub">Estás haciendo</span>
+                    <span class="o_ko_sub o_ko_actual_sub">Estás haciendo</span>
                     <div class="o_ko_actual_ref"/>
                     <div class="o_ko_actual_tienda"/>
                     <div class="o_ko_datos"/>
@@ -80,6 +80,10 @@
                         <div class="o_ko_barra"><span class="o_ko_barra_lleno"/></div>
                         <div class="o_ko_progreso_texto"/>
                     </div>
+                    <!-- v2.20: nota del tablero (lo que pide el responsable): solo este botón -->
+                    <button class="o_ko_nota_hecha o_ko_boton" type="button" style="display: none;">
+                        <span class="o_ko_icono" role="presentation">✓</span> Hecho, siguiente
+                    </button>
                     <button class="o_ko_continuar o_ko_boton" type="button">
                         <span class="o_ko_icono" role="presentation">▶</span> Continuar
                     </button>

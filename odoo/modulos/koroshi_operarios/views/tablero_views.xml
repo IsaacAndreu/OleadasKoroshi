@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ v2.20: tablero del responsable (Almacén 2)
+         Kanban de la cola de siempre (koroshi.operario.asignacion), una columna por operario y «Por repartir»
+         (las piezas, sin operario). Lógica en models/tablero.py; botón «Actualizar», refresco cada minuto y título
+         «Por repartir» en static/src/js/tablero.js (js_class koroshi_tablero). -->
+
+    <record id="view_koroshi_tablero_kanban" model="ir.ui.view">
+        <field name="name">koroshi.operario.asignacion.tablero.kanban</field>
+        <field name="model">koroshi.operario.asignacion</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <kanban js_class="koroshi_tablero" default_group_by="employee_id" default_order="secuencia, id"
+                    create="false" quick_create="false" group_create="false" group_delete="false"
+                    group_edit="false" class="o_kt_tablero">
+                <field name="employee_id"/>
+                <field name="sequence"/>
+                <field name="estado"/>
+                <field name="tipo"/>
+                <field name="name"/>
+                <field name="tienda"/>
+                <field name="prog_pct"/>
+                <field name="prog_texto"/>
+                <field name="tambien"/>
+                <progressbar field="estado" colors='{"hecha": "success", "curso": "warning", "cola": "muted"}'/>
+                <templates>
+                    <t t-name="kanban-box">
+                        <div t-attf-class="oe_kanban_global_click o_kt_tarjeta o_kt_{{record.estado.raw_value}} o_kt_tipo_{{record.tipo.raw_value}}">
+                            <div class="o_kt_cab">
+                                <span class="o_kt_icono" role="presentation">
+                                    <t t-if="record.tipo.raw_value == 'lote'">▦</t>
+                                    <t t-elif="record.tipo.raw_value == 'agrupacion'">▤</t>
+                                    <t t-elif="record.tipo.raw_value == 'nota'">✎</t>
+                                    <t t-else="">▢</t>
+                                </span>
+                                <strong class="o_kt_nombre"><field name="name"/></strong>
+                            </div>
+                            <div t-if="record.tienda.raw_value" class="o_kt_sub"><field name="tienda"/></div>
+                            <div t-if="record.estado.raw_value == 'curso'" class="o_kt_sub o_kt_ahora">Haciéndolo ahora</div>
+                            <div t-if="record.estado.raw_value == 'hecha'" class="o_kt_sub">Hecha</div>
+                            <t t-if="record.prog_texto.raw_value">
+                                <div class="o_kt_barra" role="presentation">
+                                    <div class="o_kt_lleno" t-attf-style="width: {{record.prog_pct.raw_value}}%;"/>
+                                </div>
+                                <div class="o_kt_sub"><field name="prog_texto"/></div>
+                            </t>
+                            <div t-if="record.tambien.raw_value" class="o_kt_sub o_kt_tambien">
+                                También: <field name="tambien"/>
+                            </div>
+                        </div>
+                    </t>
+                </templates>
+            </kanban>
+        </field>
+    </record>
+
+    <record id="view_koroshi_tablero_form" model="ir.ui.view">
+        <field name="name">koroshi.operario.asignacion.tablero.form</field>
+        <field name="model">koroshi.operario.asignacion</field>
+        <field name="priority">90</field>
+        <field name="arch" type="xml">
+            <form string="Tarjeta del tablero" create="false" delete="false">
+                <header>
+                    <button name="action_subir_tablero" type="object" string="Ponerla la primera" class="btn-primary"
+                            attrs="{'invisible': ['|', ('estado', '!=', 'cola'), ('employee_id', '=', False)]}"/>
+                    <button name="action_quitar_tablero" type="object" string="Quitar"
+                            attrs="{'invisible': [('estado', 'not in', ('cola', 'curso'))]}"
+                            confirm="¿Quitar esta tarea de su columna? Si la está haciendo, se cierra como dejada."/>
+                    <field name="estado" widget="statusbar" statusbar_visible="cola,curso,hecha"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name" readonly="1" attrs="{'invisible': [('tipo', '=', 'nota')]}"/>
+                        <field name="texto" attrs="{'invisible': [('tipo', '!=', 'nota')],
+                                                    'readonly': [('estado', 'not in', ('cola', 'pieza'))]}"
+                               placeholder="Lo que tiene que hacer (lo verá en la PDA)"/>
+                        <field name="tipo" readonly="1"/>
+                        <field name="employee_id" readonly="1"/>
+                        <field name="tienda" readonly="1" attrs="{'invisible': [('tipo', '!=', 'out')]}"/>
+                        <field name="prog_texto" readonly="1" attrs="{'invisible': [('prog_texto', '=', False)]}"/>
+                        <field name="tambien" readonly="1" attrs="{'invisible': [('tambien', '=', False)]}"/>
+                        <field name="nota" readonly="1" attrs="{'invisible': [('nota', '=', False)]}"
+                               string="Observaciones"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_tablero" model="ir.actions.server">
+        <field name="name">Tablero</field>
+        <field name="model_id" ref="model_koroshi_operario_asignacion"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_tablero()</field>
+    </record>
+
+    <!-- icono propio en Aplicaciones, solo para el grupo del tablero (Almacén 2) -->
+    <menuitem id="menu_koroshi_tablero_app" name="Tablero" sequence="7" action="action_koroshi_tablero"
+              groups="koroshi_operarios.grupo_tablero"
+              web_icon="koroshi_operarios,static/description/icon_tablero.png"/>
+</odoo>

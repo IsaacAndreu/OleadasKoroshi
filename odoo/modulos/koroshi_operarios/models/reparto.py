@@ -214,7 +214,9 @@ class KoroshiOperarioTramo(models.Model):
         if dia.bloque <= 0:
             raise UserError(_('"Pedidos por bloque" tiene que ser mayor que 0.'))
         Asig = self.env['koroshi.operario.asignacion'].sudo()
-        falta = {t.id: max(0, dia.bloque - len(Asig.cola_de(t.employee_id))) for t in self}
+        # v2.20: las tarjetas del tablero (zona, nota) no cuentan como pedidos del bloque
+        falta = {t.id: max(0, dia.bloque - len(Asig.cola_de(t.employee_id).filtered(
+            lambda a: a.tipo in ('out', 'agrupacion')))) for t in self}
         listas = {}
         usados = set()
         dados = {t.id: 0 for t in self}
@@ -655,6 +657,14 @@ class KoroshiOperarioAsignacion(models.Model):
             if asig._terminada():
                 asig._cerrar_hecha()
                 continue
+            if asig.tipo in ('lote', 'nota'):
+                # v2.20: tarjeta del tablero (models/tablero.py): la siguiente OUT libre de la zona, o la nota
+                dar, seguir = asig._siguiente_de_tarjeta(employee)
+                if seguir:
+                    continue
+                if dar.tipo == 'out':
+                    dar._empezar(employee)
+                return dar, True
             asig._empezar(employee)
             return asig, True
         asig = self._dar_nueva(employee, dia)

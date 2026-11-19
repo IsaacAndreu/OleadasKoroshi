@@ -6,6 +6,9 @@
             <script type="text/javascript" src="/koroshi_operarios/static/src/js/operarios_pantalla.js"/>
             <!-- v2.11.1: sin la ventana «Error de CORS desconocido» en las PDA -->
             <script type="text/javascript" src="/koroshi_operarios/static/src/js/sin_error_cors.js"/>
+            <!-- v2.20: tablero del responsable (vista kanban js_class="koroshi_tablero") -->
+            <link rel="stylesheet" type="text/css" href="/koroshi_operarios/static/src/css/tablero.css"/>
+            <script type="text/javascript" src="/koroshi_operarios/static/src/js/tablero.js"/>
         </xpath>
     </template>
 </odoo>

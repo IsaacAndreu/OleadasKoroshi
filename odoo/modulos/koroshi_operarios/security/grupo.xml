@@ -18,4 +18,13 @@
         <field name="name">KOROSHI Operarios: tarjeta obligatoria</field>
         <field name="category_id" ref="base.module_category_hidden"/>
     </record>
+
+    <!-- v2.20: tablero del responsable (Tablero en Aplicaciones). Solo reparte trabajo quien esté aquí. Al actualizar
+         entra el usuario «Almacen 2» (almacen2@nath.es: migrations/13.0.2.20.0). «Almacén Nath» (las PDA) NO. Para
+         dárselo a otro: Ajustes › Usuarios › el usuario › este grupo. -->
+    <record id="grupo_tablero" model="res.groups">
+        <field name="name">KOROSHI: Tablero del responsable</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="comment">Ve el icono «Tablero» y reparte el trabajo de los operarios arrastrando tarjetas.</field>
+    </record>
 </odoo>

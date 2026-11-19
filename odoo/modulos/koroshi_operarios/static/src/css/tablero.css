@@ -1,0 +1,29 @@
+/* KOROSHI Operarios v2.20.0 - Tablero del responsable (PC). Todo dentro de .o_kt_tablero. */
+.o_kt_tablero .o_kanban_group.o_kt_piezas {
+    order: -1;
+    background: #fff7e0;
+}
+.o_kt_tablero .o_kt_tarjeta {
+    border-left: 5px solid #9aa4ae;
+    padding: 6px 8px;
+}
+.o_kt_tablero .o_kt_curso { border-left-color: #c25e00; background: #fff1c7; }
+.o_kt_tablero .o_kt_hecha { border-left-color: #1e7b34; background: #e5f6e9; opacity: 0.85; }
+.o_kt_tablero .o_kt_tipo_lote { border-left-color: #0b4f9c; }
+.o_kt_tablero .o_kt_tipo_nota { border-left-color: #6b3fa0; }
+.o_kt_tablero .o_kt_curso.o_kt_tipo_lote,
+.o_kt_tablero .o_kt_curso.o_kt_tipo_nota { border-left-color: #c25e00; }
+.o_kt_tablero .o_kt_cab { display: flex; gap: 6px; align-items: baseline; }
+.o_kt_tablero .o_kt_icono { font-size: 1.1em; color: #3f4954; }
+.o_kt_tablero .o_kt_nombre { word-break: break-word; }
+.o_kt_tablero .o_kt_sub { color: #4b5563; font-size: 0.9em; }
+.o_kt_tablero .o_kt_ahora { color: #8a5300; font-weight: bold; }
+.o_kt_tablero .o_kt_tambien { color: #0b4f9c; }
+.o_kt_tablero .o_kt_barra {
+    height: 6px;
+    background: #dde3e9;
+    border-radius: 3px;
+    margin: 4px 0 2px;
+    overflow: hidden;
+}
+.o_kt_tablero .o_kt_lleno { height: 100%; background: #1e7b34; }

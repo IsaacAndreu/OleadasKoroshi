@@ -9,6 +9,7 @@
 # JSON /koroshi/operarios/saltar     {employee_id, motivo_id, nota} -> v2: saltar la que esta haciendo
 # JSON /koroshi/operarios/motivos    {}                           -> v2: motivos para saltar
 # JSON /koroshi/operarios/dejar      {employee_id}                -> "Dejar aqui" (v1, se mantiene)
+# JSON /koroshi/operarios/nota_hecha {employee_id, asignacion_id}  -> v2.20: «Hecho, siguiente» en una nota del tablero
 # JSON /koroshi/operarios/estado     {employee_id}                -> tareas abiertas (+ v2.3: n_operarios, contador
 #                                                                    del dia del operario, minutos_inactividad;
 #                                                                    v2.15: version_pantallas)
@@ -96,7 +97,7 @@ def _asig_json(a):
         return False
     res = a.json()
     try:
-        lote = a.batch_id if a.tipo == 'agrupacion' else a.picking_id.batch_id
+        lote = a.batch_id if a.tipo in ('agrupacion', 'lote') else a.picking_id.batch_id   # v2.20: 'lote'
         res.update(_detalle(a._pickings(), lote))
     except Exception:  # el detalle es solo informativo: nunca rompe la pantalla
         pass
@@ -214,6 +215,18 @@ class KoroshiOperarios(http.Controller):
         _comprobar_grupo()   # v2.13
         try:
             emp = self._empleado(employee_id)
+            return self._siguiente(emp)
+        except UserError as e:
+            return _error(e)
+
+    @http.route('/koroshi/operarios/nota_hecha', type='json', auth='user')
+    def nota_hecha(self, employee_id=False, asignacion_id=False, **kw):
+        """v2.20: el operario ha hecho la nota del tablero: se acaba y se le da lo siguiente."""
+        _comprobar_grupo()
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        try:
+            emp = self._empleado(employee_id)
+            Asig.browse(int(asignacion_id or 0)).exists().nota_hecha(emp)
             return self._siguiente(emp)
         except UserError as e:
             return _error(e)

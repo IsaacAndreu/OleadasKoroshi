@@ -25,6 +25,11 @@ odoo.define('koroshi_operarios.Pantalla', function (require) {
  *   memoria. Si la PDA esta dentro de una OUT, espera a volver a Lecturas. Al recargar, el operario guardado abre
  *   su OUT como siempre.
  *
+ * v2.20: tablero del responsable. La cola puede traer tarjetas de zona («lote»: la PDA recibe sus OUT una a una,
+ *   no hace falta nada aquí) y notas («nota»: lo que pide el responsable). Una nota no abre nada: sale en «Estás
+ *   haciendo» con el texto y el botón «Hecho, siguiente» (/koroshi/operarios/nota_hecha); Continuar, Saltar,
+ *   Faltante y Pausa no salen con una nota.
+ *
  * Se conserva lo que usa koroshi_faltantes: this.actual, this.operario, events como objeto, .o_ko_dejar.
  */
 var AbstractAction = require('web.AbstractAction');
@@ -54,6 +59,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_ko_bloqueo': '_onTocarBloqueo',
         'click .o_ko_lector': '_onTocarBloqueo',
         'click .o_ko_continuar': '_onContinuar',
+        'click .o_ko_nota_hecha': '_onNotaHecha',        // v2.20
         'click .o_ko_saltar': '_onSaltar',
         'click .o_ko_pausa': '_onPausa',                 // v2.10
         'click .o_ko_motivo': '_onMotivo',
@@ -375,6 +381,23 @@ var Pantalla = AbstractAction.extend({
         this._aviso(previo || '', previo ? 'info' : '');
     },
 
+    // v2.20: nota del tablero hecha -> se acaba y se le da lo siguiente (como al volver de una OUT validada)
+    _onNotaHecha: function () {
+        var self = this;
+        if (!this.actual || this.actual.tipo !== 'nota' || !this.operario || this.ocupado || this.sinRed) { return; }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/operarios/nota_hecha',
+                          params: {employee_id: this.operario.id, asignacion_id: this.actual.id}})
+            .then(function (r) {
+                self._pitido(!!(r && r.ok));
+                return self._trasSiguiente(r, 'abrir');
+            })
+            .guardedCatch(function (e) {
+                self.ocupado = false;
+                self._falloRpc(e, function () { self._onNotaHecha(); });
+            });
+    },
+
     _onContinuar: function () {
         if (!this.actual || this.ocupado || this.sinRed) { return; }
         return this._abrir(this.tarea || this.actual);
@@ -383,6 +406,14 @@ var Pantalla = AbstractAction.extend({
     _abrir: function (obj) {
         // abre la OUT o la agrupacion en la app de codigo de barras, como si se leyera alli
         var self = this;
+        if (obj && obj.tipo === 'nota') {
+            // v2.20: una nota del tablero no se abre: se lee en la pantalla y se pulsa «Hecho, siguiente»
+            this.ocupado = false;
+            this._ocultarCapa();
+            this._pintarActual();
+            this._aviso('Tu responsable te pide: ' + (obj.texto || obj.ref || ''), 'info');
+            return Promise.resolve();
+        }
         var ref = obj.ref || obj.picking_name;
         var fallo = function (msg) {
             self.ocupado = false;
@@ -484,7 +515,8 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_ko_abriendo').hide();
         if (siguiente) {
             this.$('.o_ko_hecho_sig_ref').text(siguiente.ref || siguiente.picking_name || '');
-            this.$('.o_ko_hecho_sig_tienda').text(siguiente.tienda || (siguiente.zona ? 'Zona ' + siguiente.zona : ''));
+            this.$('.o_ko_hecho_sig_tienda').text(siguiente.tipo === 'nota' ? 'Tarea de tu responsable' :   // v2.20
+                (siguiente.tienda || (siguiente.zona ? 'Zona ' + siguiente.zona : '')));
             this.$('.o_ko_hecho_siguiente').show();
             this.$('.o_ko_hecho_fin').hide();
             this.$('.o_ko_parar_texto').text('Parar aquí');
@@ -1008,6 +1040,11 @@ var Pantalla = AbstractAction.extend({
             var t = this.tarea || {};
             this.$('.o_ko_actual_ref').text(x.ref);
             this.$('.o_ko_actual_tienda').text(x.tienda || (x.tipo === 'agrupacion' ? 'Agrupación' : ''));
+            // v2.20: nota del tablero: el texto, «Hecho, siguiente» y nada más
+            var esNota = x.tipo === 'nota';
+            this.$('.o_ko_actual_sub').text(esNota ? 'Tu responsable te pide' : 'Estás haciendo');
+            this.$('.o_ko_continuar, .o_ko_botonera, .o_ko_pausa').toggle(!esNota);
+            this.$('.o_ko_nota_hecha').toggle(esNota);
             var $d = this.$('.o_ko_datos').empty();
             var zona = x.zona || t.zona;
             if (zona) { $d.append(this._dato('Zona ' + zona, 'o_ko_zona')); }
@@ -1032,7 +1069,8 @@ var Pantalla = AbstractAction.extend({
         resto.forEach(function (y) {
             var $txt = $('<span class="o_ko_cola_txt"/>')
                 .append($('<span class="o_ko_cola_ref"/>').text(y.ref))
-                .append($('<span class="o_ko_cola_tienda"/>').text(y.tienda || (y.tipo === 'agrupacion' ? 'Agrupación' : '')));
+                .append($('<span class="o_ko_cola_tienda"/>').text(y.tienda || ({agrupacion: 'Agrupación',
+                    lote: 'Zona: sus OUT una a una', nota: 'Tarea de tu responsable'}[y.tipo] || '')));   // v2.20
             var $extra = $('<span class="o_ko_cola_extra"/>');
             if (y.zona) { $extra.append(self._dato(y.zona, 'o_ko_zona')); }
             if (y.uds) { $extra.append(self._dato(y.uds + ' uds')); }

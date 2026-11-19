@@ -134,8 +134,18 @@ actividad: ese rato no cuenta ni como trabajado ni como presencia. No toca el pe
 validar) y la asignacion sigue siendo suya. No se cierra si otro operario tiene la misma OUT en curso (a dos). Si
 vuelve a leer en Preparacion, el cron (o la validacion) abre otra tarea desde esa lectura. Un ayudante cerrado asi
 puede volver a ayudar. Parametro nuevo (noupdate); solo tablas propias.
+v2.20.0 (19/11/2026): tablero del responsable (diseño bin/versiones/diseno-tablero-responsable_2026-11-19_v5.md).
+Icono «Tablero» en Aplicaciones, solo para el grupo nuevo «KOROSHI: Tablero del responsable» (al actualizar entra
+Almacen 2; Almacén Nath, las PDA, no). Es la cola de siempre en columnas, una por operario, mas «Por repartir»: las
+zonas y agrupaciones vivas con OUT libres, las OUT sueltas libres mas antiguas y una «Nota». Se arrastra a la
+columna de cada operario y se ordena arrastrando. Una zona (o agrupacion) en su columna = la PDA le da sus OUT una a
+una, en el orden de koroshi_zonas (numero de CAJA de la nota); la pueden tener varios a la vez y, sin OUT libres,
+pasa a hecha. Una nota sale en la PDA con «Hecho, siguiente». Lo que se esta haciendo no se arrastra (Quitar en la
+tarjeta). Barra por columna y progreso por tarjeta. Columna vacia: lo de siempre (modo del dia). Tipos «lote» y
+«nota», estado «pieza», origen «tablero» y campos texto, tarjeta_id y sequence en la tabla propia de asignaciones;
+nada en stock.* (models/tablero.py, static/src/js/tablero.js).
 """,
-    'version': '13.0.2.19.0',
+    'version': '13.0.2.20.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -156,6 +166,7 @@ puede volver a ayudar. Parametro nuevo (noupdate); solo tablas propias.
         'views/wizard_views.xml',
         'views/gestion_views.xml',   # v2.18
         'views/reparto_views.xml',
+        'views/tablero_views.xml',   # v2.20
         'views/etiquetas_report.xml',
         'views/menu.xml',
     ],
