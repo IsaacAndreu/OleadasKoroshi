@@ -752,10 +752,37 @@ var Pantalla = AbstractAction.extend({
         var aviso = this.actual ? 'Dejas ' + this.actual.ref + ' a medias: sigue siendo tuyo y será el primero al volver.' : '';
         this._confirmar('¿Salir, ' + nombre + '?', 'La PDA queda libre para otro operario.', 'Sí, salir', 'No, seguir',
                         function () {
+                            var id = self.operario && self.operario.id;
                             self._salirYa();
+                            // v2.24: si esta PDA entra por el Inicio por áreas (koroshi_actividades 1.6), Salir para
+                            // el tiempo del área y vuelve al Inicio, no a la pantalla de inicio de Odoo
+                            if (self._usaInicio()) {
+                                return self._volverAlInicio(id);
+                            }
                             // v2.7: a la pantalla de inicio de Odoo (todas las apps); se vuelve con «Lecturas (PDA)»
                             self.trigger_up('show_home_menu');
                         }, aviso);
+    },
+
+    // v2.24: entrada única por áreas (koroshi_actividades 1.6.0, diseño diseno-pda-entrada-unica_2026-11-20_v2.md).
+    // El Inicio marca este navegador en sessionStorage al abrirse; sin esa marca (PDA o PC que no lo usan) Salir
+    // sigue como en la 2.7. Operarios no depende de Actividades: solo se llama a sus rutas si el Inicio existe.
+    _usaInicio: function () {
+        try { return window.sessionStorage.getItem('koroshi_inicio_pda') === '1'; } catch (e) { return false; }
+    },
+    _volverAlInicio: function (employeeId) {
+        var self = this;
+        var ir = function () {
+            return self.do_action('koroshi_actividades.action_koroshi_inicio_pda', {clear_breadcrumbs: true});
+        };
+        if (!employeeId) { return ir(); }
+        // el tiempo del área se para (como una pausa); si falla, se va igual
+        return this._rpc({route: '/koroshi/actividades/inicio/salir', params: {employee_id: employeeId}},
+                         {shadow: true})
+            .then(ir, function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+                return ir();
+            });
     },
 
     _salirYa: function (porque) {

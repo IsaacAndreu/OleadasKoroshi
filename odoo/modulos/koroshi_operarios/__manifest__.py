@@ -175,8 +175,13 @@ OUT; después las agrupaciones T de koroshi_zonas 1.7.0 (Z-ddmm-T01), enteras y 
 más bajo; después las demás (WEB_...). Sin ninguna, lo de siempre; en modo «Solo manual», nada (como antes). Cada
 zona se da en su savepoint: si una falla se prueba la siguiente y la PDA no se rompe. Solo tablas propias (models/tablero.py,
 models/tablero_areas.py, static/src/js/tablero_areas.js).
+v2.24.0 (20/11/2026): «Salir» de Lecturas vuelve al Inicio de la PDA por áreas (koroshi_actividades 1.6.0; diseño
+bin/versiones/diseno-pda-entrada-unica_2026-11-20_v2.md, fase 3): para el tiempo del área (como una pausa) y abre el
+Inicio, no la pantalla de inicio de Odoo con todas las apps (Isaac: en la PDA no se ve contabilidad ni informes). Solo
+en el navegador que ha abierto el Inicio (marca en sessionStorage); en los demás, Salir sigue como en la 2.7. La salida
+por inactividad no cambia. Operarios no depende de Actividades. Solo JS de la pantalla; nada en el servidor.
 """,
-    'version': '13.0.2.23.0',
+    'version': '13.0.2.24.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
