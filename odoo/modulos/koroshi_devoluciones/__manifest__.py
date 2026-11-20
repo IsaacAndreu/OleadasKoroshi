@@ -10,10 +10,9 @@ Fase 1 del diseño bin/versiones/diseno-devoluciones_2026-11-20.md (reunión del
   Misma tarjeta de operario que Lecturas, Contenedores y Faltante.
 - El operario elige qué ha hecho (Quitar precio / Quitar precio y embolsar / Reetiquetar y embolsar), lee prenda,
   prenda… y el contenedor KO_/TT_ o el hueco. Se guarda la tanda: quién, cuándo, qué opción, artículo y uds.
-- Stock (parámetro koroshi_devoluciones.stock = 'mover', por defecto): la prenda pasa al contenedor. Primero se coge
-  lo que haya libre en la ubicación de devoluciones (destino del tipo DEV de la compañía 8, o el parámetro
-  koroshi_devoluciones.origen_id); lo que falte entra como ajuste de inventario (como la subida del Excel). Con
-  'apuntar' solo se apunta.
+- Devoluciones de TIENDAS (el Excel de hoy). Stock (parámetro koroshi_devoluciones.stock = 'mover', por defecto): la
+  prenda entra en el contenedor como ajuste de inventario, igual que la subida del Excel. No se toca DEVOLUCIO_KOROSHI
+  (e-commerce, fase 2). Con 'apuntar' solo se apunta.
 - Informe por día, semana o mes y por manipulación (pivote y gráfico). El código de factura (M1/M2/M3) se pone en
   Opciones de manipulación y solo sale en el informe.
 - Un jefe (responsable de inventario) puede anular una tanda: el stock vuelve a donde estaba.
@@ -23,8 +22,13 @@ stock hechos sin albarán. Sin campos en tablas de Odoo.
 
 v1.0.0 (20/11/2026): primera versión. Quita el Excel de ubicar devoluciones (EAN + contenedor que se subía a
   Odoo): la PDA lee la opción, las prendas y el contenedor o hueco, mueve el stock y deja el informe para facturar.
+v1.0.1 (20/11/2026): la pantalla es para las devoluciones de tiendas (Isaac, con un Excel de ejemplo: EAN +
+  contenedor KO_). Todo entra como ajuste en el contenedor, como el Excel; ya no se coge antes lo libre de
+  DEVOLUCIO_KOROSHI, que es de e-commerce (DEV de la API, fase 2): una prenda de tienda podía gastarse una unidad
+  de una devolución web. El mensaje de «Guardado» ya no dice cuántas eran nuevas (lo son todas). Sin instalar la
+  1.0.0, se instala directamente la 1.0.1.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

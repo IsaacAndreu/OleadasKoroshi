@@ -142,10 +142,7 @@ class KoroshiDevoluciones(http.Controller):
                 tanda, emp, man, destino, por_producto)
             total = sum(hechas.mapped('uds'))
             msg = 'Guardado: %d ud%s de «%s» en %s.' % (total, '' if total == 1 else 's', man.name, destino.name)
-            nuevas = sum(hechas.mapped('uds_nuevas'))
-            if nuevas and not repetida:
-                msg += ' (%d no estaba%s en Odoo: entra%s como nueva%s)' % (
-                    nuevas, '' if nuevas == 1 else 'n', '' if nuevas == 1 else 'n', '' if nuevas == 1 else 's')
+            # v1.0.1: devoluciones de tienda: todo entra como nuevo (ya no se dice en cada tanda)
             return {'ok': True, 'msg': msg, 'uds': total}
         except (UserError, ValidationError) as e:
             return {'ok': False, 'msg': _msg(e)}

@@ -11,6 +11,12 @@
 #   2. lo que falte entra como ajuste de inventario (desde pérdidas de inventario, como «Añadir prendas» de
 #      Contenedores y como hacía la subida del Excel).
 # Con koroshi_devoluciones.stock = 'apuntar' solo se apunta, sin mover nada.
+#
+# v1.0.1 (20/11/2026): esta pantalla es para las devoluciones de TIENDAS (el Excel de hoy: caja grande, se lee el
+# artículo y el contenedor). Esas prendas no están en Odoo: entran SIEMPRE como ajuste en el contenedor, igual que la
+# subida del Excel. Ya no se coge nada de DEVOLUCIO_KOROSHI: allí está lo de e-commerce (DEV de la API), que se ubicará
+# en la fase 2 desde su DEV. Antes, una prenda de tienda podía gastarse una unidad libre de una devolución web.
+# _ubicacion_devoluciones y PARAM_ORIGEN se quedan para la fase 2; ahora no se usan al ubicar.
 # Solo escribe en sus tablas y crea stock.move hechos (sin albarán). Sin campos en tablas de Odoo.
 # =============================================================================
 import logging
@@ -154,19 +160,15 @@ class KoroshiDevolucionUbicada(models.Model):
 
     @api.model
     def _entrar_en(self, producto, uds, destino, nombre):
-        """Pone uds del artículo en el destino. Devuelve (moves, uds desde devoluciones, uds nuevas)."""
+        """Pone uds del artículo en el destino. Devuelve (moves, uds desde devoluciones, uds nuevas).
+        v1.0.1: todo entra como ajuste (uds desde devoluciones siempre 0)."""
         if producto.tracking and producto.tracking != 'none':
             raise UserError(_('%s va por lote o número de serie: no se puede ubicar aquí. Avisa a IT.')
                             % producto.display_name)
         moves = self.env['stock.move']
-        origen = self._ubicacion_devoluciones()
+        # v1.0.1: devoluciones de tienda: no se coge nada de DEVOLUCIO_KOROSHI (es de e-commerce); todo es ajuste
         de_dev = 0
-        if origen and origen != destino:
-            libres = self._libres(producto, origen)
-            de_dev = min(uds, sum(n for q, n in libres))
-            if de_dev:
-                moves |= self._mover(producto, de_dev, origen, destino, nombre, quants=libres)
-        nuevas = uds - de_dev
+        nuevas = uds
         if nuevas:
             perdidas = producto.with_context(force_company=COMPANY_ID).property_stock_inventory
             if not perdidas:

@@ -1,11 +1,12 @@
-# KOROSHI Devoluciones (v1.0, 20/11/2026)
+# KOROSHI Devoluciones (v1.0.1, 20/11/2026)
 
 «Ubicar devoluciones» en la PDA, sin Excel. Es la fase 1 del diseño `bin/versiones/diseno-devoluciones_2026-11-20_v2.md`.
 **Sin instalar.**
 
 ## Qué hace
 
-Hoy se apuntan en un Excel el EAN y el contenedor, y después se suben a Odoo. Con este módulo se hace en la PDA:
+Es para las **devoluciones de tiendas**: llega una caja grande y se apunta en un Excel el EAN y el contenedor
+`KO_` (una fila por prenda), y después se sube a Odoo. Con este módulo se hace en la PDA:
 
 1. Se pasa la tarjeta. Es la misma de Lecturas, Contenedores y Faltante.
 2. Se toca qué se ha hecho:
@@ -22,18 +23,12 @@ Hoy se apuntan en un Excel el EAN y el contenedor, y después se suben a Odoo. C
 
 ## Stock
 
-El parámetro `koroshi_devoluciones.stock` vale `mover` al instalar. Con `mover`, cada prenda pasa al contenedor así:
+El parámetro `koroshi_devoluciones.stock` vale `mover` al instalar. Con `mover`, cada prenda entra en el contenedor o
+hueco leído como **ajuste de inventario** (desde pérdidas de inventario), igual que la subida del Excel y que «Añadir
+prendas» en Contenedores. Con `apuntar` solo se apunta, y la pantalla lo dice.
 
-1. Primero se coge lo que haya **libre** de ese artículo en la ubicación de devoluciones (movimiento interno). La
-   ubicación es la del parámetro `koroshi_devoluciones.origen_id` (id de `stock.location`). Si no está, es la de destino
-   del tipo de operación DEV de la compañía 8 (`DEVOLUCIO_KOROSHI`), la misma de `koroshi_s4t_traspasos`.
-2. Lo que falte entra como **ajuste de inventario** desde pérdidas de inventario, como hace «Añadir prendas» en
-   Contenedores.
-
-Con `apuntar` solo se apunta, y la pantalla lo dice.
-
-**Cuidado con las DEV de S4T.** Si una devolución web se ubica antes de validar su DEV, entra como ajuste. Si después
-se valida la DEV, esas prendas se cuentan dos veces. Hay que validar la DEV **antes** de ubicar, o no validarla.
+**v1.0.1**: no se toca `DEVOLUCIO_KOROSHI`. Ahí están las devoluciones e-commerce (DEV que entran por la API de S4T),
+que se ubicarán en la fase 2 desde su DEV.
 
 ## Oficina
 
