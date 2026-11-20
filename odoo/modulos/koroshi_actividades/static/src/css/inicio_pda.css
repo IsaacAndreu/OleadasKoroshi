@@ -17,6 +17,9 @@
     font-family: Arial, Helvetica, sans-serif;
     font-size: 17px;
     padding-bottom: 24px;
+    position: relative;     /* v1.8.2: el aviso va encima de la cabecera */
+    max-width: 100%;
+    overflow-x: hidden;
 }
 .o_koroshi_inicio * { box-sizing: border-box; }
 .o_koroshi_inicio .o_ki_oculto { display: none !important; }
@@ -45,9 +48,12 @@
 }
 
 /* ---------------------------------------------------------------- avisos */
-.o_koroshi_inicio .o_ki_aviso { display: none; margin: 10px 12px 0; padding: 10px 12px; border-radius: 8px;
-    font-weight: bold; }
-.o_koroshi_inicio .o_ki_aviso.o_ki_si { display: block; }
+/* v1.8.2: el aviso flota encima de la cabecera (no ocupa sitio). Antes empujaba las áreas hacia abajo y, al
+   desaparecer a los 6 s, subían: el dedo caía en otra área. Tocarlo lo quita. */
+.o_koroshi_inicio .o_ki_aviso { display: none; position: absolute; top: 4px; left: 8px; right: 8px; z-index: 5;
+    min-height: 52px; padding: 8px 12px; border-radius: 8px; font-weight: bold; line-height: 1.25;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .35); }
+.o_koroshi_inicio .o_ki_aviso.o_ki_si { display: flex; align-items: center; }
 .o_koroshi_inicio .o_ki_aviso.o_ki_ok { background: #dcf3e2; color: var(--ki-verde); }
 .o_koroshi_inicio .o_ki_aviso.o_ki_info { background: #e3ecf8; color: #0b4f9c; }
 .o_koroshi_inicio .o_ki_aviso.o_ki_warn { background: #fdf0d9; color: var(--ki-ambar); }
@@ -86,8 +92,11 @@
 }
 .o_koroshi_inicio .o_ki_ahora_t { font-weight: bold; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .o_koroshi_inicio .o_ki_cargando { padding: 20px; text-align: center; color: var(--ki-suave); }
-.o_koroshi_inicio .o_ki_areas { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+/* v1.8.2: minmax(0, 1fr) y min-width: 0: con 1fr la columna crecía hasta la palabra más larga (COMPACTACIÓN,
+   EXPEDICIONES) y a 375 px la de la derecha se salía de la pantalla. */
+.o_koroshi_inicio .o_ki_areas { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
 .o_koroshi_inicio .o_ki_area {
+    min-width: 0; max-width: 100%; overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
     display: flex; flex-direction: column; align-items: flex-start; justify-content: center; min-height: 78px;
     padding: 10px 12px; background: var(--ki-panel); color: var(--ki-texto); text-align: left;
     border: 3px solid var(--ki-borde); border-left-width: 10px; border-radius: 10px;
@@ -95,7 +104,12 @@
 .o_koroshi_inicio .o_ki_area.o_ki_extra { grid-column: 1 / -1; min-height: 60px; }
 .o_koroshi_inicio .o_ki_area.o_ki_actual { background: #e6f4ea; }
 .o_koroshi_inicio .o_ki_area.o_ki_abierta { box-shadow: 0 0 0 3px var(--ki-oscuro); }
-.o_koroshi_inicio .o_ki_area_nombre { font-size: 18px; font-weight: bold; text-transform: uppercase; }
+.o_koroshi_inicio .o_ki_area_nombre { font-size: 18px; font-weight: bold; text-transform: uppercase; max-width: 100%; }
+@media (max-width: 420px) {
+    .o_koroshi_inicio .o_ki_area { padding: 8px; border-left-width: 7px; }
+    .o_koroshi_inicio .o_ki_area_nombre { font-size: 15px; }
+    .o_koroshi_inicio .o_ki_area_sub { font-size: 12px; }
+}
 .o_koroshi_inicio .o_ki_area_sub { font-size: 13px; color: var(--ki-suave); margin-top: 2px; }
 .o_koroshi_inicio .o_ki_punto { color: var(--ki-verde); }
 

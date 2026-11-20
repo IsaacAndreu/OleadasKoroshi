@@ -75,6 +75,7 @@ var InicioPda = AbstractAction.extend({
         'click .o_ki_salir': '_onSalir',
         'click .o_ki_enlace': '_onEnlace',
         'click .o_ki_lector': '_foco',
+        'click .o_ki_aviso': '_onAviso',
         'pointerdown': '_marcar',
     },
 
@@ -108,7 +109,8 @@ var InicioPda = AbstractAction.extend({
 
     on_attach_callback: function () {
         this._super.apply(this, arguments);
-        if (this._tomarTarjeta()) { this._refrescar(); }
+        // v1.8.2: también si la persona ya estaba (volver con «◀ Áreas», recargar): sin datos se quedaba en «Cargando…»
+        if (this._tomarTarjeta() || (this.persona && !this.datos)) { this._refrescar(); }
         this._foco();
     },
 
@@ -177,6 +179,8 @@ var InicioPda = AbstractAction.extend({
         } else if (this.persona && g && g.t && Date.now() - g.t > PERSONA_MS) {
             this._olvidarTarjeta();
             this._aviso('Sesión cerrada por inactividad. Pasa tu tarjeta.', 'info');
+        } else if (this.persona && !this.datos) {
+            this._refrescar();    // v1.8.2: red por si la primera carga no llegó
         }
         this._pintarAhora();
         this._avisarSigues();
@@ -207,7 +211,9 @@ var InicioPda = AbstractAction.extend({
     },
     _refrescar: function () {
         var self = this;
-        if (!this.persona || this.ocupado || !this.el || !$.contains(document, this.el)) {
+        // v1.8.2: sin datos se pide aunque la pantalla aún no esté puesta en la página. Al volver con la tarjeta ya
+        // guardada, start() llega aquí antes de que Odoo enganche la pantalla y antes no se pedía nunca: «Cargando…».
+        if (!this.persona || this.ocupado || !this.el || (this.datos && !$.contains(document, this.el))) {
             this._pintar();
             return Promise.resolve();
         }
@@ -349,6 +355,9 @@ var InicioPda = AbstractAction.extend({
     },
 
     // ------------------------------------------------------------ pintar
+    _onAviso: function () {
+        this._aviso('');    // v1.8.2: el aviso va por encima de la cabecera; tocarlo lo quita
+    },
     _aviso: function (texto, tipo) {
         var $a = this.$('.o_ki_aviso');
         clearTimeout(this.timerAviso);

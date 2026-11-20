@@ -94,8 +94,15 @@ koroshi_contenedores. Solo escribe en koroshi.actividad.registro. No toca cron_c
 v1.8.1 (20/11/2026): icono propio para «Inicio PDA» (Isaac 20/11: «faltaria un logo nou»). Era el mismo
 cronómetro morado que «Actividades» y en la pantalla de inicio no se distinguían. Ahora casa blanca sobre verde con
 cuatro áreas (una en amarillo): static/description/icon_inicio_pda.png. Solo imagen y el web_icon del menú.
+v1.8.2 (20/11/2026): arreglos del Inicio (PDA) vistos por Soporte en la prueba del 20/11 (lleva el icono de la 1.8.1).
+1) Al volver con «◀ Áreas» (o recargar) con la tarjeta ya puesta se quedaba en «Cargando…»: start() pedía el estado
+antes de que Odoo enganchara la pantalla y no lo pedía nunca más. Ahora se pide igual, y on_attach_callback y la
+vigilancia de 15 s lo vuelven a pedir si sigue sin datos. 2) A 375 px la columna derecha de áreas se salía
+(grid 1fr: crecía hasta COMPACTACIÓN / EXPEDICIONES): minmax(0, 1fr), corte de palabra y letra algo menor en
+pantallas estrechas. 3) El aviso («Hola, ...») empujaba las áreas y al irse subían: el dedo caía en otra. Ahora flota
+encima de la cabecera y no ocupa sitio (tocarlo lo quita). Solo JS y CSS del Inicio; servidor y datos sin cambios.
 """,
-    'version': '13.0.1.8.1',
+    'version': '13.0.1.8.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
