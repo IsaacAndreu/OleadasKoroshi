@@ -160,6 +160,12 @@ Sin pulsar nada. Cómo se haría:
   - Actividades lo sobrescribe: primero el tramo abierto (`estado='curso'`, `actividad_id.area`, `inicio`) y, si no
     hay, super().
   - Sin área = no sale en el dict.
+  - **Acordado con el Tablero (20/11)**:
+    - el Tablero lo hace en `koroshi_operarios` 2.23.0, aprobada por Isaac. Va en `koroshi.operario.asignacion`
+      y devuelve también `'detalle'` (texto);
+    - Actividades lo sobrescribe con `actividad_id.area`;
+    - quitar del todo las tarjetas de actividad de la 1.5.0 también va en esa versión de Actividades.
+  - **La fase 3 (Salir de Lecturas) va en una operarios posterior a la 2.23.0**: el Tablero avisa cuando la suelte.
 - Las tarjetas de actividad del tablero (1.5.0) desaparecen, como dice la v6: las actividades ya no se asignan.
 
 ### 3.6 Que en la PDA no se vea contabilidad
