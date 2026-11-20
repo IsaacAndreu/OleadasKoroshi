@@ -29,7 +29,8 @@ var session = require('web.session');
 var REPETIDA_MS = 700;        // la misma lectura dos veces seguidas (bus + campo) cuenta una
 var CONFIRMAR_MS = 5000;      // tiempo para la segunda pulsacion de "No esta en ninguna ubicacion"
 var VOLVER_MS = 1800;         // tras validar, vuelve solo a Operarios
-var TARJETA_MS = 900000;      // v1.8: tarjeta guardada valida 15 min sin actividad (como Contenedores)
+var TARJETA_MS = 3600000;     // v1.8: tarjeta guardada valida sin actividad; v1.8.1: parametro
+                              // koroshi_operarios.minutos_tarjeta (60 por defecto), se lee al entrar
 
 var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_faltantes.Pantalla',
@@ -71,6 +72,7 @@ var Pantalla = AbstractAction.extend({
                 self.operario = {id: self.operarioInicial.id, nombre: self.operarioInicial.nombre, tarjeta: true};
             } else {
                 self._tomarGuardada();   // v1.8
+                self._leerMinutosTarjeta();   // v1.8.1
             }
             $('body').addClass('o_kf_en_faltante');   // v1.4: en PDA (pantalla estrecha) sin la barra de Odoo
             self._pintar();
@@ -131,6 +133,19 @@ var Pantalla = AbstractAction.extend({
         if (!g || !g.id || (g.t && Date.now() - g.t > TARJETA_MS)) { return false; }
         this.operario = {id: g.id, nombre: g.nombre, tarjeta: true};
         return true;
+    },
+    // v1.8.1: cuanto dura la tarjeta sin actividad (si falla, se queda con el valor de antes)
+    _leerMinutosTarjeta: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
+            .then(function (r) {
+                if (r && r.ok && r.minutos > 0) {
+                    TARJETA_MS = r.minutos * 60000;
+                    if (!self.operario && self._tomarGuardada()) { self._pintar(); }
+                }
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            });
     },
     _guardarTarjeta: function () {
         if (!this.operario || !this.operario.tarjeta) { return; }

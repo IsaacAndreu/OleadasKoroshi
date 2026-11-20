@@ -160,8 +160,11 @@ v2.22.0 (20/11/2026): la misma tarjeta en todas las pantallas de la PDA (lo pidi
   Contenedores (1.9.0) y Faltante (1.8.0) leen y escriben la misma clave. Al volver a Lecturas, si se ha pasado otra
   tarjeta en Contenedores o Faltante, coge ese operario sin abrir nada solo. Salir o la inactividad la siguen
   borrando. Solo JS de la pantalla; nada en el servidor ni en la base de datos.
+v2.22.1 (20/11/2026): la tarjeta compartida dura mas (Isaac: «caduca molt rapid»). Parametro nuevo
+  koroshi_operarios.minutos_tarjeta = 60 (noupdate; se cambia en Parametros del sistema sin sacar version) y ruta
+  /koroshi/operarios/minutos_tarjeta que lo leen Contenedores (1.9.1) y Faltante (1.8.1). Instalar antes que ellas.
 """,
-    'version': '13.0.2.22.0',
+    'version': '13.0.2.22.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

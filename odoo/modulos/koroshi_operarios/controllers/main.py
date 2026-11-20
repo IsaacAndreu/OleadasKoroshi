@@ -293,6 +293,18 @@ class KoroshiOperarios(http.Controller):
             res['dia'] = self._contador_dia(emp)
         return res
 
+    @http.route('/koroshi/operarios/minutos_tarjeta', type='json', auth='user')
+    def minutos_tarjeta(self, **kw):
+        """v2.22.1: minutos sin actividad que dura la tarjeta compartida en Contenedores y Faltante
+        (parametro koroshi_operarios.minutos_tarjeta, 60 si no esta o no es un numero; minimo 1)."""
+        _comprobar_grupo()
+        valor = request.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.minutos_tarjeta', '60')
+        try:
+            minutos = int(float(valor or 60))
+        except ValueError:
+            minutos = 60
+        return {'ok': True, 'minutos': max(minutos, 1)}
+
     def _minutos_inactividad(self):
         valor = request.env['ir.config_parameter'].sudo().get_param('koroshi_operarios.minutos_inactividad', '0')
         try:

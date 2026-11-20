@@ -24,5 +24,11 @@
             <field name="key">koroshi_operarios.minutos_cierre_inactividad</field>
             <field name="value">15</field>
         </record>
+        <!-- v2.22.1: minutos sin actividad que dura la tarjeta compartida en Contenedores y Faltante (Lecturas va
+             por minutos_inactividad). Lo pidio Isaac el 20/11: con 15 caducaba demasiado rapido. -->
+        <record id="parametro_minutos_tarjeta" model="ir.config_parameter">
+            <field name="key">koroshi_operarios.minutos_tarjeta</field>
+            <field name="value">60</field>
+        </record>
     </data>
 </odoo>

@@ -66,8 +66,10 @@ v1.8.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Contenedores (con 
   koroshi_contenedores 1.9.0). Abierta sin venir de Lecturas, coge la tarjeta guardada en la PDA si tiene menos de
   15 min sin actividad, y la vuelve a coger al volver de una OUT; leer una tarjeta aquí la deja puesta en las otras
   pantallas. La del operario de la tarea de la OUT no se guarda. Solo JS; nada en el servidor ni en la base de datos.
+v1.8.1 (20/11/2026): la tarjeta guardada vale lo que diga el parametro koroshi_operarios.minutos_tarjeta (60 por
+  defecto), igual que en Contenedores. Necesita koroshi_operarios 2.22.1 (instalarla antes); sin ella se queda en 60.
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.8.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

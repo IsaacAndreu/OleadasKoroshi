@@ -73,8 +73,11 @@ v1.9.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Faltante (con koro
   koroshi_faltantes 1.8.0). Al entrar se coge la tarjeta guardada en la PDA si tiene menos de 15 min sin actividad
   (la actividad en Lecturas también cuenta); pasar la tarjeta aquí la deja puesta en las otras pantallas. La
   inactividad de 15 min la quita solo de esta pantalla. Solo JS; nada en el servidor ni en la base de datos.
+v1.9.1 (20/11/2026): la tarjeta ya no caduca a los 15 min sin actividad: dura lo que diga el parámetro
+  koroshi_operarios.minutos_tarjeta (60 por defecto), que se lee al entrar. Necesita koroshi_operarios 2.22.1
+  (instalarla antes); sin ella se queda en 60.
 """,
-    'version': '13.0.1.9.0',
+    'version': '13.0.1.9.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -32,7 +32,8 @@ var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
 var session = require('web.session');
 var REPETIDA_MS = 700;
-var PERSONA_MS = 900000;         // v1.6: 15 min (antes 3) sin actividad
+var PERSONA_MS = 3600000;        // v1.6: 15 min (antes 3) sin actividad; v1.9.1: parametro
+                                // koroshi_operarios.minutos_tarjeta (60 por defecto), se lee al entrar
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
@@ -108,6 +109,7 @@ var Pantalla = AbstractAction.extend({
         return this._super.apply(this, arguments).then(function () {
             self.timer = setInterval(self._vigilar.bind(self), 10000);
             self._tomarGuardada();   // v1.9
+            self._leerMinutosTarjeta();   // v1.9.1
             self._pintar();
             self._foco();
         });
@@ -160,6 +162,20 @@ var Pantalla = AbstractAction.extend({
         if (!this.persona || (this.guardadaEn && this.actividadEn - this.guardadaEn < 30000)) { return; }
         var g = this._guardada();
         if (!g || g.id === this.persona.id) { this._guardarPersona(); }
+    },
+
+    // v1.9.1: cuánto dura la tarjeta sin actividad (si falla, se queda con el valor de antes)
+    _leerMinutosTarjeta: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
+            .then(function (r) {
+                if (r && r.ok && r.minutos > 0) {
+                    PERSONA_MS = r.minutos * 60000;
+                    if (!self.persona && self._tomarGuardada()) { self._pintar(); }
+                }
+            }).guardedCatch(function (e) {
+                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            });
     },
 
     _vigilar: function () {
