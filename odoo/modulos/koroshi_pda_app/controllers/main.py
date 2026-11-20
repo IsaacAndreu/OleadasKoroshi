@@ -8,6 +8,8 @@
 #   /koroshi_pda/sw.js                 service worker mínimo: no guarda nada en caché, todo va a Odoo como siempre
 #   /koroshi_pda/inicio                donde abre la app: con sesión -> Lecturas; sin sesión -> login y, al entrar,
 #                                      vuelta aquí -> Lecturas
+#   v1.2.0: con koroshi_pda_app.inicio = 'areas', abre el Inicio de la PDA por áreas (koroshi_actividades 1.6.0)
+#   en vez de Lecturas.
 # No lee ni escribe nada en la base de datos.
 # =============================================================================
 import json
@@ -15,12 +17,15 @@ import json
 import werkzeug.urls
 import werkzeug.utils
 
-from odoo import http
+from odoo import SUPERUSER_ID, http
 from odoo.http import request
 from odoo.addons.koroshi_base import comun   # v1.1: la empresa
 
 COMPANY_ID = comun.COMPANY_ID                           # v1.1: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
 LECTURAS = '/web#cids=%s&action=koroshi_operarios_pantalla' % COMPANY_ID
+# v1.2.0: Inicio de la PDA por áreas (koroshi_actividades 1.6.0), si el parámetro koroshi_pda_app.inicio = 'areas'
+AREAS = '/web#cids=%s&action=koroshi_actividades.action_koroshi_inicio_pda' % COMPANY_ID
+XMLID_AREAS = 'koroshi_actividades.action_koroshi_inicio_pda'
 INICIO = '/koroshi_pda/inicio'
 COLOR = '#14243b'                                       # el fondo de la pantalla «Lee tu tarjeta»
 
@@ -33,6 +38,15 @@ self.addEventListener('fetch', function () { /* nada: la red de siempre */ });
 
 
 class KoroshiPdaApp(http.Controller):
+
+    def _destino(self):
+        """v1.2.0: Lecturas, o el Inicio por áreas si el parámetro lo dice y koroshi_actividades lo tiene (si no,
+        Lecturas: la app nunca abre una pantalla que no existe)."""
+        env = request.env(user=SUPERUSER_ID)
+        if (env['ir.config_parameter'].get_param('koroshi_pda_app.inicio', 'lecturas') or '').strip() == 'areas' \
+                and env.ref(XMLID_AREAS, raise_if_not_found=False):
+            return AREAS
+        return LECTURAS
 
     @http.route('/koroshi_pda/manifest.webmanifest', type='http', auth='none', methods=['GET'], sitemap=False)
     def manifest(self, **kw):
@@ -70,5 +84,5 @@ class KoroshiPdaApp(http.Controller):
     @http.route(INICIO, type='http', auth='none', methods=['GET'], sitemap=False)
     def inicio(self, **kw):
         if request.session.uid:
-            return werkzeug.utils.redirect(LECTURAS, 303)
+            return werkzeug.utils.redirect(self._destino(), 303)
         return werkzeug.utils.redirect('/web/login?' + werkzeug.urls.url_encode({'redirect': INICIO}), 303)

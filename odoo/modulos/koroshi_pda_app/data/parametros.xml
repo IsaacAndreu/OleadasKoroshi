@@ -6,5 +6,11 @@
             <field name="key">koroshi_pda_app.usuarios</field>
             <field name="value">2</field>
         </record>
+        <!-- v1.2.0: dónde abre la app. 'lecturas' = como hasta ahora; 'areas' = el Inicio de la PDA por áreas
+             (koroshi_actividades 1.6.0). Se cambia en Parámetros del sistema cuando el Inicio esté probado. -->
+        <record id="param_inicio" model="ir.config_parameter">
+            <field name="key">koroshi_pda_app.inicio</field>
+            <field name="value">lecturas</field>
+        </record>
     </data>
 </odoo>

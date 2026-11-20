@@ -22,8 +22,12 @@ Lecturas: en el usuario, Preferencias → Acción inicial = «Operarios» (Lectu
 v1.0.0 (11/11/2026): primera versión.
 v1.1.0 (16/11/2026): auditoría 13/11, fase 6 (pasar a koroshi_base). La empresa sale de koroshi_base.comun. Misma
 app y mismas rutas; sin campos ni vistas nuevas. Depende de koroshi_base.
+v1.2.0 (20/11/2026): la app puede abrir el Inicio de la PDA por áreas (koroshi_actividades 1.6.0; diseño
+bin/versiones/diseno-pda-entrada-unica_2026-11-20_v2.md, fase 2) en vez de Lecturas. Parámetro nuevo
+koroshi_pda_app.inicio (noupdate): 'lecturas' (al instalar, nada cambia) o 'areas'. Se pasa a 'areas' a mano cuando el
+Inicio esté probado; si koroshi_actividades no lo tiene, sigue abriendo Lecturas. Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
