@@ -20,9 +20,15 @@
                 </div>
                 <h1>Pasa tu tarjeta</h1>
                 <p>Y elige dónde vas a trabajar.</p>
+            </section>
+            <!-- v1.8.3: el campo del lector está siempre (también con alguien dentro: pasar otra tarjeta cambia de
+                 persona) y con el foco, como en Lecturas. Sin foco, el lector de la PDA escribía en ninguna parte. -->
+            <div class="o_ki_leer">
                 <input type="text" class="o_ki_codigo" inputmode="none" autocomplete="off"
                        placeholder="O escribe tu código y pulsa Intro"/>
-            </section>
+                <div class="o_ki_estado_lector"><span class="o_ki_luz" role="presentation"/>
+                    <span class="o_ki_estado_txt">Toca la pantalla</span></div>
+            </div>
             <section class="o_ki_menu">
                 <div class="o_ki_ahora"/>
                 <div class="o_ki_areas"/>

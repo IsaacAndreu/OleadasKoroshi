@@ -78,6 +78,13 @@
 .o_koroshi_inicio .o_ki_linea { position: absolute; left: 16px; right: 40px; bottom: 30px; height: 6px;
     background: #fff; border-radius: 3px; }
 .o_koroshi_inicio .o_ki_linea.o_ki_corta { right: 80px; bottom: 16px; }
+/* v1.8.3: campo del lector siempre a la vista y con el foco, con su piloto (como Lecturas) */
+.o_koroshi_inicio .o_ki_leer { padding: 8px 12px 0; text-align: center; }
+.o_koroshi_inicio .o_ki_estado_lector { display: inline-flex; align-items: center; gap: 8px; margin-top: 6px;
+    font-size: 15px; color: var(--ki-suave); cursor: pointer; }
+.o_koroshi_inicio .o_ki_luz { width: 12px; height: 12px; border-radius: 50%; background: #9aa3ad; }
+.o_koroshi_inicio .o_ki_estado_lector.o_ki_listo { color: var(--ki-verde); font-weight: bold; }
+.o_koroshi_inicio .o_ki_estado_lector.o_ki_listo .o_ki_luz { background: #22a447; }
 .o_koroshi_inicio .o_ki_codigo {
     width: 100%; max-width: 380px; font-size: 17px; padding: 10px; border: 2px solid var(--ki-borde);
     border-radius: 8px;

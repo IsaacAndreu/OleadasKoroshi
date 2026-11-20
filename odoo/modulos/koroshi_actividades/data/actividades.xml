@@ -28,7 +28,7 @@
             <field name="name">Manipulación devoluciones</field>
             <field name="sequence">40</field>
             <field name="color">#c25e00</field>
-            <field name="area">devoluciones</field>  <!-- v1.6.0 -->
+            <field name="area">recepciones</field>  <!-- v1.6.0; v1.8.3: en Recepciones (Devoluciones = Ubicar) -->
         </record>
         <record id="actividad_inversa" model="koroshi.actividad">
             <field name="name">Inversa</field>

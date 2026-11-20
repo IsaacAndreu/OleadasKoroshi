@@ -3,7 +3,7 @@
     <!-- Cada 5 min: pausa de la comida (13:00) y cierre de la jornada (17:00) a la hora exacta.
          Solo escribe en koroshi.actividad.registro. -->
     <record id="cron_koroshi_actividades_cerrar" model="ir.cron">
-        <field name="name">KOROSHI Actividades: pausa 13:00 y cierre 17:00</field>
+        <field name="name">KOROSHI Actividades: cierre por turno y «¿Sigues?»</field>
         <field name="model_id" ref="model_koroshi_actividad_registro"/>
         <field name="state">code</field>
         <field name="code">model.cron_cerrar()</field>

@@ -68,6 +68,9 @@ var InicioPda = AbstractAction.extend({
     contentTemplate: 'koroshi_actividades.InicioPda',
     events: {
         'keydown .o_ki_codigo': '_onKeydown',
+        'focusin .o_ki_codigo': '_estadoLector',
+        'focusout .o_ki_codigo': '_onFocoFuera',
+        'click .o_ki_estado_lector': '_foco',
         'click .o_ki_area': '_onArea',
         'click .o_ki_act': '_onActividad',
         'click .o_ki_cerrar_panel': '_onCerrarPanel',
@@ -184,6 +187,7 @@ var InicioPda = AbstractAction.extend({
         }
         this._pintarAhora();
         this._avisarSigues();
+        this._foco();
     },
 
     // ------------------------------------------------------------ servidor
@@ -233,7 +237,8 @@ var InicioPda = AbstractAction.extend({
         this._leer(barcode);
     },
     _onKeydown: function (ev) {
-        if (ev.key === 'Enter' || ev.keyCode === 13) {
+        // v1.8.3: Intro o tabulador al final (según cómo esté configurado el lector)
+        if (ev.key === 'Enter' || ev.keyCode === 13 || ev.key === 'Tab' || ev.keyCode === 9) {
             ev.preventDefault();
             var v = $(ev.currentTarget).val();
             $(ev.currentTarget).val('');
@@ -368,8 +373,23 @@ var InicioPda = AbstractAction.extend({
         }
     },
     _foco: function () {
+        // v1.8.3: siempre con el foco en el campo del lector, haya o no alguien dentro (como Lecturas en bloqueo).
+        // inputmode="none": en la PDA no saca el teclado.
         var $c = this.$('.o_ki_codigo');
-        if ($c.length && !this.persona) { $c.focus(); }
+        if ($c.length && this.el && $.contains(document, this.el) && document.activeElement !== $c[0]) {
+            $c.focus();
+        }
+        this._estadoLector();
+    },
+    _onFocoFuera: function () {
+        var self = this;
+        // al tocar un botón el campo pierde el foco: se recupera (si el botón ha abierto otra pantalla, ya no está)
+        setTimeout(function () { self._foco(); }, 80);
+    },
+    _estadoLector: function () {
+        var listo = !!this.el && document.activeElement === this.$('.o_ki_codigo')[0];
+        this.$('.o_ki_estado_lector').toggleClass('o_ki_listo', listo);
+        this.$('.o_ki_estado_txt').text(listo ? 'Lector preparado' : 'Toca aquí para leer');
     },
     _minutosDesde: function (utc) {
         var d = _fecha(utc);
@@ -425,6 +445,8 @@ var InicioPda = AbstractAction.extend({
         this.$('.o_ki_lector').toggleClass('o_ki_oculto', con);
         this.$('.o_ki_menu').toggleClass('o_ki_oculto', !con);
         this.$('.o_ki_salir').toggleClass('o_ki_oculto', !con);
+        this.$('.o_ki_codigo').attr('placeholder', con ? 'Otra tarjeta: pásala o escribe y pulsa Intro'
+                                                      : 'O escribe tu código y pulsa Intro');
         this.$('.o_ki_avatar').text(con ? _iniciales(this.persona.nombre) : 'K');
         this.$('.o_ki_nombre').text(con ? this.persona.nombre : 'KOROSHI');
         if (!con) {
@@ -475,6 +497,7 @@ var InicioPda = AbstractAction.extend({
             this.$('.o_ki_gestion').empty();
         }
         this._pintarAhora();
+        this._foco();
     },
 });
 

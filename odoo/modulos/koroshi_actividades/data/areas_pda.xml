@@ -27,6 +27,17 @@
             <field name="abre">koroshi_contenedores.action_koroshi_contenedores_pantalla</field>
             <field name="en_portatil" eval="False"/>
         </record>
+        <!-- v1.8.3: Devoluciones = pantalla «Ubicar devoluciones» de la PDA (koroshi_devoluciones: leer artículo y
+             ubicación). Isaac 20/11: «no es manipulació de devolucions». La manipulación pasa a Recepciones. -->
+        <record id="actividad_pda_ubicar_devoluciones" model="koroshi.actividad">
+            <field name="name">Ubicar devoluciones</field>
+            <field name="sequence">115</field>
+            <field name="color">#c25e00</field>
+            <field name="nota">Leer artículo y ubicación</field>
+            <field name="area">devoluciones</field>
+            <field name="abre">koroshi_devoluciones.action_koroshi_devoluciones_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
         <!-- Recepciones (además de las manipulaciones del portátil, que también van aquí) -->
         <record id="actividad_pda_descargar" model="koroshi.actividad">
             <field name="name">Descargar camión</field>

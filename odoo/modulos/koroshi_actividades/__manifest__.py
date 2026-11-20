@@ -101,8 +101,19 @@ vigilancia de 15 s lo vuelven a pedir si sigue sin datos. 2) A 375 px la columna
 (grid 1fr: crecía hasta COMPACTACIÓN / EXPEDICIONES): minmax(0, 1fr), corte de palabra y letra algo menor en
 pantallas estrechas. 3) El aviso («Hola, ...») empujaba las áreas y al irse subían: el dedo caía en otra. Ahora flota
 encima de la cabecera y no ocupa sitio (tocarlo lo quita). Solo JS y CSS del Inicio; servidor y datos sin cambios.
+v1.8.3 (20/11/2026): dos cosas de la prueba de Isaac del 20/11. 1) «No fa res quan li fiques la targeta»: el campo
+del lector solo tenía el foco al abrir y sin nadie dentro; en la PDA, al tocar la pantalla lo perdía y la lectura no
+iba a ningún sitio. Ahora, como Lecturas, el campo está siempre (también con alguien dentro: otra tarjeta cambia de
+persona), recupera el foco al tocar un botón y cada 15 s, y enseña «Lector preparado» / «Toca aquí para leer». Acepta
+Intro o tabulador al final. Sigue escuchando el lector de Odoo (barcode_scanned). 2) «Devoluciones está equivocado»:
+el área Devoluciones abre la pantalla «Ubicar devoluciones» de koroshi_devoluciones (leer artículo y ubicación), con
+la tarjeta compartida y «◀ Áreas». Actividad nueva «Ubicar devoluciones» (data/areas_pda.xml, se crea al
+actualizar). «Manipulación devoluciones» (portátil) pasa a Recepciones como las otras manipulaciones
+(migrations/13.0.1.8.3; sus tramos pasan a contar en Recepciones). Sin koroshi_devoluciones el área solo cuenta el
+tiempo. Sin campos nuevos. El cron de cierre se llama ahora «cierre por turno y ¿Sigues?» (desde la 1.7.0 ya no
+es «pausa 13:00 y cierre 17:00»).
 """,
-    'version': '13.0.1.8.2',
+    'version': '13.0.1.8.3',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
