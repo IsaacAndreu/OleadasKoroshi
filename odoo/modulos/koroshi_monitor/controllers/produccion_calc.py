@@ -35,6 +35,11 @@ import re
 import pytz
 
 MIN_UH_HORA = 5         # con menos de 5 min (efectivos o de presencia) en una hora no se ensena esa u/h
+# v1.38.0 (20/11/2026, Isaac: descansos de la empresa por turno). turnos = {op: comun.turno_de(entrada)} (koroshi_base
+#   1.1): turno de 6 a 14 (un tramo, descanso 15) -> se descuentan 15 min de presencia: primero cuentan los huecos de 15
+#   min o mas que ya no eran presencia; lo que falte sale de los huecos cortos entre pedidos (los mas largos, dentro del
+#   turno), nunca del tiempo leyendo. Partido (08-13 y 14-17): entre los tramos (la comida) solo cuenta lo leido. Con un
+#   filtro no cambia nada (la presencia ya es solo el tiempo leyendo).
 MINUTOS_HUECO = 15      # v1.35: hueco sin hacer nada que ya no es presencia (koroshi_operarios.minutos_sin_leer)
 RITMO_ESTANDAR = 100    # u/h real: por debajo, en rojo
 
@@ -76,6 +81,65 @@ def unir_con_huecos(intervalos, minutos):
         else:
             res.append((a, b))
     return res
+
+
+def restar(intervalos, quitar):
+    """v1.38.0: intervalos menos los de quitar (los dos ya unidos y ordenados)."""
+    res = []
+    for a, b in intervalos:
+        cur = a
+        for qa, qb in quitar:
+            if qb <= cur or qa >= b:
+                continue
+            if qa > cur:
+                res.append((cur, qa))
+            cur = max(cur, qb)
+            if cur >= b:
+                break
+        if cur < b:
+            res.append((cur, b))
+    return res
+
+
+def _minutos(intervalos):
+    return sum((b - a).total_seconds() / 60.0 for a, b in intervalos)
+
+
+def presencia_con_turno(activos, presencia, turno):
+    """v1.38.0: presencia (tiempo leyendo + huecos cortos) con los descansos del turno.
+    activos y presencia: unidos y ordenados; turno: comun.turno_de() o None (sin turno: sin cambios)."""
+    if not turno or not presencia:
+        return presencia
+    tramos = turno['tramos']
+    # partido: entre tramos (la comida) solo cuenta lo leído
+    comidas = [(tramos[i][1], tramos[i + 1][0]) for i in range(len(tramos) - 1) if tramos[i + 1][0] > tramos[i][1]]
+    if comidas:
+        presencia = unir(activos + restar(presencia, comidas))
+    descanso = turno.get('descanso') or 0
+    if not descanso or not turno.get('continuo'):
+        return presencia
+    ini_t, fin_t = tramos[0]
+    desde, hasta = max(presencia[0][0], ini_t), min(presencia[-1][1], fin_t)
+    if hasta <= desde:
+        return presencia
+    # lo que ya no era presencia dentro del turno (huecos de 15 min o más) cuenta como descanso hecho
+    hecho = _minutos(restar([(desde, hasta)], presencia))
+    falta = descanso - hecho
+    if falta <= 0:
+        return presencia
+    # el resto, de los huecos cortos (presencia sin leer) más largos dentro del turno
+    cortos = [h for h in restar(restar(presencia, activos), [(fin_t, fin_t.replace(year=9999))]) if h[0] >= ini_t]
+    quitar = []
+    for a, b in sorted(cortos, key=lambda h: (h[0] - h[1], h[0])):
+        m = (b - a).total_seconds() / 60.0
+        if m <= 0:
+            continue
+        toma = min(m, falta)
+        quitar.append((a, a + (b - a) * (toma / m)))
+        falta -= toma
+        if falta <= 1e-6:
+            break
+    return restar(presencia, unir(quitar)) if quitar else presencia
 
 
 def intervalos_activos(inicio, fin, huecos):
@@ -153,9 +217,10 @@ def _uh(uds, minutos):
     return int(round(uds * 60.0 / minutos)) if minutos >= MIN_UH_HORA else None
 
 
-def produccion(tareas, tz, filtrar=None, ritmo=RITMO_ESTANDAR, minutos_hueco=MINUTOS_HUECO):
+def produccion(tareas, tz, filtrar=None, ritmo=RITMO_ESTANDAR, minutos_hueco=MINUTOS_HUECO, turnos=None):
     """Resumen por operario y hora. filtrar(tarea) -> bool: solo esas tareas (presencia = dentro de sus pedidos).
     minutos_hueco (v1.35): huecos sin hacer nada de estos minutos o mas no son presencia.
+    turnos (v1.38.0): {op: comun.turno_de(entrada)}; sin filtro, la presencia descuenta sus descansos.
     Devuelve {horas: [7, 8, ...], operarios: [...], equipo: {...}, tipos: {tipo: n}, ritmo}."""
     tipos = {}
     for t in tareas:
@@ -174,7 +239,8 @@ def produccion(tareas, tz, filtrar=None, ritmo=RITMO_ESTANDAR, minutos_hueco=MIN
         if filtrar:
             presencia[op] = unir(activos)
         else:
-            presencia[op] = unir_con_huecos(activos, minutos_hueco)
+            presencia[op] = presencia_con_turno(unir(activos), unir_con_huecos(activos, minutos_hueco),
+                                                (turnos or {}).get(op))
 
     ops = {}
     for t in sel:

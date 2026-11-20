@@ -12,7 +12,7 @@
              parametros del sistema. -->
         <record id="param_manifiesto_cc" model="ir.config_parameter">
             <field name="key">koroshi_monitor.manifiesto_cc</field>
-            <field name="value">jessica.castillero@xpo.com, ndg.comprometido.barcelona@xpo.com, xpo.comprometido.salidas.barcelona@xpo.com, eloy.canoayora@xpo.com, marta.bernabeu@xpo.com</field>
+            <field name="value">jessica.castillero@xpo.com, ndg.comprometido.barcelona@xpo.com, xpo.comprometido.salidas.barcelona@xpo.com, eloy.canoayora@xpo.com, marta.bernabeu@xpo.com, expediciones@koroshi.tv</field>
         </record>
     </data>
 </odoo>

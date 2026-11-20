@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_devoluciones.Pantalla">
+        <div class="o_koroshi_devoluciones">
+            <header class="o_kd_cab">
+                <div class="o_kd_titulo">Ubicar devoluciones</div>
+                <input type="text" class="o_kd_codigo" autocomplete="off" inputmode="none"
+                       placeholder="Tarjeta, prenda o contenedor / ubicación"/>
+                <button type="button" class="o_kd_teclado">⌨ Escribir</button>
+            </header>
+            <div class="o_kd_persona"/>
+            <div class="o_kd_aviso"/>
+            <div class="o_kd_paso"/>
+            <div class="o_kd_cuerpo"/>
+        </div>
+    </t>
+</templates>

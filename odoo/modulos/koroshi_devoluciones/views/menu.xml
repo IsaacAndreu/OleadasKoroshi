@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- App para la PDA: abre directamente la pantalla (como Contenedores) -->
+    <menuitem id="menu_koroshi_devoluciones_app" name="Devoluciones" action="action_koroshi_devoluciones_pantalla"
+              web_icon="koroshi_devoluciones,static/description/icon.png" sequence="4"/>
+    <!-- Oficina: Inventario > KOROSHI Operarios > Devoluciones -->
+    <menuitem id="menu_koroshi_devoluciones_root" name="Devoluciones"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" sequence="96"/>
+    <menuitem id="menu_koroshi_devoluciones_pantalla" name="Ubicar devoluciones (PDA)"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devoluciones_pantalla" sequence="10"/>
+    <menuitem id="menu_koroshi_devoluciones_ubicadas" name="Devoluciones ubicadas"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_ubicada" sequence="20"/>
+    <menuitem id="menu_koroshi_devoluciones_informe" name="Informe por día, semana o mes"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_informe" sequence="30"/>
+    <menuitem id="menu_koroshi_devoluciones_opciones" name="Opciones de manipulación"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_manipulacion" sequence="90"
+              groups="stock.group_stock_manager"/>
+</odoo>

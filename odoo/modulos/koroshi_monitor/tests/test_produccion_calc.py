@@ -124,6 +124,60 @@ class TestProduccion(unittest.TestCase):
         o2 = calc.produccion([t2], TZ)['operarios'][0]
         self.assertEqual(o2['presencia'], 54)           # 13:16-13:30 + 13:50-14:30
 
+    # ---------------------------------------------------------------- v1.38.0: descansos por turno
+    def turno(self, tramos, descanso):
+        t = [(utc(*a), utc(*b)) for a, b in tramos]
+        return {'tramos': t, 'fin': t[-1][1], 'descanso': descanso, 'continuo': len(t) == 1}
+
+    def tarea(self, ini, fin, uds=20):
+        m = (utc(*fin) - utc(*ini)).total_seconds() / 60.0
+        return {'op': 'Ana · OP3', 'codigo': 'OP3', 'inicio': utc(*ini), 'fin': utc(*fin), 'uds': uds,
+                'minutos': m, 'efectivo': m, 'huecos': [], 'lecturas': [(utc(*ini), uds)]}
+
+    def test_manana_descuenta_bocadillo_corto(self):
+        # 6:00-9:00 y 9:10-14:00: el hueco de 10 min era «perdido»; con el turno de 6 a 14 sale el descanso:
+        # se quitan esos 10 (no hay más huecos cortos), presencia 470 min, perdido 0
+        ts = [self.tarea((6, 0), (9, 0)), self.tarea((9, 10), (14, 0))]
+        sin = calc.produccion(ts, TZ)['operarios'][0]
+        self.assertEqual((sin['presencia'], sin['perdido']), (480, 10))
+        con = calc.produccion(ts, TZ, turnos={'Ana · OP3': self.turno([((6, 0), (14, 0))], 15)})['operarios'][0]
+        self.assertEqual((con['presencia'], con['perdido']), (470, 0))
+        self.assertEqual(con['celdas']['9']['perdido'], 0)
+
+    def test_manana_con_pausa_larga_no_descuenta_dos_veces(self):
+        # ya paró 20 min (hueco de 15 o más: no era presencia): no se quita nada más
+        ts = [self.tarea((6, 0), (9, 0)), self.tarea((9, 20), (11, 0)), self.tarea((11, 5), (14, 0))]
+        con = calc.produccion(ts, TZ, turnos={'Ana · OP3': self.turno([((6, 0), (14, 0))], 15)})['operarios'][0]
+        self.assertEqual((con['presencia'], con['perdido']), (460, 5))
+
+    def test_manana_parte_del_descanso(self):
+        # paró 0 min largos y tiene dos huecos cortos de 10 y 8: se quitan 10 + 5 = 15
+        ts = [self.tarea((6, 0), (8, 0)), self.tarea((8, 10), (11, 0)), self.tarea((11, 8), (14, 0))]
+        con = calc.produccion(ts, TZ, turnos={'Ana · OP3': self.turno([((6, 0), (14, 0))], 15)})['operarios'][0]
+        self.assertEqual((con['presencia'], con['perdido']), (465, 3))
+
+    def test_partido_comida_no_cuenta(self):
+        # lee hasta las 13:00 y desde las 13:50 (sin turno, 50 min de hueco ya no eran presencia); con 13:00-13:10
+        # de hueco corto leyendo hasta 13:00 y otra tarea 13:10-13:30 dentro de la comida: lo leído cuenta, el resto no
+        ts = [self.tarea((8, 0), (12, 55)), self.tarea((13, 5), (13, 30)), self.tarea((14, 0), (17, 0))]
+        partido = self.turno([((8, 0), (13, 0)), ((14, 0), (17, 0))], 0)
+        sin = calc.produccion(ts, TZ)['operarios'][0]
+        con = calc.produccion(ts, TZ, turnos={'Ana · OP3': partido})['operarios'][0]
+        self.assertEqual(sin['presencia'], 510)          # 8:00-13:30 (con el hueco de 10) + 14:00-17:00
+        self.assertEqual(con['presencia'], 505)          # 12:55-13:00 (dentro del turno) sí; 13:00-13:05 no
+        self.assertEqual(con['celdas']['13']['pres'], 25)
+
+    def test_sin_turno_igual(self):
+        ts = [self.tarea((15, 0), (16, 0)), self.tarea((16, 10), (19, 0))]
+        a = calc.produccion(ts, TZ)['operarios'][0]
+        b = calc.produccion(ts, TZ, turnos={'Ana · OP3': None})['operarios'][0]
+        self.assertEqual((a['presencia'], a['perdido']), (b['presencia'], b['perdido']))
+
+    def test_con_filtro_no_cambia(self):
+        ts = [self.tarea((6, 0), (9, 0)), self.tarea((9, 10), (14, 0))]
+        r = calc.produccion(ts, TZ, filtrar=lambda t: True, turnos={'Ana · OP3': self.turno([((6, 0), (14, 0))], 15)})
+        self.assertEqual(r['operarios'][0]['presencia'], 470)   # con filtro ya era solo lo leído
+
     def test_color_ok(self):
         t = {'op': 'X', 'codigo': 'OP5', 'inicio': utc(8, 0), 'fin': utc(9, 0), 'uds': 120, 'minutos': 60,
              'efectivo': 60, 'huecos': [], 'lecturas': [(utc(8, 30), 120)]}

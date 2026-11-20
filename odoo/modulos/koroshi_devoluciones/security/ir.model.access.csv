@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_devolucion_ubicada_usuario,koroshi.devolucion.ubicada usuario,model_koroshi_devolucion_ubicada,stock.group_stock_user,1,0,0,0
+access_koroshi_devolucion_ubicada_jefe,koroshi.devolucion.ubicada jefe,model_koroshi_devolucion_ubicada,stock.group_stock_manager,1,1,0,0
+access_koroshi_devolucion_manipulacion_usuario,koroshi.devolucion.manipulacion usuario,model_koroshi_devolucion_manipulacion,stock.group_stock_user,1,0,0,0
+access_koroshi_devolucion_manipulacion_jefe,koroshi.devolucion.manipulacion jefe,model_koroshi_devolucion_manipulacion,stock.group_stock_manager,1,1,1,0

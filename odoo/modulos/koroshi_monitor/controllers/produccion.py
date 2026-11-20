@@ -133,6 +133,18 @@ class KoroshiProduccion(http.Controller):
             })
         return datos
 
+    def _turnos(self, env, datos):
+        """v1.38.0: {op: turno} por la hora de su primera tarea del día (koroshi_base 1.1 comun.turno_de). Con
+        koroshi_base 1.0 no hay turnos: la presencia queda como en la 1.37."""
+        if not hasattr(comun, 'turno_de'):
+            return {}
+        texto = comun.texto_turnos(env)
+        entrada = {}
+        for t in datos:
+            if t['op'] not in entrada or t['inicio'] < entrada[t['op']]:
+                entrada[t['op']] = t['inicio']
+        return dict((op, comun.turno_de(ini, texto)) for op, ini in entrada.items())
+
     def _calcular(self, dia, tipo=None):
         env = self._env()
         datos = self._tareas(env, dia)
@@ -142,7 +154,8 @@ class KoroshiProduccion(http.Controller):
         minutos_hueco = calc.MINUTOS_HUECO
         if hasattr(env['koroshi.operario.tarea'], '_minutos_sin_leer_max'):
             minutos_hueco = env['koroshi.operario.tarea'].sudo()._minutos_sin_leer_max()
-        res = calc.produccion(datos, self._tz(), filtrar=filtrar, ritmo=ritmo_estandar(env), minutos_hueco=minutos_hueco)
+        res = calc.produccion(datos, self._tz(), filtrar=filtrar, ritmo=ritmo_estandar(env), minutos_hueco=minutos_hueco,
+                              turnos=self._turnos(env, datos))
         res['sin_modulo'] = False
         res['tipo'] = tipo if tipo in TIPOS else 'todo'
         return res

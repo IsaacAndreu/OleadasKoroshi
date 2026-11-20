@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Las tres opciones de la reunión del 20/11 (Cruz y Betty). noupdate: si un jefe las cambia (nombre, código de
+         factura, color), actualizar el módulo no las pisa. El código de factura (M1/M2/M3) lo rellena quien factura. -->
+    <data noupdate="1">
+        <record id="manipulacion_quitar_precio" model="koroshi.devolucion.manipulacion">
+            <field name="name">Quitar precio</field>
+            <field name="sequence">10</field>
+            <field name="color">#0b4f9c</field>
+        </record>
+        <record id="manipulacion_quitar_precio_embolsar" model="koroshi.devolucion.manipulacion">
+            <field name="name">Quitar precio y embolsar</field>
+            <field name="sequence">20</field>
+            <field name="color">#1e7b34</field>
+        </record>
+        <record id="manipulacion_reetiquetar_embolsar" model="koroshi.devolucion.manipulacion">
+            <field name="name">Reetiquetar y embolsar</field>
+            <field name="sequence">30</field>
+            <field name="color">#b45309</field>
+        </record>
+        <!-- 'mover' = el stock pasa al contenedor (lo que hacía la subida del Excel); 'apuntar' = solo se apunta -->
+        <record id="param_stock" model="ir.config_parameter">
+            <field name="key">koroshi_devoluciones.stock</field>
+            <field name="value">mover</field>
+        </record>
+    </data>
+</odoo>

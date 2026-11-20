@@ -178,8 +178,16 @@ para responsables» si se abren igualmente: se comprueba en el servidor, no solo
 salen del servidor (cache separada para jefes y operarios). Los jefes (y la tele, que entra con Almacen 2) lo ven todo
 como antes. Sin el grupo en la base de datos (koroshi_menu sin instalar), todos lo ven todo. Sin dependencia nueva.
 Los menus para Almacén Nath se quitan en koroshi_menu.
+v1.38.0 (20/11/2026): «Produccion por hora» con los descansos del turno (Isaac 20/11: regla de la empresa). El turno
+sale de la hora de la primera tarea del dia (koroshi_base 1.1, comun.turno_de y el parametro koroshi_base.turnos).
+Turno de 6 a 14: se descuentan 15 min de presencia; primero cuentan los ratos de 15 min o mas que ya no eran presencia
+y lo que falte sale de los huecos cortos entre pedidos mas largos (nunca del tiempo leyendo), asi baja el «perd.» de
+esa hora. Partido (08-13 y 14-17): de 13 a 14 solo cuenta lo leido. Con un filtro (y «Personas y horas») no cambia.
+Con koroshi_base 1.0 no hay turnos y todo queda como en la 1.37. Calculo en controllers/produccion_calc.py
+(presencia_con_turno), tests sin Odoo. Tambien: en data/parametros.xml el CC del cierre del camion pasa a ser el del
+servidor (con expediciones@koroshi.tv); el registro es noupdate, asi que solo deja el repo igual que el servidor.
 """,
-    'version': '13.0.1.37.0',
+    'version': '13.0.1.38.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
