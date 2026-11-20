@@ -1,7 +1,7 @@
-# KOROSHI Devoluciones (v1.1.0, 20/11/2026)
+# KOROSHI Devoluciones (v1.2.0, 20/11/2026)
 
 «Ubicar devoluciones» en la PDA, sin Excel. Es la fase 1 del diseño `bin/versiones/diseno-devoluciones_2026-11-20_v2.md`.
-1.0.1 instalada el 20/11; **1.1.0 sin instalar**.
+1.1.0 instalada el 20/11; **1.2.0 sin instalar**.
 
 ## Qué hace
 
@@ -45,6 +45,23 @@ Pestaña «Llegadas» en la misma pantalla, al lado de «Ubicar»:
 En la oficina, **Paquetes llegados**: se busca por código, día, canal o tienda («lo de GLS del día 28»). Un jefe
 puede anular una llegada leída por error. Solo apunta: no crea recepciones ni mueve stock.
 
+## Contenido (v1.2.0, fase 2, etapa 2)
+
+Tercera pestaña, «Contenido»:
+
+1. Se lee el código del paquete, el mismo que en Llegadas (tiene que haber llegado en los últimos 30 días).
+2. Se leen sus prendas. Cada una entra como **Bien** (va a su puesto).
+3. Si una no está bien, justo después de leerla se toca qué le pasa: **Quitar precio**, **Quitar precio y
+   embolsar**, **Reetiquetar y embolsar** o **Tara**. Cambia la última leída, que sale resaltada.
+4. **Guardar** lo apunta en el paquete, que pasa a «Contenido leído» con sus uds bien / manipular / tara. Se puede
+   volver a abrir y añadir más.
+
+En la oficina: el contenido sale en la ficha del paquete, y **Prendas leídas en paquetes** da la lista entera (por
+paquete, día, canal, resultado o manipulación). Es lo que «les mandamos» si no nos pasan qué lleva.
+
+Todavía **no se compara con lo esperado** (bien / no ha llegado): falta la fuente. En la web hay que casar el paquete
+con su devolución de S4T (DevoEcom) y en tiendas S4T no da el teórico por matrícula. Solo apunta: no mueve stock.
+
 ## Oficina
 
 En Inventario > KOROSHI Operarios > Devoluciones:
@@ -58,6 +75,6 @@ En Inventario > KOROSHI Operarios > Devoluciones:
 
 ## Tablas
 
-`koroshi.devolucion.ubicada`, `koroshi.devolucion.manipulacion` y (v1.1.0) `koroshi.devolucion.paquete`. Sin campos en tablas de Odoo.
+`koroshi.devolucion.ubicada`, `koroshi.devolucion.manipulacion` (v1.1.0) `koroshi.devolucion.paquete` y (v1.2.0) `koroshi.devolucion.paquete.linea`. Sin campos en tablas de Odoo.
 
 Instalar después de `koroshi_base` y `koroshi_operarios` (ya instalados).

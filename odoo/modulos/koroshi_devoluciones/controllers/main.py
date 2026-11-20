@@ -8,6 +8,9 @@
 # v1.1 «Llegadas» (fase 2, etapa 1):
 #   /llegada  un código de paquete (matrícula CJ, Zalando o transportista) -> «ha llegado hoy»; o la tarjeta
 #   /llegadas_hoy  lo llegado hoy por canal y los últimos leídos (para la pantalla)
+# v1.2 «Contenido» (fase 2, etapa 2):
+#   /contenido_leer     tarjeta, paquete (código llegado en los últimos 30 días) o prenda
+#   /contenido_guardar  prendas del paquete con su resultado (bien / manipulación / tara); sin repetir la tanda
 # Solo ubicaciones de la compañía 8 (UBRAN tiene los mismos huecos con el mismo código de barras: Contenedores 1.8.1).
 # =============================================================================
 import re
@@ -155,9 +158,9 @@ class KoroshiDevoluciones(http.Controller):
     def _hoy(self):
         P = request.env['koroshi.devolucion.paquete'].sudo()
         hoy = comun.hoy_local()
-        grupos = P.read_group([('dia', '=', hoy), ('estado', '=', 'llegado')], ['canal'], ['canal'])
+        grupos = P.read_group([('dia', '=', hoy), ('estado', 'in', ('llegado', 'leido'))], ['canal'], ['canal'])
         por_canal = {g['canal']: g['canal_count'] for g in grupos}
-        ultimos = P.search([('dia', '=', hoy), ('estado', '=', 'llegado')], limit=8)
+        ultimos = P.search([('dia', '=', hoy), ('estado', 'in', ('llegado', 'leido'))], limit=8)
         return {'total': sum(por_canal.values()),
                 'por_canal': [{'canal': c, 'nombre': n, 'n': por_canal.get(c, 0)} for c, n in CANALES
                               if por_canal.get(c)],
@@ -197,5 +200,71 @@ class KoroshiDevoluciones(http.Controller):
             else:
                 msg = 'Ya estaba: %s llegó el %s (%s). No se apunta otra vez.' % (d['codigo'], d['hora'], d['quien'])
             return dict(self._hoy(), ok=True, tipo='paquete', nuevo=nuevo, msg=msg, paquete=d)
+        except (UserError, ValidationError) as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    # ------------------------------------------------------------------ v1.2: Contenido
+    def _datos_contenido(self, p):
+        d = self._datos_paquete(p)
+        d.update({'uds': p.uds_leidas, 'bien': p.uds_bien, 'manipular': p.uds_manipular, 'tara': p.uds_tara})
+        return d
+
+    @http.route('/koroshi/devoluciones/contenido_leer', type='json', auth='user')
+    def contenido_leer(self, codigo='', **kw):
+        try:
+            self._comprobar_usuario()
+            codigo = (codigo or '').strip()
+            if not codigo:
+                raise UserError('Código vacío.')
+            emp = request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
+            if emp:
+                return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
+            paq = request.env['koroshi.devolucion.paquete'].buscar_reciente(codigo)
+            if paq:
+                return {'ok': True, 'tipo': 'paquete', 'paquete': self._datos_contenido(paq)}
+            p = self._buscar_producto(codigo)
+            if p:
+                return {'ok': True, 'tipo': 'prenda', 'prenda': {'id': p.id, 'nombre': p.display_name}}
+            raise UserError('«%s» no es un paquete llegado (léelo antes en Llegadas) ni una prenda conocida.' % codigo)
+        except (UserError, ValidationError) as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/devoluciones/contenido_guardar', type='json', auth='user')
+    def contenido_guardar(self, tanda='', paquete_id=False, employee_id=False, lineas=None, **kw):
+        """lineas = [{'producto_id', 'resultado' (bien/manipular/tara), 'manipulacion_id', 'uds'}]."""
+        try:
+            self._comprobar_usuario()
+            if not RE_TANDA.match(tanda or ''):
+                raise UserError('Tanda no válida. Vuelve a empezar.')
+            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+            if not emp:
+                raise UserError('Pasa antes tu tarjeta de operario.')
+            paq = request.env['koroshi.devolucion.paquete'].sudo().browse(int(paquete_id or 0)).exists()
+            if not paq or paq.estado == 'anulado':
+                raise UserError('Ese paquete ya no es válido. Vuelve a leerlo.')
+            Product = request.env['product.product'].sudo()
+            Man = request.env['koroshi.devolucion.manipulacion'].sudo()
+            juntas = {}
+            for l in (lineas or []):
+                p = Product.browse(int(l.get('producto_id') or 0)).exists()
+                uds = int(l.get('uds') or 0)
+                res = l.get('resultado')
+                man = Man.browse(int(l.get('manipulacion_id') or 0)).exists() if res == 'manipular' else Man
+                if not p or uds <= 0 or res not in ('bien', 'manipular', 'tara') or (res == 'manipular' and not man):
+                    raise UserError('Lectura no válida. Vuelve a leer las prendas.')
+                clave = (p, res, man)
+                juntas[clave] = juntas.get(clave, 0) + uds
+            if not juntas:
+                raise UserError('Lee antes alguna prenda.')
+            for (p, res, man), uds in juntas.items():
+                if uds > MAX_UDS_ARTICULO:
+                    raise UserError('Más de %d uds de %s: revisa las lecturas.' % (MAX_UDS_ARTICULO, p.display_name))
+            nuevo = paq.guardar_contenido(tanda, emp, [(p, r, m, u) for (p, r, m), u in juntas.items()])
+            d = self._datos_contenido(paq)
+            msg = 'Guardado en %s: %d uds (bien %d, manipular %d, tara %d).' % (
+                d['codigo'], d['uds'], d['bien'], d['manipular'], d['tara'])
+            if not nuevo:
+                msg += ' (ya estaba guardado; no se repite)'
+            return {'ok': True, 'msg': msg, 'paquete': d}
         except (UserError, ValidationError) as e:
             return {'ok': False, 'msg': _msg(e)}

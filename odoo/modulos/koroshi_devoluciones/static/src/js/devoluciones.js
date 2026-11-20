@@ -13,6 +13,9 @@ odoo.define('koroshi_devoluciones.Pantalla', function (require) {
  *   canal (Tiendas, Web, Zalando…; se queda puesto) y se lee lo que trae cada paquete: matrícula CJ (tienda, sale
  *   sola), código de Zalando o del transportista (GLS…). Cada lectura queda «ha llegado hoy»; si ya estaba, lo dice
  *   y no lo repite. Se ve cuántos han llegado hoy por canal y los últimos.
+ * v1.2.0 (20/11/2026) «Contenido» (fase 2, etapa 2): tercera pestaña. Se lee el paquete (código ya llegado) y
+ *   sus prendas. Cada prenda entra como «Bien»; si no lo está, se toca en ese momento Quitar precio, Quitar precio
+ *   y embolsar, Reetiquetar y embolsar o Tara, y cambia la ÚLTIMA leída. «Guardar» lo apunta en el paquete.
  * Todo dentro de .o_koroshi_devoluciones. Sin aria-hidden (Odoo 13 lo oculta). */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
@@ -43,6 +46,10 @@ var Pantalla = AbstractAction.extend({
         'click .o_kd_vista': '_onVista',              // v1.1
         'click .o_kd_canal': '_onCanal',              // v1.1
         'click .o_kd_cambiar_canal': '_onCambiarCanal',   // v1.1
+        'click .o_kd_marca': '_onMarca',                  // v1.2
+        'click .o_kd_c_quitar': '_onContQuitar',          // v1.2
+        'click .o_kd_c_guardar': '_onContGuardar',        // v1.2
+        'click .o_kd_c_cerrar': '_onContCerrar',          // v1.2
     },
 
     init: function () {
@@ -65,6 +72,9 @@ var Pantalla = AbstractAction.extend({
         this.canales = [];           // v1.1: [{id, nombre}]
         this.canal = null;           // v1.1: {id, nombre} elegido en Llegadas
         this.hoy = null;             // v1.1: {total, por_canal, ultimos}
+        this.paquete = null;         // v1.2: paquete abierto en Contenido
+        this.cont = [];              // v1.2: lecturas [{id, nombre, resultado, man_id, man_nombre}] (1 ud cada una)
+        this.tandaCont = null;       // v1.2
     },
 
     start: function () {
@@ -143,7 +153,7 @@ var Pantalla = AbstractAction.extend({
             this.actividadEn = g.t;
         }
         // con prendas leídas sin guardar no se cierra (se perderían)
-        if (this.persona && Date.now() - this.actividadEn > PERSONA_MS && !this.prendas.length) {
+        if (this.persona && Date.now() - this.actividadEn > PERSONA_MS && !this._pendientes()) {
             this.persona = null;
             this.opcion = null;
             this._pintar();
@@ -204,13 +214,14 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         var salir = function () {
             self._vaciar();
+            self._vaciarCont(true);   // v1.2
             self.persona = null;
             self.opcion = null;
             try { window.localStorage.removeItem(self._clave()); } catch (e) { /* nada */ }
             self._aviso('info', 'Has salido. Pasa tu tarjeta.');
         };
-        if (this.prendas.length) {
-            return this._confirmar('Hay ' + this._total() + ' uds leídas sin guardar. Si sales, se borran. ¿Seguro?',
+        if (this._pendientes()) {
+            return this._confirmar('Hay ' + this._pendientes() + ' uds leídas sin guardar. Si sales, se borran. ¿Seguro?',
                                    salir);
         }
         salir();
@@ -309,6 +320,7 @@ var Pantalla = AbstractAction.extend({
             return this._aviso('mal', 'Contesta antes la pregunta: ' + codigo + ' NO se ha leído.');
         }
         if (this.vista === 'llegadas') { return this._leerLlegada(codigo); }   // v1.1
+        if (this.vista === 'contenido') { return this._leerContenido(codigo); }   // v1.2
         this.ocupado = true;
         return this._rpc({route: '/koroshi/devoluciones/leer', params: {codigo: codigo}}).then(function (r) {
             self._fin();
@@ -331,7 +343,7 @@ var Pantalla = AbstractAction.extend({
     },
 
     _leidaPersona: function (p) {
-        if (this.prendas.length && (!this.persona || this.persona.id !== p.id)) {
+        if (this._pendientes() && (!this.persona || this.persona.id !== p.id)) {
             this._pitido(false);
             return this._aviso('mal', 'Hay prendas sin guardar de ' + (this.persona ? this.persona.nombre : '') +
                                ': lee antes el contenedor o bórralas.');
@@ -401,13 +413,14 @@ var Pantalla = AbstractAction.extend({
         if (vista === this.vista) { return; }
         var cambiar = function () {
             self._vaciar();
+            self._vaciarCont(true);   // v1.2
             self.vista = vista;
             self._aviso('', '');
             if (vista === 'llegadas') { self._cargarLlegadas(); }
         };
-        if (this.prendas.length) {
-            return this._confirmar('Hay ' + this._total() + ' uds leídas sin guardar. Si cambias a ' +
-                (vista === 'llegadas' ? 'Llegadas' : 'Ubicar') + ', se borran. ¿Seguro?', cambiar);
+        if (this._pendientes()) {
+            return this._confirmar('Hay ' + this._pendientes() + ' uds leídas sin guardar. Si cambias de pestaña, ' +
+                'se borran. ¿Seguro?', cambiar);
         }
         cambiar();
         this._pintar();
@@ -470,6 +483,153 @@ var Pantalla = AbstractAction.extend({
             _.each(h.ultimos, function (p) {
                 html += '<tr><td>' + _e(p.codigo) + (p.tienda ? ' <small>(' + _e(p.tienda) + ')</small>' : '') +
                     '</td><td>' + _e(p.canal) + '</td><td class="o_kd_n">' + _e(p.hora.slice(-5)) + '</td></tr>';
+            });
+            html += '</table></div>';
+        }
+        return html;
+    },
+
+    // ------------------------------------------------------------ v1.2: Contenido
+    _pendientes: function () { return this._total() + this.cont.length; },
+
+    _vaciarCont: function (tambienPaquete) {
+        this.cont = [];
+        this.tandaCont = null;
+        if (tambienPaquete) { this.paquete = null; }
+    },
+
+    _leerContenido: function (codigo) {
+        var self = this;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/devoluciones/contenido_leer', params: {codigo: codigo}}).then(function (r) {
+            self._fin();
+            if (!r || !r.ok) {
+                self._pitido(false);
+                return self._aviso('mal', (r && r.msg) || 'No se ha podido leer.');
+            }
+            if (r.tipo === 'persona') { return self._leidaPersona(r.persona); }
+            if (!self.persona) {
+                self._pitido(false);
+                return self._aviso('mal', 'Primero pasa tu tarjeta de operario.');
+            }
+            if (r.tipo === 'paquete') {
+                if (self.cont.length && self.paquete && self.paquete.id !== r.paquete.id) {
+                    self._pitido(false);
+                    return self._aviso('mal', 'Guarda antes las ' + self.cont.length + ' prendas de ' +
+                                       self.paquete.codigo + '. ' + r.paquete.codigo + ' NO se ha abierto.');
+                }
+                self.paquete = r.paquete;
+                self._pitido(true);
+                self._aviso('ok', 'Paquete ' + r.paquete.codigo + ' (' + r.paquete.canal +
+                            (r.paquete.tienda ? ', ' + r.paquete.tienda : '') + '). Lee sus prendas.');
+                return self._pintar();
+            }
+            if (!self.paquete) {
+                self._pitido(false);
+                return self._aviso('mal', 'Lee antes el código del paquete. La prenda no se ha contado.');
+            }
+            self.cont.push({id: r.prenda.id, nombre: r.prenda.nombre, resultado: 'bien'});
+            self.tandaCont = _idTanda();
+            self._pitido(true);
+            self._aviso('ok', '+1 ' + r.prenda.nombre + ' — Bien. Si no lo está, toca qué le pasa.');
+            self._pintar();
+        }, self._sinConexion.bind(self));
+    },
+
+    // Cambia la ÚLTIMA prenda leída (se lee, se mira y se marca)
+    _onMarca: function (ev) {
+        var ult = _.last(this.cont);
+        if (!ult) { return this._aviso('mal', 'Lee antes una prenda; la marca es para la última leída.'); }
+        var $b = $(ev.currentTarget);
+        var res = $b.data('resultado');
+        ult.resultado = res;
+        ult.man_id = res === 'manipular' ? $b.data('id') : null;
+        ult.man_nombre = res === 'manipular' ? $b.text() : '';
+        this.tandaCont = _idTanda();
+        this._aviso('ok', ult.nombre + ' — ' + (res === 'manipular' ? ult.man_nombre : res === 'tara' ? 'Tara' : 'Bien'));
+        this._pintar();
+        this._foco();
+    },
+    _onContQuitar: function () {
+        var l = this.cont.pop();
+        if (l) { this._aviso('info', '−1 ' + l.nombre); this.tandaCont = this.cont.length ? _idTanda() : null; }
+        this._pintar();
+        this._foco();
+    },
+    _onContCerrar: function () {
+        var self = this;
+        if (this.cont.length) {
+            return this._confirmar('Hay ' + this.cont.length + ' prendas sin guardar de ' + this.paquete.codigo +
+                '. Si cierras, se borran. ¿Seguro?', function () { self._vaciarCont(true); });
+        }
+        this._vaciarCont(true);
+        this._pintar();
+        this._foco();
+    },
+    _onContGuardar: function () {
+        var self = this;
+        if (!this.cont.length || !this.paquete || this.ocupado) { return; }
+        var juntas = {};
+        _.each(this.cont, function (l) {
+            var k = l.id + '|' + l.resultado + '|' + (l.man_id || '');
+            juntas[k] = juntas[k] || {producto_id: l.id, resultado: l.resultado, manipulacion_id: l.man_id || false,
+                                      uds: 0};
+            juntas[k].uds += 1;
+        });
+        this.ocupado = true;
+        this._aviso('info', 'Guardando…');
+        return this._rpc({route: '/koroshi/devoluciones/contenido_guardar', params: {
+            tanda: this.tandaCont, paquete_id: this.paquete.id, employee_id: this.persona.id, lineas: _.values(juntas),
+        }}).then(function (r) {
+            self._fin();
+            if (!r || !r.ok) {
+                self._pitido(false);
+                return self._aviso('mal', ((r && r.msg) || 'No se ha podido guardar.') + ' Las prendas siguen leídas.');
+            }
+            self._vaciarCont(false);
+            self.paquete = r.paquete;
+            self._pitido(true);
+            self._pintar();
+            self._aviso('ok', r.msg);
+        }, function () {
+            self._sinConexion();
+            self._aviso('mal', 'Sin conexión al guardar. Vuelve a tocar Guardar (no se guarda dos veces).');
+        });
+    },
+
+    _pintarContenido: function () {
+        var html = '';
+        var p = this.paquete;
+        if (!p) {
+            this.$('.o_kd_paso').text('Lee el código del paquete (el mismo que en Llegadas).');
+            return html;
+        }
+        this.$('.o_kd_paso').text('Lee las prendas. Si una no está bien, toca qué le pasa justo después de leerla.');
+        html += '<div class="o_kd_card"><div class="o_kd_total">' + _e(p.codigo) + '</div><div>' + _e(p.canal) +
+            (p.tienda ? ' · ' + _e(p.tienda) : '') + ' · llegó ' + _e(p.hora) + '</div>' +
+            (p.uds ? '<div>Ya guardado: <b>' + p.uds + '</b> uds (bien ' + p.bien + ', manipular ' + p.manipular +
+                     ', tara ' + p.tara + ')</div>' : '') + '</div>';
+        if (this.cont.length) {
+            html += '<div class="o_kd_marcas">' +
+                '<button type="button" class="o_kd_marca o_kd_marca_bien" data-resultado="bien">Bien</button>';
+            _.each(this.opciones, function (o) {
+                html += '<button type="button" class="o_kd_marca" data-resultado="manipular" data-id="' + o.id +
+                    '" style="background:' + _e(o.color) + '">' + _e(o.nombre) + '</button>';
+            });
+            html += '<button type="button" class="o_kd_marca o_kd_marca_tara" data-resultado="tara">Tara</button></div>';
+        }
+        // botones antes de la lista: en la PDA la lista empuja «Guardar» fuera de la pantalla
+        html += '<div class="o_kd_acciones o_kd_acciones_cont">' +
+            (this.cont.length ? '<button type="button" class="o_kd_c_guardar">Guardar</button>' +
+                                '<button type="button" class="o_kd_c_quitar">Quitar la última</button>' : '') +
+            '<button type="button" class="o_kd_c_cerrar">Cerrar paquete</button></div>';
+        if (this.cont.length) {
+            html += '<div class="o_kd_card"><div class="o_kd_total">' + this.cont.length +
+                ' leídas sin guardar</div><table>';
+            _.each(this.cont.slice().reverse().slice(0, 30), function (l, i) {
+                var et = l.resultado === 'manipular' ? l.man_nombre : l.resultado === 'tara' ? 'Tara' : 'Bien';
+                html += '<tr' + (i === 0 ? ' class="o_kd_ultima"' : '') + '><td>' + _e(l.nombre) +
+                    '</td><td class="o_kd_n o_kd_res_' + l.resultado + '">' + _e(et) + '</td></tr>';
             });
             html += '</table></div>';
         }
@@ -546,12 +706,16 @@ var Pantalla = AbstractAction.extend({
                 '<button type="button" class="o_kd_vista' + (this.vista === 'ubicar' ? ' o_kd_vista_on' : '') +
                 '" data-vista="ubicar">Ubicar</button>' +
                 '<button type="button" class="o_kd_vista' + (this.vista === 'llegadas' ? ' o_kd_vista_on' : '') +
-                '" data-vista="llegadas">Llegadas</button></div>';
+                '" data-vista="llegadas">Llegadas</button>' +
+                '<button type="button" class="o_kd_vista' + (this.vista === 'contenido' ? ' o_kd_vista_on' : '') +
+                '" data-vista="contenido">Contenido</button></div>';
         }
         if (!this.persona) {
             this.$('.o_kd_paso').text('');
         } else if (this.vista === 'llegadas') {
             html += this._pintarLlegadas();
+        } else if (this.vista === 'contenido') {
+            html += this._pintarContenido();
         } else if (!this.opcion) {
             this.$('.o_kd_paso').text('¿Qué has hecho? Toca una opción.');
             html += '<div class="o_kd_opciones">';

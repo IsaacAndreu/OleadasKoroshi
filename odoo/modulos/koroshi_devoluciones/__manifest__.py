@@ -34,8 +34,15 @@ v1.1.0 (20/11/2026): fase 2, etapa 1: «Llegadas». En la pantalla, pestaña «L
   (cajas nuestras) se rechazan. El mismo código leído otra vez en menos de 30 días no se repite: dice cuándo llegó.
   En la oficina, «Paquetes llegados» para buscar por código, día, canal o tienda. Solo apunta: no crea recepciones
   ni mueve stock. Pedido por Isaac el 20/11 (P5 del diseño).
+v1.2.0 (20/11/2026): fase 2, etapa 2: «Contenido». Tercera pestaña: se lee el código del paquete (ya llegado) y sus
+  prendas. Cada prenda entra como «Bien» (va a su puesto); si no lo está, justo después de leerla se toca Quitar
+  precio, Quitar precio y embolsar, Reetiquetar y embolsar o Tara, y cambia la última. «Guardar» lo apunta en el
+  paquete (tabla nueva koroshi.devolucion.paquete.linea; el paquete pasa a «Contenido leído» y suma bien /
+  manipular / tara). Oficina: contenido en la ficha del paquete y «Prendas leídas en paquetes». Aún no se compara
+  con lo esperado: falta la fuente (web: casar el paquete con la DevoEcom de S4T; tiendas: S4T no da el teórico).
+  Solo apunta: no mueve stock.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

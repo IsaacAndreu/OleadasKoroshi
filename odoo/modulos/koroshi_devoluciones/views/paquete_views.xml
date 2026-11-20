@@ -12,6 +12,10 @@
                 <field name="tipo_codigo" optional="show"/>
                 <field name="tienda_id" optional="show"/>
                 <field name="employee_id"/>
+                <field name="uds_leidas" optional="show" sum="Uds"/>
+                <field name="uds_bien" optional="hide" sum="Bien"/>
+                <field name="uds_manipular" optional="hide" sum="Manipular"/>
+                <field name="uds_tara" optional="hide" sum="Tara"/>
                 <field name="nota" optional="show"/>
                 <field name="dia" optional="hide"/>
                 <field name="user_id" optional="hide"/>
@@ -47,6 +51,26 @@
                         </group>
                     </group>
                     <field name="nota" placeholder="Nota"/>
+                    <group string="Contenido leído (v1.2)">
+                        <group>
+                            <field name="uds_leidas"/>
+                            <field name="uds_bien"/>
+                        </group>
+                        <group>
+                            <field name="uds_manipular"/>
+                            <field name="uds_tara"/>
+                        </group>
+                    </group>
+                    <field name="linea_ids">
+                        <tree>
+                            <field name="product_id"/>
+                            <field name="uds" sum="Uds"/>
+                            <field name="resultado"/>
+                            <field name="manipulacion_id"/>
+                            <field name="employee_id"/>
+                            <field name="fecha"/>
+                        </tree>
+                    </field>
                 </sheet>
             </form>
         </field>
@@ -72,7 +96,9 @@
                 <field name="tienda_id"/>
                 <field name="employee_id"/>
                 <field name="nota"/>
-                <filter name="llegados" string="Llegados" domain="[('estado', '=', 'llegado')]"/>
+                <filter name="llegados" string="Llegados" domain="[('estado', 'in', ('llegado', 'leido'))]"/>
+                <filter name="sin_leer" string="Sin leer el contenido" domain="[('estado', '=', 'llegado')]"/>
+                <filter name="leidos" string="Contenido leído" domain="[('estado', '=', 'leido')]"/>
                 <filter name="anulados" string="Anulados" domain="[('estado', '=', 'anulado')]"/>
                 <separator/>
                 <filter name="tienda" string="Tiendas" domain="[('canal', '=', 'tienda')]"/>
@@ -101,4 +127,68 @@
 
     <menuitem id="menu_koroshi_devoluciones_paquetes" name="Paquetes llegados"
               parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_paquete" sequence="15"/>
+
+    <!-- v1.2.0: prendas leídas dentro de los paquetes (lo que «les mandamos» si no nos lo pasan) -->
+    <record id="view_koroshi_devolucion_paquete_linea_tree" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.linea.tree</field>
+        <field name="model">koroshi.devolucion.paquete.linea</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="fecha"/>
+                <field name="paquete_id"/>
+                <field name="canal"/>
+                <field name="product_id"/>
+                <field name="uds" sum="Uds"/>
+                <field name="resultado"/>
+                <field name="manipulacion_id"/>
+                <field name="employee_id"/>
+                <field name="dia" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_devolucion_paquete_linea_pivot" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.linea.pivot</field>
+        <field name="model">koroshi.devolucion.paquete.linea</field>
+        <field name="arch" type="xml">
+            <pivot string="Prendas leídas en paquetes">
+                <field name="dia" interval="day" type="row"/>
+                <field name="resultado" type="col"/>
+                <field name="uds" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_devolucion_paquete_linea_search" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.linea.search</field>
+        <field name="model">koroshi.devolucion.paquete.linea</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="paquete_id"/>
+                <field name="product_id"/>
+                <field name="employee_id"/>
+                <filter name="bien" string="Bien" domain="[('resultado', '=', 'bien')]"/>
+                <filter name="manipular" string="Manipular" domain="[('resultado', '=', 'manipular')]"/>
+                <filter name="tara" string="Tara" domain="[('resultado', '=', 'tara')]"/>
+                <separator/>
+                <filter name="filtro_dia" string="Día" date="dia"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_paquete" string="Paquete" context="{'group_by': 'paquete_id'}"/>
+                    <filter name="por_dia" string="Día" context="{'group_by': 'dia:day'}"/>
+                    <filter name="por_canal" string="Canal" context="{'group_by': 'canal'}"/>
+                    <filter name="por_resultado" string="Resultado" context="{'group_by': 'resultado'}"/>
+                    <filter name="por_manipulacion" string="Manipulación" context="{'group_by': 'manipulacion_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_devolucion_paquete_linea" model="ir.actions.act_window">
+        <field name="name">Prendas leídas en paquetes</field>
+        <field name="res_model">koroshi.devolucion.paquete.linea</field>
+        <field name="view_mode">tree,pivot</field>
+    </record>
+
+    <menuitem id="menu_koroshi_devoluciones_paquete_lineas" name="Prendas leídas en paquetes"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_paquete_linea" sequence="16"/>
 </odoo>

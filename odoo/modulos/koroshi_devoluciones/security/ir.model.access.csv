@@ -5,3 +5,4 @@ access_koroshi_devolucion_manipulacion_usuario,koroshi.devolucion.manipulacion u
 access_koroshi_devolucion_manipulacion_jefe,koroshi.devolucion.manipulacion jefe,model_koroshi_devolucion_manipulacion,stock.group_stock_manager,1,1,1,0
 access_koroshi_devolucion_paquete_usuario,koroshi.devolucion.paquete usuario,model_koroshi_devolucion_paquete,stock.group_stock_user,1,0,0,0
 access_koroshi_devolucion_paquete_jefe,koroshi.devolucion.paquete jefe,model_koroshi_devolucion_paquete,stock.group_stock_manager,1,1,0,0
+access_koroshi_devolucion_paquete_linea_usuario,koroshi.devolucion.paquete.linea usuario,model_koroshi_devolucion_paquete_linea,stock.group_stock_user,1,0,0,0
