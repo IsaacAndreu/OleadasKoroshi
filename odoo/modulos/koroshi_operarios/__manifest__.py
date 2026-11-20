@@ -155,8 +155,13 @@ Los administradores (Ajustes) tambien tienen el grupo del tablero (icono en Apli
 v2.21.1 (19/11/2026): el tablero ya no va con ser administrador: «Almacén Nath» (las PDA) es administrador y con la
 2.21.0 le salia el Tablero (se le quito a mano del grupo el 19/11 ~16:50). Ahora va por usuario: Almacen 2, Departament IT
 e Ismael (migrations/13.0.2.21.1); Almacén Nath fuera. Para darlo a otro: Ajustes > Usuarios > el usuario > el grupo.
+v2.22.0 (20/11/2026): la misma tarjeta en todas las pantallas de la PDA (lo pidió Isaac). Lecturas guarda el operario
+  en la memoria de la PDA con la hora de la última actividad ({id, nombre, t}, clave koroshi_operarios_pda_<usuario>);
+  Contenedores (1.9.0) y Faltante (1.8.0) leen y escriben la misma clave. Al volver a Lecturas, si se ha pasado otra
+  tarjeta en Contenedores o Faltante, coge ese operario sin abrir nada solo. Salir o la inactividad la siguen
+  borrando. Solo JS de la pantalla; nada en el servidor ni en la base de datos.
 """,
-    'version': '13.0.2.21.1',
+    'version': '13.0.2.22.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

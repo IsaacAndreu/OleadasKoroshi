@@ -17,14 +17,19 @@ odoo.define('koroshi_faltantes.Pantalla', function (require) {
  * La tarjeta del operario se puede leer en cualquier momento; si no, se usa el de la tarea abierta de la OUT.
  * Lecturas por el bus 'barcode_scanned' (solo si la pantalla se ve) o escribiendo y Enter.
  * Si se abrio desde la pantalla de Operarios, al volver de la OUT (o al validar) regresa a Operarios.
+ * v1.8 (20/11): la tarjeta es la misma que en Lecturas y Contenedores (memoria de la PDA, clave
+ *   koroshi_operarios_pda_<usuario>, {id, nombre, t}). Sin operario de Lecturas, al entrar se coge la guardada si
+ *   tiene menos de 15 min sin actividad; leer una tarjeta aqui la deja puesta en las otras pantallas.
  * No cambia la app de codigo de barras.
  */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
+var session = require('web.session');
 
 var REPETIDA_MS = 700;        // la misma lectura dos veces seguidas (bus + campo) cuenta una
 var CONFIRMAR_MS = 5000;      // tiempo para la segunda pulsacion de "No esta en ninguna ubicacion"
 var VOLVER_MS = 1800;         // tras validar, vuelve solo a Operarios
+var TARJETA_MS = 900000;      // v1.8: tarjeta guardada valida 15 min sin actividad (como Contenedores)
 
 var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_faltantes.Pantalla',
@@ -64,6 +69,8 @@ var Pantalla = AbstractAction.extend({
         return this._super.apply(this, arguments).then(function () {
             if (self.operarioInicial && self.operarioInicial.id) {
                 self.operario = {id: self.operarioInicial.id, nombre: self.operarioInicial.nombre, tarjeta: true};
+            } else {
+                self._tomarGuardada();   // v1.8
             }
             $('body').addClass('o_kf_en_faltante');   // v1.4: en PDA (pantalla estrecha) sin la barra de Odoo
             self._pintar();
@@ -89,6 +96,7 @@ var Pantalla = AbstractAction.extend({
             }
             this._limpiar();
             this.operario = null;
+            this._tomarGuardada();   // v1.8: sigue con la tarjeta de la PDA
             this._aviso('', '');
         }
         this._pintar();
@@ -106,6 +114,30 @@ var Pantalla = AbstractAction.extend({
         clearTimeout(this.timerConfirmar);
         clearTimeout(this.timerVolver);
         this._super.apply(this, arguments);
+    },
+
+    // ------------------------------------------------------------ v1.8: tarjeta compartida con Lecturas y Contenedores
+    _clave: function () {
+        return 'koroshi_operarios_pda_' + (session.uid || '');
+    },
+    _guardada: function () {
+        try {
+            var v = window.localStorage.getItem(this._clave());
+            return v ? JSON.parse(v) : null;
+        } catch (e) { return null; }
+    },
+    _tomarGuardada: function () {
+        var g = this._guardada();
+        if (!g || !g.id || (g.t && Date.now() - g.t > TARJETA_MS)) { return false; }
+        this.operario = {id: g.id, nombre: g.nombre, tarjeta: true};
+        return true;
+    },
+    _guardarTarjeta: function () {
+        if (!this.operario || !this.operario.tarjeta) { return; }
+        try {
+            window.localStorage.setItem(this._clave(), JSON.stringify(
+                {id: this.operario.id, nombre: this.operario.nombre, t: Date.now()}));
+        } catch (e) { /* sin memoria: solo en esta pantalla */ }
     },
 
     // ------------------------------------------------------------ estado
@@ -192,6 +224,7 @@ var Pantalla = AbstractAction.extend({
         this._pitido(true);
         if (r.que === 'tarjeta') {
             this.operario = {id: r.operario.id, nombre: r.operario.nombre, tarjeta: true};
+            this._guardarTarjeta();   // v1.8: queda puesta tambien en Lecturas y Contenedores
             this._aviso('Operario: ' + r.operario.nombre, 'info');
         } else if (r.que === 'out') {
             this._limpiar();

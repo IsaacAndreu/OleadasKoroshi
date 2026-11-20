@@ -62,8 +62,12 @@ v1.7.0 (17/11/2026): RONDA EN LECTURAS Y PUESTOS A 0 DEL PICKING VIEJO (con koro
   lineales y muelle y si ahora no hay stock de ese articulo alli. No mueve stock: su ronda va de perdidas a la
   ubicacion y solo lo encontrado vuelve. Campos nuevos solo en koroshi.faltante (ronda_resultado, ronda_operario_id,
   ronda_fecha, move_cero_id; la OUT deja de ser obligatoria). Nada en albaranes, movimientos ni lineas.
+v1.8.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Contenedores (con koroshi_operarios 2.22.0 y
+  koroshi_contenedores 1.9.0). Abierta sin venir de Lecturas, coge la tarjeta guardada en la PDA si tiene menos de
+  15 min sin actividad, y la vuelve a coger al volver de una OUT; leer una tarjeta aquí la deja puesta en las otras
+  pantallas. La del operario de la tarea de la OUT no se guarda. Solo JS; nada en el servidor ni en la base de datos.
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

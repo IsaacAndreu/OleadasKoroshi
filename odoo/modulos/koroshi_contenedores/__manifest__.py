@@ -69,8 +69,12 @@ v1.8.2 (19/11/2026): lineales de MU (MU-00…MU-14). Escribir «L70» ofrecía �
   principio, sin «07828 - » delante), así que tampoco se encontraban. Ahora «MU-01» (o «mu1», «MU 01») abre el
   inventario de los 72 huecos de MU-01, y escribir el principio de un hueco («MU-00 P», «L70 P3») también ofrece su
   lineal arriba de la lista. Solo lectura.
+v1.9.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Faltante (con koroshi_operarios 2.22.0 y
+  koroshi_faltantes 1.8.0). Al entrar se coge la tarjeta guardada en la PDA si tiene menos de 15 min sin actividad
+  (la actividad en Lecturas también cuenta); pasar la tarjeta aquí la deja puesta en las otras pantallas. La
+  inactividad de 15 min la quita solo de esta pantalla. Solo JS; nada en el servidor ni en la base de datos.
 """,
-    'version': '13.0.1.8.2',
+    'version': '13.0.1.9.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

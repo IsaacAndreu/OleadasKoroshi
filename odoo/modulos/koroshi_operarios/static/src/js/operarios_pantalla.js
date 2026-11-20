@@ -158,10 +158,12 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = false;
         this._ocultarCapa();
         if (this._recargarSiToca()) { return; }   // v2.15: vuelve de una OUT y hay version nueva
+        var cambio = this._sincronizarGuardado();   // v2.22: tarjeta pasada en otra pantalla
         this._marcarActividad();
         this._pintarAbiertas();
         if (this.operario) {
-            var modo = this.abrirAlEntrar ? 'abrir' : 'si_nueva';
+            // v2.22: con otro operario no se abre nada solo: se ve qué tiene y él decide
+            var modo = cambio ? 'no' : (this.abrirAlEntrar ? 'abrir' : 'si_nueva');
             this.abrirAlEntrar = false;
             // v2.3: si vuelve con la OUT validada se ensena "¡Hecho!" con la siguiente
             this.refHecho = modo === 'si_nueva' && this.actual ? this.actual.ref : null;
@@ -195,6 +197,9 @@ var Pantalla = AbstractAction.extend({
     },
 
     // ------------------------------------------------------------ operario guardado en la PDA
+    // v2.22: la misma tarjeta para todas las pantallas de la PDA. Lecturas, Contenedores (koroshi_contenedores) y
+    // Faltante (koroshi_faltantes) leen y escriben esta misma clave: {id, nombre, t} (t = última actividad, ms).
+    // Pasar la tarjeta en una pantalla la deja puesta en las otras. Solo Lecturas la borra (Salir o inactividad).
     _clave: function () {
         return 'koroshi_operarios_pda_' + (session.uid || '');
     },
@@ -206,10 +211,32 @@ var Pantalla = AbstractAction.extend({
     },
     _ponerOperario: function (id, nombre) {
         this.operario = {id: id, nombre: nombre};
-        try { window.localStorage.setItem(this._clave(), JSON.stringify(this.operario)); } catch (e) { /* nada */ }
+        this._guardarOperario();
         this._marcarActividad();
         this._pintarOperario();
         this._pintarAbiertas();
+    },
+    // v2.22: guarda el operario con la hora de la última actividad (la usan Contenedores y Faltante)
+    _guardarOperario: function () {
+        if (!this.operario) { return; }
+        this.guardadoEn = Date.now();
+        try {
+            window.localStorage.setItem(this._clave(), JSON.stringify(
+                {id: this.operario.id, nombre: this.operario.nombre, t: this.guardadoEn}));
+        } catch (e) { /* nada */ }
+    },
+    // v2.22: al volver a Lecturas, si en Contenedores o Faltante se ha pasado otra tarjeta, se coge esa.
+    // Devuelve true si ha cambiado el operario.
+    _sincronizarGuardado: function () {
+        var g = this._guardado();
+        if (!g || !g.id || (this.operario && this.operario.id === g.id)) { return false; }
+        this.operario = {id: g.id, nombre: g.nombre};
+        this.actual = null;
+        this.tarea = null;
+        this.cola = [];
+        this.refHecho = null;
+        this.abrirAlEntrar = false;
+        return true;
     },
     _olvidarOperario: function () {
         this.operario = null;
@@ -782,6 +809,11 @@ var Pantalla = AbstractAction.extend({
     // ------------------------------------------------------------ inactividad
     _marcarActividad: function () {
         this.ultimaActividad = Date.now();
+        // v2.22: la hora de la tarjeta compartida se pone al día como mucho cada 30 s
+        if (this.operario && (!this.guardadoEn || this.ultimaActividad - this.guardadoEn > 30000)) {
+            var g = this._guardado();
+            if (g && g.id === this.operario.id) { this._guardarOperario(); }
+        }
     },
 
     _comprobarInactividad: function () {

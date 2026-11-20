@@ -1,6 +1,9 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.9 (20/11): la tarjeta es la misma que en Lecturas y Faltante (memoria de la PDA, clave
+ *   koroshi_operarios_pda_<usuario>, {id, nombre, t}). Al entrar se coge la que haya si tiene menos de 15 min sin
+ *   actividad; pasar la tarjeta aquí la deja puesta en las otras. La inactividad de 15 min la quita solo aquí.
  * v1.8 (almacén 19/11): la búsqueda por trozo y las sugerencias encuentran todo lo que tiene código: contenedores,
  *   huecos, lineales y artículos (EAN, referencia o nombre). Tocar un resultado lo abre: el contenedor va a la lista,
  *   el hueco se abre, el lineal da su inventario y el artículo dice dónde está.
@@ -27,6 +30,7 @@ odoo.define('koroshi_contenedores.Pantalla', function (require) {
  * Todo dentro de .o_koroshi_contenedores. */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
+var session = require('web.session');
 var REPETIDA_MS = 700;
 var PERSONA_MS = 900000;         // v1.6: 15 min (antes 3) sin actividad
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
@@ -103,9 +107,16 @@ var Pantalla = AbstractAction.extend({
         core.bus.on('barcode_scanned', this, this._onBarcodeScanned);
         return this._super.apply(this, arguments).then(function () {
             self.timer = setInterval(self._vigilar.bind(self), 10000);
+            self._tomarGuardada();   // v1.9
             self._pintar();
             self._foco();
         });
+    },
+
+    // v1.9: al volver a esta pantalla (migas de pan), coge la tarjeta pasada en otra si es distinta
+    on_attach_callback: function () {
+        this._super.apply(this, arguments);
+        if (this._tomarGuardada()) { this._pintar(); }
     },
 
     destroy: function () {
@@ -115,7 +126,48 @@ var Pantalla = AbstractAction.extend({
         this._super.apply(this, arguments);
     },
 
+    // ------------------------------------------------------------ v1.9: tarjeta compartida con Lecturas y Faltante
+    _clave: function () {
+        return 'koroshi_operarios_pda_' + (session.uid || '');
+    },
+    _guardada: function () {
+        try {
+            var v = window.localStorage.getItem(this._clave());
+            return v ? JSON.parse(v) : null;
+        } catch (e) { return null; }
+    },
+    _guardarPersona: function () {
+        if (!this.persona) { return; }
+        this.guardadaEn = Date.now();
+        try {
+            window.localStorage.setItem(this._clave(), JSON.stringify(
+                {id: this.persona.id, nombre: this.persona.nombre, t: this.guardadaEn}));
+        } catch (e) { /* sin memoria: solo en esta pantalla */ }
+    },
+    // Coge la tarjeta guardada si es reciente (sin hora = de Lecturas antigua: vale) y no está a mitad de añadir
+    // prendas. Devuelve true si ha cambiado la persona.
+    _tomarGuardada: function () {
+        var g = this._guardada();
+        if (!g || !g.id || (this.persona && this.persona.id === g.id)) { return false; }
+        if (g.t && Date.now() - g.t > PERSONA_MS) { return false; }
+        if (this.anadiendo && this.anadiendo.length) { return false; }
+        this.persona = {id: g.id, nombre: g.nombre};
+        this.actividadEn = g.t || Date.now();
+        return true;
+    },
+    // Actividad: pone al día la hora de la tarjeta compartida como mucho cada 30 s (si sigue siendo la misma)
+    _actividadCompartida: function () {
+        if (!this.persona || (this.guardadaEn && this.actividadEn - this.guardadaEn < 30000)) { return; }
+        var g = this._guardada();
+        if (!g || g.id === this.persona.id) { this._guardarPersona(); }
+    },
+
     _vigilar: function () {
+        // v1.9: la actividad en Lecturas o Faltante con la misma tarjeta también cuenta
+        var g = this._guardada();
+        if (this.persona && g && g.id === this.persona.id && g.t && g.t > this.actividadEn) {
+            this.actividadEn = g.t;
+        }
         // v1.5: con prendas leídas sin guardar no se cierra (se perderían)
         if (this.persona && Date.now() - this.actividadEn > PERSONA_MS &&
                 !(this.anadiendo && this.anadiendo.length)) {
@@ -181,6 +233,7 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         this.ocupado = false;
         this.actividadEn = Date.now();
+        this._actividadCompartida();   // v1.9
         if (this.enEspera.length) {
             setTimeout(function () {
                 if (!self.ocupado && self.enEspera.length) { self._leer(self.enEspera.shift(), true); }
@@ -242,6 +295,7 @@ var Pantalla = AbstractAction.extend({
             }
             if (r.tipo === 'persona') {
                 self.persona = r.persona;
+                self._guardarPersona();   // v1.9: queda puesta también en Lecturas y Faltante
                 self._aviso('ok', 'Hola, ' + r.persona.nombre + '.');
                 self._pintar();
                 return;
