@@ -154,6 +154,12 @@ Sin pulsar nada. Cómo se haría:
 
 - Actividades ya amplía el tablero. Se le añade «área actual» por operario: el área del tramo abierto, o «Sin área».
 - Con eso el Tablero v6 pinta sus columnas por área sin leer nada más.
+- Cómo se engancha sin dependencias cruzadas (propuesto a la sesión del Tablero el 20/11):
+  - Operarios deja un método `_tablero_areas(empleados)` → {employee_id: {'area', 'desde'}}. Por defecto lo deduce
+    de Lecturas y Contenedores.
+  - Actividades lo sobrescribe: primero el tramo abierto (`estado='curso'`, `actividad_id.area`, `inicio`) y, si no
+    hay, super().
+  - Sin área = no sale en el dict.
 - Las tarjetas de actividad del tablero (1.5.0) desaparecen, como dice la v6: las actividades ya no se asignan.
 
 ### 3.6 Que en la PDA no se vea contabilidad
