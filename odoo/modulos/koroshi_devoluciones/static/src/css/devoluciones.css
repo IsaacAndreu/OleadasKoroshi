@@ -31,3 +31,9 @@
 .o_koroshi_devoluciones .o_kd_confirmar_no { background: #e3e7ec; color: #111827; }
 .o_koroshi_devoluciones .o_kd_ultimo { margin: 14px 16px 0; color: #4b5563; font-size: 15px; }
 .o_koroshi_devoluciones .o_kd_modo { margin: 12px 16px 0; color: #7a4a00; font-size: 15px; }
+/* v1.1.0: pestañas Ubicar / Llegadas y botones de canal */
+.o_koroshi_devoluciones .o_kd_vistas { display: flex; gap: 8px; margin: 12px 16px 0; }
+.o_koroshi_devoluciones .o_kd_vista { flex: 1; padding: 12px; font-size: 18px; font-weight: bold; border: 2px solid #0b4f9c; border-radius: 10px; background: #fff; color: #0b4f9c; }
+.o_koroshi_devoluciones .o_kd_vista.o_kd_vista_on { background: #0b4f9c; color: #fff; }
+.o_koroshi_devoluciones .o_kd_canal { background: #374151; }
+.o_koroshi_devoluciones .o_kd_elegida_canal { background: #374151; }

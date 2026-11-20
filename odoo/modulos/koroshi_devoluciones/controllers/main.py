@@ -5,6 +5,9 @@
 #   /inicio   opciones de manipulación (botones) y modo de stock
 #   /leer     un código: tarjeta, prenda (EAN o referencia), contenedor KO_/TT_ o hueco (código de barras)
 #   /guardar  una tanda: prendas + contenedor/hueco (todo o nada; si se repite la misma tanda, no se duplica)
+# v1.1 «Llegadas» (fase 2, etapa 1):
+#   /llegada  un código de paquete (matrícula CJ, Zalando o transportista) -> «ha llegado hoy»; o la tarjeta
+#   /llegadas_hoy  lo llegado hoy por canal y los últimos leídos (para la pantalla)
 # Solo ubicaciones de la compañía 8 (UBRAN tiene los mismos huecos con el mismo código de barras: Contenedores 1.8.1).
 # =============================================================================
 import re
@@ -15,6 +18,7 @@ from odoo.http import request
 from odoo.addons.koroshi_base import comun
 
 from ..models.devolucion import es_contenedor
+from ..models.paquete import CANALES
 
 COMPANY_ID = comun.COMPANY_ID
 DE_LA_COMPANIA = ('company_id', 'in', [COMPANY_ID, False])
@@ -144,5 +148,54 @@ class KoroshiDevoluciones(http.Controller):
             msg = 'Guardado: %d ud%s de «%s» en %s.' % (total, '' if total == 1 else 's', man.name, destino.name)
             # v1.0.1: devoluciones de tienda: todo entra como nuevo (ya no se dice en cada tanda)
             return {'ok': True, 'msg': msg, 'uds': total}
+        except (UserError, ValidationError) as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    # ------------------------------------------------------------------ v1.1: Llegadas
+    def _hoy(self):
+        P = request.env['koroshi.devolucion.paquete'].sudo()
+        hoy = comun.hoy_local()
+        grupos = P.read_group([('dia', '=', hoy), ('estado', '=', 'llegado')], ['canal'], ['canal'])
+        por_canal = {g['canal']: g['canal_count'] for g in grupos}
+        ultimos = P.search([('dia', '=', hoy), ('estado', '=', 'llegado')], limit=8)
+        return {'total': sum(por_canal.values()),
+                'por_canal': [{'canal': c, 'nombre': n, 'n': por_canal.get(c, 0)} for c, n in CANALES
+                              if por_canal.get(c)],
+                'ultimos': [self._datos_paquete(p) for p in ultimos]}
+
+    def _datos_paquete(self, p):
+        loc = comun.a_local(p.llegada)
+        return {'id': p.id, 'codigo': p.name, 'canal': dict(CANALES).get(p.canal, p.canal),
+                'tienda': p.tienda_id.name or '', 'hora': loc.strftime('%d/%m %H:%M') if loc else '',
+                'quien': p.employee_id.name or ''}
+
+    @http.route('/koroshi/devoluciones/llegadas_hoy', type='json', auth='user')
+    def llegadas_hoy(self, **kw):
+        try:
+            self._comprobar_usuario()
+            return dict(self._hoy(), ok=True, canales=[{'id': c, 'nombre': n} for c, n in CANALES])
+        except (UserError, ValidationError) as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/devoluciones/llegada', type='json', auth='user')
+    def llegada(self, codigo='', canal='', employee_id=False, **kw):
+        try:
+            self._comprobar_usuario()
+            codigo = (codigo or '').strip()
+            if not codigo:
+                raise UserError('Código vacío.')
+            emp = request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
+            if emp:
+                return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
+            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+            if not emp:
+                raise UserError('Pasa antes tu tarjeta de operario.')
+            p, nuevo = request.env['koroshi.devolucion.paquete'].registrar(codigo, canal, emp)
+            d = self._datos_paquete(p)
+            if nuevo:
+                msg = 'Ha llegado: %s (%s%s).' % (d['codigo'], d['canal'], ', ' + d['tienda'] if d['tienda'] else '')
+            else:
+                msg = 'Ya estaba: %s llegó el %s (%s). No se apunta otra vez.' % (d['codigo'], d['hora'], d['quien'])
+            return dict(self._hoy(), ok=True, tipo='paquete', nuevo=nuevo, msg=msg, paquete=d)
         except (UserError, ValidationError) as e:
             return {'ok': False, 'msg': _msg(e)}

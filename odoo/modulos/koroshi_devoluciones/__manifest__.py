@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 {
     'name': 'KOROSHI Devoluciones (ubicar devoluciones en la PDA)',
-    'summary': 'Ubicar devoluciones sin Excel: opción de manipulación, prendas y contenedor; informe por día, semana '
-               'o mes',
+    'summary': 'Ubicar devoluciones sin Excel (opción, prendas y contenedor; informe por día, semana o mes) y llegadas '
+               'de paquetes',
     'description': """
 Fase 1 del diseño bin/versiones/diseno-devoluciones_2026-11-20.md (reunión del 20/11 con Cruz y Betty).
 
@@ -27,8 +27,15 @@ v1.0.1 (20/11/2026): la pantalla es para las devoluciones de tiendas (Isaac, con
   DEVOLUCIO_KOROSHI, que es de e-commerce (DEV de la API, fase 2): una prenda de tienda podía gastarse una unidad
   de una devolución web. El mensaje de «Guardado» ya no dice cuántas eran nuevas (lo son todas). Sin instalar la
   1.0.0, se instala directamente la 1.0.1.
+v1.1.0 (20/11/2026): fase 2, etapa 1: «Llegadas». En la pantalla, pestaña «Llegadas» al lado de «Ubicar»: se toca
+  el canal (Tiendas, Web, Zalando, Marketplace, Otro) y se lee lo que trae cada paquete (matrícula CJ de tienda,
+  código de Zalando o del transportista). Queda «ha llegado hoy, lo leyó X» en koroshi.devolucion.paquete (tabla
+  nueva, solo de este módulo). La matrícula CJ pone sola el canal Tiendas y la tienda (CJ080… = K80); las CJ665
+  (cajas nuestras) se rechazan. El mismo código leído otra vez en menos de 30 días no se repite: dice cuándo llegó.
+  En la oficina, «Paquetes llegados» para buscar por código, día, canal o tienda. Solo apunta: no crea recepciones
+  ni mueve stock. Pedido por Isaac el 20/11 (P5 del diseño).
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -39,6 +46,7 @@ v1.0.1 (20/11/2026): la pantalla es para las devoluciones de tiendas (Isaac, con
         'views/assets.xml',
         'views/views.xml',
         'views/menu.xml',
+        'views/paquete_views.xml',
     ],
     'qweb': ['static/src/xml/devoluciones.xml'],
     'installable': True,

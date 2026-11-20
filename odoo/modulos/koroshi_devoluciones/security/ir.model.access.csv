@@ -3,3 +3,5 @@ access_koroshi_devolucion_ubicada_usuario,koroshi.devolucion.ubicada usuario,mod
 access_koroshi_devolucion_ubicada_jefe,koroshi.devolucion.ubicada jefe,model_koroshi_devolucion_ubicada,stock.group_stock_manager,1,1,0,0
 access_koroshi_devolucion_manipulacion_usuario,koroshi.devolucion.manipulacion usuario,model_koroshi_devolucion_manipulacion,stock.group_stock_user,1,0,0,0
 access_koroshi_devolucion_manipulacion_jefe,koroshi.devolucion.manipulacion jefe,model_koroshi_devolucion_manipulacion,stock.group_stock_manager,1,1,1,0
+access_koroshi_devolucion_paquete_usuario,koroshi.devolucion.paquete usuario,model_koroshi_devolucion_paquete,stock.group_stock_user,1,0,0,0
+access_koroshi_devolucion_paquete_jefe,koroshi.devolucion.paquete jefe,model_koroshi_devolucion_paquete,stock.group_stock_manager,1,1,0,0

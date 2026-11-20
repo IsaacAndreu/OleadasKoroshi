@@ -9,6 +9,10 @@ odoo.define('koroshi_devoluciones.Pantalla', function (require) {
  * 4. Lee el contenedor KO_/TT_ o el hueco: se guarda la tanda y empieza otra con la misma opción.
  * Lo que se lee mientras se espera a Odoo va a una cola corta (como Contenedores 1.4). Una tanda lleva un id: si se
  * corta la wifi al guardar y se vuelve a leer el contenedor, no se guarda dos veces.
+ * v1.1.0 (20/11/2026) «Llegadas» (fase 2, etapa 1): pestaña arriba «Ubicar» / «Llegadas». En Llegadas se toca el
+ *   canal (Tiendas, Web, Zalando…; se queda puesto) y se lee lo que trae cada paquete: matrícula CJ (tienda, sale
+ *   sola), código de Zalando o del transportista (GLS…). Cada lectura queda «ha llegado hoy»; si ya estaba, lo dice
+ *   y no lo repite. Se ve cuántos han llegado hoy por canal y los últimos.
  * Todo dentro de .o_koroshi_devoluciones. Sin aria-hidden (Odoo 13 lo oculta). */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
@@ -36,6 +40,9 @@ var Pantalla = AbstractAction.extend({
         'keydown .o_kd_cantidad': '_onCantidadKey',
         'click .o_kd_teclado': '_onTeclado',
         'click .o_kd_salir': '_onSalir',
+        'click .o_kd_vista': '_onVista',              // v1.1
+        'click .o_kd_canal': '_onCanal',              // v1.1
+        'click .o_kd_cambiar_canal': '_onCambiarCanal',   // v1.1
     },
 
     init: function () {
@@ -54,6 +61,10 @@ var Pantalla = AbstractAction.extend({
         this.actividadEn = Date.now();
         this.enEspera = [];
         this.teclado = false;
+        this.vista = 'ubicar';       // v1.1: 'ubicar' o 'llegadas'
+        this.canales = [];           // v1.1: [{id, nombre}]
+        this.canal = null;           // v1.1: {id, nombre} elegido en Llegadas
+        this.hoy = null;             // v1.1: {total, por_canal, ultimos}
     },
 
     start: function () {
@@ -64,6 +75,7 @@ var Pantalla = AbstractAction.extend({
             self._tomarGuardada();
             self._leerMinutosTarjeta();
             self._cargarOpciones();
+            self._cargarLlegadas();   // v1.1
             self._pintar();
             self._foco();
         });
@@ -296,6 +308,7 @@ var Pantalla = AbstractAction.extend({
             this._pitido(false);
             return this._aviso('mal', 'Contesta antes la pregunta: ' + codigo + ' NO se ha leído.');
         }
+        if (this.vista === 'llegadas') { return this._leerLlegada(codigo); }   // v1.1
         this.ocupado = true;
         return this._rpc({route: '/koroshi/devoluciones/leer', params: {codigo: codigo}}).then(function (r) {
             self._fin();
@@ -371,6 +384,98 @@ var Pantalla = AbstractAction.extend({
         });
     },
 
+    // ------------------------------------------------------------ v1.1: Llegadas
+    _cargarLlegadas: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/devoluciones/llegadas_hoy', params: {}}, {shadow: true}).then(function (r) {
+            if (!r || !r.ok) { return; }
+            self.canales = r.canales || [];
+            self.hoy = r;
+            self._pintar();
+        }, function () { /* sin conexión: se verá al leer */ });
+    },
+
+    _onVista: function (ev) {
+        var self = this;
+        var vista = $(ev.currentTarget).data('vista');
+        if (vista === this.vista) { return; }
+        var cambiar = function () {
+            self._vaciar();
+            self.vista = vista;
+            self._aviso('', '');
+            if (vista === 'llegadas') { self._cargarLlegadas(); }
+        };
+        if (this.prendas.length) {
+            return this._confirmar('Hay ' + this._total() + ' uds leídas sin guardar. Si cambias a ' +
+                (vista === 'llegadas' ? 'Llegadas' : 'Ubicar') + ', se borran. ¿Seguro?', cambiar);
+        }
+        cambiar();
+        this._pintar();
+        this._foco();
+    },
+
+    _onCanal: function (ev) {
+        this.canal = _.findWhere(this.canales, {id: $(ev.currentTarget).data('id')}) || null;
+        this.actividadEn = Date.now();
+        this._aviso('', '');
+        this._pintar();
+        this._foco();
+    },
+    _onCambiarCanal: function () {
+        this.canal = null;
+        this._pintar();
+        this._foco();
+    },
+
+    _leerLlegada: function (codigo) {
+        var self = this;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/devoluciones/llegada', params: {
+            codigo: codigo, canal: this.canal ? this.canal.id : '', employee_id: this.persona ? this.persona.id : false,
+        }}).then(function (r) {
+            self._fin();
+            if (!r || !r.ok) {
+                self._pitido(false);
+                return self._aviso('mal', (r && r.msg) || 'No se ha podido leer.');
+            }
+            if (r.tipo === 'persona') { return self._leidaPersona(r.persona); }
+            self.hoy = r;
+            self._pitido(r.nuevo);
+            self._pintar();
+            self._aviso(r.nuevo ? 'ok' : 'info', r.msg);
+        }, self._sinConexion.bind(self));
+    },
+
+    _pintarLlegadas: function () {
+        var html = '';
+        if (!this.canal) {
+            this.$('.o_kd_paso').text('¿De dónde viene? Toca el canal.');
+            html += '<div class="o_kd_opciones">';
+            _.each(this.canales, function (c) {
+                html += '<button type="button" class="o_kd_opcion o_kd_canal" data-id="' + _e(c.id) + '">' +
+                    _e(c.nombre) + '</button>';
+            });
+            if (!this.canales.length) { html += '<div>Cargando canales… (si no salen, Ctrl+F5)</div>'; }
+            html += '</div>';
+        } else {
+            this.$('.o_kd_paso').text('Lee la matrícula, el código de Zalando o el del transportista de cada paquete.');
+            html += '<div class="o_kd_elegida o_kd_elegida_canal">' + _e(this.canal.nombre) +
+                '<button type="button" class="o_kd_cambiar_canal">Cambiar</button></div>';
+        }
+        var h = this.hoy;
+        if (h && h.total) {
+            html += '<div class="o_kd_card"><div class="o_kd_total">Hoy han llegado ' + h.total + '</div><div>' +
+                _.map(h.por_canal, function (c) { return _e(c.nombre) + ': <b>' + c.n + '</b>'; }).join(' · ') +
+                '</div><table>';
+            _.each(h.ultimos, function (p) {
+                html += '<tr><td>' + _e(p.codigo) + (p.tienda ? ' <small>(' + _e(p.tienda) + ')</small>' : '') +
+                    '</td><td>' + _e(p.canal) + '</td><td class="o_kd_n">' + _e(p.hora.slice(-5)) + '</td></tr>';
+            });
+            html += '</table></div>';
+        }
+        return html;
+    },
+
     _vaciar: function () {
         this.prendas = [];
         this.lecturas = [];
@@ -436,8 +541,17 @@ var Pantalla = AbstractAction.extend({
                 '<button type="button" class="o_kd_confirmar_si">Sí</button>' +
                 '<button type="button" class="o_kd_confirmar_no">No</button></div>';
         }
+        if (this.persona) {   // v1.1: pestañas
+            html += '<div class="o_kd_vistas">' +
+                '<button type="button" class="o_kd_vista' + (this.vista === 'ubicar' ? ' o_kd_vista_on' : '') +
+                '" data-vista="ubicar">Ubicar</button>' +
+                '<button type="button" class="o_kd_vista' + (this.vista === 'llegadas' ? ' o_kd_vista_on' : '') +
+                '" data-vista="llegadas">Llegadas</button></div>';
+        }
         if (!this.persona) {
             this.$('.o_kd_paso').text('');
+        } else if (this.vista === 'llegadas') {
+            html += this._pintarLlegadas();
         } else if (!this.opcion) {
             this.$('.o_kd_paso').text('¿Qué has hecho? Toca una opción.');
             html += '<div class="o_kd_opciones">';

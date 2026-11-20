@@ -3,9 +3,9 @@
     <t t-name="koroshi_devoluciones.Pantalla">
         <div class="o_koroshi_devoluciones">
             <header class="o_kd_cab">
-                <div class="o_kd_titulo">Ubicar devoluciones</div>
+                <div class="o_kd_titulo">Devoluciones</div>
                 <input type="text" class="o_kd_codigo" autocomplete="off" inputmode="none"
-                       placeholder="Tarjeta, prenda o contenedor / ubicación"/>
+                       placeholder="Tarjeta, prenda, contenedor o paquete"/>
                 <button type="button" class="o_kd_teclado">⌨ Escribir</button>
             </header>
             <div class="o_kd_persona"/>

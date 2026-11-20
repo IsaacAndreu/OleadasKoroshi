@@ -1,7 +1,7 @@
-# KOROSHI Devoluciones (v1.0.1, 20/11/2026)
+# KOROSHI Devoluciones (v1.1.0, 20/11/2026)
 
 «Ubicar devoluciones» en la PDA, sin Excel. Es la fase 1 del diseño `bin/versiones/diseno-devoluciones_2026-11-20_v2.md`.
-**Sin instalar.**
+1.0.1 instalada el 20/11; **1.1.0 sin instalar**.
 
 ## Qué hace
 
@@ -30,6 +30,21 @@ prendas» en Contenedores. Con `apuntar` solo se apunta, y la pantalla lo dice.
 **v1.0.1**: no se toca `DEVOLUCIO_KOROSHI`. Ahí están las devoluciones e-commerce (DEV que entran por la API de S4T),
 que se ubicarán en la fase 2 desde su DEV.
 
+## Llegadas (v1.1.0, fase 2, etapa 1)
+
+Pestaña «Llegadas» en la misma pantalla, al lado de «Ubicar»:
+
+1. Se toca el canal: Tiendas, Web, Zalando, Marketplace u Otro. Se queda puesto.
+2. Se lee lo que trae cada paquete: la matrícula CJ de la tienda, el código de Zalando o el del transportista (GLS…).
+   - Queda «ha llegado hoy, lo leyó X».
+   - Una matrícula CJ pone sola el canal Tiendas y la tienda (CJ080… = K80). Las CJ665… son cajas nuestras y se
+     rechazan.
+   - Si el mismo código ya llegó en los últimos 30 días, lo dice («llegó el 18/11 10:12, Cruz») y no lo repite.
+3. Abajo se ve cuántos han llegado hoy por canal y los últimos.
+
+En la oficina, **Paquetes llegados**: se busca por código, día, canal o tienda («lo de GLS del día 28»). Un jefe
+puede anular una llegada leída por error. Solo apunta: no crea recepciones ni mueve stock.
+
 ## Oficina
 
 En Inventario > KOROSHI Operarios > Devoluciones:
@@ -43,6 +58,6 @@ En Inventario > KOROSHI Operarios > Devoluciones:
 
 ## Tablas
 
-`koroshi.devolucion.ubicada` y `koroshi.devolucion.manipulacion`. Sin campos en tablas de Odoo.
+`koroshi.devolucion.ubicada`, `koroshi.devolucion.manipulacion` y (v1.1.0) `koroshi.devolucion.paquete`. Sin campos en tablas de Odoo.
 
 Instalar después de `koroshi_base` y `koroshi_operarios` (ya instalados).
