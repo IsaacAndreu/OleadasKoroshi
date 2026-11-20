@@ -74,8 +74,16 @@ Cartón, Limpieza y Reubicar material; ninguna sale en el portátil, que sigue i
 área» (solo tramos: la u/h de picking sigue saliendo de las tareas de koroshi_operarios, no se suma). Tablero del
 responsable (koroshi_operarios 2.23.0): _tablero_areas() da el área del tramo abierto, y ya no se crean piezas de
 actividad en «Por repartir» (las ya dadas siguen hasta su Fin). No toca cron_cerrar ni el «¿Sigues?» del servidor.
+v1.7.0 (20/11/2026): cierre por turno (Isaac 20/11; diseño bin/versiones/diseno-cierre-por-turno_2026-11-20.md, v2).
+Antes, pausa (hora_pausa) y cierre (hora_cierre, 17:00) iguales para todos: quien se iba a las 14:00 quedaba abierto
+hasta las 17:00. Ahora el turno sale de la hora de entrada (primer tramo o primera tarea de Lecturas del día; regla
+koroshi_base.turnos, koroshi_base 1.1.0): entra antes de las 7 = 6-14; de 7 a 11 = 8-13 y 14-17. Al acabar cada tramo
+del turno se pregunta «¿Sigues?» a quien no ha dado señal desde esa hora; sin respuesta en minutos_respuesta (15), se
+cierra A ESA HORA (13:00 = pausa automática; 14:00 / 17:00 = cierre automático). Si contesta, se le pregunta cada
+minutos_sigues (30). Quien entra después de las 11 sigue con el «¿Sigues?» de la 1.4. hora_pausa y hora_cierre ya no
+se usan; tope nuevo hora_tope (22:00) para lo que nadie cierre. Sin koroshi_base 1.1.0 se comporta como la 1.4.
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

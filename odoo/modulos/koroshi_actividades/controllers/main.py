@@ -70,7 +70,7 @@ class KoroshiActividades(http.Controller):
         sin_tarjeta = Reg._param('sin_tarjeta', '0') == '1'
         return {'ok': True, 'actividades': self._actividades(), 'personas': personas,
                 'ahora': fields.Datetime.to_string(fields.Datetime.now()), 'sin_tarjeta': sin_tarjeta,
-                'hora_pausa': Reg._param('hora_pausa', '13:00'), 'hora_cierre': Reg._param('hora_cierre', '17:00'),
+                'hora_tope': Reg._param('hora_tope', '22:00'),               # v1.7.0: cierre por turno + tope
                 'sigues_desde': Reg._param('sigues_desde', '13:00')}     # v1.4.0
 
     @http.route('/koroshi/actividades/tarjeta', type='json', auth='user')

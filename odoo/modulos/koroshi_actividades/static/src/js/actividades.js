@@ -356,8 +356,9 @@ var Pantalla = AbstractAction.extend({
             if (srv) {
                 self.desfase = srv.getTime() - Date.now();
             }
-            self.$('.o_ka_horario').text('Pausa sola a las ' + (r.hora_pausa || '–') + ' · cierre a las ' +
-                (r.hora_cierre || '–') + (r.sigues_desde ? ' · «¿Sigues?» desde las ' + r.sigues_desde : ''));
+            // v1.7.0: cierre por turno (6-14 o 8-13 y 14-17, según la hora de entrada)
+            self.$('.o_ka_horario').text('Cierre por turno («¿Sigues?» al acabar cada tramo) · tope a las ' +
+                (r.hora_tope || '22:00'));
             self.$el.toggleClass('o_ka_sin_conexion', false);
             self._pintarLista();
             self._avisarSigues();       // v1.4.0

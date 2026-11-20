@@ -7,6 +7,11 @@
             <field name="key">koroshi_actividades.hora_pausa</field>
             <field name="value">13:00</field>
         </record>
+        <!-- v1.7.0: hora_pausa y hora_cierre ya no se usan (cierre por turno, ver koroshi_base.turnos). Tope: -->
+        <record id="parametro_hora_tope" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.hora_tope</field>
+            <field name="value">22:00</field>
+        </record>
         <!-- A esta hora se cierra todo lo que siga abierto (fin de jornada). '' = no. -->
         <record id="parametro_hora_cierre" model="ir.config_parameter">
             <field name="key">koroshi_actividades.hora_cierre</field>

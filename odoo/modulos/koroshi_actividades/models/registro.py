@@ -10,6 +10,12 @@
 #                      a la hora_cierre (17:00) se cierran a las 17:00 exactas («cierre 17:00»)
 #                      los de días anteriores se cierran a la hora_cierre de su día (o a medianoche)
 # Como se cierra a la hora exacta, da igual que el cron pase unos minutos tarde.
+# v1.7.0 (20/11, Isaac: cierre por turno, no a las 17:00 para todos). hora_pausa y hora_cierre ya no se usan. El turno
+#   sale de la hora de entrada (primer tramo o primera tarea de Lecturas del día; koroshi_base comun.turno_de):
+#   6-14 o 8-13 y 14-17. Al final de cada tramo del turno (13:00 comida, 14:00 / 17:00 fin) se pregunta «¿Sigues?» a
+#   quien no ha dado señal desde esa hora; sin respuesta en minutos_respuesta, se cierra A ESA HORA (comida = pausa
+#   automática, fin = cierre automático). Si contesta después del fin, se le pregunta cada minutos_sigues. Sin turno
+#   (entra después de las 11): el «¿Sigues?» de la 1.4. Tope para todo: hora_tope (22:00).
 # v1.4.0 «¿Sigues?» (Isaac 19/11: se van a las 14:00 sin «Fin» y el tramo seguía abierto hasta las 17:00). Estas
 #   actividades no leen nada, así que no se sabe si alguien sigue: se le pregunta. Desde sigues_desde (13:00), a quien
 #   lleva minutos_sigues (30) sin dar señal (pasar la tarjeta, empezar, seguir o leer una matrícula) su fila del portátil
@@ -42,6 +48,7 @@ MOTIVOS_PAUSA = ('pausa', 'pausa_auto', 'sin_respuesta')
 SIGUES_DESDE = '13:00'
 MINUTOS_SIGUES = 30
 MINUTOS_RESPUESTA = 15
+HORA_TOPE = '22:00'     # v1.7.0: lo que nadie cierre, a esta hora
 MOTIVOS_FIN = ('fin', 'fin_auto', 'manual')
 
 
@@ -132,13 +139,54 @@ class KoroshiActividadRegistro(models.Model):
         except ValueError:
             return defecto
 
+    def _entrada(self):
+        """v1.7.0: primera señal del día de la persona: su primer tramo de Actividades o su primera tarea de Lecturas."""
+        self.ensure_one()
+        desde, hasta = comun.rango_dia_utc(a_local(self.inicio).date())
+        dom = [('employee_id', '=', self.employee_id.id), ('inicio', '>=', desde), ('inicio', '<', hasta)]
+        primero = self.search(dom, order='inicio asc', limit=1).inicio or self.inicio
+        if 'koroshi.operario.tarea' in self.env:
+            t = self.env['koroshi.operario.tarea'].sudo().search(dom, order='inicio asc', limit=1).inicio
+            if t and t < primero:
+                primero = t
+        return primero
+
+    def _turno(self):
+        """v1.7.0: turno de la persona ese día (comun.turno_de) o None (sin turno, o koroshi_base 1.0)."""
+        self.ensure_one()
+        if not hasattr(comun, 'turno_de'):
+            return None
+        return comun.turno_de(self._entrada(), comun.texto_turnos(self.env))
+
+    def _sigues_turno(self, turno, ahora, cada, espera):
+        """v1.7.0: «¿Sigues?» con turno. Al final de cada tramo del turno, a quien no dio señal desde entonces;
+        después del fin del turno, cada `cada` min desde la última señal."""
+        senal = max(self.confirmado or self.inicio, self.inicio)
+        for _ini, corte in turno['tramos']:
+            if self.inicio < corte <= ahora and senal < corte:
+                final = corte == turno['fin']
+                return {'pregunta': corte, 'cierre': corte, 'motivo': 'fin_auto' if final else 'pausa_auto',
+                        'cerrar': ahora >= corte + datetime.timedelta(minutes=espera)}
+        if cada > 0 and senal >= turno['fin']:
+            pregunta = senal + datetime.timedelta(minutes=cada)
+            if ahora >= pregunta:
+                return {'pregunta': pregunta, 'cierre': pregunta, 'motivo': 'sin_respuesta',
+                        'cerrar': ahora >= pregunta + datetime.timedelta(minutes=espera)}
+        return None
+
     def _sigues(self, ahora=None):
         """v1.4.0: «¿Sigues?» de un tramo en curso. None si no toca preguntar todavía; si toca,
         {'pregunta': cuándo se le preguntó, 'cierre': a qué hora se cerraría, 'cerrar': ya pasó el tiempo de respuesta}
         (fechas naive UTC, como en Odoo)."""
         self.ensure_one()
         cada = self._minutos_param('minutos_sigues', MINUTOS_SIGUES)
-        if self.estado != 'curso' or cada <= 0 or not self.inicio:
+        if self.estado != 'curso' or not self.inicio:
+            return None
+        turno = self._turno()     # v1.7.0
+        if turno:
+            return self._sigues_turno(turno, ahora or fields.Datetime.now(), cada,
+                                      max(self._minutos_param('minutos_respuesta', MINUTOS_RESPUESTA), 0))
+        if cada <= 0:
             return None
         desde_l = hora_del_dia(a_local(self.inicio).date(), self._param('sigues_desde', SIGUES_DESDE))
         if not desde_l:
@@ -150,7 +198,7 @@ class KoroshiActividadRegistro(models.Model):
         pregunta = max(senal, desde) + datetime.timedelta(minutes=cada)
         if ahora < pregunta:
             return None
-        return {'pregunta': pregunta, 'cierre': desde if senal <= desde else pregunta,
+        return {'pregunta': pregunta, 'cierre': desde if senal <= desde else pregunta, 'motivo': 'sin_respuesta',
                 'cerrar': ahora >= pregunta + datetime.timedelta(minutes=espera)}
 
     @api.model
@@ -290,22 +338,20 @@ class KoroshiActividadRegistro(models.Model):
     @api.model
     def cron_cerrar(self):
         """Pausa de la comida y cierre de la jornada a su hora exacta. También cierra lo que quedó de otros días.
-        v1.4.0: y los tramos con el «¿Sigues?» sin contestar (ver _sigues)."""
-        hora_pausa = self._param('hora_pausa', '13:00')
-        hora_cierre = self._param('hora_cierre', '17:00')
+        v1.4.0: y los tramos con el «¿Sigues?» sin contestar (ver _sigues).
+        v1.7.0: la pausa y el cierre los pone el turno de cada uno (_sigues_turno); hora_tope cierra lo que quede."""
+        # v1.7.0: sin hora_pausa ni hora_cierre: el turno de cada uno («¿Sigues?» al final de cada tramo) y un tope
+        hora_tope = self._param('hora_tope', HORA_TOPE)
         ahora = comun.ahora_local()
         for r in self.search([('estado', '=', 'curso')]):
             inicio = a_local(r.inicio)
             dia = inicio.date()
-            pausa = hora_del_dia(dia, hora_pausa)
-            cierre = hora_del_dia(dia, hora_cierre)
+            tope = hora_del_dia(dia, hora_tope)
             sigues = r._sigues()
-            if pausa and inicio < pausa <= ahora:
-                r._cerrar('pausa_auto', a_utc(pausa))
-            elif sigues and sigues['cerrar'] and (not cierre or sigues['cierre'] < a_utc(cierre)):
-                r._cerrar('sin_respuesta', sigues['cierre'])
-            elif cierre and inicio < cierre <= ahora:
-                r._cerrar('fin_auto', a_utc(cierre))
+            if sigues and sigues['cerrar'] and (not tope or sigues['cierre'] < a_utc(tope)):
+                r._cerrar(sigues.get('motivo') or 'sin_respuesta', sigues['cierre'])
+            elif tope and inicio < tope <= ahora:
+                r._cerrar('fin_auto', a_utc(tope))
             elif dia < ahora.date():
                 # v1.1.0 (auditoría 13/11, fase 2.8): empezó después del cierre (o sin hora de cierre) y nadie lo
                 # paró. Antes se cerraba a las 23:59 y sumaba horas que no se trabajaron: ahora cuenta 0 minutos y
