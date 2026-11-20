@@ -36,9 +36,11 @@ _logger = logging.getLogger(__name__)
 # (numero_pedido): operarios no puede importarlos (los dos dependen de operarios). Si se pasan a koroshi_base.comun,
 # quitar esta copia.
 RE_CAJA_NOTA = re.compile(r'\|\s*CAJA\s+(\d+)\b')     # 'Z-1911-D2 | CAJA 05 | K34 ...' ('CAJAS 3' no)
-RE_ZONA = re.compile(r'^Z-\d{4}-(?:R\d+-)?(?:D|MU)\d+$')   # zonas de koroshi_zonas (no 'Z-2210-SALIO 22-10')
+RE_ZONA = re.compile(r'^Z-\d{4}-(?:R\d+-)?(?:D|MU|T)\d+$')   # zonas de koroshi_zonas (no 'Z-2210-SALIO 22-10')
+# v2.23: agrupaciones «tradicionales» de koroshi_zonas 1.7.0 (Z-ddmm-T01...): OUT enteras, una sola persona, entera
+RE_TRADICIONAL = re.compile(r'^Z-\d{4}-(?:R\d+-)?T\d+$')
 SIN_NUMERO = 10 ** 12
-PIEZAS_LOTES = 80        # agrupaciones vivas que se miran para «Por repartir»
+PIEZAS_LOTES = 200       # agrupaciones vivas con OUT preparadas: «Por repartir» y la PDA
 PIEZAS_OUT = 40          # OUT sueltas libres en «Por repartir» (las más antiguas)
 GRUPO_TABLERO = 'koroshi_operarios.grupo_tablero'
 
@@ -193,36 +195,160 @@ class KoroshiOperarioAsignacionTablero(models.Model):
         todos = (Emp.browse(employees.ids) | extra).sorted(lambda e: (e.name or '').lower())
         return self.env['hr.employee'].browse(todos.ids)
 
+    # ------------------------------------------------------------------ v2.23: prioridad de zonas y agrupaciones
+    @api.model
+    def _lotes_vivos(self, company=None):
+        """Agrupaciones abiertas de la empresa con alguna OUT de salida preparada (las únicas que pueden dar trabajo).
+        Sin el filtro, las WEB_ y las hechas a mano que no se cierran se comían el límite y dejaban fuera zonas viejas."""
+        company = company or self.env.company
+        return self.env['stock.picking.batch'].sudo().search(
+            [('state', 'in', ('draft', 'in_progress')), ('company_id', '=', company.id),
+             ('picking_ids.picking_type_code', '=', 'outgoing'), ('picking_ids.state', '=', 'assigned')],
+            order='id desc', limit=PIEZAS_LOTES)
+
+    @api.model
+    def _lotes_por_prioridad(self, employee=None, company=None):
+        """v2.23 (diseño tablero v8): zonas y agrupaciones con trabajo libre, en el orden en que se dan.
+        Devuelve [dict(batch, entera, libres, pendientes, personas, clave)]:
+          - zonas D/MU (Z-ddmm-D1...): OUT a OUT; primero la que acabaría más tarde = más uds pendientes por persona
+            que ya está en ella (reforzar la atrasada);
+          - agrupaciones T (Z-ddmm-T01..., koroshi_zonas 1.7.0): enteras y para una sola persona; primero la de
+            número de pedido más bajo; libre si nadie tiene la agrupación ni ninguna de sus OUT;
+          - las demás (WEB_..., a mano): OUT a OUT como las zonas, después de ellas.
+        Solo lee, con pocas consultas para todas a la vez (la PDA lo llama con la cola vacía). Si una agrupación da
+        error, se salta."""
+        Asig = self.sudo()
+        lotes = self._lotes_vivos(company)
+        if not lotes:
+            return []
+        outs = self.env['stock.picking'].sudo().search(
+            [('batch_id', 'in', lotes.ids), ('picking_type_code', '=', 'outgoing'),
+             ('state', 'not in', ('done', 'cancel'))])
+        vivas = Asig.search([('estado', 'in', VIVAS), ('batch_id', 'in', lotes.ids)])
+        cogidas = set(Asig.search([('estado', 'in', VIVAS), ('tipo', '=', 'out'),
+                                   ('picking_id', 'in', outs.ids)]).mapped('picking_id').ids)
+        dejadas = self._dejadas_hoy(employee) if employee else Asig.browse()
+        dejadas_out = set(dejadas.mapped('picking_id').ids)
+        dejadas_lote = set(dejadas.filtered(lambda a: a.tipo == 'agrupacion').mapped('batch_id').ids)
+        # uds pendientes por OUT con dos consultas agrupadas (no cargar miles de movimientos)
+        pedidas, leidas = {}, {}
+        if outs:
+            for g in self.env['stock.move'].sudo().read_group(
+                    [('picking_id', 'in', outs.ids), ('state', '!=', 'cancel')],
+                    ['picking_id', 'product_uom_qty'], ['picking_id'], lazy=False):
+                pedidas[g['picking_id'][0]] = g['product_uom_qty'] or 0.0
+            for g in self.env['stock.move.line'].sudo().read_group(
+                    [('picking_id', 'in', outs.ids)], ['picking_id', 'qty_done'], ['picking_id'], lazy=False):
+                leidas[g['picking_id'][0]] = g['qty_done'] or 0.0
+        outs_de, vivas_de = {}, {}
+        for p in outs:
+            outs_de.setdefault(p.batch_id.id, []).append(p)
+        for a in vivas:
+            vivas_de.setdefault(a.batch_id.id, []).append(a)
+        res = []
+        for b in lotes:
+            try:
+                nombre = b.name or ''
+                suyas = vivas_de.get(b.id, [])
+                pend_outs = outs_de.get(b.id, [])
+                if RE_TRADICIONAL.match(nombre):
+                    libre = (not suyas and b.id not in dejadas_lote
+                             and not any(p.id in cogidas for p in pend_outs)
+                             and any(p.state == 'assigned' for p in pend_outs))
+                    if not libre:
+                        continue
+                    num = min([_numero_pedido(p.origin) for p in pend_outs] or [SIN_NUMERO])
+                    res.append({'batch': b, 'entera': True, 'libres': len(pend_outs), 'pendientes': 0,
+                                'personas': 0, 'clave': (1, num, nombre)})
+                    continue
+                if any(a.tipo == 'agrupacion' for a in suyas):
+                    continue   # alguien la hace entera (lo de siempre)
+                libres = [p for p in pend_outs if p.state == 'assigned' and p.id not in cogidas
+                          and p.id not in dejadas_out]
+                if not libres:
+                    continue
+                personas = len(set(a.employee_id.id for a in suyas if a.tipo in ('lote', 'out') and a.employee_id))
+                pend = max(sum(pedidas.get(p.id, 0.0) - leidas.get(p.id, 0.0) for p in pend_outs), 0.0)
+                grupo = 0 if RE_ZONA.match(nombre) else 2
+                res.append({'batch': b, 'entera': False, 'libres': len(libres), 'pendientes': int(round(pend)),
+                            'personas': personas, 'clave': (grupo, -pend / (personas + 1), nombre)})
+            except Exception:
+                _logger.exception('KOROSHI OPERARIOS tablero: prioridad de %s', b.name)
+        res.sort(key=lambda r: r['clave'])
+        return res
+
+    @api.model
+    def _dar_una_zona(self, r, employee, dia):
+        """Da una zona de la lista: una T entera, o la tarjeta de una zona D/MU y su primera OUT libre."""
+        b = r['batch']
+        if r['entera']:
+            return self._crear_segura({
+                'employee_id': employee.id, 'tipo': 'agrupacion', 'batch_id': b.id, 'origen': 'tablero',
+                'estado': 'cola', 'secuencia': self._ultima_secuencia(employee), 'company_id': dia.company_id.id})
+        tarjeta = self.sudo().create({
+            'employee_id': employee.id, 'tipo': 'lote', 'batch_id': b.id, 'origen': 'tablero', 'estado': 'cola',
+            'secuencia': self._ultima_secuencia(employee), 'company_id': dia.company_id.id})
+        out = tarjeta._dar_de_lote(employee)
+        if out:
+            return out
+        tarjeta.write({'estado': 'hecha', 'nota': _('Sin OUT libres')})
+        return False
+
+    @api.model
+    def _dar_zona_libre(self, employee, dia):
+        """Columna vacía (v2.23): la siguiente zona o agrupación libre por prioridad. Cada zona en su savepoint: si
+        una falla, se prueba la siguiente (y la PDA nunca se rompe por esto)."""
+        try:
+            with self.env.cr.savepoint():
+                lista = self._lotes_por_prioridad(employee, dia.company_id)
+        except Exception:
+            _logger.exception('KOROSHI OPERARIOS tablero: prioridad de zonas para %s', employee.name)
+            self.invalidate_cache()
+            return False
+        for r in lista:
+            try:
+                with self.env.cr.savepoint():
+                    asig = self._dar_una_zona(r, employee, dia)
+                    self.flush()
+            except Exception:
+                _logger.exception('KOROSHI OPERARIOS tablero: no se ha podido dar %s a %s',
+                                  r['batch'].name, employee.name)
+                self.invalidate_cache()
+                continue
+            if asig:
+                return asig
+        return False
+
+    @api.model
+    def _dar_nueva(self, employee, dia):
+        """v2.23: con la cola vacía (y «darle otra solo» encendido) primero la siguiente zona o agrupación libre; si
+        no hay ninguna, lo de siempre (la siguiente OUT según el modo del día). En modo «Solo manual» no se da nada,
+        como antes. El flush va fuera de cualquier try: un choque con otra PDA llega a Odoo, que reintenta."""
+        if not dia.dar_sin_etiqueta or dia.modo == 'manual':
+            return super()._dar_nueva(employee, dia)
+        self.flush()
+        asig = self._dar_zona_libre(employee, dia)
+        if asig:
+            return asig
+        return super()._dar_nueva(employee, dia)
+
     @api.model
     def tablero_refrescar(self):
-        """Recalcula «Por repartir». Lo llaman el menú del tablero y el botón «Actualizar» (también cada minuto)."""
+        """Recalcula «Por repartir». Lo llaman el menú del tablero y el botón «Actualizar» (también cada minuto).
+        v2.23 (Isaac, 20/11): solo zonas y agrupaciones con trabajo libre, en orden de prioridad; ni OUT sueltas ni
+        nota. Una T va como tipo 'agrupacion' (entera, una persona); las demás como 'lote' (OUT a OUT)."""
         company = self.env.company
         Asig = self.sudo()
-        cogidas = Asig.search([('estado', 'in', VIVAS), ('tipo', '=', 'out')]).mapped('picking_id')
-        enteras = Asig.search([('estado', 'in', VIVAS), ('tipo', '=', 'agrupacion')]).mapped('batch_id')
-        quiero = {('nota', 0): {'tipo': 'nota', 'secuencia': 1}}
-        lotes = self.env['stock.picking.batch'].sudo().search(
-            [('state', 'in', ('draft', 'in_progress')), ('company_id', '=', company.id), ('id', 'not in', enteras.ids)],
-            order='id desc', limit=PIEZAS_LOTES)
-        # primero las zonas (por nombre: Z-1911-D1, D2...), después las demás agrupaciones
-        lotes = lotes.sorted(lambda b: (not RE_ZONA.match(b.name or ''), b.name or ''))
+        quiero = {}
         sec = 10
-        for b in lotes:
-            if any(p.state == 'assigned' and p.picking_type_code == 'outgoing' and p not in cogidas
-                   for p in b.picking_ids):
-                quiero[('lote', b.id)] = {'tipo': 'lote', 'batch_id': b.id, 'secuencia': sec}
-                sec += 1
-        outs = self.env['stock.picking'].sudo().search(
-            [('picking_type_code', '=', 'outgoing'), ('company_id', '=', company.id), ('state', '=', 'assigned'),
-             ('batch_id', '=', False), ('id', 'not in', cogidas.ids)],
-            order='scheduled_date asc, id asc', limit=PIEZAS_OUT)
-        sec = 1000
-        for p in outs:
-            quiero[('out', p.id)] = {'tipo': 'out', 'picking_id': p.id, 'secuencia': sec}
+        for r in self._lotes_por_prioridad(company=company):
+            tipo = 'agrupacion' if r['entera'] else 'lote'
+            quiero[(tipo, r['batch'].id)] = {'tipo': tipo, 'batch_id': r['batch'].id, 'secuencia': sec}
             sec += 1
         tengo = set()
         for pz in Asig.search([('estado', '=', 'pieza'), ('company_id', '=', company.id)]):
-            clave = (pz.tipo, pz.batch_id.id if pz.tipo == 'lote' else (pz.picking_id.id if pz.tipo == 'out' else 0))
+            clave = (pz.tipo, pz.batch_id.id if pz.tipo in ('lote', 'agrupacion') else
+                     (pz.picking_id.id if pz.tipo == 'out' else 0))
             if clave in quiero and clave not in tengo:
                 tengo.add(clave)
                 if pz.secuencia != quiero[clave]['secuencia']:
@@ -340,9 +466,13 @@ class KoroshiOperarioAsignacionTablero(models.Model):
         emp = self.env['hr.employee'].browse(emp_id)
         vals = dict(resto, employee_id=emp_id, estado='cola', origen='tablero',
                     secuencia=self._ultima_secuencia(emp))
-        if self.tipo == 'out':
-            if self._viva_de(picking=self.picking_id):
+        if self.tipo in ('out', 'agrupacion'):
+            # v2.23: una agrupación T (koroshi_zonas) va entera a una sola persona, como una OUT suelta
+            if self.tipo == 'out' and self._viva_de(picking=self.picking_id):
                 raise UserError(_('%s ya lo tiene otro operario. Pulsa «Actualizar».') % self.name)
+            if self.tipo == 'agrupacion' and self.sudo().search_count(
+                    [('estado', 'in', VIVAS), ('batch_id', '=', self.batch_id.id), ('id', '!=', self.id)]):
+                raise UserError(_('%s ya la tiene otro operario. Pulsa «Actualizar».') % self.name)
             # Odoo 13 deja el UPDATE para el final: flush dentro del savepoint para que el índice único salte aquí
             self.flush()
             try:

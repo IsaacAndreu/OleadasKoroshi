@@ -1,0 +1,54 @@
+/* KOROSHI Operarios v2.23.0 - Tablero del responsable por áreas (PC). Todo dentro de .o_kta. */
+.o_kta {
+    --kta-borde: #d4dae0; --kta-suave: #5b6470; --kta-azul: #0b4f9c; --kta-verde: #1e7b34; --kta-verde2: #d3f4dc;
+    --kta-naranja: #c25e00; --kta-naranja2: #fff1c7; --kta-amarillo: #fff7e0;
+    background: #eef1f4; min-height: 100%; padding: 0 12px 16px; color: #111827; font-size: 13px;
+}
+.o_kta_barra {
+    position: sticky; top: 0; z-index: 3; display: flex; gap: 8px; align-items: center;
+    background: #1f2937; color: #fff; margin: 0 -12px 8px; padding: 8px 12px;
+}
+.o_kta_barra b { font-size: 15px; }
+.o_kta_barra .o_kta_mut { color: #cbd5e1; }
+.o_kta_hueco { flex: 1; }
+.o_kta_expl { color: var(--kta-suave); margin-bottom: 8px; }
+.o_kta_mut { color: var(--kta-suave); font-size: 12px; }
+.o_kta_cols { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+.o_kta_col {
+    flex: 1 1 170px; min-width: 170px; background: #fff; border: 1px solid var(--kta-borde); border-radius: 8px;
+    padding: 8px;
+}
+.o_kta_col.o_kta_picking { flex: 3 1 460px; min-width: 360px; background: #f6f8fa; }
+.o_kta_col.o_kta_sin { background: var(--kta-amarillo); }
+.o_kta_hd { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 15px; }
+.o_kta_n { margin-left: auto; background: #e5e7eb; border-radius: 10px; padding: 0 8px; font-size: 12px; }
+.o_kta_vacio { color: var(--kta-suave); font-size: 12px; padding: 6px 0; }
+
+/* filas de Picking */
+.o_kta_fila { background: #fff; border: 1px solid var(--kta-borde); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }
+.o_kta_fila.o_kta_libre { border-left: 4px solid var(--kta-azul); }
+.o_kta_fcab { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.o_kta_der { margin-left: auto; }
+.o_kta_orden { background: var(--kta-azul); color: #fff; border-radius: 10px; padding: 0 7px; font-size: 11px; font-weight: bold; }
+.o_kta_tag { border: 1px solid var(--kta-borde); border-radius: 4px; padding: 0 5px; font-size: 11px; color: var(--kta-suave); }
+.o_kta_prog { height: 6px; background: #dde3e9; border-radius: 3px; overflow: hidden; margin: 4px 0; }
+.o_kta_prog i { display: block; height: 100%; background: var(--kta-verde); }
+.o_kta_gente { display: flex; flex-wrap: wrap; gap: 4px; min-height: 26px; align-items: center; }
+.o_kta_gente .o_kta_p { margin: 0; }
+
+/* personas */
+.o_kta_p {
+    display: flex; align-items: center; gap: 6px; padding: 4px 6px; border-radius: 6px; background: #f6f8fa;
+    margin-top: 4px; cursor: grab; border: 1px solid transparent;
+}
+.o_kta_p.o_kta_par { background: var(--kta-naranja2); border-color: #f0c98a; }
+.o_kta_pn { display: flex; flex-direction: column; min-width: 0; }
+.o_kta_pn b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.o_kta_av {
+    width: 26px; height: 26px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center;
+    font-weight: 600; font-size: 11px; flex: none; background: #e5e7eb; color: #374151;
+}
+.o_kta_ok .o_kta_av { background: var(--kta-verde2); color: var(--kta-verde); }
+.o_kta_par .o_kta_av { background: #fff; color: var(--kta-naranja); }
+.o_kta_arrastrado { opacity: .4; }
+.o_kta_encima { outline: 3px solid var(--kta-azul); outline-offset: -3px; background: #dcebfb !important; }

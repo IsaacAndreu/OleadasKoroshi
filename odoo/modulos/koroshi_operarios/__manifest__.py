@@ -163,8 +163,20 @@ v2.22.0 (20/11/2026): la misma tarjeta en todas las pantallas de la PDA (lo pidi
 v2.22.1 (20/11/2026): la tarjeta compartida dura mas (Isaac: «caduca molt rapid»). Parametro nuevo
   koroshi_operarios.minutos_tarjeta = 60 (noupdate; se cambia en Parametros del sistema sin sacar version) y ruta
   /koroshi/operarios/minutos_tarjeta que lo leen Contenedores (1.9.1) y Faltante (1.8.1). Instalar antes que ellas.
+v2.23.0 (20/11/2026): tablero por áreas (Isaac, 20/11; diseño bin/versiones/diseno-tablero-responsable_2026-11-20_v8.md).
+Un solo formato (el D): columnas Picking, Recepciones, Compactación, Devoluciones, Inversa, Expediciones, Extra y «Sin
+área» (quien ha trabajado hoy y ahora no está en ninguna). En Picking una fila por zona o agrupación con trabajo, en el
+orden en que se dan; se arrastra a la persona a la zona (va la primera de su cola). Las demás áreas solo se miran (el
+área sale de la tarea de picking en curso, Contenedores en 15 min o el tramo abierto de Actividades; la entrada única
+lo sobrescribirá con _tablero_areas). «Por repartir» solo con zonas y agrupaciones: fuera OUT sueltas, nota y tarjetas
+de actividad. Fuera los formatos A, B, C, E y el botón del kanban. Columna vacía (con «darle otra solo»): la siguiente
+zona o agrupación libre: zonas D/MU primero, la que tiene más uds pendientes por persona (reforzar la atrasada), OUT a
+OUT; después las agrupaciones T de koroshi_zonas 1.7.0 (Z-ddmm-T01), enteras y para una persona, por número de pedido
+más bajo; después las demás (WEB_...). Sin ninguna, lo de siempre; en modo «Solo manual», nada (como antes). Cada
+zona se da en su savepoint: si una falla se prueba la siguiente y la PDA no se rompe. Solo tablas propias (models/tablero.py,
+models/tablero_areas.py, static/src/js/tablero_areas.js).
 """,
-    'version': '13.0.2.22.1',
+    'version': '13.0.2.23.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -94,11 +94,13 @@
         <field name="code">action = model.action_abrir_tablero()</field>
     </record>
 
-    <!-- v2.21: pantalla con los cinco formatos (A-E) para que el jefe elija (static/src/js/tablero_formatos.js).
+    <!-- v2.23: tablero por áreas (static/src/js/tablero_areas.js); el id del registro es el de la 2.21 para no
+         cambiar el menú. El kanban de la 2.20 ya no tiene botón (Isaac, 20/11: solo el formato D).
+         v2.21: pantalla con los cinco formatos (A-E) para que el jefe elija (static/src/js/tablero_formatos.js).
          El kanban de la 2.20 sigue: botón «Tablero clásico» de la pantalla (action_koroshi_tablero). -->
     <record id="action_koroshi_tablero_formatos" model="ir.actions.client">
         <field name="name">Tablero</field>
-        <field name="tag">koroshi_tablero_formatos</field>
+        <field name="tag">koroshi_tablero_areas</field>
     </record>
 
     <!-- icono propio en Aplicaciones, solo para el grupo del tablero (Almacén 2); v2.21: abre los formatos -->
