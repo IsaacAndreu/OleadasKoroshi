@@ -1,4 +1,4 @@
-/* KOROSHI Recuentos v1.0.0. Todo dentro de .o_koroshi_recuentos (mismo aspecto que Contenedores). Sin aria-hidden. */
+/* KOROSHI Recuentos v1.1.0. Todo dentro de .o_koroshi_recuentos (mismo aspecto que Contenedores). Sin aria-hidden. */
 .o_koroshi_recuentos { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
 .o_koroshi_recuentos * { box-sizing: border-box; }
 .o_koroshi_recuentos .o_kr_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
@@ -26,7 +26,7 @@
 .o_koroshi_recuentos .o_kr_rejilla td { text-align: center; }
 .o_koroshi_recuentos .o_kr_rejilla small, .o_koroshi_recuentos td small { color: #6b7280; }
 .o_koroshi_recuentos .o_kr_cero { color: #9ca3af; }
-.o_koroshi_recuentos .o_kr_no { color: #d1d5db; }
+.o_koroshi_recuentos .o_kr_no_hay { color: #d1d5db; }
 .o_koroshi_recuentos .o_kr_neg { color: #b91c1c; font-weight: bold; }
 .o_koroshi_recuentos .o_kr_sitio { cursor: pointer; }
 .o_koroshi_recuentos .o_kr_sitio_cab { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; }
@@ -44,3 +44,33 @@
 .o_koroshi_recuentos .o_kr_modelo { padding: 12px 16px; font-size: 17px; font-weight: bold; border: 1px solid #c4cbd3; border-radius: 8px; background: #fff; }
 .o_koroshi_recuentos .o_kr_botones { margin: 14px 16px 0; display: flex; gap: 10px; }
 .o_koroshi_recuentos .o_kr_botones button { padding: 10px 16px; font-size: 16px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+/* v1.1.0: recuento */
+.o_koroshi_recuentos .o_kr_persona { margin: 10px 16px 0; font-size: 16px; }
+.o_koroshi_recuentos .o_kr_contar { margin-top: 12px; width: 100%; padding: 14px; font-size: 18px; font-weight: bold; border: 0; border-radius: 8px; background: #0b4f9c; color: #fff; }
+.o_koroshi_recuentos .o_kr_activa { border: 3px solid #0b4f9c; }
+.o_koroshi_recuentos .o_kr_activa .o_kr_hueco { font-size: 22px; }
+.o_koroshi_recuentos .o_kr_leidas { font-size: 26px; font-weight: bold; color: #0b4f9c; margin: 6px 0; }
+.o_koroshi_recuentos .o_kr_acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+.o_koroshi_recuentos .o_kr_acciones button { padding: 12px 16px; font-size: 17px; font-weight: bold; border: 1px solid #c4cbd3; border-radius: 8px; background: #fff; color: #111827; }
+.o_koroshi_recuentos .o_kr_acciones button[disabled] { opacity: .45; }
+.o_koroshi_recuentos .o_kr_acciones .o_kr_hecha, .o_koroshi_recuentos .o_kr_acciones .o_kr_terminar { background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.o_koroshi_recuentos .o_kr_fuera { margin: 14px 16px 0; }
+.o_koroshi_recuentos .o_kr_fila_caja { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 10px 14px; }
+.o_koroshi_recuentos .o_kr_rcaja { cursor: pointer; }
+.o_koroshi_recuentos .o_kr_hueco_p { font-weight: bold; font-size: 17px; }
+.o_koroshi_recuentos .o_kr_estado { margin-left: auto; font-size: 14px; font-weight: bold; }
+.o_koroshi_recuentos .o_kr_fila_caja .o_kr_noexiste { padding: 4px 10px; font-size: 14px; border: 1px solid #c4cbd3; border-radius: 6px; background: #fff; }
+.o_koroshi_recuentos .o_kr_e_cuadra { border-left: 6px solid #1e7b34; }
+.o_koroshi_recuentos .o_kr_e_cuadra .o_kr_estado { color: #14572a; }
+.o_koroshi_recuentos .o_kr_e_confirmada { border-left: 6px solid #e8890c; }
+.o_koroshi_recuentos .o_kr_e_confirmada .o_kr_estado { color: #7a4a00; }
+.o_koroshi_recuentos .o_kr_e_para_jefe { border-left: 6px solid #b91c1c; }
+.o_koroshi_recuentos .o_kr_e_para_jefe .o_kr_estado { color: #8c1014; }
+.o_koroshi_recuentos .o_kr_e_no_existe { opacity: .6; }
+.o_koroshi_recuentos .o_kr_e_contando { border-left: 6px solid #0b4f9c; }
+.o_koroshi_recuentos .o_kr_confirmar { background: #fff1d6; font-weight: bold; }
+.o_koroshi_recuentos .o_kr_confirmar button { margin: 10px 10px 0 0; padding: 12px 22px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; }
+.o_koroshi_recuentos .o_kr_confirmar .o_kr_si { background: #1e7b34; color: #fff; }
+.o_koroshi_recuentos .o_kr_confirmar .o_kr_no { background: #e3e7ec; color: #111827; }
+.o_koroshi_recuentos .o_kr_resultado { font-size: 20px; font-weight: bold; margin: 6px 0 8px; }
+.o_koroshi_recuentos .o_kr_pos { color: #14572a; font-weight: bold; }

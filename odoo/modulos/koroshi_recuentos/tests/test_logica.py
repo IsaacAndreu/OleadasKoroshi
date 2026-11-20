@@ -34,6 +34,24 @@ class TestLogica(unittest.TestCase):
             '07828 - L94 P03 C1', '07828 - L94 P03 C2', '07828 - L94 P35 C1', '21995 - L128 P15 C2',
             'MU-01 P00 C1', 'FALTANTE'])
 
+    def test_decidir(self):
+        d = logica.decidir
+        # cuadra a la primera (los ceros no cuentan)
+        self.assertEqual(d(1, [{1: 4}], {1: 4, 2: 0}), ('cuadra', None))
+        self.assertEqual(d(1, [{}], {}), ('cuadra', None))
+        # no cuadra -> 2.ª; la 2.ª igual que la 1.ª -> confirmada
+        self.assertEqual(d(1, [{1: 0}], {1: 11}), ('releer', 2))
+        self.assertEqual(d(2, [{}, {}], {1: 11}), ('confirmada', None))
+        # la 2.ª cuadra con Odoo (la 1.ª se leyó mal) -> cuadra
+        self.assertEqual(d(2, [{1: 3}, {1: 4}], {1: 4}), ('cuadra', None))
+        # 2.ª distinta -> 3.ª; la 3.ª igual a la 1.ª o a la 2.ª -> confirmada; distinta de todas -> jefe
+        self.assertEqual(d(2, [{1: 3}, {1: 2}], {1: 4}), ('releer', 3))
+        self.assertEqual(d(3, [{1: 3}, {1: 2}, {1: 3}], {1: 4}), ('confirmada', None))
+        self.assertEqual(d(3, [{1: 3}, {1: 2}, {1: 2}], {1: 4}), ('confirmada', None))
+        self.assertEqual(d(3, [{1: 3}, {1: 2}, {1: 1}], {1: 4}), ('para_jefe', None))
+        # Odoo en negativo nunca cuadra con una lectura
+        self.assertEqual(d(1, [{1: 0}], {1: -4}), ('releer', 2))
+
     def test_hueco_corto(self):
         self.assertEqual(logica.hueco_corto('21995 - L128 P15 C2'), 'L128 P15 C2')
         self.assertEqual(logica.hueco_corto('MU-01 P00 C1'), 'MU-01 P00 C1')

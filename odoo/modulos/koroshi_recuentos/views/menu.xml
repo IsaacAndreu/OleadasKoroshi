@@ -7,4 +7,9 @@
               parent="koroshi_operarios.menu_koroshi_operarios_root" sequence="96"/>
     <menuitem id="menu_koroshi_recuentos_referencia" name="Referencia (dónde está y cuánto dice Odoo)"
               parent="menu_koroshi_recuentos_root" action="action_koroshi_recuentos_referencia" sequence="10"/>
+    <!-- v1.1.0 -->
+    <menuitem id="menu_koroshi_recuentos_lista" name="Recuentos hechos"
+              parent="menu_koroshi_recuentos_root" action="action_koroshi_recuentos" sequence="20"/>
+    <menuitem id="menu_koroshi_recuentos_lecturas" name="Lecturas de los recuentos"
+              parent="menu_koroshi_recuentos_root" action="action_koroshi_recuento_lecturas" sequence="30"/>
 </odoo>

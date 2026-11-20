@@ -62,6 +62,33 @@ def clave_recorrido(nombre):
     return (2, 0, 0, 0, n.upper())
 
 
+def _limpio(cuenta):
+    """{producto: uds} sin los ceros (0 y «no está» son lo mismo)."""
+    return {k: round(v, 3) for k, v in (cuenta or {}).items() if round(v or 0, 3) != 0}
+
+
+def decidir(vuelta, contados, esperado):
+    """v1.1.0: qué pasa al pulsar «Caja hecha» (diseño v3, punto 3.2, paso 5). Solo vale lo leído.
+    vuelta: 1, 2 o 3. contados: [cuenta de la 1.ª, de la 2.ª, ...] hasta esta vuelta incluida ({producto: uds}).
+    esperado: lo que debería haber según Odoo ahora ({producto: uds}, ya descontado lo leído en OUT sin validar).
+    Devuelve (estado, siguiente_vuelta):
+      ('cuadra', None)      lo leído es lo que dice Odoo;
+      ('releer', n)         no cuadra: hay que leer la caja otra vez (vuelta n), sin decir la cifra de Odoo;
+      ('confirmada', None)  dos lecturas iguales y distintas de Odoo: la diferencia vale (la de esta vuelta);
+      ('para_jefe', None)   tres lecturas distintas entre sí: no se aplica nada."""
+    actual = _limpio(contados[vuelta - 1])
+    if actual == _limpio(esperado):
+        return 'cuadra', None
+    if vuelta == 1:
+        return 'releer', 2
+    anteriores = [_limpio(c) for c in contados[:vuelta - 1]]
+    if actual in anteriores:
+        return 'confirmada', None
+    if vuelta == 2:
+        return 'releer', 3
+    return 'para_jefe', None
+
+
 def hueco_corto(nombre):
     """El nombre del hueco sin el número de delante: «21995 - L128 P15 C2» -> «L128 P15 C2»."""
     return RE_DELANTE.sub('', (nombre or '').strip())

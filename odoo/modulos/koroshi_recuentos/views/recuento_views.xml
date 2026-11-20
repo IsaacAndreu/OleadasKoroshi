@@ -1,0 +1,239 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1.0: recuentos en la oficina. Solo se pueden mirar: se crean y se escriben desde la PDA -->
+    <record id="view_koroshi_recuento_tree" model="ir.ui.view">
+        <field name="name">koroshi.recuento.tree</field>
+        <field name="model">koroshi.recuento</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  decoration-danger="estado == 'para_jefe'" decoration-warning="estado == 'diferencias'"
+                  decoration-success="estado == 'coincide'" decoration-info="estado == 'contando'">
+                <field name="name"/>
+                <field name="referencia"/>
+                <field name="inicio"/>
+                <field name="fin"/>
+                <field name="employee_id"/>
+                <field name="motivo" optional="show"/>
+                <field name="n_cajas"/>
+                <field name="n_contadas"/>
+                <field name="n_diferencias"/>
+                <field name="uds_diferencia"/>
+                <field name="estado"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recuento_form" model="ir.ui.view">
+        <field name="name">koroshi.recuento.form</field>
+        <field name="model">koroshi.recuento</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <header>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <h1><field name="name"/> · <field name="referencia"/></h1>
+                    <group>
+                        <group>
+                            <field name="motivo"/>
+                            <field name="nota"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                        </group>
+                        <group>
+                            <field name="inicio"/>
+                            <field name="fin"/>
+                            <field name="n_cajas"/>
+                            <field name="n_contadas"/>
+                            <field name="n_diferencias"/>
+                            <field name="uds_diferencia"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cajas">
+                            <field name="caja_ids">
+                                <tree decoration-danger="estado == 'para_jefe'"
+                                      decoration-warning="estado == 'confirmada'"
+                                      decoration-success="estado == 'cuadra'" decoration-muted="estado == 'pendiente'">
+                                    <field name="orden"/>
+                                    <field name="hueco"/>
+                                    <field name="contenedor"/>
+                                    <field name="estado"/>
+                                    <field name="vuelta"/>
+                                    <field name="odoo"/>
+                                    <field name="contado"/>
+                                    <field name="diferencia"/>
+                                    <field name="con_ajuste"/>
+                                    <field name="fuera_de_lista"/>
+                                    <field name="movimientos" optional="hide"/>
+                                    <field name="employee_id"/>
+                                    <field name="fecha"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Por artículo y vuelta">
+                            <field name="linea_ids">
+                                <tree decoration-bf="final" decoration-danger="final and diferencia &lt; 0"
+                                      decoration-success="final and diferencia &gt; 0">
+                                    <field name="caja_id"/>
+                                    <field name="vuelta"/>
+                                    <field name="producto_id"/>
+                                    <field name="odoo"/>
+                                    <field name="en_curso"/>
+                                    <field name="esperado"/>
+                                    <field name="contado"/>
+                                    <field name="diferencia"/>
+                                    <field name="final"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Lecturas (todas)">
+                            <field name="lectura_ids">
+                                <tree decoration-muted="resultado in ('anulada', 'descartada')"
+                                      decoration-danger="resultado in ('otra', 'desconocida')">
+                                    <field name="fecha"/>
+                                    <field name="caja_id"/>
+                                    <field name="vuelta"/>
+                                    <field name="codigo"/>
+                                    <field name="producto_id"/>
+                                    <field name="resultado"/>
+                                    <field name="employee_id"/>
+                                    <field name="anulada_fecha"/>
+                                </tree>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recuento_caja_form" model="ir.ui.view">
+        <field name="name">koroshi.recuento.caja.form</field>
+        <field name="model">koroshi.recuento.caja</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="recuento_id"/>
+                            <field name="hueco"/>
+                            <field name="contenedor"/>
+                            <field name="ubicacion_id"/>
+                            <field name="estado"/>
+                            <field name="vuelta"/>
+                        </group>
+                        <group>
+                            <field name="odoo"/>
+                            <field name="contado"/>
+                            <field name="diferencia"/>
+                            <field name="employee_id"/>
+                            <field name="fecha"/>
+                            <field name="movimientos"/>
+                        </group>
+                    </group>
+                    <field name="linea_ids">
+                        <tree>
+                            <field name="vuelta"/>
+                            <field name="producto_id"/>
+                            <field name="odoo"/>
+                            <field name="en_curso"/>
+                            <field name="esperado"/>
+                            <field name="contado"/>
+                            <field name="diferencia"/>
+                            <field name="final"/>
+                        </tree>
+                    </field>
+                    <field name="lectura_ids">
+                        <tree>
+                            <field name="fecha"/>
+                            <field name="vuelta"/>
+                            <field name="codigo"/>
+                            <field name="producto_id"/>
+                            <field name="resultado"/>
+                            <field name="employee_id"/>
+                            <field name="anulada_fecha"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recuento_search" model="ir.ui.view">
+        <field name="name">koroshi.recuento.search</field>
+        <field name="model">koroshi.recuento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="referencia"/>
+                <field name="name"/>
+                <field name="employee_id"/>
+                <filter name="f_contando" string="Contando" domain="[('estado', '=', 'contando')]"/>
+                <filter name="f_diferencias" string="Con diferencias" domain="[('estado', '=', 'diferencias')]"/>
+                <filter name="f_jefe" string="Para el jefe" domain="[('estado', '=', 'para_jefe')]"/>
+                <filter name="f_coincide" string="Coincide" domain="[('estado', '=', 'coincide')]"/>
+                <separator/>
+                <filter name="f_inicio" string="Fecha" date="inicio"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="g_dia" string="Día" context="{'group_by': 'inicio:day'}"/>
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_recuentos" model="ir.actions.act_window">
+        <field name="name">Recuentos</field>
+        <field name="res_model">koroshi.recuento</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_koroshi_recuento_search"/>
+    </record>
+
+    <!-- Todas las lecturas de la PDA (registro de todo) -->
+    <record id="view_koroshi_recuento_lectura_tree" model="ir.ui.view">
+        <field name="name">koroshi.recuento.lectura.tree</field>
+        <field name="model">koroshi.recuento.lectura</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  decoration-muted="resultado in ('anulada', 'descartada')"
+                  decoration-danger="resultado in ('otra', 'desconocida')">
+                <field name="fecha"/>
+                <field name="recuento_id"/>
+                <field name="caja_id"/>
+                <field name="vuelta"/>
+                <field name="codigo"/>
+                <field name="producto_id"/>
+                <field name="resultado"/>
+                <field name="employee_id"/>
+                <field name="anulada_fecha"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recuento_lectura_search" model="ir.ui.view">
+        <field name="name">koroshi.recuento.lectura.search</field>
+        <field name="model">koroshi.recuento.lectura</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="recuento_id"/>
+                <field name="codigo"/>
+                <field name="producto_id"/>
+                <field name="employee_id"/>
+                <filter name="f_contadas" string="Contadas" domain="[('resultado', '=', 'contada')]"/>
+                <filter name="f_mal" string="De otra referencia o no reconocidas"
+                        domain="[('resultado', 'in', ('otra', 'desconocida'))]"/>
+                <filter name="f_anuladas" string="Anuladas o descartadas"
+                        domain="[('resultado', 'in', ('anulada', 'descartada'))]"/>
+                <filter name="f_fecha" string="Fecha" date="fecha"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_recuento_lecturas" model="ir.actions.act_window">
+        <field name="name">Lecturas de los recuentos</field>
+        <field name="res_model">koroshi.recuento.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="search_view_id" ref="view_koroshi_recuento_lectura_search"/>
+    </record>
+</odoo>

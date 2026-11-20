@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v1.1.0: REC/000001 -->
+    <record id="seq_koroshi_recuento" model="ir.sequence">
+        <field name="name">KOROSHI recuentos</field>
+        <field name="code">koroshi.recuento</field>
+        <field name="prefix">REC/</field>
+        <field name="padding">6</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

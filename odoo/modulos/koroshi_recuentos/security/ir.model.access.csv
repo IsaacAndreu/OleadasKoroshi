@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_recuento_user,koroshi.recuento lectura,model_koroshi_recuento,stock.group_stock_user,1,0,0,0
+access_koroshi_recuento_caja_user,koroshi.recuento.caja lectura,model_koroshi_recuento_caja,stock.group_stock_user,1,0,0,0
+access_koroshi_recuento_linea_user,koroshi.recuento.linea lectura,model_koroshi_recuento_linea,stock.group_stock_user,1,0,0,0
+access_koroshi_recuento_lectura_user,koroshi.recuento.lectura lectura,model_koroshi_recuento_lectura,stock.group_stock_user,1,0,0,0
