@@ -41,6 +41,8 @@
                 <field name="parado" sum="Total"/>
                 <field name="efectivo" sum="Total"/>
                 <field name="uds_hora"/>
+                <field name="presencia" sum="Total"/>
+                <field name="uds_hora_real"/>
                 <field name="sin_detalle"/>
             </tree>
         </field>

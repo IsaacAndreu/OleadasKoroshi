@@ -28,12 +28,22 @@ ficha KPI (koroshi_kpi 1.6). Necesita koroshi_operarios 2.12 y koroshi_kpi 1.6.
 v1.2.0 (16/11/2026): auditoria 13/11, fase 6 (pasar a koroshi_base). Empresa, hora del almacen y limites de dia
 salen de koroshi_base.comun (antes, la zona horaria de koroshi_operarios). Mismo resultado: esos limites ya
 estaban bien en los dias del cambio de hora. Sin campos ni vistas nuevas. Depende de koroshi_base.
+v1.3.0 (20/11/2026): lo pidio el responsable el 17/11 («Andres paga la hora entera») y lo aprobo Isaac el 20/11. En
+las tablas de operarios, junto a la u/h efectiva («mientras pica»): presencia, perdido (presencia - efectivo) y u/h
+real (uds x 60 / presencia), en rojo por debajo del ritmo estandar del Monitor. Seccion nueva «Por tipo de trabajo»
+(zonas Z-, tiendas sueltas, Zalando/Volldur, web, otros) en el diario, el semanal y el mensual, y en el mensual
+«Produccion por hora del mes» (el equipo hora a hora). Presencia, tipos y horas salen de produccion_calc de
+koroshi_monitor, la misma cuenta que la pantalla Produccion por hora: con koroshi_base 1.1 y koroshi_monitor 1.38 la
+presencia descuenta los descansos del turno; con versiones anteriores, sin descansos. Tablas nuevas
+koroshi.informe.tipo.dia y koroshi.informe.hora.dia, y campos presencia y u/h real en koroshi.informe.operario.dia
+(todas propias). Al actualizar, el cron vuelve a calcular todos los dias guardados. Depende de koroshi_monitor.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['mail', 'koroshi_base', 'koroshi_operarios', 'koroshi_kpi', 'koroshi_preparacion', 'koroshi_menu'],
+    'depends': ['mail', 'koroshi_base', 'koroshi_operarios', 'koroshi_kpi', 'koroshi_preparacion', 'koroshi_menu',
+                'koroshi_monitor'],
     'data': [
         'security/ir.model.access.csv',
         'data/parametros.xml',

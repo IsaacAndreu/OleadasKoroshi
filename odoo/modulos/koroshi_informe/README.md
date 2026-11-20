@@ -1,4 +1,43 @@
-# KOROSHI Informe de productividad (v1.2.0, 16/11/2026)
+# KOROSHI Informe de productividad (v1.3.0, 20/11/2026)
+
+
+## v1.3.0: u/h real, presencia y por tipo de trabajo (20/11/2026)
+
+Lo pidió el responsable el 17/11: «Andrés paga la hora entera, no la efectiva». Isaac lo aprobó el 20/11.
+
+**Tablas de operarios** (diario, semanal y mensual), junto a la u/h de antes:
+
+| Columna | Qué es |
+|---|---|
+| Efectivo | El tiempo con el pedido abierto, sin los ratos de 15 min o más sin leer. |
+| Presencia | El efectivo más los huecos cortos entre pedidos (cerrar caja, precintar, palé) y menos los descansos del turno. |
+| Perdido | Presencia − efectivo. |
+| u/h | uds × 60 / efectivo: la de «mientras pica», la de siempre. |
+| u/h real | uds × 60 / presencia: la hora que se paga. Sale en rojo por debajo del ritmo estándar del Monitor (`koroshi_monitor.ritmo_estandar`, 100). |
+
+- La columna «vs sus 5 días» compara la u/h real.
+- «Mejores» y los récords siguen ordenándose por la u/h efectiva.
+
+**Por tipo de trabajo** (sección nueva en los tres correos):
+- Zonas (tiendas en agrupaciones Z-), tiendas sueltas, Zalando / Volldur (marketplace), web y otros.
+- La presencia de un tipo es solo el tiempo dentro de sus pedidos, igual que la pantalla con ese filtro.
+- Las webs solo salen si se preparan con tarjeta.
+
+**Mensual:** sección nueva, «Producción por hora del mes». Es el equipo hora a hora, con uds, efectivo, presencia,
+perdido, las dos u/h y la media de personas.
+
+**De dónde salen las cifras:**
+- Todo sale de `produccion_calc` de koroshi_monitor, la cuenta de la pantalla «Producción por hora». Así la u/h real
+  sale igual en los dos sitios.
+- Los descansos del turno se descuentan con koroshi_base 1.1.0 y koroshi_monitor 1.38.0. Con las versiones de antes
+  la presencia no los descuenta.
+- Depende de koroshi_monitor.
+
+**Tablas:**
+- Nuevas y propias: `koroshi.informe.tipo.dia` y `koroshi.informe.hora.dia`.
+- Campos nuevos `presencia` y `uds_hora_real` en `koroshi.informe.operario.dia`.
+- Al actualizar, el cron vuelve a calcular todos los días ya guardados (parámetro `koroshi_informe.tablas`). Lo hace
+  una sola vez y puede tardar un minuto.
 
 
 ## v1.2.0: pasa a koroshi_base (16/11/2026, auditoría 13/11, fase 6)

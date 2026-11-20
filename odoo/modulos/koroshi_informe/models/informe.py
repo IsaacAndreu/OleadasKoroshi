@@ -20,9 +20,15 @@
 # u/h = uds x 60 / (minutos con el pedido abierto - parado).
 # v1.1.0 (auditoria 13/11, fase 2): ese calculo ya no esta aqui: es koroshi.operario.tarea.resumen_operario_dia()
 # (koroshi_operarios 2.12), la misma cifra que Productividad, el KPI, el Monitor y la PDA.
+# v1.3.0 (20/11/2026, aprobado por Isaac): presencia, perdido y u/h REAL («Andres paga la hora entera») junto a la
+# u/h efectiva; desglose por tipo (zonas, tiendas sueltas, marketplace, web, otros) y, en el mensual, el equipo hora a
+# hora. Todo sale de produccion_calc de koroshi_monitor (la pantalla «Produccion por hora»): la misma u/h real en los
+# dos sitios. Presencia = tiempo leyendo + huecos de menos de 15 min entre pedidos y, con koroshi_base 1.1 y
+# koroshi_monitor 1.38, menos los descansos del turno. u/h real = uds x 60 / presencia. Perdido = presencia - efectivo.
 # =============================================================================
 import datetime
 import html
+import inspect
 import logging
 import re
 
@@ -32,6 +38,11 @@ from odoo.exceptions import UserError
 from odoo.addons.koroshi_operarios.models.informe import codigo_corto, hm
 from odoo.addons.koroshi_base import comun   # v1.2: empresa, hora del almacen y rangos de dia
 from odoo.addons.koroshi_operarios.models.tarea import uds_hora_de
+from odoo.addons.koroshi_monitor.controllers import produccion_calc as calc   # v1.3.0: la cuenta de la pantalla
+try:
+    from odoo.addons.koroshi_monitor.controllers.produccion import tipo_de, ritmo_estandar
+except ImportError:         # koroshi_monitor anterior a la 1.32
+    tipo_de = ritmo_estandar = None
 
 _logger = logging.getLogger(__name__)
 
@@ -44,6 +55,10 @@ MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto
 MOTIVOS = [('pendiente', 'En pedido pendiente'), ('no_cogido', 'No cogido (había stock)'),
            ('sin_stock', 'Sin stock'), ('cancelado', 'No servido (cancelado)')]
 MEDALLAS = ['🥇', '🥈', '🥉']
+# v1.3.0: tipos de trabajo (los de la pantalla Produccion por hora, con las tiendas de agrupaciones Z- aparte)
+CLASES = [('zonas', 'Zonas (Z-)'), ('tiendas', 'Tiendas sueltas'), ('marketplace', 'Zalando / Volldur (marketplace)'),
+          ('web', 'Web'), ('otros', 'Otros (INT, sin pedido)')]
+TABLAS_VERSION = '1.3.0'    # al cambiar, se vuelven a calcular todos los dias guardados (presencia, tipos y horas)
 
 # estilos (los correos no leen <style>: todo en linea)
 S_TH = 'style="text-align:left;padding:5px;background:#f2f2f2;border-bottom:2px solid #999"'
@@ -104,8 +119,48 @@ class KoroshiInformeOperarioDia(models.Model):
                                  help='Hechas sin Preparación en Lecturas: no se sabe si hubo paradas')
     inicio = fields.Datetime('Empieza')
     fin = fields.Datetime('Acaba')
+    # v1.3.0: presencia (produccion_calc de koroshi_monitor) y u/h real = uds x 60 / presencia
+    presencia = fields.Float('Minutos de presencia', digits=(16, 1),
+                             help='Tiempo leyendo + huecos de menos de 15 min entre pedidos (menos los descansos del '
+                                  'turno): lo que «se paga».')
+    uds_hora_real = fields.Float('u/h real', digits=(16, 0), group_operator=False,
+                                 help='Uds x 60 / minutos de presencia')
 
     _sql_constraints = [('fecha_operario_unico', 'unique(fecha, employee_id)', 'Un resumen por operario y día')]
+
+
+class KoroshiInformeTipoDia(models.Model):
+    """v1.3.0: por dia y tipo de trabajo (zonas, tiendas sueltas, marketplace, web, otros). Presencia de un tipo = solo
+    el tiempo dentro de sus pedidos (como la pantalla Produccion por hora con ese filtro)."""
+    _name = 'koroshi.informe.tipo.dia'
+    _description = 'KOROSHI Informe: resumen por tipo de trabajo y día'
+    _order = 'fecha desc, clase'
+
+    fecha = fields.Date('Día', required=True, index=True)
+    clase = fields.Selection(CLASES, 'Tipo', required=True)
+    tareas = fields.Integer('Pedidos')
+    operarios = fields.Integer('Operarios')
+    uds = fields.Float('Uds', digits=(16, 0))
+    efectivo = fields.Float('Minutos efectivos', digits=(16, 1))
+    presencia = fields.Float('Minutos de presencia', digits=(16, 1))
+
+    _sql_constraints = [('fecha_clase_unico', 'unique(fecha, clase)', 'Un resumen por tipo y día')]
+
+
+class KoroshiInformeHoraDia(models.Model):
+    """v1.3.0: el equipo hora a hora (hora del almacen), como la fila EQUIPO de Produccion por hora."""
+    _name = 'koroshi.informe.hora.dia'
+    _description = 'KOROSHI Informe: equipo por hora y día'
+    _order = 'fecha desc, hora'
+
+    fecha = fields.Date('Día', required=True, index=True)
+    hora = fields.Integer('Hora', required=True)
+    uds = fields.Float('Uds', digits=(16, 0))
+    efectivo = fields.Float('Minutos efectivos', digits=(16, 1))
+    presencia = fields.Float('Minutos de presencia', digits=(16, 1))
+    personas = fields.Integer('Personas')
+
+    _sql_constraints = [('fecha_hora_unico', 'unique(fecha, hora)', 'Una fila por hora y día')]
 
 
 class KoroshiInforme(models.AbstractModel):
@@ -164,8 +219,129 @@ class KoroshiInforme(models.AbstractModel):
         filas: {employee_id: {...}}. No escribe nada. v1.1: es resumen_operario_dia() de koroshi_operarios."""
         return self.env['koroshi.operario.tarea'].sudo().resumen_operario_dia(dia)
 
+    # ------------------------------------------------------------------ v1.3.0: presencia, tipos y horas
     @api.model
-    def _guardar_dia(self, dia, filas):
+    def _clase(self, tarea, pickings):
+        """zonas / tiendas / marketplace / web / otros. Tiendas en una agrupacion Z- = zonas."""
+        pick0 = pickings[:1]
+        if tipo_de:
+            clase = tipo_de(pick0)
+        else:
+            nombre = pick0.sale_id.s_order_type_id.name if pick0 and pick0.sale_id else ''
+            clase = {'PED. TIENDAS': 'tiendas', 'PED. MARKETPLACE': 'marketplace', 'PED. WEB': 'web'}.get(
+                nombre or '', 'otros')
+        lote = tarea.batch_id or pick0.batch_id
+        if clase == 'tiendas' and (lote.name or '').startswith('Z-'):
+            return 'zonas'
+        return clase
+
+    @api.model
+    def _datos_calc(self, dia):
+        """Tareas del dia medidas (tarea._medir, la misma cifra que la tabla Operarios) en el formato de produccion_calc
+        de koroshi_monitor, con op = id del empleado. Igual que el Monitor (produccion.py, _tareas). Sin los excluidos.
+        None si koroshi_operarios es anterior a la 2.12."""
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        if not hasattr(Tarea, '_medir') or not hasattr(Tarea, '_marcas_preparacion'):
+            return None
+        ahora = fields.Datetime.now()
+        excl = self._excluidos()
+        tareas = Tarea.search([('dia', '=', dia)], order='inicio asc').filtered(
+            lambda t: codigo_corto(t.employee_id.barcode) not in excl)
+        if not tareas:
+            return []
+        marcas = tareas._marcas_preparacion(ahora)
+        umbral = Tarea._minutos_sin_leer_max()
+        pickings = dict((t.id, t._pickings()) for t in tareas)
+        lecturas = {}
+        if 'koroshi.preparacion.lectura' in self.env.registry:
+            todos = set()
+            for p in pickings.values():
+                todos.update(p.ids)
+            for l in self.env['koroshi.preparacion.lectura'].sudo().search_read([
+                    ('tipo', '=', 'leer'), ('resultado', '=', 'ok'), ('deshecha', '=', False),
+                    ('employee_id', 'in', tareas.mapped('employee_id').ids), ('picking_id', 'in', list(todos)),
+                    ('fecha', '>=', min(t.inicio for t in tareas)),
+                    ('fecha', '<=', max((t.fin or ahora) for t in tareas))],
+                    ['employee_id', 'picking_id', 'fecha', 'cantidad']):
+                if l['employee_id'] and l['picking_id']:
+                    lecturas.setdefault((l['employee_id'][0], l['picking_id'][0]), []).append(
+                        (l['fecha'], l['cantidad'] or 0.0))
+        datos = []
+        for t in tareas:
+            med = t._medir(ahora, marcas.get(t.id), umbral)
+            fin = med['fin'] or t.inicio
+            huecos = list(med['huecos'] or [])
+            if med.get('parado_ahora'):        # abierta y ahora sin leer: ese rato tampoco cuenta (como el Monitor)
+                huecos.append((med['parado_ahora'][0], ahora, med['parado_ahora'][1]))
+            suyas = []
+            for pid in pickings[t.id].ids:
+                for fecha, cant in lecturas.get((t.employee_id.id, pid), []):
+                    if t.inicio <= fecha <= fin:
+                        suyas.append((fecha, cant))
+            datos.append({
+                'op': t.employee_id.id, 'codigo': codigo_corto(t.employee_id.barcode),
+                'tipo': self._clase(t, pickings[t.id]), 'pickings': pickings[t.id].ids,
+                'ref': (t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name) or t.referencia or '',
+                'out_id': False, 'estado': t.estado, 'inicio': t.inicio, 'fin': fin, 'uds': med['uds'],
+                'minutos': med['minutos'], 'efectivo': med['efectivo'], 'huecos': huecos, 'lecturas': suyas,
+            })
+        return datos
+
+    @api.model
+    def _calc(self, datos, filtrar=None):
+        """calc.produccion con los mismos parametros que la pantalla: minutos sin leer y, con koroshi_base 1.1 y
+        koroshi_monitor 1.38, los turnos (descansos). Con versiones anteriores, lo que acepten."""
+        kw = {}
+        firma = inspect.signature(calc.produccion).parameters
+        if 'minutos_hueco' in firma:
+            kw['minutos_hueco'] = self.env['koroshi.operario.tarea'].sudo()._minutos_sin_leer_max()
+        if 'ritmo' in firma and ritmo_estandar:
+            kw['ritmo'] = ritmo_estandar(self.env)
+        if not filtrar and 'turnos' in firma and hasattr(comun, 'turno_de'):
+            texto = comun.texto_turnos(self.env)
+            entrada = {}
+            for t in datos:
+                if t['op'] not in entrada or t['inicio'] < entrada[t['op']]:
+                    entrada[t['op']] = t['inicio']
+            kw['turnos'] = dict((op, comun.turno_de(ini, texto)) for op, ini in entrada.items())
+        return calc.produccion(datos, comun.zona(), filtrar=filtrar, **kw)
+
+    @api.model
+    def _produccion_dia(self, dia):
+        """{'ops': {employee_id: {presencia, uh_real}}, 'tipos': {clase: {...}}, 'horas': {hora: {...}}}."""
+        res = {'ops': {}, 'tipos': {}, 'horas': {}}
+        datos = self._datos_calc(dia)
+        if not datos:
+            return res
+        todo = self._calc(datos)
+        for o in todo['operarios']:
+            res['ops'][o['op']] = {'presencia': float(o['presencia']), 'uh_real': o['uh_real']}
+        for h, c in todo['equipo']['celdas'].items():
+            res['horas'][int(h)] = {'uds': c['uds'], 'efectivo': c['min'], 'presencia': c['pres'],
+                                    'personas': c['personas']}
+        for clase, _texto in CLASES:
+            sel = [t for t in datos if t['tipo'] == clase]
+            if not sel:
+                continue
+            r = self._calc(datos, filtrar=lambda t, c=clase: t['tipo'] == c)
+            res['tipos'][clase] = {'tareas': len(sel), 'operarios': len(set(t['op'] for t in sel)),
+                                   'uds': r['equipo']['uds'], 'efectivo': r['equipo']['efectivo'],
+                                   'presencia': r['equipo']['presencia']}
+        return res
+
+    @api.model
+    def _con_presencia(self, filas, prod):
+        """Pone presencia y u/h real (de produccion_calc) en las filas de resumen_operario_dia."""
+        for emp, o in filas.items():
+            p = prod['ops'].get(emp)
+            o['presencia'] = max(p and p['presencia'] or 0.0, o.get('efectivo') or 0.0)
+            o['uds_hora_real'] = uds_hora_de(o['uds'], o['presencia'])
+        return filas
+
+    @api.model
+    def _guardar_dia(self, dia, filas, prod=None):
+        prod = prod or {'ops': {}, 'tipos': {}, 'horas': {}}
+        self._con_presencia(filas, prod)
         Tabla = self.env['koroshi.informe.operario.dia'].sudo()
         Tabla.search([('fecha', '=', dia)]).unlink()
         for o in filas.values():
@@ -174,23 +350,38 @@ class KoroshiInforme(models.AbstractModel):
                 'tareas': o['tareas'], 'acabadas': o['acabadas'], 'uds': o['uds'], 'minutos': o['minutos'],
                 'parado': o['parado'], 'efectivo': o['efectivo'], 'uds_hora': o['uds_hora'],
                 'sin_detalle': o['sin_detalle'], 'inicio': o['inicio'], 'fin': o['fin'],
+                'presencia': o['presencia'], 'uds_hora_real': o['uds_hora_real'],
             })
+        # v1.3.0: por tipo y por hora
+        Tipo = self.env['koroshi.informe.tipo.dia'].sudo()
+        Tipo.search([('fecha', '=', dia)]).unlink()
+        for clase, v in prod['tipos'].items():
+            Tipo.create(dict(v, fecha=dia, clase=clase))
+        Hora = self.env['koroshi.informe.hora.dia'].sudo()
+        Hora.search([('fecha', '=', dia)]).unlink()
+        for hora, v in prod['horas'].items():
+            Hora.create(dict(v, fecha=dia, hora=hora))
 
     @api.model
     def cerrar_dias(self):
-        """Guarda el resumen por operario de los dias ya acabados que faltan (hasta ayer). La primera vez, desde la
-        primera tarea. Solo escribe en koroshi.informe.operario.dia y el parametro cerrado_hasta."""
+        """Guarda el resumen por operario (v1.3.0: y por tipo y por hora) de los dias ya acabados que faltan (hasta
+        ayer). La primera vez, desde la primera tarea. v1.3.0: al cambiar TABLAS_VERSION se vuelven a calcular todos
+        (asi los dias de antes tienen presencia). Solo escribe en sus tablas y los parametros cerrado_hasta y tablas."""
         ayer = self._hoy() - datetime.timedelta(days=1)
         hecho = self._param('cerrado_hasta')
+        if self._param('tablas') != TABLAS_VERSION:
+            hecho = ''
         dominio = [('dia', '<=', ayer)]
         if hecho:
             dominio.append(('dia', '>', hecho))
         Tarea = self.env['koroshi.operario.tarea'].sudo()
         dias = sorted(set(Tarea.search(dominio).mapped('dia')))
         for d in dias:
-            self._guardar_dia(d, self._operarios_dia(d)[0])
+            self._guardar_dia(d, self._operarios_dia(d)[0], self._produccion_dia(d))
         if hecho != ayer.isoformat():
             self._set('cerrado_hasta', ayer.isoformat())
+        if self._param('tablas') != TABLAS_VERSION:
+            self._set('tablas', TABLAS_VERSION)
         return len(dias)
 
     @api.model
@@ -203,7 +394,8 @@ class KoroshiInforme(models.AbstractModel):
                 continue
             filas.append({'fecha': r.fecha, 'employee_id': r.employee_id.id, 'codigo': r.codigo, 'nombre': r.nombre,
                           'tareas': r.tareas, 'acabadas': r.acabadas, 'uds': r.uds, 'minutos': r.minutos,
-                          'parado': r.parado, 'efectivo': r.efectivo, 'sin_detalle': r.sin_detalle})
+                          'parado': r.parado, 'efectivo': r.efectivo, 'sin_detalle': r.sin_detalle,
+                          'presencia': max(r.presencia or 0.0, r.efectivo or 0.0)})
         for o in (vivo or {}).values():
             f = dict(o)
             f['fecha'] = dia_vivo
@@ -218,12 +410,14 @@ class KoroshiInforme(models.AbstractModel):
             o = res.setdefault(f['employee_id'], {
                 'employee_id': f['employee_id'], 'codigo': f['codigo'], 'nombre': f['nombre'], 'tareas': 0,
                 'acabadas': 0, 'uds': 0.0, 'minutos': 0.0, 'parado': 0.0, 'efectivo': 0.0, 'sin_detalle': 0,
-                'dias': set()})
+                'presencia': 0.0, 'dias': set()})
             for k in ('tareas', 'acabadas', 'uds', 'minutos', 'parado', 'efectivo', 'sin_detalle'):
                 o[k] += f.get(k) or 0
+            o['presencia'] += max(f.get('presencia') or 0.0, f.get('efectivo') or 0.0)
             o['dias'].add(f['fecha'])
         for o in res.values():
             o['uds_hora'] = uds_hora_de(o['uds'], o['efectivo'])
+            o['uds_hora_real'] = uds_hora_de(o['uds'], o['presencia'])     # v1.3.0
             o['n_dias'] = len(o['dias'])
         return res
 
@@ -328,53 +522,128 @@ class KoroshiInforme(models.AbstractModel):
                 'Destinatarios y horas en Configuración › KOROSHI › Ajustes KOROSHI.</p></div>')
 
     @api.model
+    def _ritmo(self):
+        """u/h real por debajo de la cual sale en rojo (koroshi_monitor.ritmo_estandar, la misma que la pantalla)."""
+        return ritmo_estandar and ritmo_estandar(self.env) or getattr(calc, 'RITMO_ESTANDAR', 100)
+
+    @api.model
+    def _uh_real_html(self, uh, presencia):
+        if presencia < 1 or not uh:
+            return '–'
+        return '<b style="color:%s">%s</b>' % (uh >= self._ritmo() and VERDE or ROJO, num(uh))
+
+    @api.model
     def _tabla_operarios(self, filas, previo=None, con_horas=True, con_dias=False):
-        """Tabla de operarios. previo: {employee_id: u/h de antes} para la ultima columna."""
+        """Tabla de operarios. previo: {employee_id: u/h real de antes} para la ultima columna.
+        v1.3.0: efectivo, presencia, perdido, u/h (efectiva) y u/h real; el parado va en «Tiempos parados»."""
         h = ['<table style="border-collapse:collapse;width:100%"><tr>', '<th %s>Operario</th>' % S_TH]
         if con_horas:
             h.append('<th %s>De – a</th>' % S_TH)
         if con_dias:
             h.append('<th %s>Días</th>' % S_THR)
-        h.append(''.join('<th %s>%s</th>' % (S_THR, c) for c in ['Pedidos', 'Uds', 'Tiempo', 'u/h', 'Parado']))
+        h.append(''.join('<th %s>%s</th>' % (S_THR, c) for c in [
+            'Pedidos', 'Uds', 'Efectivo', 'Presencia', 'Perdido', 'u/h', 'u/h real']))
         if previo is not None:
             h.append('<th %s>%s</th>' % (S_THR, con_dias and 'vs antes' or 'vs sus 5 días'))
         h.append('</tr>')
-        tot = {'uds': 0.0, 'min': 0.0, 'par': 0.0, 'ef': 0.0, 'ped': 0}
+        tot = {'uds': 0.0, 'ef': 0.0, 'pres': 0.0, 'ped': 0}
         for o in filas:
+            pres = max(o.get('presencia') or 0.0, o['efectivo'])
+            uh_real = o.get('uds_hora_real') or uds_hora_de(o['uds'], pres)
             ped = '%d' % o['acabadas']
             if o.get('curso'):
                 ped += ' <span style="color:#888">(%d abierta%s)</span>' % (o['curso'], o['curso'] > 1 and 's' or '')
-            par = o['parado'] >= 1 and '<span style="color:%s">%s</span>' % (ROJO, hm(o['parado'])) or '–'
-            if o.get('sin_detalle') and o['parado'] < 1:
-                par = '<span style="color:#888" title="sin Preparación">?</span>'
             h.append('<tr><td %s><b>%s</b> %s</td>' % (S_TD, esc(o['codigo']), esc(nombre_bonito(o['nombre']))))
             if con_horas:
                 h.append('<td %s>%s – %s</td>' % (S_TD, self._hora(o['inicio']), self._hora(o['fin'])))
             if con_dias:
                 h.append('<td %s>%d</td>' % (S_TDR, o['n_dias']))
-            h.append('<td %s>%s</td><td %s>%s</td><td %s>%s</td><td %s><b>%s</b></td><td %s>%s</td>' % (
-                S_TDR, ped, S_TDR, num(o['uds']), S_TDR, hm(o['minutos']), S_TDR,
-                o['uds_hora'] and num(o['uds_hora']) or '–', S_TDR, par))
+            perdido = max(pres - o['efectivo'], 0.0)
+            h.append(''.join('<td %s>%s</td>' % (S_TDR, v) for v in [
+                ped, num(o['uds']), hm(o['efectivo']), hm(pres), perdido >= 1 and hm(perdido) or '–',
+                o['uds_hora'] and num(o['uds_hora']) or '–', self._uh_real_html(uh_real, pres)]))
             if previo is not None:
                 antes = previo.get(o['employee_id'])
-                h.append('<td %s>%s</td>' % (S_TDR, antes and flecha(var(o['uds_hora'], antes)) or
+                h.append('<td %s>%s</td>' % (S_TDR, antes and flecha(var(uh_real, antes)) or
                                              '<span style="color:#888">primer día</span>'))
             h.append('</tr>')
             tot['uds'] += o['uds']
-            tot['min'] += o['minutos']
-            tot['par'] += o['parado']
             tot['ef'] += o['efectivo']
+            tot['pres'] += pres
             tot['ped'] += o['acabadas']
         cols = 1 + (con_horas and 1 or 0) + (con_dias and 1 or 0)
         h.append('<tr style="font-weight:bold"><td style="padding:5px" colspan="%d">Total con tarjeta</td>' % cols)
         h.append(''.join('<td style="padding:5px;text-align:right">%s</td>' % v for v in [
-            tot['ped'], num(tot['uds']), hm(tot['min']), tot['ef'] >= 1 and num(tot['uds'] * 60.0 / tot['ef']) or '–',
-            tot['par'] >= 1 and hm(tot['par']) or '–']))
+            tot['ped'], num(tot['uds']), hm(tot['ef']), hm(tot['pres']), hm(max(tot['pres'] - tot['ef'], 0.0)),
+            tot['ef'] >= 1 and num(uds_hora_de(tot['uds'], tot['ef'])) or '–',
+            self._uh_real_html(uds_hora_de(tot['uds'], tot['pres']), tot['pres'])]))
         if previo is not None:
             h.append('<td></td>')
         h.append('</tr></table>')
-        h.append('<p %s>Solo cuenta lo leído con tarjeta (Lecturas / Preparación). u/h = uds × 60 / tiempo con el pedido '
-                 'abierto sin el tiempo parado. «?» = hecho sin Preparación: no se sabe si paró.</p>' % S_NOTA)
+        h.append('<p %s>Solo cuenta lo leído con tarjeta (Lecturas / Preparación). <b>Efectivo</b> = con el pedido abierto '
+                 'sin los ratos de 15 min o más sin leer. <b>Presencia</b> = el efectivo más los huecos cortos entre '
+                 'pedidos (cerrar caja, precintar, palé)%s. <b>Perdido</b> = presencia − efectivo. '
+                 '<b>u/h</b> = uds × 60 / efectivo («mientras pica»); <b>u/h real</b> = uds × 60 / presencia (la hora '
+                 'que se paga), en rojo por debajo de %d. Las mismas cifras que Producción por hora.</p>' % (
+                     S_NOTA, hasattr(comun, 'turno_de') and ', menos los descansos del turno' or '', self._ritmo()))
+        return ''.join(h)
+
+    @api.model
+    def _seccion_tipos(self, tipos, titulo):
+        """v1.3.0: por tipo de trabajo. tipos: {clase: {tareas, uds, efectivo, presencia[, operarios]}}."""
+        h = ['<h3 %s>%s</h3>' % (S_H3, esc(titulo))]
+        if not tipos:
+            h.append('<p>Sin pedidos con tarjeta.</p>')
+            return ''.join(h)
+        h.append('<table style="border-collapse:collapse;width:100%"><tr>')
+        h.append('<th %s>Tipo</th>%s</tr>' % (S_TH, ''.join('<th %s>%s</th>' % (S_THR, c) for c in [
+            'Pedidos', 'Uds', 'Efectivo', 'Presencia', 'u/h', 'u/h real'])))
+        for clase, texto in CLASES:
+            v = tipos.get(clase)
+            if not v:
+                continue
+            pres = max(v['presencia'], v['efectivo'])
+            h.append('<tr><td %s>%s</td>%s</tr>' % (S_TD, esc(texto), ''.join('<td %s>%s</td>' % (S_TDR, x) for x in [
+                num(v['tareas']), num(v['uds']), hm(v['efectivo']), hm(pres),
+                v['efectivo'] >= 1 and num(uds_hora_de(v['uds'], v['efectivo'])) or '–',
+                self._uh_real_html(uds_hora_de(v['uds'], pres), pres)])))
+        h.append('</table>')
+        h.append('<p %s>Presencia de un tipo = solo el tiempo dentro de sus pedidos (como Producción por hora con ese '
+                 'filtro): los huecos entre pedidos no son de ningún tipo. Web: solo lo preparado con tarjeta.</p>' % S_NOTA)
+        return ''.join(h)
+
+    @api.model
+    def _seccion_horas(self, horas, n_dias, titulo):
+        """v1.3.0: el equipo hora a hora del periodo. horas: {hora: {uds, efectivo, presencia, personas}} sumadas."""
+        h = ['<h3 %s>%s</h3>' % (S_H3, esc(titulo))]
+        if not horas:
+            h.append('<p>Sin datos.</p>')
+            return ''.join(h)
+        h.append('<table style="border-collapse:collapse;width:100%"><tr>')
+        h.append('<th %s>Hora</th>%s</tr>' % (S_TH, ''.join('<th %s>%s</th>' % (S_THR, c) for c in [
+            'Uds', 'Efectivo', 'Presencia', 'Perdido', 'u/h', 'u/h real', 'Personas (media)'])))
+        tot = {'uds': 0.0, 'efectivo': 0.0, 'presencia': 0.0}
+        minimo = getattr(calc, 'MIN_UH_HORA', 5)
+        for hora in sorted(horas):
+            v = horas[hora]
+            pres = max(v['presencia'], v['efectivo'])
+            h.append('<tr><td %s>%02d–%02d</td>%s</tr>' % (S_TD, hora, (hora + 1) % 24, ''.join(
+                '<td %s>%s</td>' % (S_TDR, x) for x in [
+                    num(v['uds']), hm(v['efectivo']), hm(pres), hm(max(pres - v['efectivo'], 0.0)),
+                    v['efectivo'] >= minimo and num(uds_hora_de(v['uds'], v['efectivo'])) or '–',
+                    pres >= minimo and self._uh_real_html(uds_hora_de(v['uds'], pres), pres) or '–',
+                    n_dias and '%.1f' % (v['personas'] * 1.0 / n_dias) or '–'])))
+            for k in tot:
+                tot[k] += v[k] if k != 'presencia' else pres
+        h.append('<tr style="font-weight:bold"><td style="padding:5px">Total</td>%s<td></td></tr>' % ''.join(
+            '<td style="padding:5px;text-align:right">%s</td>' % x for x in [
+                num(tot['uds']), hm(tot['efectivo']), hm(tot['presencia']),
+                hm(max(tot['presencia'] - tot['efectivo'], 0.0)),
+                tot['efectivo'] >= 1 and num(uds_hora_de(tot['uds'], tot['efectivo'])) or '–',
+                self._uh_real_html(uds_hora_de(tot['uds'], tot['presencia']), tot['presencia'])]))
+        h.append('</table>')
+        h.append('<p %s>Suma de los %d días con tarjeta del periodo, hora del almacén. Personas = media de operarios con '
+                 'tarjeta en esa hora los días que trabajaron.</p>' % (S_NOTA, n_dias))
         return ''.join(h)
 
     @api.model
@@ -386,15 +655,16 @@ class KoroshiInforme(models.AbstractModel):
             h.append('<p>Nadie con %d min o más trabajando con tarjeta.</p>' % minr)
             return ''.join(h)
         h.append('<table style="border-collapse:collapse;width:100%"><tr>')
-        h.append('<th %s>#</th><th %s>Operario</th><th %s>u/h</th><th %s>Uds</th><th %s>Su récord</th>'
-                 '<th %s>Día del récord</th></tr>' % (S_TH, S_TH, S_THR, S_THR, S_THR, S_TH))
+        h.append('<th %s>#</th><th %s>Operario</th><th %s>u/h</th><th %s>u/h real</th><th %s>Uds</th>'
+                 '<th %s>Su récord</th><th %s>Día del récord</th></tr>' % (S_TH, S_TH, S_THR, S_THR, S_THR, S_THR, S_TH))
         for i, o in enumerate(lista[:5]):
             rec = records.get(o['employee_id'])
             nuevo = rec and rec[1] in fechas and rec[2] > 1
-            h.append('<tr><td %s>%s</td><td %s>%s %s</td><td %s><b>%s</b></td><td %s>%s</td><td %s>%s%s</td>'
-                     '<td %s>%s</td></tr>' % (
+            h.append('<tr><td %s>%s</td><td %s>%s %s</td><td %s><b>%s</b></td><td %s>%s</td><td %s>%s</td>'
+                     '<td %s>%s%s</td><td %s>%s</td></tr>' % (
                          S_TD, i < 3 and MEDALLAS[i] or i + 1, S_TD, esc(o['codigo']),
-                         esc(nombre_bonito(o['nombre'])), S_TDR, num(o['uds_hora']), S_TDR, num(o['uds']),
+                         esc(nombre_bonito(o['nombre'])), S_TDR, num(o['uds_hora']), S_TDR,
+                         self._uh_real_html(o.get('uds_hora_real') or 0, o.get('presencia') or 0), S_TDR, num(o['uds']),
                          S_TDR, rec and num(rec[0]) or '–', nuevo and ' 🏆' or '', S_TD,
                          rec and rec[1].strftime('%d/%m') or ''))
         h.append('</table>')
@@ -404,7 +674,8 @@ class KoroshiInforme(models.AbstractModel):
             cod = quien and quien[0]['codigo'] or self.env['hr.employee'].sudo().browse(emp).barcode
             h.append('<p style="margin:4px 0">Récord del almacén (un operario en un día): <b>%s u/h</b>, %s, %s.</p>' % (
                 num(uh), esc(codigo_corto(cod)), fecha.strftime('%d/%m/%Y')))
-        h.append('<p %s>Días con tarjeta: %s. Entran quienes llevan %d min o más trabajando. 🏆 = bate su récord.</p>' % (
+        h.append('<p %s>Días con tarjeta: %s. Entran quienes llevan %d min o más trabajando. Orden y récords por la u/h '
+                 '(efectiva). 🏆 = bate su récord.</p>' % (
             S_NOTA, ', '.join(f.strftime('%d/%m') for f in sorted(fechas_nota or fechas)), minr))
         return ''.join(h)
 
@@ -442,6 +713,8 @@ class KoroshiInforme(models.AbstractModel):
             self._recalcular_kpi(dia)
         self.cerrar_dias()
         vivo, huecos, parados = self._operarios_dia(dia)
+        prod = self._produccion_dia(dia)            # v1.3.0: presencia, tipos y horas (produccion_calc)
+        self._con_presencia(vivo, prod)
         excl = self._excluidos()
         vivo = dict((k, v) for k, v in vivo.items() if v['codigo'] not in excl)
         huecos = [x for x in huecos if x['codigo'] not in excl]
@@ -453,7 +726,7 @@ class KoroshiInforme(models.AbstractModel):
         _d, por_motivo, por_ref = self._faltas(dia, dia)
         return {'dia': dia, 'vivo': vivo, 'huecos': huecos, 'parados': parados, 'hist': hist, 'lunes': lunes,
                 'fichas': fichas, 'faltas_dia': faltas_dia, 'por_motivo': por_motivo, 'por_ref': por_ref,
-                'cobertura': self._cobertura(dia, dia)}
+                'cobertura': self._cobertura(dia, dia), 'tipos': prod['tipos']}
 
     @api.model
     def html_diario(self, d):
@@ -498,11 +771,14 @@ class KoroshiInforme(models.AbstractModel):
                 antes_f = [f for f in d['hist'] if f['employee_id'] == emp and f['fecha'] < dia]
                 fechas = sorted(set(f['fecha'] for f in antes_f), reverse=True)[:5]
                 s = self._sumar([f for f in antes_f if f['fecha'] in fechas]).get(emp)
-                if s and s['uds_hora']:
-                    previo[emp] = s['uds_hora']
+                if s and s['uds_hora_real']:
+                    previo[emp] = s['uds_hora_real']        # v1.3.0: contra su u/h real
             h.append(self._tabla_operarios(filas, previo))
         else:
             h.append('<p><b>Nadie ha leído su tarjeta.</b></p>')
+
+        # v1.3.0: por tipo de trabajo
+        h.append(self._seccion_tipos(d.get('tipos') or {}, 'Por tipo de trabajo'))
 
         # mejores y records
         lista, fechas = self._mejores(d['hist'], dia)
@@ -527,6 +803,12 @@ class KoroshiInforme(models.AbstractModel):
             h.append('<ul style="margin:4px 0 0 18px;padding:0">%s</ul>' % ''.join(items))
         h.append('<p style="margin:4px 0">Total parado del día: <b>%s</b> de %s con pedido abierto (%s %%).</p>' % (
             hm(tot_par), hm(tot_min), num(tot_min and tot_par * 100.0 / tot_min or 0)))
+        tot_pres = sum(max(o.get('presencia') or 0.0, o['efectivo']) for o in filas)
+        tot_ef = sum(o['efectivo'] for o in filas)
+        h.append('<p style="margin:4px 0">Tiempo perdido (presencia − efectivo: cerrar caja, precintar, palé, entre '
+                 'pedidos): <b>%s</b> de %s de presencia (%s %%).</p>' % (
+                     hm(max(tot_pres - tot_ef, 0.0)), hm(tot_pres),
+                     num(tot_pres and max(tot_pres - tot_ef, 0.0) * 100.0 / tot_pres or 0)))
         h.append('<p %s>Parado = %d min o más sin leer nada con un pedido abierto (el «minutos sin leer = parado» de '
                  'Ajustes KOROSHI y del monitor).</p>' % (S_NOTA, umbral))
 
@@ -603,9 +885,24 @@ class KoroshiInforme(models.AbstractModel):
         faltas_dia, _m, _r = self._faltas(ant_desde, ant_hasta)
         f_dia, por_motivo, por_ref = self._faltas(desde, hasta)
         faltas_dia.update(f_dia)
+        # v1.3.0: por tipo y por hora, de las tablas que guarda cerrar_dias
+        tipos = {}
+        for r in self.env['koroshi.informe.tipo.dia'].sudo().search([('fecha', '>=', desde), ('fecha', '<=', hasta)]):
+            v = tipos.setdefault(r.clase, {'tareas': 0, 'uds': 0.0, 'efectivo': 0.0, 'presencia': 0.0})
+            v['tareas'] += r.tareas
+            v['uds'] += r.uds
+            v['efectivo'] += r.efectivo
+            v['presencia'] += max(r.presencia, r.efectivo)
+        horas = {}
+        for r in self.env['koroshi.informe.hora.dia'].sudo().search([('fecha', '>=', desde), ('fecha', '<=', hasta)]):
+            v = horas.setdefault(r.hora, {'uds': 0.0, 'efectivo': 0.0, 'presencia': 0.0, 'personas': 0})
+            v['uds'] += r.uds
+            v['efectivo'] += r.efectivo
+            v['presencia'] += max(r.presencia, r.efectivo)
+            v['personas'] += r.personas
         return {'desde': desde, 'hasta': hasta, 'ant_desde': ant_desde, 'ant_hasta': ant_hasta, 'hist': hist,
                 'en': en, 'ant': ant, 'fichas': fichas, 'faltas_dia': faltas_dia, 'por_motivo': por_motivo,
-                'por_ref': por_ref, 'cobertura': self._cobertura(desde, hasta)}
+                'por_ref': por_ref, 'cobertura': self._cobertura(desde, hasta), 'tipos': tipos, 'horas': horas}
 
     @api.model
     def html_periodo(self, d, tipo):
@@ -675,12 +972,18 @@ class KoroshiInforme(models.AbstractModel):
         h.append('<h3 %s>Operarios %s</h3>' % (S_H3, semanal and 'de la semana' or 'del mes'))
         suma = self._sumar(d['en'])
         if suma:
-            previo = dict((k, v['uds_hora']) for k, v in self._sumar(d['ant']).items() if v['uds_hora'])
+            previo = dict((k, v['uds_hora_real']) for k, v in self._sumar(d['ant']).items() if v['uds_hora_real'])
             filas = sorted(suma.values(), key=lambda o: -o['uds_hora'])
             h.append(self._tabla_operarios(filas, previo, con_horas=False, con_dias=True).replace(
                 'primer día', 'nuevo'))
         else:
             h.append('<p><b>Nadie ha leído su tarjeta.</b></p>')
+
+        # v1.3.0: por tipo de trabajo y, en el mensual, el equipo hora a hora
+        h.append(self._seccion_tipos(d.get('tipos') or {}, 'Por tipo de trabajo'))
+        if not semanal:
+            dias_con = len(set(f['fecha'] for f in d['en']))
+            h.append(self._seccion_horas(d.get('horas') or {}, dias_con, 'Producción por hora del mes (equipo)'))
 
         # mejores del periodo y records batidos
         minr = max(self._minutos_ranking(), 1)
@@ -696,6 +999,10 @@ class KoroshiInforme(models.AbstractModel):
         h.append('<h3 %s>Tiempos parados</h3>' % S_H3)
         h.append('<p style="margin:4px 0">Parado: <b>%s</b> de %s con pedido abierto (%s %%). %s: %s.</p>' % (
             hm(par), hm(mins), num(mins and par * 100.0 / mins or 0), antes_txt.capitalize(), hm(par_a)))
+        pres = sum(o['presencia'] for o in suma.values())
+        ef = sum(o['efectivo'] for o in suma.values())
+        h.append('<p style="margin:4px 0">Tiempo perdido (presencia − efectivo): <b>%s</b> de %s de presencia (%s %%).'
+                 '</p>' % (hm(max(pres - ef, 0.0)), hm(pres), num(pres and max(pres - ef, 0.0) * 100.0 / pres or 0)))
 
         h.append(self._seccion_faltas(d['por_motivo'], d['por_ref'],
                                       semanal and 'Faltas de la semana' or 'Faltas del mes', n_refs=10))
