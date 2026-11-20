@@ -86,6 +86,12 @@ vista; nueva comprobación E8). Bandeja del encargado para el jefe: Hoy y Pendie
 (Departament IT). Horas en koroshi_menu.hora_tiendas (13:00) y koroshi_menu.hora_camion (15:00). Falta: verla con
 Almacen 2 después de Ctrl+F5.
 
+**Instalado el 20/11 a las 14:10 hora local, en una sola pasada** (un reinicio a las 14:08 y un solo upgrade,
+pedido por Isaac): base **1.1.0**, monitor **1.38.0**, actividades **1.8.0** (Inicio PDA por áreas y cierre por
+turno), operarios **2.24.0**, pda_app **1.2.0** (parámetro `koroshi_pda_app.inicio` sin tocar), menu **2.6.2**,
+informe **1.3.0** y devoluciones **1.2.0**. Sin errores en el log. Falta: logo propio para «Inicio PDA» (chat PDA
+entrada única), probar el Inicio con Departament IT y ponerlo de inicio a Almacén Nath.
+
 **No instalar todavía** (decidido): koroshi_delegacion.
 
 **Al día**: s4t_traspasos 1.3.0 (19/11 09:44, modo real desde 10:56), agrupaciones_web 1.0.0 (18/11 16:25; encendido, cancela desde el 19/11), contenedores 1.8.2 (lineales MU, 19/11 12:20), actividades 1.4.0 («¿Sigues?», 19/11 15:42), menu 2.6.1 (bandeja del jefe, 19/11 16:31), faltantes 1.7.0, preparacion 3.33.0, monitor 1.37.0 (sin nombres para no jefes, 19/11 15:36), base 1.0.0, operarios 2.19.0 (cierre por inactividad, 18/11 16:11), kpi 1.9.0, warehouse_map .46, consumibles 1.4.0, xpo_bultos 1.3.0,
