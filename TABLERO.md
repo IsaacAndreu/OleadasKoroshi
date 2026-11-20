@@ -91,6 +91,9 @@ pedido por Isaac): base **1.1.0**, monitor **1.38.0**, actividades **1.8.0** (In
 turno), operarios **2.24.0**, pda_app **1.2.0** (parámetro `koroshi_pda_app.inicio` sin tocar), menu **2.6.2**,
 informe **1.3.0** y devoluciones **1.2.0**. Sin errores en el log. Falta: logo propio para «Inicio PDA» (chat PDA
 entrada única), probar el Inicio con Departament IT y ponerlo de inicio a Almacén Nath.
+**14:34**: actividades **1.8.2** (arregla «Cargando…» al volver, rejilla a 375 px, logo) y recuentos **1.1.0**
+(recuento leído a ciegas), un reinicio y un upgrade, sin errores. Inicio PDA probado con Departament IT y la
+tarjeta de Isaac: entra y vuelve de cada área. Falta: ponerlo de inicio a Almacén Nath y `koroshi_pda_app.inicio`.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
