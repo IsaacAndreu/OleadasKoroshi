@@ -17,6 +17,9 @@
                 <field name="nota"/>
                 <field name="color"/>
                 <field name="pide_matricula"/>
+                <field name="area"/>            <!-- v1.6.0 -->
+                <field name="abre"/>
+                <field name="en_portatil"/>
                 <field name="active" invisible="1"/>
             </tree>
         </field>
@@ -28,6 +31,8 @@
         <field name="context">{'active_test': False}</field>
         <field name="help" type="html">
             <p>Botones que salen en el portátil. Para quitar uno sin perder sus horas: Acción &gt; Archivar.</p>
+            <p>Con «Área (PDA)» sale en el Inicio de la PDA, dentro de su área; «Abre» es la pantalla que se abre
+               después (id externo de la acción). «En el portátil» = sale como botón en el portátil.</p>
         </field>
     </record>
 
@@ -108,6 +113,7 @@
             <search>
                 <field name="employee_id"/>
                 <field name="actividad_id"/>
+                <field name="area"/>
                 <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
                 <filter name="semana" string="Últimos 7 días"
                         domain="[('dia', '>=', (context_today() - datetime.timedelta(days=6)).strftime('%Y-%m-%d'))]"/>
@@ -118,6 +124,7 @@
                 <group expand="0" string="Agrupar por">
                     <filter name="g_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
                     <filter name="g_actividad" string="Actividad" context="{'group_by': 'actividad_id'}"/>
+                    <filter name="g_area" string="Área (PDA)" context="{'group_by': 'area'}"/>
                     <filter name="g_dia" string="Día" context="{'group_by': 'dia:day'}"/>
                 </group>
             </search>
@@ -129,6 +136,78 @@
         <field name="view_mode">tree,pivot,graph,form</field>
         <field name="context">{'search_default_hoy': 1}</field>
     </record>
+    <!-- v1.6.0: horas por área (entrada única de la PDA). Solo los tramos: las uds y la u/h de picking salen de
+         las tareas de koroshi_operarios, que no se suman aquí (serían las mismas horas dos veces). -->
+    <record id="view_koroshi_actividad_registro_pivot_area" model="ir.ui.view">
+        <field name="name">koroshi.actividad.registro.pivot.area</field>
+        <field name="model">koroshi.actividad.registro</field>
+        <field name="priority">20</field>
+        <field name="arch" type="xml">
+            <pivot string="Horas por persona y área">
+                <field name="employee_id" type="row"/>
+                <field name="area" type="col"/>
+                <field name="horas" type="measure"/>
+            </pivot>
+        </field>
+    </record>
+    <record id="action_koroshi_actividad_horas_area" model="ir.actions.act_window">
+        <field name="name">Horas por área</field>
+        <field name="res_model">koroshi.actividad.registro</field>
+        <field name="view_mode">pivot,tree,form</field>
+        <field name="view_id" ref="view_koroshi_actividad_registro_pivot_area"/>
+        <field name="context">{'search_default_hoy': 1}</field>
+        <field name="help" type="html">
+            <p>Horas de cada persona en cada área (Inicio de la PDA y portátil). Las de picking son el rato en el área,
+               no la productividad: las uds y la u/h siguen en Productividad.</p>
+        </field>
+    </record>
+
+    <!-- ============================================================ v1.6.0: Inicio de la PDA -->
+    <record id="action_koroshi_inicio_pda" model="ir.actions.client">
+        <field name="name">Inicio (PDA)</field>
+        <field name="tag">koroshi_actividades_inicio_pda</field>
+    </record>
+    <record id="view_koroshi_pda_jefe_tree" model="ir.ui.view">
+        <field name="name">koroshi.pda.jefe.tree</field>
+        <field name="model">koroshi.pda.jefe</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="employee_id"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_koroshi_pda_jefe" model="ir.actions.act_window">
+        <field name="name">Jefes en la PDA</field>
+        <field name="res_model">koroshi.pda.jefe</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p>Operarios que ven «Gestión» al pasar su tarjeta en el Inicio de la PDA.</p>
+        </field>
+    </record>
+    <record id="view_koroshi_pda_enlace_tree" model="ir.ui.view">
+        <field name="name">koroshi.pda.enlace.tree</field>
+        <field name="model">koroshi.pda.enlace</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="abre"/>
+                <field name="nota"/>
+                <field name="active" invisible="1"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_koroshi_pda_enlace" model="ir.actions.act_window">
+        <field name="name">Gestión en la PDA</field>
+        <field name="res_model">koroshi.pda.enlace</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p>Botones de «Gestión» en el Inicio de la PDA: id externo de la acción (o su número). Se abren con el
+               usuario de la PDA: lo que se ve depende de sus permisos.</p>
+        </field>
+    </record>
+
     <record id="action_koroshi_actividad_horas" model="ir.actions.act_window">
         <field name="name">Horas por actividad</field>
         <field name="res_model">koroshi.actividad.registro</field>

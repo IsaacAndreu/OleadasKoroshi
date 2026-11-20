@@ -6,6 +6,9 @@
             <script type="text/javascript" src="/koroshi_actividades/static/src/js/actividades.js"/>
             <!-- v1.5.0: tarjeta de actividad del tablero en Lecturas (PDA) -->
             <script type="text/javascript" src="/koroshi_actividades/static/src/js/tablero_pda.js"/>
+            <!-- v1.6.0: Inicio de la PDA (entrada única por áreas) y botón «◀ Áreas» -->
+            <link rel="stylesheet" type="text/css" href="/koroshi_actividades/static/src/css/inicio_pda.css"/>
+            <script type="text/javascript" src="/koroshi_actividades/static/src/js/inicio_pda.js"/>
         </xpath>
     </template>
 </odoo>

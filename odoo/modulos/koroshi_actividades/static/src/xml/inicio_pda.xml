@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- KOROSHI Actividades v1.6.0: pantalla «Inicio (PDA)», entrada única por áreas. Lo de dentro lo pinta
+         inicio_pda.js. Nada de aria-hidden (Odoo 13 lo oculta): role="presentation". -->
+    <t t-name="koroshi_actividades.InicioPda">
+        <div class="o_koroshi_inicio">
+            <div class="o_ki_offline" role="alert">Sin conexión con Odoo: reintentando…</div>
+            <header class="o_ki_cab">
+                <div class="o_ki_quien">
+                    <span class="o_ki_avatar" role="presentation"/>
+                    <span class="o_ki_nombre">KOROSHI</span>
+                </div>
+                <button type="button" class="o_ki_salir">Salir</button>
+            </header>
+            <div class="o_ki_aviso"/>
+            <div class="o_ki_sigues" role="alert">¿Sigues? Pasa tu tarjeta</div>
+            <section class="o_ki_lector">
+                <div class="o_ki_tarjeta_dibujo" role="presentation">
+                    <span class="o_ki_banda"/><span class="o_ki_linea"/><span class="o_ki_linea o_ki_corta"/>
+                </div>
+                <h1>Pasa tu tarjeta</h1>
+                <p>Y elige dónde vas a trabajar.</p>
+                <input type="text" class="o_ki_codigo" inputmode="none" autocomplete="off"
+                       placeholder="O escribe tu código y pulsa Intro"/>
+            </section>
+            <section class="o_ki_menu">
+                <div class="o_ki_ahora"/>
+                <div class="o_ki_areas"/>
+                <div class="o_ki_panel"/>
+                <button type="button" class="o_ki_boton o_ki_pausa">☕ Pausa (comer, café)</button>
+                <div class="o_ki_gestion"/>
+            </section>
+        </div>
+    </t>
+</templates>

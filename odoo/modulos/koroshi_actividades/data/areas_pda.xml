@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.6.0 (20/11/2026): entrada única de la PDA (diseño bin/versiones/diseno-pda-entrada-unica_2026-11-20_v2.md).
+         Actividades nuevas de cada área y botones de «Gestión». noupdate: se cambian en Configuración y al
+         actualizar no se pisan (los registros nuevos sí se crean al actualizar). No salen en el portátil
+         (en_portatil = False): el portátil sigue igual que en la 1.5.0.
+         «Abre» va como texto (id externo): si el módulo no está instalado, el botón se queda en el Inicio contando
+         el tiempo, sin error. -->
+    <data noupdate="1">
+        <!-- Picking: Lecturas (koroshi_operarios) -->
+        <record id="actividad_pda_picking" model="koroshi.actividad">
+            <field name="name">Picking</field>
+            <field name="sequence">100</field>
+            <field name="color">#0b4f9c</field>
+            <field name="nota">Lecturas</field>
+            <field name="area">picking</field>
+            <field name="abre">koroshi_operarios.action_koroshi_operarios_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <!-- Compactación: Contenedores (koroshi_contenedores) -->
+        <record id="actividad_pda_compactacion" model="koroshi.actividad">
+            <field name="name">Compactación</field>
+            <field name="sequence">110</field>
+            <field name="color">#8a5300</field>
+            <field name="nota">Contenedores</field>
+            <field name="area">compactacion</field>
+            <field name="abre">koroshi_contenedores.action_koroshi_contenedores_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <!-- Recepciones (además de las manipulaciones del portátil, que también van aquí) -->
+        <record id="actividad_pda_descargar" model="koroshi.actividad">
+            <field name="name">Descargar camión</field>
+            <field name="sequence">120</field>
+            <field name="color">#1e7b34</field>
+            <field name="area">recepciones</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <record id="actividad_pda_recepcionar" model="koroshi.actividad">
+            <field name="name">Recepcionar</field>
+            <field name="sequence">121</field>
+            <field name="color">#1e7b34</field>
+            <field name="nota">App de código de barras</field>
+            <field name="area">recepciones</field>
+            <field name="abre">stock_barcode.stock_barcode_action_main_menu</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <!-- Expediciones -->
+        <record id="actividad_pda_cargar" model="koroshi.actividad">
+            <field name="name">Cargar camión</field>
+            <field name="sequence">130</field>
+            <field name="color">#6b3fa0</field>
+            <field name="area">expediciones</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <record id="actividad_pda_montar_cajas" model="koroshi.actividad">
+            <field name="name">Montar cajas</field>
+            <field name="sequence">131</field>
+            <field name="color">#6b3fa0</field>
+            <field name="area">expediciones</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <record id="actividad_pda_meter_en_caja" model="koroshi.actividad">
+            <field name="name">Meter en caja lo de expediciones</field>
+            <field name="sequence">132</field>
+            <field name="color">#6b3fa0</field>
+            <field name="nota">Sin caja, saltados</field>
+            <field name="area">expediciones</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <!-- Extra: tareas sin lecturas -->
+        <record id="actividad_pda_carton" model="koroshi.actividad">
+            <field name="name">Cartón</field>
+            <field name="sequence">140</field>
+            <field name="color">#3f4954</field>
+            <field name="area">extra</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <record id="actividad_pda_limpieza" model="koroshi.actividad">
+            <field name="name">Limpieza</field>
+            <field name="sequence">141</field>
+            <field name="color">#3f4954</field>
+            <field name="area">extra</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+        <record id="actividad_pda_reubicar" model="koroshi.actividad">
+            <field name="name">Reubicar material</field>
+            <field name="sequence">142</field>
+            <field name="color">#3f4954</field>
+            <field name="area">extra</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+
+        <!-- Gestión (solo para los operarios de «Jefes en la PDA»). Integración S4T y cajas escaneadas: añadirlas en
+             Configuración con el id de su acción (no son módulos KOROSHI). -->
+        <record id="enlace_pda_monitor" model="koroshi.pda.enlace">
+            <field name="name">Monitor picking</field>
+            <field name="sequence">10</field>
+            <field name="abre">koroshi_monitor.action_koroshi_monitor</field>
+        </record>
+        <record id="enlace_pda_tablero" model="koroshi.pda.enlace">
+            <field name="name">Tablero</field>
+            <field name="sequence">20</field>
+            <field name="abre">koroshi_operarios.action_koroshi_tablero_formatos</field>
+            <field name="nota">Solo si el usuario de la PDA está en «KOROSHI: Tablero del responsable»</field>
+        </record>
+    </data>
+</odoo>

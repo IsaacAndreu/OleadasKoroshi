@@ -56,8 +56,26 @@ se acaba cuando la persona pulsa «Fin» en el portátil (acabar(): la de esa ac
 de actividad o la pausa no la acaban). La PDA lo mira cada 30 s y pasa sola a lo siguiente. La tarjeta no cuenta
 como pedido ni abre tarea de productividad (el tiempo es el del portátil). Tipo «actividad» y campo actividad_id en
 la tabla propia de asignaciones de koroshi_operarios; nada en stock.*. Si el tablero falla, el Fin se hace igual.
+v1.6.0 (20/11/2026): entrada única de la PDA por áreas (Isaac 20/11; diseño
+bin/versiones/diseno-pda-entrada-unica_2026-11-20_v2.md). Pantalla nueva «Inicio (PDA)» (icono «Inicio PDA»): el
+operario pasa la tarjeta una vez (la misma de Lecturas, Contenedores y Faltante) y elige área: Recepciones, Picking,
+Compactación, Devoluciones, Inversa, Expediciones o Extra. Entrar en un área = empezar una de sus actividades: el
+tiempo va a la misma tabla de tramos que el portátil (un tramo abierto por persona; cambiar de área cierra el
+anterior) y después se abre su pantalla (Picking = Lecturas, Compactación = Contenedores, Recepcionar = app de código
+de barras, Inversa = Actividades con la persona puesta). Pausa, Salir (para el tiempo y olvida la tarjeta) y
+«¿Sigues?» en la PDA (aviso rojo y pitido). «Gestión» (Monitor, Tablero...) solo para los operarios de «Jefes en la
+PDA» (por la tarjeta: todas las PDA entran con «Almacén Nath»). Botón «◀ Áreas» para volver desde las otras pantallas
+y señal de vida cada 2 min si la tarjeta se usa en ellas (el «¿Sigues?» no cierra a quien está leyendo). Campos nuevos
+en las tablas propias: «Área (PDA)», «Abre» y «En el portátil» en koroshi.actividad y «Área» (guardado) en
+koroshi.actividad.registro; tablas nuevas koroshi.pda.jefe y koroshi.pda.enlace. Actividades nuevas (noupdate):
+Picking, Compactación, Descargar camión, Recepcionar, Cargar camión, Montar cajas, Meter en caja lo de expediciones,
+Cartón, Limpieza y Reubicar material; ninguna sale en el portátil, que sigue igual. Las de partida reciben su área
+(migrations/13.0.1.6.0): marketplace, tiendas, web y bolsas en Recepciones; devoluciones; inversa. Informe «Horas por
+área» (solo tramos: la u/h de picking sigue saliendo de las tareas de koroshi_operarios, no se suma). Tablero del
+responsable (koroshi_operarios 2.23.0): _tablero_areas() da el área del tramo abierto, y ya no se crean piezas de
+actividad en «Por repartir» (las ya dadas siguen hasta su Fin). No toca cron_cerrar ni el «¿Sigues?» del servidor.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -65,6 +83,7 @@ la tabla propia de asignaciones de koroshi_operarios; nada en stock.*. Si el tab
     'data': [
         'security/ir.model.access.csv',
         'data/actividades.xml',
+        'data/areas_pda.xml',        # v1.6.0
         'data/parametros.xml',
         'data/cron.xml',
         'views/assets.xml',
@@ -74,6 +93,7 @@ la tabla propia de asignaciones de koroshi_operarios; nada en stock.*. Si el tab
     ],
     'qweb': [
         'static/src/xml/actividades.xml',
+        'static/src/xml/inicio_pda.xml',   # v1.6.0
     ],
     'installable': True,
     'application': False,

@@ -45,7 +45,8 @@ class KoroshiActividades(http.Controller):
         return emp
 
     def _actividades(self):
-        acts = request.env['koroshi.actividad'].sudo().search([])
+        # v1.6.0: solo las del portátil (las de la PDA con su propia pantalla, como Picking, no salen aquí)
+        acts = request.env['koroshi.actividad'].sudo().search([('en_portatil', '=', True)])
         return [{'id': a.id, 'nombre': a.name, 'color': a.color or '#0b4f9c', 'nota': a.nota or ''} for a in acts]
 
     def _respuesta(self, emp, msg=''):
@@ -62,7 +63,8 @@ class KoroshiActividades(http.Controller):
         _comprobar_grupo()   # v1.2
         Reg = self._registro()
         hoy = Reg._hoy()
-        emps = Reg.search([('dia', '=', hoy)]).mapped('employee_id')
+        # v1.6.0: en la lista del portátil, solo quien ha estado hoy en una actividad del portátil (no toda la PDA)
+        emps = Reg.search([('dia', '=', hoy), ('actividad_id.en_portatil', '=', True)]).mapped('employee_id')
         personas = [Reg.estado_de(e) for e in emps]
         personas.sort(key=lambda p: (p['actividad'] or '', p['nombre'] or ''))
         sin_tarjeta = Reg._param('sin_tarjeta', '0') == '1'

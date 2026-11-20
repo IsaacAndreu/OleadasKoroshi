@@ -4,6 +4,11 @@
     <menuitem id="menu_koroshi_actividades_app" name="Actividades" action="action_koroshi_actividades_pantalla"
               web_icon="koroshi_actividades,static/description/icon_actividades.png" sequence="2"/>
     <!-- v1.3.1: icono propio (antes, el mismo que Lecturas) -->
+    <!-- v1.6.0: Inicio de la PDA (entrada única por áreas). Icono en la pantalla de inicio para probarlo antes de
+         ponerlo como acción inicial de «Almacén Nath». -->
+    <menuitem id="menu_koroshi_inicio_pda_app" name="Inicio PDA" action="action_koroshi_inicio_pda"
+              web_icon="koroshi_actividades,static/description/icon_actividades.png" sequence="1"
+              groups="stock.group_stock_user"/>
 
 
     <!-- Dentro de Inventario > KOROSHI Operarios -->
@@ -19,6 +24,13 @@
               action="action_koroshi_inversa_caja" sequence="35" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_actividades_tramos" name="Tramos de tiempo" parent="menu_koroshi_actividades_root"
               action="action_koroshi_actividad_registro" sequence="40" groups="koroshi_operarios.grupo_productividad"/>
+    <!-- v1.6.0 (para que se vean, koroshi_menu tiene que ponerlos en su app: este menú padre está archivado) -->
+    <menuitem id="menu_koroshi_actividades_horas_area" name="Horas por área" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_actividad_horas_area" sequence="32" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_pda_jefe" name="Configuración: jefes en la PDA" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_pda_jefe" sequence="91" groups="koroshi_operarios.grupo_productividad"/>
+    <menuitem id="menu_koroshi_pda_enlace" name="Configuración: Gestión en la PDA" parent="menu_koroshi_actividades_root"
+              action="action_koroshi_pda_enlace" sequence="92" groups="koroshi_operarios.grupo_productividad"/>
     <menuitem id="menu_koroshi_actividades_config" name="Configuración: actividades"
               parent="menu_koroshi_actividades_root" action="action_koroshi_actividad" sequence="90"
               groups="koroshi_operarios.grupo_productividad"/>

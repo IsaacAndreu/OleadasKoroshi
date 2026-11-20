@@ -89,6 +89,8 @@ class KoroshiActividadRegistro(models.Model):
     # v1.4.0: última vez que se sabe que la persona estaba (tarjeta, matrícula). Vacío = el inicio del tramo.
     confirmado = fields.Datetime('Última señal', help='Última vez que pasó la tarjeta o leyó una matrícula con este '
                                                      'tramo abierto. Lo usa el «¿Sigues?».')
+    # v1.6.0: área de la PDA (la de su actividad), para «Horas por área» y el tablero del responsable
+    area = fields.Selection(related='actividad_id.area', string='Área', store=True, index=True, readonly=True)
 
     # ------------------------------------------------------------------ computes
     @api.depends('employee_id', 'actividad_id')
