@@ -107,8 +107,11 @@ crons. Solo lee; tablas transitorias propias. Migracion 13.0.2.6.0 (Departament 
 v2.6.1 (19/11/2026): la 2.6.0 no se pudo actualizar en el servidor («External ID 'grupo_it' must be fully
 qualified»): en los groups de una vista el grupo va con el modulo delante (koroshi_menu.grupo_it). Odoo deshizo la
 actualizacion y siguio en la 2.5.2. Solo cambia eso.
+v2.6.2 (20/11/2026): Almacen Nath (las PDA) vuelve a ver todo el menu Faltantes (revision, rondas, crear ronda,
+puestos a 0, faltas por dia, faltas repetidas y recalcular). Pedido por Isaac. Va por Inventario administrador
+(stock.group_stock_manager), no por Jefes de almacen, que le daria la bandeja. Solo menus.
 """,
-    'version': '13.0.2.6.1',
+    'version': '13.0.2.6.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

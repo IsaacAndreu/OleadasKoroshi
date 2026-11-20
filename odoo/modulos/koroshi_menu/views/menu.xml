@@ -50,6 +50,9 @@
               action="koroshi_monitor.action_koroshi_consulta_envios" groups="-stock.group_stock_user,grupo_jefes"/>
 
     <!-- ===== Faltantes ===== -->
+    <!-- v2.6.2 (20/11/2026, Isaac): Almacén Nath (las PDA, Inventario administrador) ve todo Faltantes otra vez:
+         revisión, rondas, crear ronda, puestos a 0 y faltas. Por stock.group_stock_manager, no por grupo_jefes
+         (que le daría la bandeja). -->
     <menuitem id="menu_koroshi_sec_faltantes" name="Faltantes" parent="menu_koroshi_app" sequence="20"
               groups="stock.group_stock_user"/>
 
@@ -57,24 +60,24 @@
               action="koroshi_faltantes.action_koroshi_faltantes_pantalla"/>
     <menuitem id="menu_koroshi_revision_faltantes" name="Revisión de faltantes" parent="menu_koroshi_sec_faltantes"
               sequence="20" action="koroshi_faltantes.action_koroshi_faltante_revision"
-              groups="grupo_jefes"/>
+              groups="grupo_jefes,stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_rondas_faltantes" name="Rondas de faltantes (INT)" parent="menu_koroshi_sec_faltantes"
               sequence="30" action="koroshi_faltantes.action_koroshi_rondas"
-              groups="grupo_jefes"/>
+              groups="grupo_jefes,stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_crear_ronda" name="Crear ronda de revisión" parent="menu_koroshi_sec_faltantes"
-              sequence="40" action="koroshi_faltantes.action_koroshi_crear_ronda" groups="-stock.group_stock_manager,grupo_jefes"/>
+              sequence="40" action="koroshi_faltantes.action_koroshi_crear_ronda" groups="stock.group_stock_manager,grupo_jefes"/>
     <menuitem id="menu_koroshi_puestos_cero" name="Puestos a 0 hoy" parent="menu_koroshi_sec_faltantes" sequence="50"
-              action="koroshi_faltantes.action_koroshi_puestos_a_cero" groups="-stock.group_stock_manager,grupo_jefes"/>
+              action="koroshi_faltantes.action_koroshi_puestos_a_cero" groups="stock.group_stock_manager,grupo_jefes"/>
     <menuitem id="menu_koroshi_kpi_falta" name="Faltas por día" parent="menu_koroshi_sec_faltantes" sequence="60"
               action="koroshi_kpi.action_koroshi_kpi_falta"
-              groups="grupo_jefes"/>
+              groups="grupo_jefes,stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_kpi_faltas_repetidas" name="Faltas repetidas (revisar)"
               parent="menu_koroshi_sec_faltantes" sequence="70"
               action="koroshi_kpi.action_koroshi_kpi_faltas_repetidas"
-              groups="grupo_jefes"/>
+              groups="grupo_jefes,stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_recalcular_faltas" name="Recalcular faltas de hoy" parent="menu_koroshi_sec_faltantes"
               sequence="80" action="koroshi_kpi.action_koroshi_kpi_falta_recalcular"
-              groups="grupo_jefes"/>
+              groups="grupo_jefes,stock.group_stock_manager"/>
 
     <!-- ===== Personas (id de la v1.x: menu_koroshi_informes; ver arriba) =====
          v2.4.2 / v2.5.1: 18, 20, 25, 28 y 30 son de koroshi_actividades (manipulaciones). -->
