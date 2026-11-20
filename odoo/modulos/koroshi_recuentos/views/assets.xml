@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="KOROSHI Recuentos assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/koroshi_recuentos/static/src/css/recuentos.css"/>
+            <script type="text/javascript" src="/koroshi_recuentos/static/src/js/referencia.js"/>
+        </xpath>
+    </template>
+</odoo>

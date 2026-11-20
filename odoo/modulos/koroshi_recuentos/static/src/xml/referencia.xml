@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_recuentos.Referencia">
+        <div class="o_koroshi_recuentos">
+            <header class="o_kr_cab">
+                <div class="o_kr_titulo">Referencia</div>
+                <input type="text" class="o_kr_codigo" autocomplete="off" inputmode="none"
+                       placeholder="Referencia (2621XC04) o leer una prenda"/>
+                <button type="button" class="o_kr_teclado">⌨ Escribir</button>
+            </header>
+            <div class="o_kr_aviso"/>
+            <div class="o_kr_cuerpo"/>
+            <div class="o_kr_botones">
+                <button type="button" class="o_kr_atras">← Atrás</button>
+                <button type="button" class="o_kr_vaciar">Empezar de nuevo</button>
+            </div>
+        </div>
+    </t>
+</templates>

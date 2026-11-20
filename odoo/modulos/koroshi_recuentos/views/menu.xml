@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_koroshi_recuentos_app" name="Referencia" action="action_koroshi_recuentos_referencia"
+              web_icon="koroshi_recuentos,static/description/icon.png" sequence="4"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_recuentos_root" name="Recuentos"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" sequence="96"/>
+    <menuitem id="menu_koroshi_recuentos_referencia" name="Referencia (dónde está y cuánto dice Odoo)"
+              parent="menu_koroshi_recuentos_root" action="action_koroshi_recuentos_referencia" sequence="10"/>
+</odoo>
