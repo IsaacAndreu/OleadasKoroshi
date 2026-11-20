@@ -94,6 +94,8 @@ entrada única), probar el Inicio con Departament IT y ponerlo de inicio a Almac
 **14:34**: actividades **1.8.2** (arregla «Cargando…» al volver, rejilla a 375 px, logo) y recuentos **1.1.0**
 (recuento leído a ciegas), un reinicio y un upgrade, sin errores. Inicio PDA probado con Departament IT y la
 tarjeta de Isaac: entra y vuelve de cada área. Falta: ponerlo de inicio a Almacén Nath y `koroshi_pda_app.inicio`.
+**16:48**: actividades **1.8.3** (el Inicio lee la tarjeta con el lector sin tocar el campo; Devoluciones abre
+«Ubicar devoluciones»), un reinicio, sin errores; probado en el navegador. Falta probarlo en una PDA Zebra real.
 
 **No instalar todavía** (decidido): koroshi_delegacion.
 
