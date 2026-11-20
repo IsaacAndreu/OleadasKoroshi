@@ -59,6 +59,49 @@ class TestComun(unittest.TestCase):
         self.assertEqual(comun.hoy_local(), comun.ahora_local().date())
         self.assertEqual(comun.ahora_local().tzinfo.zone, 'Europe/Madrid')
 
+class TestTurnos(unittest.TestCase):
+    """v1.1.0: turno por hora de entrada."""
+
+    def utc(self, h, m=0, dia=20):
+        import pytz
+        return comun.zona().localize(DT(2026, 11, dia, h, m)).astimezone(pytz.utc).replace(tzinfo=None)
+
+    def test_manana(self):
+        t = comun.turno_de(self.utc(6, 4))
+        self.assertEqual(t['tramos'], [(self.utc(6), self.utc(14))])
+        self.assertEqual((t['fin'], t['descanso'], t['continuo'], t['nombre']), (self.utc(14), 15, True, '06:00-14:00'))
+        self.assertEqual(comun.turno_de(self.utc(5, 50))['nombre'], '06:00-14:00')     # llega antes de hora
+        self.assertEqual(comun.turno_de(self.utc(6, 59))['nombre'], '06:00-14:00')
+
+    def test_partido(self):
+        t = comun.turno_de(self.utc(8, 3))
+        self.assertEqual(t['tramos'], [(self.utc(8), self.utc(13)), (self.utc(14), self.utc(17))])
+        self.assertEqual((t['fin'], t['descanso'], t['continuo']), (self.utc(17), 0, False))
+        self.assertEqual(comun.turno_de(self.utc(7))['nombre'], '08:00-13:00 y 14:00-17:00')
+
+    def test_sin_turno(self):
+        self.assertIsNone(comun.turno_de(self.utc(11)))
+        self.assertIsNone(comun.turno_de(self.utc(15, 30)))
+        self.assertIsNone(comun.turno_de(None))
+
+    def test_cambio_de_hora(self):
+        # 29/03/2026 (verano): 06:00 local = 04:00 UTC; 20/11 (invierno): 05:00 UTC
+        t = comun.turno_de(self.utc(6, 10, dia=20))
+        self.assertEqual(t['tramos'][0][0], DT(2026, 11, 20, 5, 0))
+        import pytz
+        e = comun.zona().localize(DT(2026, 3, 30, 6, 10)).astimezone(pytz.utc).replace(tzinfo=None)
+        self.assertEqual(comun.turno_de(e)['tramos'][0][0], DT(2026, 3, 30, 4, 0))
+
+    def test_parametro(self):
+        texto = '07:30 06:30-14:30 descanso=20; 12:00 09:00-14:00,15:00-19:00'
+        self.assertEqual(comun.turno_de(self.utc(7, 10), texto)['nombre'], '06:30-14:30')
+        self.assertEqual(comun.turno_de(self.utc(7, 10), texto)['descanso'], 20)
+        self.assertEqual(comun.turno_de(self.utc(11, 0), texto)['fin'], self.utc(19))
+        # mal escrito: se salta esa parte; todo mal: la regla por defecto
+        self.assertEqual(len(comun.leer_turnos('07:00 06:00-14:00; xx 8-9; 11:00 10:00-09:00')), 1)
+        self.assertEqual(comun.leer_turnos('basura'), comun.leer_turnos(None))
+        self.assertEqual(comun.leer_turnos(''), comun.leer_turnos(None))
+
 
 if __name__ == '__main__':
     unittest.main()

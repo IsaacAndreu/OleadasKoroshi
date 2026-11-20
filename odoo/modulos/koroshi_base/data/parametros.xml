@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1.0: turno por hora de entrada (comun.turno_de). Formato:
+         <entra antes de> <tramos> [descanso=<min>]; <entra antes de> <tramos> ...
+         Por defecto: quien entra antes de las 07:00 hace 06:00-14:00 con 15 min de descanso; antes de las 11:00,
+         08:00-13:00 y 14:00-17:00 (la comida no cuenta). Después de las 11:00: sin turno (sin hora de fin).
+         noupdate: si se cambia en Ajustes > Técnico > Parámetros del sistema, al actualizar no se pisa. -->
+    <data noupdate="1">
+        <record id="parametro_turnos" model="ir.config_parameter">
+            <field name="key">koroshi_base.turnos</field>
+            <field name="value">07:00 06:00-14:00 descanso=15; 11:00 08:00-13:00,14:00-17:00</field>
+        </record>
+    </data>
+</odoo>

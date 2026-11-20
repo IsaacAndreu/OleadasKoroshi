@@ -66,3 +66,73 @@ def dia_local(dt_utc):
     """Dia del almacen de un Datetime de Odoo (UTC sin zona)."""
     loc = a_local(dt_utc)
     return loc and loc.date() or None
+
+
+# -----------------------------------------------------------------------------
+# v1.1.0 (20/11/2026): turno por hora de entrada (Isaac: «si empiezas a las 8 harás de 8 a 13 y de 14 a 17; si
+# empiezas a las 6, de 6 a 14 con una pausa de 15 min»). No hay tabla de turnos: lo decide la primera señal del día
+# (primera tarea de Lecturas o primer tramo de Actividades). Regla en el parámetro koroshi_base.turnos, con el formato
+#     <entra antes de> <tramos> [descanso=<min>]; <entra antes de> <tramos> ...
+# Quien entra después de la última hora no tiene turno (camión, refuerzo): sin hora de fin.
+# -----------------------------------------------------------------------------
+PARAM_TURNOS = 'koroshi_base.turnos'
+TURNOS = '07:00 06:00-14:00 descanso=15; 11:00 08:00-13:00,14:00-17:00'
+
+
+def _hora(texto):
+    h, m = (texto or '').strip().split(':')
+    return datetime.time(int(h), int(m))
+
+
+def leer_turnos(texto=None):
+    """Texto del parámetro -> [(entra_antes_de, [(ini, fin)], descanso_min)] ordenado. Lo mal escrito se salta.
+    Texto vacío o sin ninguna regla buena -> la regla por defecto (TURNOS)."""
+    reglas = []
+    for parte in (texto if texto is not None else TURNOS).split(';'):
+        trozos = parte.split()
+        if len(trozos) < 2:
+            continue
+        try:
+            antes = _hora(trozos[0])
+            tramos = []
+            for t in trozos[1].split(','):
+                ini, fin = t.split('-')
+                ini, fin = _hora(ini), _hora(fin)
+                if fin <= ini:
+                    raise ValueError(t)
+                tramos.append((ini, fin))
+            descanso = 0
+            for extra in trozos[2:]:
+                if extra.startswith('descanso='):
+                    descanso = max(int(extra.split('=', 1)[1]), 0)
+        except (ValueError, IndexError):
+            continue
+        reglas.append((antes, sorted(tramos), descanso))
+    if not reglas and texto is not None:
+        return leer_turnos(None)
+    return sorted(reglas, key=lambda r: r[0])
+
+
+def texto_turnos(env):
+    """El parámetro koroshi_base.turnos (o la regla por defecto). env = el de Odoo."""
+    return env['ir.config_parameter'].sudo().get_param(PARAM_TURNOS) or TURNOS
+
+
+def turno_de(entrada, texto=None):
+    """Turno de quien entra a esa hora (Datetime de Odoo, UTC sin zona). None si entra después de la última regla.
+    Devuelve, en UTC sin zona y del día de la entrada:
+        {'tramos': [(ini, fin)], 'fin': fin del último tramo, 'descanso': min, 'continuo': un solo tramo,
+         'nombre': '06:00-14:00' o '08:00-13:00 y 14:00-17:00'}"""
+    loc = a_local(entrada)
+    if not loc:
+        return None
+    for antes, tramos, descanso in leer_turnos(texto):
+        if loc.time() < antes:
+            dia = loc.date()
+
+            def utc(h):
+                return zona().localize(datetime.datetime.combine(dia, h)).astimezone(pytz.utc).replace(tzinfo=None)
+            res = [(utc(a), utc(b)) for a, b in tramos]
+            return {'tramos': res, 'fin': res[-1][1], 'descanso': descanso, 'continuo': len(res) == 1,
+                    'nombre': ' y '.join('%s-%s' % (a.strftime('%H:%M'), b.strftime('%H:%M')) for a, b in tramos)}
+    return None
