@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1.0: paquetes de devolución llegados (fase 2, etapa 1). Buscar «lo de GLS del día 28». -->
+    <record id="view_koroshi_devolucion_paquete_tree" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.tree</field>
+        <field name="model">koroshi.devolucion.paquete</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false" decoration-muted="estado == 'anulado'">
+                <field name="llegada"/>
+                <field name="name"/>
+                <field name="canal"/>
+                <field name="tipo_codigo" optional="show"/>
+                <field name="tienda_id" optional="show"/>
+                <field name="employee_id"/>
+                <field name="nota" optional="show"/>
+                <field name="dia" optional="hide"/>
+                <field name="user_id" optional="hide"/>
+                <field name="estado"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_devolucion_paquete_form" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.form</field>
+        <field name="model">koroshi.devolucion.paquete</field>
+        <field name="arch" type="xml">
+            <form create="false" delete="false">
+                <header>
+                    <button name="action_anular" type="object" string="Anular (leído por error)"
+                            groups="stock.group_stock_manager" attrs="{'invisible': [('estado', '!=', 'llegado')]}"
+                            confirm="La llegada queda anulada (no se borra). ¿Seguro?"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="canal"/>
+                            <field name="tipo_codigo"/>
+                            <field name="tienda_id"/>
+                        </group>
+                        <group>
+                            <field name="llegada"/>
+                            <field name="dia"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                        </group>
+                    </group>
+                    <field name="nota" placeholder="Nota"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_devolucion_paquete_pivot" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.pivot</field>
+        <field name="model">koroshi.devolucion.paquete</field>
+        <field name="arch" type="xml">
+            <pivot string="Paquetes llegados">
+                <field name="dia" interval="day" type="row"/>
+                <field name="canal" type="col"/>
+            </pivot>
+        </field>
+    </record>
+
+    <record id="view_koroshi_devolucion_paquete_search" model="ir.ui.view">
+        <field name="name">koroshi.devolucion.paquete.search</field>
+        <field name="model">koroshi.devolucion.paquete</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="name" string="Código (matrícula, Zalando, transportista)"/>
+                <field name="tienda_id"/>
+                <field name="employee_id"/>
+                <field name="nota"/>
+                <filter name="llegados" string="Llegados" domain="[('estado', '=', 'llegado')]"/>
+                <filter name="anulados" string="Anulados" domain="[('estado', '=', 'anulado')]"/>
+                <separator/>
+                <filter name="tienda" string="Tiendas" domain="[('canal', '=', 'tienda')]"/>
+                <filter name="web" string="Web" domain="[('canal', '=', 'web')]"/>
+                <filter name="zalando" string="Zalando" domain="[('canal', '=', 'zalando')]"/>
+                <filter name="marketplace" string="Marketplace" domain="[('canal', '=', 'marketplace')]"/>
+                <separator/>
+                <filter name="filtro_dia" string="Día de llegada" date="dia"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_dia" string="Día" context="{'group_by': 'dia:day'}"/>
+                    <filter name="por_canal" string="Canal" context="{'group_by': 'canal'}"/>
+                    <filter name="por_tienda" string="Tienda" context="{'group_by': 'tienda_id'}"/>
+                    <filter name="por_persona" string="Leído por" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_devolucion_paquete" model="ir.actions.act_window">
+        <field name="name">Paquetes llegados</field>
+        <field name="res_model">koroshi.devolucion.paquete</field>
+        <field name="view_mode">tree,form,pivot</field>
+        <field name="context">{'search_default_llegados': 1}</field>
+    </record>
+
+    <menuitem id="menu_koroshi_devoluciones_paquetes" name="Paquetes llegados"
+              parent="menu_koroshi_devoluciones_root" action="action_koroshi_devolucion_paquete" sequence="15"/>
+</odoo>
