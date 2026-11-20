@@ -82,8 +82,17 @@ del turno se pregunta «¿Sigues?» a quien no ha dado señal desde esa hora; si
 cierra A ESA HORA (13:00 = pausa automática; 14:00 / 17:00 = cierre automático). Si contesta, se le pregunta cada
 minutos_sigues (30). Quien entra después de las 11 sigue con el «¿Sigues?» de la 1.4. hora_pausa y hora_cierre ya no
 se usan; tope nuevo hora_tope (22:00) para lo que nadie cierre. Sin koroshi_base 1.1.0 se comporta como la 1.4.
+v1.8.0 (20/11/2026): «la lectura manda» (entrada única de la PDA, fase 4; Isaac 20/11: sí). Cron nuevo cada 5 min
+(models/lectura_manda.py): quien lee en Lecturas / Preparación pasa a Picking y quien mueve contenedores a
+Compactación, aunque en el Inicio eligiera otra área: el tramo anterior se cierra («Cambió de actividad») a la hora de
+la primera lectura nueva y el nuevo empieza ahí (nota «Por lectura»). Si estaba en pausa y vuelve a leer, se le abre
+desde esa lectura. Leer cuenta como señal para el «¿Sigues?». Solo a quien ya tiene hoy algún tramo con área: a quien
+no usa el Inicio no se le crea nada. En Picking y Compactación, koroshi_actividades.minutos_sin_lecturas (15; 0 =
+nunca) sin leer cierra el tramo a la hora de la última lectura (motivo nuevo «Sin lecturas», cuenta como pausa). Va por
+cron y no dentro de la lectura: si falla, la PDA no se entera (cada persona en su savepoint). Sin depender de
+koroshi_contenedores. Solo escribe en koroshi.actividad.registro. No toca cron_cerrar ni _sigues().
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

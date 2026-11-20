@@ -42,8 +42,9 @@ MOTIVOS = [
     ('fin_auto', 'Cierre automático (fin de jornada)'),
     ('manual', 'A mano'),
     ('sin_respuesta', 'No contestó «¿Sigues?»'),      # v1.4.0
+    ('sin_lecturas', 'Sin lecturas (Picking, Compactación)'),   # v1.8.0: lectura_manda.py
 ]
-MOTIVOS_PAUSA = ('pausa', 'pausa_auto', 'sin_respuesta')
+MOTIVOS_PAUSA = ('pausa', 'pausa_auto', 'sin_respuesta', 'sin_lecturas')
 # v1.4.0: «¿Sigues?» (parámetros koroshi_actividades.sigues_desde / minutos_sigues / minutos_respuesta)
 SIGUES_DESDE = '13:00'
 MINUTOS_SIGUES = 30

@@ -41,7 +41,7 @@
         <field name="name">koroshi.actividad.registro.tree</field>
         <field name="model">koroshi.actividad.registro</field>
         <field name="arch" type="xml">
-            <tree decoration-info="estado == 'curso'" decoration-warning="motivo_fin in ('pausa_auto', 'fin_auto', 'sin_respuesta')">
+            <tree decoration-info="estado == 'curso'" decoration-warning="motivo_fin in ('pausa_auto', 'fin_auto', 'sin_respuesta', 'sin_lecturas')">
                 <field name="dia"/>
                 <field name="employee_id"/>
                 <field name="actividad_id"/>
@@ -120,7 +120,7 @@
                 <separator/>
                 <filter name="curso" string="En curso" domain="[('estado', '=', 'curso')]"/>
                 <filter name="auto" string="Cerrados solos (se olvidó)"
-                        domain="[('motivo_fin', 'in', ('pausa_auto', 'fin_auto', 'sin_respuesta'))]"/>
+                        domain="[('motivo_fin', 'in', ('pausa_auto', 'fin_auto', 'sin_respuesta', 'sin_lecturas'))]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="g_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
                     <filter name="g_actividad" string="Actividad" context="{'group_by': 'actividad_id'}"/>

@@ -44,5 +44,11 @@
             <field name="key">koroshi_actividades.inversa_destinos</field>
             <field name="value">JA=JA, PT=PT, TR=TR, ML=ML, XC ZC UN WA ZT ZB HA ZA BI ZN SG ZF HS=ACC, *=RESTO</field>
         </record>
+        <!-- v1.8.0: en Picking y Compactación, el tramo se cierra si en estos minutos no lee nada (a la hora de la
+             última lectura). 0 = nunca. -->
+        <record id="parametro_minutos_sin_lecturas" model="ir.config_parameter">
+            <field name="key">koroshi_actividades.minutos_sin_lecturas</field>
+            <field name="value">15</field>
+        </record>
     </data>
 </odoo>
