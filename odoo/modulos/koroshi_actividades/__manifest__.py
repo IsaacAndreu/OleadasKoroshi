@@ -91,8 +91,11 @@ no usa el Inicio no se le crea nada. En Picking y Compactación, koroshi_activid
 nunca) sin leer cierra el tramo a la hora de la última lectura (motivo nuevo «Sin lecturas», cuenta como pausa). Va por
 cron y no dentro de la lectura: si falla, la PDA no se entera (cada persona en su savepoint). Sin depender de
 koroshi_contenedores. Solo escribe en koroshi.actividad.registro. No toca cron_cerrar ni _sigues().
+v1.8.1 (20/11/2026): icono propio para «Inicio PDA» (Isaac 20/11: «faltaria un logo nou»). Era el mismo
+cronómetro morado que «Actividades» y en la pantalla de inicio no se distinguían. Ahora casa blanca sobre verde con
+cuatro áreas (una en amarillo): static/description/icon_inicio_pda.png. Solo imagen y el web_icon del menú.
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.8.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

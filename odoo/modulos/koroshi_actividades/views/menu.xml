@@ -6,8 +6,9 @@
     <!-- v1.3.1: icono propio (antes, el mismo que Lecturas) -->
     <!-- v1.6.0: Inicio de la PDA (entrada única por áreas). Icono en la pantalla de inicio para probarlo antes de
          ponerlo como acción inicial de «Almacén Nath». -->
+    <!-- v1.8.1: icono propio (casa verde con 4 áreas); antes, el mismo cronómetro que Actividades. -->
     <menuitem id="menu_koroshi_inicio_pda_app" name="Inicio PDA" action="action_koroshi_inicio_pda"
-              web_icon="koroshi_actividades,static/description/icon_actividades.png" sequence="1"
+              web_icon="koroshi_actividades,static/description/icon_inicio_pda.png" sequence="1"
               groups="stock.group_stock_user"/>
 
 
