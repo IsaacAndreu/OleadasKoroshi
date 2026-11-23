@@ -30,6 +30,8 @@ from odoo.exceptions import AccessError
 from odoo.http import request
 from odoo.addons.koroshi_base import comun   # v1.28: la empresa (la hora sigue siendo la del usuario)
 
+from ..cache import CachePorClave
+
 _logger = logging.getLogger(__name__)
 
 COMPANY_ID = comun.COMPANY_ID   # v1.28: de koroshi_base (EFFECTIVE LOGISTICS, S.L.)
@@ -39,8 +41,13 @@ N_DIAS = 3              # dias de "Tiendas" que salen en el desplegable
 # (PC, tele, PDA) cada una calculaba lo mismo cada minuto. Ahora un solo calculo a la vez por agrupacion y el resultado
 # vale CACHE_SEG segundos para todas.
 CACHE_SEG = 20
-_cache = {}
-_lock = threading.Lock()
+# v1.44.0 (revision general 23/11, R22): candado por clave (antes uno solo para todo y durante todo el calculo: Tiendas
+# esperaba a que acabara Z-2311-). La misma agrupacion sigue calculandose una sola vez a la vez.
+_cache = CachePorClave(CACHE_SEG)
+# v1.44.0 (R22): «Siguiente tienda» relee todas las OUT de tienda abiertas de PRIO_DIAS_ABIERTAS dias: antes en cada
+# calculo de cada agrupacion (cada 20 s por pantalla); ahora una vez cada PRIO_CACHE_SEG para todas las pantallas
+PRIO_CACHE_SEG = 120
+_cache_prioridad = CachePorClave(PRIO_CACHE_SEG)
 TIPO_PEDIDO = 'PED. TIENDAS'
 PARADA_MIN = 20         # OUT en curso sin cerrar caja en estos minutos = parada (no cuenta como persona activa)
 PRIO_DIAS_ABIERTAS = 30  # v1.36.0: OUT de tienda abiertas creadas en estos dias (las mas viejas no marcan el orden)
@@ -545,30 +552,26 @@ class KoroshiMonitor(http.Controller):
         # v1.27: si otra pantalla esta calculando lo mismo, se espera y se usa su resultado
         jefe = es_jefe()     # v1.37.0: los operarios ven otro resultado (sin nombres ni u/h por persona)
         clave = (request.env.cr.dbname, prefijo or '', jefe)
-        with _lock:
-            guardado = _cache.get(clave)
-            if guardado and time.time() - guardado[0] < CACHE_SEG:
-                return guardado[1]
-            res = self._calcular_datos(prefijo, nombres=jefe)
-            res['jefe'] = jefe
-            # v1.40.0: boton «Etiquetas» por zona (koroshi_zonas: koroshi.zonas.etiquetas.imprimir, la antigua 1843)
-            res['etiquetas_zona'] = bool(jefe and 'koroshi.zonas.etiquetas' in request.env.registry)
-            # v1.42.0: seccion «Imprimir» (web, Zalando, About You, INT); si falla, el Monitor sale igual sin ella
-            try:
-                res['imprimir'] = request.env['koroshi.monitor.imprimir'].pendientes()
-            except Exception:
-                _logger.exception('KOROSHI MONITOR: no se ha podido calcular la seccion Imprimir')
-                res['imprimir'] = []
-            if not jefe:
-                # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
-                res.pop('personas', None)
-                res.pop('personas_op', None)
-                res['operarios'] = [{k: v for k, v in o.items() if k not in ('uh', 'min')}
-                                    for o in res.get('operarios') or []]
-            ahora = time.time()
-            _cache[clave] = (ahora, res)
-            for k in [k for k, v in _cache.items() if ahora - v[0] > 600]:
-                _cache.pop(k, None)
+        return _cache.obtener(clave, lambda: self._datos_pantalla(prefijo, jefe))   # v1.44.0: candado por clave
+
+    def _datos_pantalla(self, prefijo, jefe):
+        """Lo que devuelve /datos (sin cache): el calculo de la agrupacion y lo que depende de si es jefe."""
+        res = self._calcular_datos(prefijo, nombres=jefe)
+        res['jefe'] = jefe
+        # v1.40.0: boton «Etiquetas» por zona (koroshi_zonas: koroshi.zonas.etiquetas.imprimir, la antigua 1843)
+        res['etiquetas_zona'] = bool(jefe and 'koroshi.zonas.etiquetas' in request.env.registry)
+        # v1.42.0: seccion «Imprimir» (web, Zalando, About You, INT); si falla, el Monitor sale igual sin ella
+        try:
+            res['imprimir'] = request.env['koroshi.monitor.imprimir'].pendientes()
+        except Exception:
+            _logger.exception('KOROSHI MONITOR: no se ha podido calcular la seccion Imprimir')
+            res['imprimir'] = []
+        if not jefe:
+            # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
+            res.pop('personas', None)
+            res.pop('personas_op', None)
+            res['operarios'] = [{k: v for k, v in o.items() if k not in ('uh', 'min')}
+                                for o in res.get('operarios') or []]
         return res
 
     def _personas_op(self, env, dia, picking_ids):
@@ -600,27 +603,33 @@ class KoroshiMonitor(http.Controller):
     def _prioridad(self, env):
         """v1.36.0: «Siguiente tienda» y «Sacar estas antes» (orden por numero de pedido S-6665..., ver prioridad_calc).
         Solo pedidos de tienda (PED. TIENDAS), nunca Zalando ni web, y sin los pedidos pendientes (backorders): esos
-        salen cuando llega el stock y no marcan el orden. Solo lee. Si falla, None y el monitor sale como siempre."""
-        from . import prioridad_calc
+        salen cuando llega el stock y no marcan el orden. Solo lee. Si falla, None y el monitor sale como siempre.
+        v1.44.0 (R22): con su propia cache de PRIO_CACHE_SEG s, la misma para todas las pantallas y agrupaciones (no
+        depende de la agrupacion ni del usuario). Un fallo no se guarda: la siguiente pantalla lo vuelve a probar."""
         try:
-            ahora = fields.Datetime.now()
-            base = [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
-                    ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO), ('backorder_id', '=', False)]
-            Picking = env['stock.picking'].sudo()
-            abiertas = Picking.search(base + [('state', 'not in', ('done', 'cancel')),
-                                              ('create_date', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_ABIERTAS))])
-            hechas = Picking.search_read(base + [('state', '=', 'done'), (
-                'date_done', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_CERRADOS))], ['origin'])
-            lista = []
-            if abiertas:
-                for f in self._filas(env, abiertas, None)[0].values():
-                    d = self._fila(f)
-                    lista.append({k: d[k] for k in ('id', 'out', 'pedido', 'tienda', 'lote', 'caja', 'est', 'u', 'disp',
-                                                     'leido', 'en_caja')})
-            return prioridad_calc.prioridad(lista, [h['origin'] for h in hechas])
+            return _cache_prioridad.obtener((env.cr.dbname,), lambda: self._calcular_prioridad(env))
         except Exception:
             _logger.exception('KOROSHI Monitor: no se ha podido calcular la siguiente tienda')
             return None
+
+    def _calcular_prioridad(self, env):
+        """v1.44.0: el calculo de _prioridad, sin cache y sin tragarse los errores."""
+        from . import prioridad_calc
+        ahora = fields.Datetime.now()
+        base = [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
+                ('sale_id.s_order_type_id.name', '=', TIPO_PEDIDO), ('backorder_id', '=', False)]
+        Picking = env['stock.picking'].sudo()
+        abiertas = Picking.search(base + [('state', 'not in', ('done', 'cancel')),
+                                          ('create_date', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_ABIERTAS))])
+        hechas = Picking.search_read(base + [('state', '=', 'done'), (
+            'date_done', '>=', ahora - datetime.timedelta(days=PRIO_DIAS_CERRADOS))], ['origin'])
+        lista = []
+        if abiertas:
+            for f in self._filas(env, abiertas, None)[0].values():
+                d = self._fila(f)
+                lista.append({k: d[k] for k in ('id', 'out', 'pedido', 'tienda', 'lote', 'caja', 'est', 'u', 'disp',
+                                                 'leido', 'en_caja')})
+        return prioridad_calc.prioridad(lista, [h['origin'] for h in hechas])
 
     def _calcular_datos(self, prefijo=None, forzar=False, abiertas_antes=False, nombres=True):
         """v1.32.0: forzar = acepta cualquier 'TIENDAS:aaaa-mm-dd' (Producción por hora, dias de su desplegable);

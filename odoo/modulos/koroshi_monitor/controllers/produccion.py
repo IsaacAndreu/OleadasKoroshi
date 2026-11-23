@@ -23,6 +23,7 @@ from odoo.addons.koroshi_base import comun
 import logging
 
 from . import produccion_calc as calc
+from ..cache import CachePorClave
 from .main import _comprobar_jefe, codigo_op, etiqueta_op   # v1.37.0: solo jefes
 
 _logger = logging.getLogger(__name__)
@@ -30,8 +31,10 @@ COMPANY_ID = comun.COMPANY_ID
 N_DIAS = 14             # dias en el desplegable
 MAX_DIAS_EXCEL = 31
 CACHE_SEG = 30
-_cache = {}
-_lock = threading.Lock()
+_cache = CachePorClave(CACHE_SEG)   # v1.44.0 (R22): candado por clave (antes uno solo para todos los dias y tipos)
+# v1.44.0 (R22): la cabecera (las cuentas de Tiendas del dia) es la misma para todos los tipos: una vez por dia y no
+# una por tipo
+_cache_cabecera = CachePorClave(CACHE_SEG)
 
 
 TIPOS = ('tiendas', 'web', 'marketplace', 'otros')     # v1.32.0: selector de la pantalla
@@ -190,19 +193,13 @@ class KoroshiProduccion(http.Controller):
         d = self._fecha(dia, hoy)
         tipo = tipo if tipo in TIPOS else None
         clave = (request.env.cr.dbname, request.env.user.tz or '', d.isoformat(), tipo or '')
-        with _lock:
-            guardado = _cache.get(clave)
-            if guardado and time.time() - guardado[0] < CACHE_SEG:
-                res = guardado[1]
-            else:
-                res = self._calcular(d, tipo)
-                if not res.get('sin_modulo'):
-                    res['cabecera'] = self._cabecera(d)
-                ahora = time.time()
-                _cache[clave] = (ahora, res)
-                for k in [k for k, v in _cache.items() if ahora - v[0] > 600]:
-                    _cache.pop(k, None)
-        res = dict(res)
+
+        def calcular():
+            r = self._calcular(d, tipo)
+            if not r.get('sin_modulo'):
+                r['cabecera'] = _cache_cabecera.obtener(clave[:3], lambda: self._cabecera(d))
+            return r
+        res = dict(_cache.obtener(clave, calcular))   # v1.44.0: candado por clave
         res.update({'dia': d.isoformat(), 'hoy': hoy.isoformat(), 'es_hoy': d == hoy,
                     'dias': [(hoy - datetime.timedelta(days=i)).isoformat() for i in range(N_DIAS)],
                     'hora': datetime.datetime.now(pytz.utc).astimezone(self._tz()).strftime('%H:%M')})

@@ -453,7 +453,8 @@ var Monitor = AbstractAction.extend({
         }
 
         h += '<div class="km-grid">' + [
-            [pctT + ' %', n(T.l) + ' de ' + n(T.u) + ' u leídas'],
+            // v1.44.0 (O7): en zonas las uds son las PEDIDAS (aunque no haya stock); en Tiendas, las reservadas
+            [pctT + ' %', n(T.l) + ' leídas de ' + n(T.u) + ' u pedidas'],
             [T.h + ' / ' + D.length, 'OUT hechas'],
             [T.c, 'OUT cogiéndose ahora'],
             [T.p, 'OUT sin empezar'],
@@ -720,7 +721,10 @@ Monitor.include({
             '<div class="km-hero-dato"><b>' + fin + '</b><span>' + finTxt + '</span></div>' +
             '<div class="km-hero-dato"><b>' + n(quedan) + '</b><span>uds por coger</span></div></div>' +
             '<div class="km-hero-barra"><i style="width:' + pct + '%"></i></div>' +
-            '<div class="km-hero-pie">' + n(T.l) + ' de ' + n(T.u) + ' u cogidas · <b>' + n(eq.uh || 0) + ' u/h</b>' +
+            // v1.44.0 (O7): aquí las uds son las que se pueden coger (reservadas o ya cogidas), no las pedidas
+            '<div class="km-hero-pie" title="Reservadas = lo que se puede coger (reservado o ya cogido). Lo pedido ' +
+            'sin stock no cuenta: por eso puede salir menos que en la vista de zonas, que cuenta lo pedido.">' +
+            n(T.l) + ' cogidas de ' + n(T.u) + ' u reservadas · <b>' + n(eq.uh || 0) + ' u/h</b>' +
             (eq.inicio ? ' desde las ' + e(eq.inicio) : '') + ' · <b>' + (eq.activas || 0) + '</b> cogiendo ahora · OUT: <b>' + T.hecha + '</b> hechas, <b>' +
             (T.curso + T.parcial) + '</b> en marcha, <b>' + T.pend + '</b> sin empezar</div></div>';
 

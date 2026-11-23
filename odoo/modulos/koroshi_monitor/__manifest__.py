@@ -211,8 +211,17 @@ con GLS»), como el que mandaba Betty a mano. Asunto «PEDIDOS DE TIENDA GLS dd/
 Para y CC en parametros nuevos koroshi_monitor.gls_para (expediciones@koroshi.tv) y koroshi_monitor.gls_cc (spain,
 sonia, betty). No se guarda en koroshi.envio.cierre (ese es el camion XPO para koroshi_s4t_envios y la bandeja del
 jefe): los envios se cuentan por los correos con ese asunto. Solo jefes.
+v1.44.0 (23/11/2026): revision general del 23/11 (R22, O7). La cache compartida entre pantallas tiene un candado
+por clave (cache.py, con tests sin Odoo): la misma agrupacion se sigue calculando una sola vez a la vez, pero Tiendas
+ya no espera a que acabe Z-2311- (antes habia un solo candado para todo y durante todo el calculo). «Siguiente
+tienda» (_prioridad), que relee todas las OUT de tienda abiertas de 30 dias, tiene su propia cache de 2 min para
+todas las pantallas (antes se calculaba con cada agrupacion cada 20 s); un fallo no se guarda. En Produccion por
+hora, candado por clave y la cabecera del dia una vez por dia, no una por tipo. En pantalla: la vista de zonas dice
+«leidas de N u pedidas» y la de Tiendas «cogidas de N u reservadas» (con la explicacion al pasar el raton): eran dos
+criterios distintos (7.056 pedidas frente a 6.980 reservadas el 23/11) y no se decia. Mismas cifras que antes; solo
+lee. Sin campos ni vistas nuevas.
 """,
-    'version': '13.0.1.43.0',
+    'version': '13.0.1.44.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
