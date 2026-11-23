@@ -223,8 +223,14 @@ ubicación de cada línea y, si ha cambiado (Contenedores, Faltantes), la PDA ca
 se refresca cada koroshi_preparacion.refresco_solo_s segundos sin leer (30; 0 = no). R8: mientras se cierra una caja
 con red, el botón Caja está apagado («Cerrando caja…») y una CJ leída no cuenta. Sin campos ni vistas nuevas; un
 parámetro nuevo. No toca koroshi_operarios (usa sus métodos de tarea y asignación).
+v3.35.0 (23/11/2026): revisión general del 23/11 (R16). Incluye la 3.34.0 (sin instalar). Necesita koroshi_base 1.2.1
+(instalarla antes). Las rutas de Lecturas que escriben (leer, deshacer, caja, cantidad, color, mover caja, marcar de la
+ronda y validar) piden permiso de Inventario y una tarjeta válida: la misma regla que Operarios (activo, con tarjeta y
+de la empresa), de koroshi_base.pda. Antes aceptaban cualquier employee_id. Si no vale, rechazo normal («Pasa otra vez
+tu tarjeta»), no se guarda y queda una línea WARNING en el log; sin tarjeta, como antes. Lo aprobó Isaac el 23/11.
+Las rutas que solo leen (modo, cargar, rechazadas, impresos) no cambian. Sin campos nuevos.
 """,
-    'version': '13.0.3.34.0',
+    'version': '13.0.3.35.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

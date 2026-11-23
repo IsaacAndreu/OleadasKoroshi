@@ -7,6 +7,8 @@
 # cola de la PDA). Mover, deshacer y validar llevan también id_lectura: si la PDA reintenta, no se hace dos veces.
 # v3.34: lo pendiente se escribe en la base de datos ANTES de calcular el estado y fuera de su try (R5); /validar deja
 # una línea en el log con los ms de cada tramo y el transportista (R6).
+# v3.35 (R16): las rutas que escriben (leer, deshacer, caja, cantidad, color, mover_caja, ronda_marcar, validar) piden
+# permiso de Inventario y una tarjeta válida (koroshi_base.pda). Si no, rechazo normal: «Pasa otra vez tu tarjeta».
 # =============================================================================
 import logging
 import time
@@ -14,6 +16,8 @@ import time
 from odoo import http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request
+
+from odoo.addons.koroshi_base import pda   # v3.35
 
 from ..models.lectura import Ocupada
 
@@ -36,6 +40,17 @@ class KoroshiPreparacion(http.Controller):
 
     def _empleado(self, employee_id):
         return request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+
+    def _no_vale(self, employee_id):
+        """v3.35 (revisión general 23/11, R16): en las rutas que escriben. Texto del rechazo si el usuario de la PDA no
+        tiene permiso de Inventario o si la tarjeta que manda no vale (de baja, sin tarjeta o de otra empresa: la misma
+        regla que Operarios, koroshi_base.pda). '' = todo bien. Sin tarjeta, como antes (se acepta)."""
+        if not request.env.user.has_group(pda.GRUPO_ALMACEN):
+            return 'Hace falta el permiso de Inventario para preparar.'
+        if employee_id and not pda.es_empleado_valido(request.env, self._empleado(employee_id)):
+            _logger.warning('KOROSHI Preparación: tarjeta no válida (employee_id %s): no se guarda', employee_id)
+            return pda.TARJETA_NO_VALE
+        return ''
 
     def _picking(self, picking_id=False, picking_name=False):
         Picking = request.env['stock.picking']
@@ -117,6 +132,9 @@ class KoroshiPreparacion(http.Controller):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         Lectura = self._lectura(diferida)
         Agrupacion = self._agrupacion(diferida)
         try:
@@ -137,6 +155,9 @@ class KoroshiPreparacion(http.Controller):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         Agrupacion = self._agrupacion()
         try:
             if lote_id:
@@ -157,6 +178,9 @@ class KoroshiPreparacion(http.Controller):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         Lectura = self._lectura(diferida)
         Agrupacion = self._agrupacion(diferida)
         try:
@@ -179,6 +203,9 @@ class KoroshiPreparacion(http.Controller):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         Lectura = self._lectura(diferida)
         Agrupacion = self._agrupacion(diferida)
         try:
@@ -222,6 +249,9 @@ class KoroshiPreparacion(http.Controller):
     def color(self, employee_id=False, color=False, **kw):
         """v3.21: el color de la franja de la ubicación de cada operario (leer o, con color, guardar)."""
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         Pref = request.env['koroshi.preparacion.preferencia'].sudo()
         if color:
             return {'ok': True, 'color': Pref.poner_color(emp, color)}
@@ -233,6 +263,9 @@ class KoroshiPreparacion(http.Controller):
         """v3.21: pasar uds de una caja cerrada a otra caja de la OUT (o a una nueva). v3.29: con id_lectura."""
         picking = self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         try:
             res = self._lectura().mover_caja(picking, emp, linea_id, cantidad, destino, id_lectura)
         except Ocupada as e:
@@ -260,6 +293,9 @@ class KoroshiPreparacion(http.Controller):
         """v3.33: ronda de faltantes: «No está» / «La ubicación no existe» en una línea."""
         picking = self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         try:
             res = self._lectura().ronda_marcar(picking, emp, linea_id, resultado, id_lectura)
         except Ocupada as e:
@@ -274,6 +310,9 @@ class KoroshiPreparacion(http.Controller):
         lote = self._lote(lote_id) if lote_id else None
         picking = None if lote_id else self._picking(picking_id)
         emp = self._empleado(employee_id)
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
         pp = pedido_pendiente if pedido_pendiente in ('si', 'no') else None
         Agrupacion = self._agrupacion()
         t0 = time.monotonic()
