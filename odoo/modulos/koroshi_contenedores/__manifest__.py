@@ -86,12 +86,18 @@ v1.10.0 (23/11/2026): el almacén pide archivar un contenedor desde su ficha (ab
   hueco); antes solo se podía con las casillas de la lista del hueco. Botón «Archivar» cuando no tiene prendas en el
   sistema (si tiene, antes «Poner a cero»), con la misma confirmación «¿está físicamente vacío?». Ruta nueva
   /koroshi/contenedores/archivar_uno; queda en el registro como «Archivar vacío» con quién lo hizo.
+v1.11.0 (23/11/2026): «Poner a cero» con prendas reservadas para una OUT (el contenedor está vacío y Odoo las tiene
+  reservadas: KO_310726_254, 23/11). Antes no se dejaba y no se podía archivar. Ahora, tras confirmar, cada línea
+  reservada pasa por Faltantes como si el operario la marcara (koroshi_faltantes, sin cambiarlo): la OUT se reserva
+  en el hueco con stock libre más cercano o, si no hay, sale sin ella; la unidad va a FALTANTE, queda su registro en
+  Faltantes y una nota en la OUT. Si alguna línea ya tiene algo leído no se toca nada. Todo o nada. Depende ahora de
+  koroshi_faltantes.
 """,
-    'version': '13.0.1.10.0',
+    'version': '13.0.1.11.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'hr', 'barcodes', 'koroshi_operarios'],
+    'depends': ['web', 'stock', 'hr', 'barcodes', 'koroshi_operarios', 'koroshi_faltantes'],
     'data': [
         'security/ir.model.access.csv',
         'views/assets.xml',

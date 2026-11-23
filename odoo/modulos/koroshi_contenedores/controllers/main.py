@@ -381,10 +381,45 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
+    def _reservas_a_faltantes(self, c, emp):
+        """v1.11.0: cada línea de OUT reservada en el contenedor pasa por Faltantes como si el operario la marcara:
+        reubicar en el hueco con stock libre más cercano que llegue (koroshi.faltante.reubicar) o, si no hay,
+        sin_alternativa (la OUT sale sin ella). En los dos casos la unidad va a FALTANTE y queda su registro.
+        No se toca una línea que ya tiene algo leído: alguien la está preparando. Devuelve un resumen por línea."""
+        Faltante = request.env['koroshi.faltante'].sudo()
+        Loc = request.env['stock.location'].sudo()
+        mls = request.env['stock.move.line'].sudo().search([
+            ('location_id', '=', c.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)])
+        leidas = mls.filtered(lambda l: not float_is_zero(l.qty_done, precision_rounding=l.product_uom_id.rounding))
+        if leidas:
+            raise UserError('No se ha cambiado nada: %s ya tiene prendas leídas en %s (alguien la está '
+                            'preparando). Espera a que acabe.' % (c.name, ', '.join(leidas.mapped('picking_id.name'))))
+        resumen = []
+        for ml in mls:
+            picking, product = ml.picking_id, ml.product_id
+            necesario = ml.product_qty
+            raiz = Faltante._raiz_stock(picking)
+            destino = False
+            for alt in Faltante.alternativas(product, c, raiz)['lista']:
+                if alt['libre'] >= necesario:
+                    destino = Loc.browse(alt['id'])
+                    break
+            if destino:
+                f = Faltante.reubicar(ml, destino, emp)
+                resumen.append('%s %s: ahora se coge en %s' % (picking.name, product.display_name,
+                                                                 f.ubicacion_nueva_id.complete_name))
+            else:
+                Faltante.sin_alternativa(ml, emp)
+                resumen.append('%s %s: sin stock en otro hueco, la OUT sale sin ella' % (picking.name,
+                                                                                         product.display_name))
+        return resumen
+
     @http.route('/koroshi/contenedores/cero', type='json', auth='user')
-    def cero(self, contenedor_id=False, employee_id=False, confirmado=False, **kw):
+    def cero(self, contenedor_id=False, employee_id=False, confirmado=False, pasar_faltantes=False, **kw):
         """Pone a cero el contenedor (está físicamente vacío y Odoo dice que tiene prendas): ajuste de inventario de
-        cada artículo. No se deja si alguna prenda está reservada para una OUT."""
+        cada artículo. v1.11.0: si hay prendas reservadas para una OUT, con pasar_faltantes se hace antes lo mismo que
+        el operario al marcar un faltante (koroshi_faltantes): la línea se reserva en otro hueco con stock libre (el
+        más cercano) o, si no hay, la OUT sale sin ella; la unidad va a FALTANTE y queda en Faltantes."""
         try:
             self._comprobar_usuario()
             if not confirmado:
@@ -394,19 +429,26 @@ class KoroshiContenedores(http.Controller):
             quants = self._quants(c)
             if not quants:
                 raise UserError('%s ya está a cero.' % c.name)
-            if any(q.reserved_quantity for q in quants):
-                pedidos = self._pedidos_reservados(c)
-                raise UserError('No se pone a cero: %s tiene prendas reservadas para %s. Quita antes la reserva '
-                                'desde el pedido.' % (c.name, ', '.join(pedidos) or 'un pedido'))
             if quants.filtered(lambda q: q.lot_id or q.package_id or q.owner_id):
                 raise UserError('%s tiene prendas con lote, paquete o propietario: hazlo desde Odoo o avisa a IT.'
                                 % c.name)
-            por_producto = {}
-            for q in quants:
-                d = por_producto.setdefault(q.product_id, {'qty': 0.0, 'company': q.company_id})
-                d['qty'] += q.quantity
-            total, n = 0.0, 0
-            with request.env.cr.savepoint():    # todo o nada
+            resumen = []
+            with request.env.cr.savepoint():    # todo o nada (también lo de Faltantes)
+                if any(q.reserved_quantity for q in quants):
+                    if not pasar_faltantes:      # la PDA pregunta antes, con las OUT
+                        return {'ok': False, 'reservado': True, 'pedidos': self._pedidos_reservados(c),
+                                'msg': '%s tiene prendas reservadas para %s.' % (
+                                    c.name, ', '.join(self._pedidos_reservados(c)) or 'un pedido')}
+                    resumen = self._reservas_a_faltantes(c, emp)
+                    quants = self._quants(c)
+                    if any(q.reserved_quantity for q in quants):
+                        raise UserError('%s sigue con prendas reservadas que no son de ninguna OUT abierta. '
+                                        'No se ha cambiado nada: avisa a IT.' % c.name)
+                por_producto = {}
+                for q in quants:
+                    d = por_producto.setdefault(q.product_id, {'qty': 0.0, 'company': q.company_id})
+                    d['qty'] += q.quantity
+                total, n = 0.0, 0
                 for producto, d in por_producto.items():
                     if float_is_zero(d['qty'], precision_rounding=producto.uom_id.rounding):
                         continue
@@ -414,8 +456,10 @@ class KoroshiContenedores(http.Controller):
                                  'KOROSHI contenedor %s: poner a cero (%s)' % (c.name, emp.name))
                     total += d['qty']
                     n += 1
-            return {'ok': True, 'msg': '%s: %s a cero (%s uds de %d ref. fuera del stock)' % (
-                emp.name, c.name, _num(total), n), 'contenedor': self._datos_contenedor(c)}
+            msg = '%s: %s a cero (%s uds de %d ref. fuera del stock)' % (emp.name, c.name, _num(total), n)
+            if resumen:
+                msg += '. A Faltantes: ' + '; '.join(resumen)
+            return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 

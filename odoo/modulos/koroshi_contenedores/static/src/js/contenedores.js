@@ -1,6 +1,7 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.11 (23/11): «Poner a cero» con prendas reservadas: pasan a Faltantes (como al marcar un faltante).
  * v1.10 (23/11): «Archivar» en la ficha del contenedor abierto (si no tiene prendas en el sistema).
  * v1.9.3 (23/11): sin «⌨ Escribir», el campo lee al parar el lector (150 ms), sin esperar Intro.
  * v1.9.2 (23/11): el campo lee con Intro o con tabulador al final.
@@ -568,7 +569,8 @@ var Pantalla = AbstractAction.extend({
         if (this.ocupado || !this.detalle || !this.persona) { return; }
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/cero', params: {
-            contenedor_id: this.detalle.id, employee_id: this.persona.id, confirmado: true}}).then(function (m) {
+            contenedor_id: this.detalle.id, employee_id: this.persona.id, confirmado: true,
+            pasar_faltantes: !!this.detalle.reservadas}}).then(function (m) {   // v1.11: lo ha confirmado
             self._fin();
             self.confirmando = false;
             if (!m || !m.ok) {
@@ -1110,7 +1112,9 @@ var Pantalla = AbstractAction.extend({
                 '<button type="button" class="o_kc_cancelar_anadir">Cancelar</button></div></div>';
         } else if (this.confirmando === 'cero') {
             html += '<div class="o_kc_confirmar"><div><b>¿' + _e(c.nombre) + ' está FÍSICAMENTE vacío?</b> Las ' +
-                _n(c.uds) + ' uds saldrán del stock (ajuste de inventario, queda apuntado quién lo hace).</div>' +
+                _n(c.uds) + ' uds saldrán del stock (ajuste de inventario, queda apuntado quién lo hace).' +
+                (c.reservadas ? ' <b>' + _n(c.reservadas) + ' están reservadas para un pedido: pasan a Faltantes</b> ' +
+                    '(la OUT las coge de otro hueco con stock o, si no hay, sale sin ellas).' : '') + '</div>' +
                 '<button type="button" class="o_kc_confirmar_si">Sí, vacío: poner a cero</button>' +
                 '<button type="button" class="o_kc_confirmar_no">No</button></div>';
         } else if (this.confirmando === 'archivar_uno') {     // v1.10
