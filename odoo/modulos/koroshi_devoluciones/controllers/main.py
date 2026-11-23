@@ -12,13 +12,15 @@
 #   /contenido_leer     tarjeta, paquete (código llegado en los últimos 30 días) o prenda
 #   /contenido_guardar  prendas del paquete con su resultado (bien / manipulación / tara); sin repetir la tanda
 # Solo ubicaciones de la compañía 8 (UBRAN tiene los mismos huecos con el mismo código de barras: Contenedores 1.8.1).
+# v1.3 (revisión general 23/11, O5 y R16): permiso, tarjeta y búsqueda de la prenda salen de koroshi_base.pda. La
+# tarjeta tiene que ser de un operario activo de la compañía (antes bastaba con que existiera).
 # =============================================================================
 import re
 
 from odoo import http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request
-from odoo.addons.koroshi_base import comun
+from odoo.addons.koroshi_base import comun, pda
 
 from ..models.devolucion import es_contenedor
 from ..models.paquete import CANALES
@@ -42,25 +44,12 @@ def _literal(texto):
 class KoroshiDevoluciones(http.Controller):
 
     def _comprobar_usuario(self):
-        if not request.env.user.has_group('stock.group_stock_user'):
-            raise UserError('No tienes permiso para ubicar devoluciones.')
+        pda.comprobar_grupo(request.env, 'No tienes permiso para ubicar devoluciones.')   # v1.3
 
     def _buscar_producto(self, codigo):
-        """Prenda por EAN (con o sin 0 delante), código alternativo, referencia interna o nombre (como Contenedores)."""
-        variantes = [codigo]
-        if codigo.isdigit() and len(codigo) == 12:
-            variantes.append('0' + codigo)
-        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
-            variantes.append(codigo[1:])
-        Product = request.env['product.product'].sudo()
-        p = Product.search([('barcode', 'in', variantes)], limit=1)
-        if not p and 'product.barcode' in request.env:
-            p = request.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1).product_id
-        if not p:
-            p = Product.search([('default_code', '=', codigo)], limit=1)
-        if not p:   # muchos artículos no tienen referencia interna: la referencia está en el nombre
-            p = Product.search([('name', '=', codigo), DE_LA_COMPANIA], limit=1)
-        return p
+        """Prenda por EAN (con o sin 0 delante), código alternativo, referencia interna o nombre. v1.3 (O5): la de
+        koroshi_base.pda, la misma en todas las pantallas (con sudo, como antes)."""
+        return pda.buscar_producto(request.env['product.product'].sudo().env, codigo)
 
     def _destino(self, codigo):
         """Contenedor KO_/TT_ (por nombre o código de barras) o hueco (código de barras). Vacío si no es ninguno."""
@@ -120,9 +109,7 @@ class KoroshiDevoluciones(http.Controller):
             self._comprobar_usuario()
             if not RE_TANDA.match(tanda or ''):
                 raise UserError('Tanda no válida. Vuelve a empezar.')
-            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-            if not emp:
-                raise UserError('Pasa antes tu tarjeta de operario.')
+            emp = pda.empleado_valido(request.env, employee_id)   # v1.3 (R16): activo y de la compañía
             man = request.env['koroshi.devolucion.manipulacion'].sudo().browse(int(manipulacion_id or 0)).exists()
             if not man or not man.active:
                 raise UserError('Elige qué has hecho (la opción ya no existe).')
@@ -190,9 +177,7 @@ class KoroshiDevoluciones(http.Controller):
             emp = request.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
             if emp:
                 return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
-            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-            if not emp:
-                raise UserError('Pasa antes tu tarjeta de operario.')
+            emp = pda.empleado_valido(request.env, employee_id)   # v1.3 (R16): activo y de la compañía
             p, nuevo = request.env['koroshi.devolucion.paquete'].registrar(codigo, canal, emp)
             d = self._datos_paquete(p)
             if nuevo:
@@ -236,9 +221,7 @@ class KoroshiDevoluciones(http.Controller):
             self._comprobar_usuario()
             if not RE_TANDA.match(tanda or ''):
                 raise UserError('Tanda no válida. Vuelve a empezar.')
-            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-            if not emp:
-                raise UserError('Pasa antes tu tarjeta de operario.')
+            emp = pda.empleado_valido(request.env, employee_id)   # v1.3 (R16): activo y de la compañía
             paq = request.env['koroshi.devolucion.paquete'].sudo().browse(int(paquete_id or 0)).exists()
             if not paq or paq.estado == 'anulado':
                 raise UserError('Ese paquete ya no es válido. Vuelve a leerlo.')

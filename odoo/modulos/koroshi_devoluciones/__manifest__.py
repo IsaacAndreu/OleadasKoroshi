@@ -41,8 +41,13 @@ v1.2.0 (20/11/2026): fase 2, etapa 2: «Contenido». Tercera pestaña: se lee el
   manipular / tara). Oficina: contenido en la ficha del paquete y «Prendas leídas en paquetes». Aún no se compara
   con lo esperado: falta la fuente (web: casar el paquete con la DevoEcom de S4T; tiendas: S4T no da el teórico).
   Solo apunta: no mueve stock.
+v1.3.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita koroshi_base 1.2.1 (instalarla antes). La
+  tarjeta compartida y el lector salen de koroshi_base (comun.js): el campo ahora también lee cuando el lector para
+  150 ms, como Contenedores (las PDA no mandan Intro y la lectura podía quedarse escrita); con «⌨ Escribir» espera al
+  Intro. En las rutas, el permiso, la tarjeta y la búsqueda de la prenda salen de koroshi_base.pda: la tarjeta tiene
+  que ser de un operario activo de la compañía; la búsqueda es la misma que antes. Sin campos nuevos.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
