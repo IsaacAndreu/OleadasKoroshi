@@ -16,6 +16,10 @@
 #   - que en el servidor no esta ya esa version ni una mas nueva (nunca se sobrescribe ni se baja una version);
 #   - que lo que pide en 'depends' esta en el servidor o en esta misma tanda (los modulos que no son koroshi_ /
 #     oriola_ pueden estar en otra ruta de addons: solo se avisa).
+# Y avisa (sin parar; revision general 23/11, R20) de:
+#   - los modulos que el -u de cada uno actualiza a la vez (los que dependen de el, directa o indirectamente);
+#   - un modulo NUEVO del que depende otro de la misma tanda (copiarlos juntos = «Unmet dependencies», 17/11);
+#   - la hora del almacen entre las 06:00 y las 17:00 (el reinicio y cada -u sacan las sesiones de las PDA).
 # Si algo falla no copia nada ni reinicia. Si todo esta bien: copia de seguridad, copia y UN solo reinicio.
 # Despues, en Odoo: Aplicaciones > Actualizar lista > Actualizar cada modulo (este script no lo hace).
 # El reinicio corta Odoo ~1 minuto: hacerlo fuera de horas, sin nadie validando en las PDA.
@@ -138,6 +142,61 @@ for i in "${!MODULOS[@]}"; do
         fi
     done
 done
+
+# v23/11 (revision general, R20): lo que el -u de cada modulo arrastra, modulos nuevos con dependientes en la tanda
+# y hora de trabajo. Solo avisa (no cuenta como problema).
+echo
+echo "== 1b. Lo que se actualiza a la vez (solo avisa) =="
+# Tabla «modulo dep1 dep2 ...» de todos los modulos del servidor, leida UNA vez; los de la tanda, con el manifest
+# del ZIP (pueden cambiar sus depends)
+: > "$TMP/deps.txt"
+for mf in "$ADDONS_DIR"/*/__manifest__.py; do
+    [ -f "$mf" ] || continue
+    d="$(basename "$(dirname "$mf")")"
+    [ -f "$TMP/zip_$d/$d/__manifest__.py" ] && continue
+    echo "$d $(depends_de "$mf" | tr '\n' ' ')" >> "$TMP/deps.txt"
+done
+for d in "${MODULOS[@]}"; do
+    [ -f "$TMP/zip_$d/$d/__manifest__.py" ] || continue
+    echo "$d $(depends_de "$TMP/zip_$d/$d/__manifest__.py" | tr '\n' ' ')" >> "$TMP/deps.txt"
+done
+# modulos que piden $1 en 'depends'
+dependientes_de(){ awk -v m="$1" '{for (i = 2; i <= NF; i++) if ($i == m) { print $1; break }}' "$TMP/deps.txt"; }
+for i in "${!MODULOS[@]}"; do
+    mod="${MODULOS[$i]}"
+    # todos los que dependen de el, directa o indirectamente (los que esten instalados se actualizan con su -u)
+    vistos=" $mod "; cola=("$mod"); arrastra=()
+    while [ "${#cola[@]}" -gt 0 ]; do
+        actual="${cola[0]}"; cola=("${cola[@]:1}")
+        for d in $(dependientes_de "$actual" | sort -u); do
+            case "$vistos" in *" $d "*) continue;; esac
+            vistos="$vistos$d "; cola+=("$d"); arrastra+=("$d")
+        done
+    done
+    if [ "${#arrastra[@]}" -eq 0 ]; then
+        echo "        -u $mod: no arrastra a ningun otro modulo"
+    else
+        yellow "   OJO -u $mod actualiza tambien (si estan instalados) ${#arrastra[@]} modulo(s): ${arrastra[*]}"
+    fi
+    # modulo nuevo (no esta en el servidor) del que depende otro de la tanda: copiarlos a la vez = «Unmet
+    # dependencies» unos 40 s (17/11). Instalar primero el nuevo y despues el que depende de el.
+    if [ ! -d "$ADDONS_DIR/$mod" ]; then
+        for m in "${MODULOS[@]}"; do
+            [ "$m" = "$mod" ] && continue
+            [ -f "$TMP/zip_$m/$m/__manifest__.py" ] || continue
+            if depends_de "$TMP/zip_$m/$m/__manifest__.py" | grep -qx "$mod"; then
+                yellow "   OJO $mod es NUEVO y $m depende de el: instalar primero $mod (otra tanda) y despues $m"
+            fi
+        done
+    fi
+done
+HORA_ALMACEN="$(TZ=Europe/Madrid date +%H%M)"
+if [ "$HORA_ALMACEN" -ge 0600 ] 2>/dev/null && [ "$HORA_ALMACEN" -lt 1700 ] 2>/dev/null; then
+    yellow "   OJO son las ${HORA_ALMACEN:0:2}:${HORA_ALMACEN:2:2} en el almacen (06:00-17:00): el reinicio y cada -u sacan"
+    yellow "       las sesiones de las PDA unos minutos. Mejor fuera de horas."
+else
+    echo "        hora del almacen ${HORA_ALMACEN:0:2}:${HORA_ALMACEN:2:2}: fuera del horario de trabajo (06:00-17:00)"
+fi
 
 echo
 echo "== 2. Validar Odoo y la ruta de addons =="

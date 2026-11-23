@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-KOROSHI - comprobar.py (17/11/2026)
+KOROSHI - comprobar.py (17/11/2026; E10, A2 y A3 el 23/11/2026, revision general R19)
 
 Convierte en comprobaciones las trampas que ya nos han roto algo (CLAUDE.md, reglas 2, 7 y 9). Si falla, NO se
 empaqueta: empaquetar.py lo llama antes de crear la etiqueta.
@@ -22,8 +22,17 @@ ERRORES (paran):
      actualiza (koroshi_menu 2.6.0, 19/11). En un <menuitem> si vale sin modulo.
   E9 Campo de Odoo con una coma al final («campo = fields.X(...),»): queda como tupla y Odoo no crea el campo; solo
      lo dice en el log («Trailing comma after field definition»). koroshi_recepcion 1.0.0, teorico_ids, 23/11.
+  E10 Constante de koroshi_base copiada en un modulo que depende de el (regla 8): compania (COMPANY_ID = 8), zona
+     horaria ('Europe/Madrid') o matricula CJ (CJ + 9 cifras). Se usa comun.COMPANY_ID / comun.TZ / comun.RE_CJ (o
+     comun.esMatricula en JS). Las copias que ya habia el 23/11 estan en bin/constantes_pendientes.txt y salen como
+     aviso A4 hasta que se pase ese modulo (entonces se quita la linea).
 AVISOS (no paran):
   A1 <function> dentro de noupdate="1": solo corre al INSTALAR, no al actualizar.
+  A2 Ruta http con auth='user' que no comprueba ningun grupo (has_group, pda.comprobar_grupo, _comprobar_usuario...):
+     cualquier usuario con sesion puede llamarla.
+  A3 except Exception (o except:) que ni escribe en el log, ni vuelve a lanzar, ni usa el error (guardarlo o devolverlo
+     a la pantalla): el error se pierde sin dejar rastro.
+  A4 Constante de koroshi_base copiada que ya estaba (bin/constantes_pendientes.txt): pasarla a koroshi_base.
 
 Solo lee ficheros y git; no toca nada.
 """
@@ -37,6 +46,7 @@ import xml.etree.ElementTree as ET
 RAIZ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 MODULOS = os.path.join(RAIZ, 'odoo', 'modulos')
 APROBADOS = os.path.join(RAIZ, 'bin', 'campos_compartidos_aprobados.txt')
+PENDIENTES = os.path.join(RAIZ, 'bin', 'constantes_pendientes.txt')     # E10 que ya estaban: aviso A4
 TABLAS_COMPARTIDAS = ('stock.picking', 'stock.picking.type', 'stock.move.line')
 SALTAR_DIRS = ('__pycache__', '.git', 'node_modules')
 
@@ -45,6 +55,16 @@ RE_DISPLAY_NOTIF = re.compile(r"""["']display_notification["']""")
 RE_ALTER = re.compile(r'ALTER\s+TABLE\s+(stock_picking_type|stock_picking|stock_move_line)\s+ADD', re.I)
 RE_COMENT_XML = re.compile(r'<!--.*?-->', re.S)
 RE_COMENT_JS = re.compile(r'/\*.*?\*/|(?<![:\w])//[^\n]*', re.S)   # /* */ y // (no el // de http://)
+# E10: constantes de koroshi_base (comun.py / comun.js) que no se copian
+CONSTANTES_BASE = [
+    (re.compile(r'\bCOMPANY_ID\s*=\s*\d+'), 'la compania (COMPANY_ID = n): usar comun.COMPANY_ID'),
+    (re.compile(r"""['"]Europe/Madrid['"]"""), "la zona horaria ('Europe/Madrid'): usar comun.TZ"),
+    (re.compile(r'CJ\\d\{9\}'), 'la matricula CJ (CJ\\d{9}): usar comun.RE_CJ / comun.es_matricula (JS: comun.esMatricula)'),
+]
+# A2: lo que cuenta como comprobar el grupo en una ruta (directamente o con la ayuda de cada modulo)
+MARCAS_GRUPO = ('has_group', 'comprobar_grupo', '_comprobar_usuario', '_comprobar_grupo', '_envolver', '_no_vale',
+                'check_access_rights', '_check_grupo', '_es_jefe', '_comprobar_jefe', 'user_has_groups')
+LOG_METODOS = ('exception', 'error', 'warning', 'warn', 'info', 'debug', 'critical', 'log')
 
 
 def ficheros(modulo):
@@ -155,13 +175,94 @@ def campos_con_coma(texto):
     return salida
 
 
-def comprobar_modulo(modulo, ok_campos=None):
+def pendientes():
+    """Ficheros (ruta desde la raiz) con constantes de koroshi_base copiadas que ya estaban el 23/11: aviso A4."""
+    if not os.path.exists(PENDIENTES):
+        return set()
+    return {l.split('#')[0].strip() for l in leer(PENDIENTES).splitlines() if l.split('#')[0].strip()}
+
+
+def depende_de_base(manifest_ruta):
+    try:
+        return 'koroshi_base' in (ast.literal_eval(leer(manifest_ruta)).get('depends') or [])
+    except Exception:
+        return False
+
+
+def constantes_copiadas(texto, ext):
+    """[(que, linea)] de las constantes de koroshi_base escritas a mano (E10). Sin contar los comentarios."""
+    salida = []
+    for n, l in enumerate(texto.splitlines(), 1):
+        if ext == '.py':
+            codigo = l.split('#')[0]
+        elif l.strip().startswith('//') or l.strip().startswith('*'):
+            continue                    # linea de comentario de JS
+        else:                           # // al final de la linea (si no hay una expresion regular /^.../ delante)
+            codigo = l if '/^' in l else l.split('//')[0]
+        for patron, que in CONSTANTES_BASE:
+            if patron.search(codigo):
+                salida.append((que, n))
+    return salida
+
+
+def _es_route_user(dec):
+    """True si el decorador es @http.route(..., auth='user', ...)."""
+    if not (isinstance(dec, ast.Call) and isinstance(dec.func, ast.Attribute) and dec.func.attr == 'route'):
+        return False
+    for k in dec.keywords:
+        if k.arg == 'auth' and isinstance(k.value, ast.Constant) and k.value.value == 'user':
+            return True
+    return False
+
+
+def rutas_sin_grupo(texto, arbol):
+    """[(nombre, linea)] de las rutas auth='user' cuyo cuerpo no comprueba ningun grupo (A2)."""
+    salida = []
+    for nodo in ast.walk(arbol):
+        if isinstance(nodo, ast.FunctionDef) and any(_es_route_user(d) for d in nodo.decorator_list):
+            cuerpo = ast.get_source_segment(texto, nodo) or ''
+            if not any(m in cuerpo for m in MARCAS_GRUPO):
+                salida.append((nodo.name, nodo.lineno))
+    return salida
+
+
+def _es_log(llamada):
+    f = llamada.func
+    if not isinstance(f, ast.Attribute) or f.attr not in LOG_METODOS:
+        return False
+    v = f.value
+    nombre = v.id if isinstance(v, ast.Name) else v.attr if isinstance(v, ast.Attribute) else ''
+    return 'log' in nombre.lower()
+
+
+def excepts_mudos(arbol):
+    """[linea] de los except Exception / except: cuyo cuerpo ni escribe en el log ni vuelve a lanzar (A3)."""
+    salida = []
+    for nodo in ast.walk(arbol):
+        if not isinstance(nodo, ast.ExceptHandler):
+            continue
+        tipos = nodo.type.elts if isinstance(nodo.type, ast.Tuple) else [nodo.type]
+        if not any(t is None or (isinstance(t, ast.Name) and t.id in ('Exception', 'BaseException')) for t in tipos):
+            continue
+        dentro = [x for b in nodo.body for x in ast.walk(b)]
+        if any(isinstance(x, ast.Raise) or (isinstance(x, ast.Call) and _es_log(x)) for x in dentro):
+            continue
+        # «except Exception as e» que usa e (lo guarda en un informe o lo devuelve a la pantalla): no se pierde
+        if nodo.name and any(isinstance(x, ast.Name) and x.id == nodo.name for x in dentro):
+            continue
+        salida.append(nodo.lineno)
+    return salida
+
+
+def comprobar_modulo(modulo, ok_campos=None, ok_constantes=None):
     """Devuelve (errores, avisos): listas de textos 'CODIGO ruta:linea: que pasa'."""
     errores, avisos = [], []
     ok_campos = aprobados() if ok_campos is None else ok_campos
+    ok_constantes = pendientes() if ok_constantes is None else ok_constantes
     manifest_ruta = os.path.join(MODULOS, modulo, '__manifest__.py')
     if not os.path.exists(manifest_ruta):
         return ['E0 %s: no existe odoo/modulos/%s/__manifest__.py' % (modulo, modulo)], []
+    mirar_constantes = modulo != 'koroshi_base' and depende_de_base(manifest_ruta)
 
     for ruta, rel in ficheros(modulo):
         ext = os.path.splitext(ruta)[1].lower()
@@ -180,6 +281,12 @@ def comprobar_modulo(modulo, ok_campos=None):
                 codigo = l.split('#')[0] if ext == '.py' else l.split('//')[0]
                 if RE_DISPLAY_NOTIF.search(codigo):
                     errores.append("E2 %s:%d: la accion 'display_notification' no existe en Odoo 13" % (rel, n))
+            if mirar_constantes and '/tests/' not in rel:     # E10 / A4
+                for que, n in constantes_copiadas(texto, ext):
+                    if rel in ok_constantes:
+                        avisos.append('A4 %s:%d: %s (copia que ya estaba; pasarla a koroshi_base)' % (rel, n, que))
+                    else:
+                        errores.append('E10 %s:%d: constante de koroshi_base copiada: %s' % (rel, n, que))
 
         if ext == '.py':
             try:
@@ -197,6 +304,13 @@ def comprobar_modulo(modulo, ok_campos=None):
             for m in RE_ALTER.finditer(texto):
                 errores.append('E4 %s:%d: ALTER TABLE ... ADD en una tabla compartida (%s)'
                                % (rel, linea_de(texto, m.start()), m.group(1)))
+            if '/tests/' not in rel:
+                arbol_py = ast.parse(texto)
+                for nombre, n in rutas_sin_grupo(texto, arbol_py):
+                    avisos.append("A2 %s:%d: la ruta %s (auth='user') no comprueba ningun grupo" % (rel, n, nombre))
+                for n in excepts_mudos(arbol_py):
+                    avisos.append('A3 %s:%d: except Exception sin log ni raise: el error se pierde sin rastro'
+                                  % (rel, n))
 
         if ext == '.xml':
             try:
@@ -263,9 +377,10 @@ def main(argv):
     modulos = argv or sorted(d for d in os.listdir(MODULOS)
                              if os.path.isfile(os.path.join(MODULOS, d, '__manifest__.py')))
     ok_campos = aprobados()
+    ok_constantes = pendientes()
     total_e = total_a = 0
     for m in modulos:
-        errores, avisos = comprobar_modulo(m, ok_campos)
+        errores, avisos = comprobar_modulo(m, ok_campos, ok_constantes)
         total_e += len(errores)
         total_a += len(avisos)
         if errores or avisos:

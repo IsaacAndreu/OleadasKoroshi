@@ -1,0 +1,8 @@
+# Constantes de koroshi_base copiadas que ya estaban el 23/11/2026 (revision general, O6 y R19).
+# bin/comprobar.py las da como aviso A4 en vez de error E10. Al pasar el modulo a koroshi_base (con su version), se
+# quita su linea de aqui. Un fichero por linea, ruta desde la raiz del repositorio. No anadir ficheros nuevos.
+odoo/modulos/koroshi_actividades/models/inversa.py           # RE_MATRICULA = CJ\d{9}
+odoo/modulos/koroshi_actividades/static/src/js/actividades.js  # RE_MATRICULA = /^CJ\d{9}$/i
+odoo/modulos/koroshi_kpi/models/semana.py                    # 'Europe/Madrid' dentro del SQL
+odoo/modulos/koroshi_preparacion/static/src/js/preparacion.js  # RE_CJ = /^CJ\d{9}$/i
+odoo/modulos/koroshi_zonas/motor/modelo.py                   # 'ZONA_HORARIA': 'Europe/Madrid' (motor sin Odoo)

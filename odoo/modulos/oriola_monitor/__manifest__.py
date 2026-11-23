@@ -23,6 +23,9 @@ El tipo de albaran sale del parametro del sistema oriola_monitor.picking_type_id
 se busca el de salida del almacen con codigo WH-OR.
 
 Solo lee: no cambia nada en Odoo.
+
+v1.0.0 (26/10/2026): primera version (monitor del picking de Oriola - Amposta en odoo.tuctuc.com). Linea de historial
+anadida el 23/11/2026 (revision general, R19) para que bin/comprobar.py no de E6; el modulo no cambia.
 """,
     'version': '13.0.1.0.0',
     'author': 'NATH',
