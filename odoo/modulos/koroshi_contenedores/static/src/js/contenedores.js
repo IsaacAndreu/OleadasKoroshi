@@ -21,6 +21,9 @@ odoo.define('koroshi_contenedores.Pantalla', function (require) {
  *   «⌨ Escribir» lo saca para teclear L94; leer una prenda dice dónde hay stock de ella; la persona se mantiene 15 min;
  *   «Se han movido N contenedores»; al añadir prendas, dos lecturas seguidas del mismo EAN cuentan dos (antes la
  *   segunda en menos de 0,7 s se perdía sin aviso) y «Cantidad» cambia las uds de la última lectura.
+ * v1.13: «Añadir prendas» manda un id de tanda: si se corta la wifi y se vuelve a pulsar «Guardar» con lo mismo, no se
+ *   añade dos veces (cambiar lo leído = tanda nueva). «Cambiar» manda las uds que enseñaba al abrir: si Odoo ha
+ *   cambiado mientras se contaba, no se cambia nada.
  * v1.5: en la lista del hueco cada contenedor tiene casilla: «Marcar vacíos», «Archivar marcados» (no archiva si
  *   alguno tiene prendas) y «Mover marcados» (el siguiente hueco escaneado es el destino). Tocar el nombre abre el
  *   contenedor: «Poner a cero» (no si hay reservas) y «Añadir prendas» (cada lectura = 1 ud, «Guardar»). Son ajustes
@@ -43,6 +46,10 @@ var PERSONA_MS = 3600000;        // v1.6: 15 min (antes 3) sin actividad; v1.9.1
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
+// v1.13: id de una tanda de «Añadir prendas» (como Devoluciones): un reintento idéntico reusa el mismo id
+function _idTanda() {
+    return 'C' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
 function _n(x) { return (Math.round((x || 0) * 100) / 100).toString().replace('.', ','); }
 
 var Pantalla = AbstractAction.extend({
@@ -102,6 +109,7 @@ var Pantalla = AbstractAction.extend({
         this.detalle = null;            // v1.5: contenedor abierto desde la lista del hueco
         this.anadiendo = null;          // v1.5: prendas leídas para añadir al contenedor abierto [{id, nombre, uds}]
         this.lecturasAnadir = [];       // v1.5: orden de lectura (para «Quitar la última»); v1.6: [{id, uds}]
+        this.tandaAnadir = null;        // v1.13: id de la tanda; null = lo leído ha cambiado (se crea al guardar)
         this.articulo = null;           // v1.6: dónde hay stock de la prenda leída
         this.origenHueco = null;        // v1.6: hueco del que salen los «Mover marcados» (para «Atrás»)
         this.teclado = false;           // v1.6: campo con teclado de la PDA (para escribir L94)
@@ -592,6 +600,7 @@ var Pantalla = AbstractAction.extend({
         if (!this.detalle || !this.persona) { return; }
         this.anadiendo = [];
         this.lecturasAnadir = [];
+        this.tandaAnadir = null;
         this.confirmando = false;
         this._aviso('info', 'Lee las prendas que hay en ' + this.detalle.nombre + ' (una lectura = 1 ud).');
         this._pintar();
@@ -613,6 +622,7 @@ var Pantalla = AbstractAction.extend({
             var fila = _.findWhere(self.anadiendo, {id: p.id});
             if (fila) { fila.uds += 1; } else { self.anadiendo.push({id: p.id, nombre: p.nombre, uds: 1}); }
             self.lecturasAnadir.push({id: p.id, uds: 1});
+            self.tandaAnadir = null;    // v1.13: contenido nuevo = tanda nueva
             self._pitido(true);
             self._aviso('ok', '+1 ' + p.nombre);
             self._pintar();
@@ -622,6 +632,7 @@ var Pantalla = AbstractAction.extend({
     _onQuitarUltima: function () {
         if (!this.anadiendo || !this.lecturasAnadir.length) { return; }
         var lec = this.lecturasAnadir.pop();
+        this.tandaAnadir = null;
         var fila = _.findWhere(this.anadiendo, {id: lec.id});
         if (fila) {
             fila.uds -= lec.uds;
@@ -646,6 +657,7 @@ var Pantalla = AbstractAction.extend({
         var fila = _.findWhere(this.anadiendo, {id: lec.id});
         fila.uds += n - lec.uds;
         lec.uds = n;
+        this.tandaAnadir = null;
         this.actividadEn = Date.now();
         this._aviso('ok', n + ' uds de ' + fila.nombre);
         this._pintar();
@@ -719,6 +731,7 @@ var Pantalla = AbstractAction.extend({
     _onCancelarAnadir: function () {
         this.anadiendo = null;
         this.lecturasAnadir = [];
+        this.tandaAnadir = null;
         this._aviso('', 'No se ha añadido nada.');
         this._pintar();
         this._foco();
@@ -728,8 +741,9 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         if (this.ocupado || !this.detalle || !this.persona || !this.anadiendo || !this.anadiendo.length) { return; }
         this.ocupado = true;
+        if (!this.tandaAnadir) { this.tandaAnadir = _idTanda(); }
         return this._rpc({route: '/koroshi/contenedores/anadir', params: {
-            contenedor_id: this.detalle.id, employee_id: this.persona.id,
+            contenedor_id: this.detalle.id, employee_id: this.persona.id, tanda: this.tandaAnadir,
             lineas: this.anadiendo.map(function (f) { return {producto_id: f.id, uds: f.uds}; })}}).then(function (m) {
             self._fin();
             if (!m || !m.ok) {
@@ -739,12 +753,18 @@ var Pantalla = AbstractAction.extend({
             }
             self.anadiendo = null;
             self.lecturasAnadir = [];
+            self.tandaAnadir = null;
             self.detalle = m.contenedor;
             self._refrescarCont(m.contenedor);
             self._aviso('ok', '✓ ' + m.msg);
             self._pintar();
             self._foco();
-        }, self._sinConexion.bind(self));
+        }, function () {
+            // v1.13: sin respuesta: puede haberse guardado o no. Se deja todo igual (misma tanda): al volver a pulsar
+            // «Guardar», si ya estaba guardado no se añade otra vez.
+            self._sinConexion();
+            self._aviso('mal', 'Sin conexión al guardar. Vuelve a pulsar «Guardar» (no se añade dos veces).');
+        });
     },
 
     // ------------------------------------------------------------------ v1.7: cambiar la cantidad
@@ -811,7 +831,7 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/cantidad', params: {
             contenedor_id: this.detalle.id, employee_id: this.persona.id, producto_id: e.id,
-            uds: n, pasar_faltantes: n < e.reservadas}}).then(function (m) {
+            uds: n, pasar_faltantes: n < e.reservadas, antes: e.uds}}).then(function (m) {
             self._fin();
             if (!m || !m.ok) {
                 self._pitido(false);

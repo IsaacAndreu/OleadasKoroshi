@@ -22,6 +22,8 @@
                 <field name="uds"/>
                 <field name="reservadas"/>
                 <field name="move_id" optional="hide"/>
+                <field name="faltante_id" optional="hide"/>
+                <field name="tanda" optional="hide"/>
             </tree>
         </field>
     </record>
@@ -34,8 +36,9 @@
                 <field name="contenedor"/>
                 <field name="producto_id"/>
                 <field name="employee_id"/>
-                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad)"
-                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad'))]"/>
+                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes)"
+                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante'))]"/>
+                <filter name="faltantes" string="A Faltantes" domain="[('accion', '=', 'faltante')]"/>
                 <filter name="hoy" string="Hoy"
                         domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Agrupar por">

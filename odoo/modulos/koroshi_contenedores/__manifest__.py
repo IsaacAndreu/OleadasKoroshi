@@ -97,12 +97,24 @@ v1.12.0 (23/11/2026): «Cambiar» la cantidad de un artículo por debajo de lo r
   dejaba bajar de lo reservado. Ahora avisa de cuántas pasan a Faltantes y se confirma con otro «Guardar»: esas
   líneas pasan por Faltantes igual que en la 1.11.0 (solo las de ese artículo y solo las necesarias) y después se
   ajusta la diferencia. Todo o nada.
+v1.13.0 (23/11/2026): correcciones de la revisión general del 23/11 (R1-R4, rastro y O6). Necesita koroshi_faltantes
+  1.9.0 (se actualizan juntos). R1: «Cambiar» por debajo de lo reservado pasa a Faltantes solo la diferencia: una
+  línea de 5 con 4 en el contenedor sigue con 4 reservadas aquí y solo 1 va a otro hueco (o la OUT sale sin ella) y
+  a FALTANTE; antes se llevaba la línea entera, mandaba 5 a FALTANTE y volvía a crear 4 por ajuste. El hueco
+  alternativo se busca entre todos, no solo en los 5 más cercanos. R2: «Cambiar» no se hace si hay prendas de ese
+  artículo leídas para una OUT sin validar (el ajuste las quitaría otra vez al validar) ni si las uds de Odoo han
+  cambiado desde que se abrió el contenedor: avisa y no cambia nada. R3: «Añadir prendas» lleva un id de tanda:
+  reintentar tras cortarse la wifi ya no añade dos veces. R4: «Poner a cero» cierra en el acto como «No encontrado»
+  lo que pasa a FALTANTE (el contenedor está vacío: ninguna ronda volverá a él); «Archivar» pasa los faltantes
+  pendientes del contenedor a su hueco y no archiva si alguno está en una ronda abierta. Cada línea que pasa a
+  Faltantes queda en el registro (acción «A Faltantes») y el faltante lleva la nota «Desde Contenedores (...)».
+  La compañía sale de koroshi_base. Campos nuevos solo en koroshi.contenedor.movimiento (tanda, faltante_id).
 """,
-    'version': '13.0.1.12.0',
+    'version': '13.0.1.13.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'stock', 'hr', 'barcodes', 'koroshi_operarios', 'koroshi_faltantes'],
+    'depends': ['web', 'stock', 'hr', 'barcodes', 'koroshi_base', 'koroshi_operarios', 'koroshi_faltantes'],
     'data': [
         'security/ir.model.access.csv',
         'views/assets.xml',

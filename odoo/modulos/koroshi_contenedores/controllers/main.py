@@ -10,18 +10,26 @@
 # v1.8: /buscar y /leer por trozo buscan todo lo que tiene código: contenedores, huecos (código de barras o nombre),
 # lineales y artículos (EAN, referencia o nombre); /donde dice dónde está un artículo por su id. Leer la referencia
 # entera de un artículo (2622JA00-000003-L) ya lo encuentra: en muchos artículos la referencia solo está en el nombre.
+# v1.13 (revisión general 23/11): a Faltantes solo la diferencia (R1); «Cambiar» no se hace con prendas leídas sin
+# validar ni si Odoo ha cambiado mientras se contaba (R2); «Añadir» con id de tanda (R3); «Poner a cero» cierra sus
+# faltantes como no encontrados y «Archivar» no deja faltantes con vuelta al contenedor (R4); cada faltante deja su
+# línea en el registro; la compañía sale de koroshi_base (O6).
 # =============================================================================
 import re
 
 from odoo import http
 from odoo.exceptions import UserError
 from odoo.http import request
-from odoo.tools import float_is_zero
+from odoo.tools import float_compare, float_is_zero
+from odoo.addons.koroshi_base import comun
+
+from .. import logica
 
 PREFIJOS = ('KO_', 'TT_')
 MAX_LINEAS = 40
 MAX_ANADIR = 500          # v1.5: uds de un artículo en un solo «Añadir» (más = lecturas de más)
-COMPANY_ID = 8            # EFFECTIVE LOGISTICS (si el contenedor no tiene empresa)
+COMPANY_ID = comun.COMPANY_ID   # EFFECTIVE LOGISTICS (si el contenedor no tiene empresa); v1.13: de koroshi_base
+ORIGEN = 'Desde Contenedores'   # v1.13: nota en el faltante y en el historial de la OUT
 MAX_HUECOS = 400
 MAX_DONDE = 60            # v1.6: ubicaciones como máximo al buscar dónde está un artículo
 MAX_BUSCAR = 20           # v1.7: contenedores como máximo al buscar por un trozo del nombre
@@ -178,12 +186,17 @@ class KoroshiContenedores(http.Controller):
             Quant = request.env['stock.quant'].sudo()
             Mov = request.env['koroshi.contenedor.movimiento'].sudo()
             archivados, con_stock = [], []
+            Faltante = request.env['koroshi.faltante'].sudo()
             for c in self._hijos_contenedor(hueco):
                 quants = Quant.search([('location_id', '=', c.id), '|', ('quantity', '!=', 0),
                                        ('reserved_quantity', '!=', 0)])
                 if quants:
                     con_stock.append(c.name)
                     continue
+                if Faltante.en_ronda_de(c):   # v1.13 (R4): con un faltante en una ronda abierta no se toca
+                    con_stock.append('%s (faltante en ronda)' % c.name)
+                    continue
+                Faltante.antes_de_archivar(c)
                 c.write({'active': False})
                 Mov.create({'accion': 'archivar', 'contenedor': c.name, 'origen_id': hueco.id,
                             'origen': hueco.complete_name, 'destino': '(archivado, vacío, confirmado)',
@@ -194,7 +207,7 @@ class KoroshiContenedores(http.Controller):
             msg = '%s: %d contenedor(es) vacío(s) archivado(s) en %s' % (emp.name, len(archivados),
                                                                          hueco.complete_name)
             if con_stock:
-                msg += '. NO se tocan por tener stock: %s' % ', '.join(con_stock)
+                msg += '. NO se tocan por tener stock (o un faltante en ronda): %s' % ', '.join(con_stock)
             return {'ok': True, 'msg': msg, 'quedan': len(con_stock)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
@@ -225,7 +238,7 @@ class KoroshiContenedores(http.Controller):
         mls = request.env['stock.move.line'].sudo().search(dominio)
         return ['%s%s' % (p.name, ' (%s)' % p.origin if p.origin else '') for p in mls.mapped('picking_id')]
 
-    def _ajuste(self, producto, qty, contenedor, company, emp, accion, nombre):
+    def _ajuste(self, producto, qty, contenedor, company, emp, accion, nombre, tanda=False):
         """Ajuste de inventario de qty uds (+ entra en el contenedor, - sale) contra la ubicación de pérdidas de
         inventario del artículo, como un ajuste de Odoo. Mismo movimiento que koroshi_faltantes._mover (probado en
         producción). Deja su línea en el registro (quién, cuándo, artículo, uds y movimiento)."""
@@ -261,6 +274,7 @@ class KoroshiContenedores(http.Controller):
             'accion': accion, 'contenedor': contenedor.name, 'origen_id': contenedor.location_id.id,
             'origen': contenedor.location_id.complete_name, 'destino': contenedor.location_id.complete_name,
             'uds': qty, 'lineas': 1, 'producto_id': producto.id, 'move_id': move.id, 'employee_id': emp.id,
+            'tanda': tanda or False,
         })
         return move
 
@@ -298,6 +312,7 @@ class KoroshiContenedores(http.Controller):
             if con_stock:
                 raise UserError('No se archiva nada: %s tiene prendas en el sistema. Ponlo a cero primero '
                                 '(tócalo en la lista) o desmárcalo.' % ', '.join(con_stock))
+            self._antes_de_archivar(conts)   # v1.13 (R4): antes de escribir nada
             Mov = request.env['koroshi.contenedor.movimiento'].sudo()
             for c in conts:
                 c.write({'active': False})
@@ -322,6 +337,7 @@ class KoroshiContenedores(http.Controller):
             c = self._contenedor(contenedor_id)
             if self._quants(c):
                 raise UserError('No se archiva: %s tiene prendas en el sistema. Ponlo a cero primero.' % c.name)
+            self._antes_de_archivar([c])   # v1.13 (R4)
             hueco = c.location_id
             c.write({'active': False})
             request.env['koroshi.contenedor.movimiento'].sudo().create({
@@ -381,45 +397,67 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
-    def _reservas_a_faltantes(self, c, emp, producto=None, dejar=0):
+    def _leidas(self, c, producto=None):
+        """v1.13: líneas abiertas (OUT sin validar) que sacan prendas de este contenedor y ya tienen algo leído."""
+        dominio = [('location_id', '=', c.id), ('state', 'not in', ('done', 'cancel')), ('qty_done', '>', 0)]
+        if producto:
+            dominio.append(('product_id', '=', producto.id))
+        return request.env['stock.move.line'].sudo().search(dominio)
+
+    def _reservas_a_faltantes(self, c, emp, producto=None, dejar=0, que=''):
         """v1.11.0: cada línea de OUT reservada en el contenedor pasa por Faltantes como si el operario la marcara:
         reubicar en el hueco con stock libre más cercano que llegue (koroshi.faltante.reubicar) o, si no hay,
         sin_alternativa (la OUT sale sin ella). En los dos casos la unidad va a FALTANTE y queda su registro.
-        No se toca una línea que ya tiene algo leído: alguien la está preparando. Devuelve un resumen por línea.
-        v1.12.0: con producto, solo sus líneas, y se para cuando lo reservado que queda es <= dejar."""
+        No se toca una línea que ya tiene algo leído: alguien la está preparando.
+        v1.12.0: con producto, solo sus líneas, y se para cuando lo reservado que queda es <= dejar.
+        v1.13.0 (R1): pasa solo lo que sobra (reservado - dejar): una línea de 5 con 4 en el contenedor sigue con 4
+        reservadas aquí y solo 1 pasa a Faltantes. El hueco alternativo se busca entre todos, no solo los 5 más
+        cercanos. Cada faltante deja su línea en el registro de Contenedores.
+        Devuelve (resumen por línea, faltantes creados)."""
         Faltante = request.env['koroshi.faltante'].sudo()
-        Loc = request.env['stock.location'].sudo()
+        Mov = request.env['koroshi.contenedor.movimiento'].sudo()
         dominio = [('location_id', '=', c.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)]
         if producto:
             dominio.append(('product_id', '=', producto.id))
-        mls = request.env['stock.move.line'].sudo().search(dominio, order='product_qty desc, id')
+        # las pequeñas primero (logica.repartir): una OUT pasa entera antes que partir dos
+        mls = request.env['stock.move.line'].sudo().search(dominio, order='product_qty, id')
         leidas = mls.filtered(lambda l: not float_is_zero(l.qty_done, precision_rounding=l.product_uom_id.rounding))
         if leidas:
             raise UserError('No se ha cambiado nada: %s ya tiene prendas leídas en %s (alguien la está '
                             'preparando). Espera a que acabe.' % (c.name, ', '.join(leidas.mapped('picking_id.name'))))
-        resumen = []
-        queda = sum(mls.mapped('product_qty'))
-        for ml in mls:
-            if producto and queda <= dejar:
-                break
-            queda -= ml.product_qty
+        sobra = sum(mls.mapped('product_qty')) - (dejar if producto else 0)
+        origen = '%s (%s, %s, %s)' % (ORIGEN, c.name, que or 'compactar', emp.name)
+        resumen, faltantes = [], Faltante.browse()
+        for ml, quitar in zip(mls, logica.repartir(mls.mapped('product_qty'), sobra)):
+            if not quitar:
+                continue
             picking, product = ml.picking_id, ml.product_id
-            necesario = ml.product_qty
+            parte = float_compare(quitar, ml.product_qty, precision_rounding=product.uom_id.rounding) < 0
             raiz = Faltante._raiz_stock(picking)
-            destino = False
-            for alt in Faltante.alternativas(product, c, raiz)['lista']:
-                if alt['libre'] >= necesario:
-                    destino = Loc.browse(alt['id'])
-                    break
+            destino = Faltante.mejor_destino(product, c, raiz, quitar)
+            cantidad = quitar if parte else None
             if destino:
-                f = Faltante.reubicar(ml, destino, emp)
-                resumen.append('%s %s: ahora se coge en %s' % (picking.name, product.display_name,
-                                                                 f.ubicacion_nueva_id.complete_name))
+                f = Faltante.reubicar(ml, destino, emp, cantidad=cantidad, origen=origen)
+                texto = '%s %s: %s ud(s) ahora se cogen en %s' % (picking.name, product.display_name, _num(quitar),
+                                                                   f.ubicacion_nueva_id.complete_name)
             else:
-                Faltante.sin_alternativa(ml, emp)
-                resumen.append('%s %s: sin stock en otro hueco, la OUT sale sin ella' % (picking.name,
-                                                                                         product.display_name))
-        return resumen
+                f = Faltante.sin_alternativa(ml, emp, cantidad=cantidad, origen=origen)
+                texto = '%s %s: %s ud(s) sin stock en otro hueco, la OUT sale sin ellas' % (
+                    picking.name, product.display_name, _num(quitar))
+            resumen.append(texto)
+            faltantes |= f
+            Mov.create({'accion': 'faltante', 'contenedor': c.name, 'origen_id': c.location_id.id,
+                        'origen': c.location_id.complete_name, 'destino': 'FALTANTE (%s)' % texto,
+                        'uds': -f.cantidad_faltant, 'reservadas': -quitar, 'lineas': 1, 'producto_id': product.id,
+                        'move_id': f.move_faltant_id.id, 'faltante_id': f.id, 'employee_id': emp.id})
+        return resumen, faltantes
+
+    def _antes_de_archivar(self, conts):
+        """v1.13 (R4): los faltantes pendientes con vuelta a estos contenedores pasan a apuntar a su hueco; si alguno
+        está en una ronda abierta, error y no se archiva ninguno."""
+        Loc = request.env['stock.location'].sudo()
+        ubicaciones = Loc.browse([c.id for c in conts])
+        request.env['koroshi.faltante'].sudo().antes_de_archivar(ubicaciones)
 
     @http.route('/koroshi/contenedores/cero', type='json', auth='user')
     def cero(self, contenedor_id=False, employee_id=False, confirmado=False, pasar_faltantes=False, **kw):
@@ -446,7 +484,14 @@ class KoroshiContenedores(http.Controller):
                         return {'ok': False, 'reservado': True, 'pedidos': self._pedidos_reservados(c),
                                 'msg': '%s tiene prendas reservadas para %s.' % (
                                     c.name, ', '.join(self._pedidos_reservados(c)) or 'un pedido')}
-                    resumen = self._reservas_a_faltantes(c, emp)
+                    resumen, faltantes = self._reservas_a_faltantes(c, emp, que='poner a cero')
+                    # v1.13 (R4): el contenedor está vacío (confirmado): lo que pasó a FALTANTE no va a aparecer
+                    # en él. Se cierra ya como no encontrado (de FALTANTE a pérdidas), sin ronda que vuelva aquí.
+                    for f in faltantes:
+                        f._cerrar_no_encontrado('%s puesto a cero (vacío, confirmado por %s): no encontrado.'
+                                                % (c.name, emp.name))
+                    if faltantes:
+                        resumen = [r + ' (no encontrado)' for r in resumen]
                     quants = self._quants(c)
                     if any(q.reserved_quantity for q in quants):
                         raise UserError('%s sigue con prendas reservadas que no son de ninguna OUT abierta. '
@@ -463,7 +508,8 @@ class KoroshiContenedores(http.Controller):
                                  'KOROSHI contenedor %s: poner a cero (%s)' % (c.name, emp.name))
                     total += d['qty']
                     n += 1
-            msg = '%s: %s a cero (%s uds de %d ref. fuera del stock)' % (emp.name, c.name, _num(total), n)
+                request.env['stock.move'].flush()   # v1.13: todo escrito dentro del savepoint
+            msg ='%s: %s a cero (%s uds de %d ref. fuera del stock)' % (emp.name, c.name, _num(total), n)
             if resumen:
                 msg += '. A Faltantes: ' + '; '.join(resumen)
             return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
@@ -471,13 +517,24 @@ class KoroshiContenedores(http.Controller):
             return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/contenedores/anadir', type='json', auth='user')
-    def anadir(self, contenedor_id=False, employee_id=False, lineas=None, **kw):
+    def anadir(self, contenedor_id=False, employee_id=False, lineas=None, tanda=False, **kw):
         """Añade al contenedor las prendas leídas (Odoo no las tenía): ajuste de inventario de cada artículo.
-        lineas = [{'producto_id': id, 'uds': n}]."""
+        lineas = [{'producto_id': id, 'uds': n}].
+        v1.13 (R3): tanda = id que pone la PDA a lo leído. Si se corta la wifi y se reintenta lo mismo, la tanda ya
+        está guardada y no se vuelve a añadir (como Devoluciones). Dos peticiones a la vez con la misma tanda: la
+        restricción única (tanda, artículo) del registro hace fallar la segunda."""
         try:
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             c = self._contenedor(contenedor_id)
+            tanda = (tanda or '').strip()[:64] if isinstance(tanda, str) else ''
+            if tanda:
+                ya = request.env['koroshi.contenedor.movimiento'].sudo().search([('tanda', '=', tanda)])
+                if ya:
+                    return {'ok': True, 'repetida': True,
+                            'msg': 'Ya estaba guardado: %s uds añadidas a %s (no se añade otra vez)'
+                                   % (_num(sum(ya.mapped('uds'))), ya[0].contenedor),
+                            'contenedor': self._datos_contenedor(c)}
             Product = request.env['product.product'].sudo()
             por_producto = {}
             for l in (lineas or []):
@@ -495,7 +552,8 @@ class KoroshiContenedores(http.Controller):
             with request.env.cr.savepoint():    # todo o nada
                 for p, uds in por_producto.items():
                     self._ajuste(p, uds, c, company, emp, 'anadir',
-                                 'KOROSHI contenedor %s: añadir prendas (%s)' % (c.name, emp.name))
+                                 'KOROSHI contenedor %s: añadir prendas (%s)' % (c.name, emp.name), tanda=tanda)
+                request.env['stock.move'].flush()   # v1.13: la restricción de la tanda salta aquí dentro
             return {'ok': True, 'msg': '%s: %d uds añadidas a %s' % (emp.name, sum(por_producto.values()), c.name),
                     'contenedor': self._datos_contenedor(c)}
         except UserError as e:
@@ -503,9 +561,12 @@ class KoroshiContenedores(http.Controller):
 
     @http.route('/koroshi/contenedores/cantidad', type='json', auth='user')
     def cantidad(self, contenedor_id=False, employee_id=False, producto_id=False, uds=None, pasar_faltantes=False,
-                 **kw):
+                 antes=None, **kw):
         """v1.7: uds reales de un artículo en el contenedor (se ha contado y no cuadra). Ajuste de inventario de la
-        diferencia (+ entra, - sale), como /cero y /anadir. No se baja de lo reservado para una OUT."""
+        diferencia (+ entra, - sale), como /cero y /anadir. No se baja de lo reservado para una OUT.
+        v1.13 (R2): no se cambia si hay prendas de ese artículo leídas para una OUT sin validar (están en un carro:
+        lo contado no las incluye y el ajuste las quitaría otra vez al validar), ni si las uds de Odoo han cambiado
+        desde que se abrió el contenedor (antes = las que enseñaba la PDA)."""
         try:
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
@@ -525,6 +586,24 @@ class KoroshiContenedores(http.Controller):
                                 % c.name)
             actual = sum(quants.mapped('quantity'))
             reservadas = sum(quants.mapped('reserved_quantity'))
+            # v1.13 (R2): lo leído sin validar ya no está en el contenedor y Odoo aún lo cuenta. Restarlo daría por
+            # hecho que se contó después de leerlo; si el preparador lee mientras se cuenta, saldría stock de más.
+            # Lo seguro es no cambiar nada y contar cuando se valide.
+            leidas = self._leidas(c, p)
+            if leidas:
+                raise UserError('No se cambia nada: %s uds de %s ya están leídas para %s y sin validar (están en un '
+                                'carro). Vuelve a contar cuando se valide.' % (
+                                    _num(sum(leidas.mapped('qty_done'))), p.display_name,
+                                    ', '.join(leidas.mapped('picking_id.name')) or 'una OUT'))
+            if antes is not None:
+                try:
+                    antes = float(antes)
+                except (TypeError, ValueError):
+                    antes = None
+            if antes is not None and float_compare(antes, actual, precision_rounding=p.uom_id.rounding) != 0:
+                raise UserError('No se cambia nada: %s tenía %s uds de %s al abrirlo y ahora tiene %s (se ha movido '
+                                'stock mientras contabas). Vuelve a abrir el contenedor y cuenta otra vez.' % (
+                                    c.name, _num(antes), p.display_name, _num(actual)))
             if nuevas < reservadas and not pasar_faltantes:
                 pedidos = self._pedidos_reservados(c, p)
                 raise UserError('No se baja a %d: %s uds de %s están reservadas para %s.' % (
@@ -534,7 +613,7 @@ class KoroshiContenedores(http.Controller):
             with request.env.cr.savepoint():    # todo o nada (también lo de Faltantes)
                 if nuevas < reservadas:
                     # v1.12.0: lo reservado que no está pasa por Faltantes (como «Poner a cero», v1.11.0)
-                    resumen = self._reservas_a_faltantes(c, emp, producto=p, dejar=nuevas)
+                    resumen, _f = self._reservas_a_faltantes(c, emp, producto=p, dejar=nuevas, que='cambiar')
                     quants = self._quants(c).filtered(lambda q: q.product_id == p)
                     if sum(quants.mapped('reserved_quantity')) > nuevas:
                         raise UserError('%s sigue con más de %d uds reservadas que no son de ninguna OUT abierta. '
@@ -548,6 +627,7 @@ class KoroshiContenedores(http.Controller):
                 if not float_is_zero(diferencia, precision_rounding=p.uom_id.rounding):
                     self._ajuste(p, diferencia, c, company, emp, 'cantidad',
                                  'KOROSHI contenedor %s: cambiar cantidad (%s)' % (c.name, emp.name))
+                request.env['stock.move'].flush()   # v1.13: todo escrito dentro del savepoint
             msg = '%s: %s en %s pasa de %s a %d uds' % (emp.name, p.display_name, c.name, _num(actual), nuevas)
             if resumen:
                 msg += '. A Faltantes: ' + '; '.join(resumen)

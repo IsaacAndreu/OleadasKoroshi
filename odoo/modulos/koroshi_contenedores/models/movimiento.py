@@ -9,8 +9,11 @@ class KoroshiContenedorMovimiento(models.Model):
 
     # v1.5: 'cero' y 'anadir' son ajustes de inventario (cambian el stock): una línea por artículo, con su movimiento
     # v1.7: 'cantidad' también (uds reales de un artículo del contenedor; uds = diferencia, + o -)
+    # v1.13: 'faltante' = una línea reservada (o una parte) que ha pasado a Faltantes al poner a cero o al cambiar la
+    # cantidad (uds = las que salen del contenedor a FALTANTE; reservadas = las que ha perdido la reserva aquí)
     accion = fields.Selection([('mover', 'Mover'), ('archivar', 'Archivar vacío'), ('cero', 'Poner a cero'),
-                               ('anadir', 'Añadir prendas'), ('cantidad', 'Cambiar cantidad')], 'Acción',
+                               ('anadir', 'Añadir prendas'), ('cantidad', 'Cambiar cantidad'),
+                               ('faltante', 'A Faltantes')], 'Acción',
                               default='mover', required=True)
     contenedor = fields.Char('Contenedor', required=True, index=True)
     origen_id = fields.Many2one('stock.location', 'Origen (hueco)', ondelete='set null')
@@ -24,3 +27,11 @@ class KoroshiContenedorMovimiento(models.Model):
     producto_id = fields.Many2one('product.product', 'Artículo', ondelete='set null', index=True)   # v1.5
     move_id = fields.Many2one('stock.move', 'Movimiento de stock', ondelete='set null')             # v1.5
     user_id = fields.Many2one('res.users', 'Usuario de Odoo', default=lambda s: s.env.uid)
+    # v1.13 (R3): id de la tanda de «Añadir prendas» que pone la PDA; un reintento con la misma tanda no se repite
+    tanda = fields.Char('Tanda (PDA)', index=True, readonly=True)
+    faltante_id = fields.Many2one('koroshi.faltante', 'Faltante', ondelete='set null', readonly=True)   # v1.13
+
+    _sql_constraints = [
+        ('tanda_producto_unica', 'unique (tanda, producto_id)',
+         'Esa tanda ya está guardada: no se añade dos veces.'),
+    ]

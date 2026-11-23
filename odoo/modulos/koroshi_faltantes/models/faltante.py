@@ -24,6 +24,13 @@
 # v1.7 Puestos a 0 del picking viejo: importar_puestos_a_cero() pasa a faltantes (tipo «Puesto a 0») lo que se puso
 #   a 0 en la app de codigo de barras desde una fecha. Sus uds ya estan en perdidas: la ronda va de perdidas a la
 #   ubicacion y solo si se encuentra vuelve al stock; si no, se queda como estaba.
+# v1.9 (revision general 23/11, para koroshi_contenedores 1.13):
+#   - reubicar() y sin_alternativa() aceptan `cantidad`: solo esa parte de la linea pasa a Faltantes; el resto
+#     sigue reservado donde estaba (R1: «Cambiar» 5 -> 4 ya no quita a la OUT las 5). Y `origen`: de donde viene
+#     (p. ej. «Desde Contenedores»), en la nota del faltante y en el historial de la OUT.
+#   - mejor_destino(): el hueco mas cercano con stock libre suficiente, mirando todos, no solo los 5 primeros.
+#   - sincronizar_rondas(): cada faltante en su savepoint, con log; uno malo ya no para el cron (R13).
+#   - antes_de_archivar(): un contenedor que se archiva no deja faltantes pendientes con vuelta a el (R4).
 #
 # Como se cambia la reserva: se escribe location_id en la stock.move.line reservada (sin nada leido).
 # Es el write estandar de Odoo 13: quita la reserva de la vieja y reserva en la nueva con strict=True,
@@ -213,9 +220,9 @@ class KoroshiFaltante(models.Model):
         return sum(q.quantity - q.reserved_quantity for q in quants)
 
     @api.model
-    def alternativas(self, product, ubicacion_vieja, raiz):
-        """Hasta MAX_ALTERNATIVAS ubicaciones con stock libre del articulo dentro de raiz, sin la vieja,
-        ordenadas por el lineal mas cercano al de la vieja y despues por mas uds libres."""
+    def _alternativas_ordenadas(self, product, ubicacion_vieja, raiz):
+        """[(ubicacion, uds libres)] de TODAS las ubicaciones con stock libre del articulo dentro de raiz, sin la
+        vieja, ordenadas por el lineal mas cercano al de la vieja y despues por mas uds libres."""
         libre = self._libre_por_ubicacion(product, [('location_id', 'child_of', raiz.id),
                                                     ('location_id.usage', '=', 'internal'),
                                                     ('location_id', '!=', ubicacion_vieja.id)])
@@ -228,11 +235,28 @@ class KoroshiFaltante(models.Model):
             distancia = abs(lin - lv) if (lin is not None and lv is not None) else 9999
             return (distancia, -qty, loc.complete_name or '')
 
+        return sorted(libre.items(), key=orden)
+
+    @api.model
+    def alternativas(self, product, ubicacion_vieja, raiz):
+        """Hasta MAX_ALTERNATIVAS ubicaciones con stock libre del articulo dentro de raiz, sin la vieja,
+        ordenadas por el lineal mas cercano al de la vieja y despues por mas uds libres."""
+        todas = self._alternativas_ordenadas(product, ubicacion_vieja, raiz)
         res = []
-        for loc, qty in sorted(libre.items(), key=orden)[:MAX_ALTERNATIVAS]:
+        for loc, qty in todas[:MAX_ALTERNATIVAS]:
             res.append({'id': loc.id, 'nombre': nombre_corto(loc), 'completo': loc.complete_name,
                         'libre': qty, 'lineal': lineal_de(loc)})
-        return {'lista': res, 'total': len(libre)}
+        return {'lista': res, 'total': len(todas)}
+
+    @api.model
+    def mejor_destino(self, product, ubicacion_vieja, raiz, necesario):
+        """v1.9: la ubicacion mas cercana que tiene libres al menos `necesario` uds (en la unidad del articulo),
+        mirando todas y no solo las MAX_ALTERNATIVAS primeras. Vacio si ninguna llega."""
+        rounding = product.uom_id.rounding
+        for loc, qty in self._alternativas_ordenadas(product, ubicacion_vieja, raiz):
+            if float_compare(qty, necesario, precision_rounding=rounding) >= 0:
+                return loc
+        return self.env['stock.location']
 
     # ------------------------------------------------------------------ movimientos
     @api.model
@@ -348,12 +372,33 @@ class KoroshiFaltante(models.Model):
             raise
 
     @api.model
-    def reubicar(self, ml, ubicacion_leida, employee=False):
-        """La linea pasa a la ubicacion leida y la unidad que falta va a FALTANTE. Todo o nada."""
-        return self._todo_o_nada(self._reubicar, ml, ubicacion_leida, employee)
+    def _parte(self, ml, cantidad=None):
+        """v1.9: (uds en la unidad de la linea, uds en la del articulo, es solo una parte) de lo que pasa a
+        Faltantes. Sin cantidad, todo lo que falta por leer de la linea; con cantidad (unidad del articulo), solo
+        eso, nunca mas de lo que falta por leer."""
+        product = ml.product_id
+        qty_linea = self.pendiente_de(ml)                                   # en la unidad de la linea
+        qty_prod = ml.product_uom_id._compute_quantity(qty_linea, product.uom_id, rounding_method='HALF-UP')
+        if cantidad is None or float_compare(cantidad, qty_prod, precision_rounding=product.uom_id.rounding) >= 0:
+            return qty_linea, qty_prod, False
+        if float_compare(cantidad, 0, precision_rounding=product.uom_id.rounding) <= 0:
+            raise UserError('Cantidad no valida para pasar a Faltantes: %s.' % cantidad)
+        qty_linea = product.uom_id._compute_quantity(cantidad, ml.product_uom_id, rounding_method='HALF-UP')
+        return qty_linea, cantidad, True
+
+    @staticmethod
+    def _con_origen(texto, origen):
+        """v1.9: «Desde Contenedores (...)» delante de la nota del faltante."""
+        return ' '.join(t for t in (origen, texto) if t)
 
     @api.model
-    def _reubicar(self, ml, ubicacion_leida, employee=False):
+    def reubicar(self, ml, ubicacion_leida, employee=False, cantidad=None, origen=''):
+        """La linea pasa a la ubicacion leida y la unidad que falta va a FALTANTE. Todo o nada.
+        v1.9: con cantidad (unidad del articulo), solo esa parte; el resto de la linea sigue donde estaba."""
+        return self._todo_o_nada(self._reubicar, ml, ubicacion_leida, employee, cantidad, origen)
+
+    @api.model
+    def _reubicar(self, ml, ubicacion_leida, employee=False, cantidad=None, origen=''):
         self._comprobar(ml)
         picking, product = ml.picking_id, ml.product_id
         raiz = self._raiz_stock(picking)
@@ -361,9 +406,9 @@ class KoroshiFaltante(models.Model):
         company = picking.company_id
         vieja = ml.location_id
         rounding = ml.product_uom_id.rounding
-        parcial = not float_is_zero(ml.qty_done, precision_rounding=rounding)
-        qty_linea = self.pendiente_de(ml)                                   # en la unidad de la linea
-        qty_prod = ml.product_uom_id._compute_quantity(qty_linea, product.uom_id, rounding_method='HALF-UP')
+        qty_linea, qty_prod, solo_parte = self._parte(ml, cantidad)
+        # v1.3: con una parte leida, o v1.9 si solo pasa una parte, la linea se queda y lo que falta va aparte
+        parcial = solo_parte or not float_is_zero(ml.qty_done, precision_rounding=rounding)
         destino = self.elegir_destino(ml, ubicacion_leida, raiz, qty_prod)
 
         if not parcial:
@@ -374,15 +419,18 @@ class KoroshiFaltante(models.Model):
                 raise UserError('Odoo solo ha podido reservar %s de %s uds en %s. No se ha cambiado nada.'
                                 % (ml.product_uom_qty, qty_linea, nombre_corto(destino)))
         else:
-            # a') v1.3, linea con una parte leida: lo leido se queda en la linea; lo que falta se reserva aparte
-            self._reservar_resto_en(ml, qty_prod, destino)
+            # a') v1.3, linea con una parte leida: lo leido se queda en la linea; lo que falta se reserva aparte.
+            #     v1.9: solo una parte: la linea baja en esa parte y esa parte se reserva aparte
+            self._reservar_resto_en(ml, qty_prod, destino, queda=ml.product_uom_qty - qty_linea)
 
         # b) despues, la unidad que falta: de la vieja a FALTANTE (solo lo que Odoo tiene alli libre)
         move, movido, nota = self._a_faltant(product, qty_prod, vieja, faltant, company, picking)
 
         # c) el registro y (v1.3.1) la nota en la OUT
-        self._nota_out(picking, employee, 'Faltante: %s %s uds no estaban en %s; se cogen en %s.'
-                       % (product.display_name, qty_linea, nombre_corto(vieja), nombre_corto(destino)), movido)
+        self._nota_out(picking, employee, 'Faltante%s: %s %s uds no estaban en %s; se cogen en %s.'
+                       % (' (%s)' % origen if origen else '', product.display_name, qty_linea, nombre_corto(vieja),
+                          nombre_corto(destino)), movido)
+        nota = self._con_origen(nota, origen)
         return self.create({
             'employee_id': employee.id if employee else False,
             'picking_id': picking.id,
@@ -407,13 +455,14 @@ class KoroshiFaltante(models.Model):
         picking.message_post(body=html_escape(texto))
 
     @api.model
-    def sin_alternativa(self, ml, employee=False):
+    def sin_alternativa(self, ml, employee=False, cantidad=None, origen=''):
         """No esta en ningun sitio: se quita la reserva de esa linea (como "Anular reserva" pero solo de
-        ella) y la unidad que falta va a FALTANTE. La OUT se valida sin esa pieza, como ahora."""
-        return self._todo_o_nada(self._sin_alternativa, ml, employee)
+        ella) y la unidad que falta va a FALTANTE. La OUT se valida sin esa pieza, como ahora.
+        v1.9: con cantidad (unidad del articulo), solo esa parte; el resto de la linea sigue reservado."""
+        return self._todo_o_nada(self._sin_alternativa, ml, employee, cantidad, origen)
 
     @api.model
-    def _sin_alternativa(self, ml, employee=False):
+    def _sin_alternativa(self, ml, employee=False, cantidad=None, origen=''):
         self._comprobar(ml)
         picking, product = ml.picking_id, ml.product_id
         self._raiz_stock(picking)
@@ -421,26 +470,28 @@ class KoroshiFaltante(models.Model):
         company = picking.company_id
         vieja = ml.location_id
         ml_id = ml.id
-        qty_linea = self.pendiente_de(ml)
-        qty_prod = ml.product_uom_id._compute_quantity(qty_linea, product.uom_id, rounding_method='HALF-UP')
+        qty_linea, qty_prod, solo_parte = self._parte(ml, cantidad)
+        queda = ml.product_uom_qty - qty_linea    # lo leido (v1.3) o, v1.9, la parte que si esta
 
-        if float_is_zero(ml.qty_done, precision_rounding=ml.product_uom_id.rounding):
+        if float_is_zero(queda, precision_rounding=ml.product_uom_id.rounding):
             # a) quitar la reserva de la linea: unlink estandar (devuelve la reserva al quant y recalcula
             #    el estado del movimiento)
             ml.unlink()
         else:
             # a') v1.3, linea con una parte leida: la reserva baja a lo leido (write estandar de
-            #     product_uom_qty: devuelve al quant solo lo que falta)
+            #     product_uom_qty: devuelve al quant solo lo que falta). v1.9: o baja solo en la parte que no esta
             move = ml.move_id
-            ml.write({'product_uom_qty': ml.qty_done})
+            ml.write({'product_uom_qty': queda})
             self.flush()
             move._recompute_state()
 
         # b) la unidad que falta: de la vieja a FALTANTE
         move, movido, nota = self._a_faltant(product, qty_prod, vieja, faltant, company, picking)
 
-        self._nota_out(picking, employee, 'Faltante: %s %s uds no estaban en %s ni en ninguna otra ubicación; '
-                       'la OUT sale sin ellas.' % (product.display_name, qty_linea, nombre_corto(vieja)), movido)
+        self._nota_out(picking, employee, 'Faltante%s: %s %s uds no estaban en %s ni en ninguna otra ubicación; '
+                       'la OUT sale sin ellas.' % (' (%s)' % origen if origen else '', product.display_name,
+                                                   qty_linea, nombre_corto(vieja)), movido)
+        nota = self._con_origen(nota, origen)
         return self.create({
             'employee_id': employee.id if employee else False,
             'picking_id': picking.id,
@@ -456,13 +507,14 @@ class KoroshiFaltante(models.Model):
         })
 
     @api.model
-    def _reservar_resto_en(self, ml, qty_prod, destino):
+    def _reservar_resto_en(self, ml, qty_prod, destino, queda=None):
         """v1.3: linea con una parte leida. La linea se queda con lo leido (write estandar de
         product_uom_qty, que devuelve al quant lo que falta) y lo que falta se reserva en destino con el
         metodo estandar del movimiento (_update_reserved_quantity, strict: solo stock libre de esa
-        ubicacion). Si no llega, error (el savepoint deshace todo)."""
+        ubicacion). Si no llega, error (el savepoint deshace todo).
+        v1.9: queda = lo que se queda reservado en la linea (unidad de la linea); por defecto, lo leido."""
         move, product = ml.move_id, ml.product_id
-        ml.write({'product_uom_qty': ml.qty_done})
+        ml.write({'product_uom_qty': ml.qty_done if queda is None else queda})
         self.flush()
         disponible = self.env['stock.quant']._get_available_quantity(product, destino, strict=True)
         cogido = move._update_reserved_quantity(qty_prod, disponible, destino, strict=True)
@@ -615,10 +667,10 @@ class KoroshiFaltante(models.Model):
         """Crea la INT de revision con los faltantes seleccionados (o todos los pendientes si no hay
         seleccion) que tienen uds en FALTANTE y no estan ya en una ronda abierta. Una linea por faltante,
         de FALTANTE a su ubicacion vieja, por orden de lineal."""
-        self.sincronizar_rondas()
+        fallados = self._sincronizar()    # v1.9: los que no se han podido pasar no entran en la ronda nueva
         faltantes = self.exists() or self.search([('estado', '=', 'pendiente')])
         faltantes = faltantes.filtered(
-            lambda f: f.estado == 'pendiente' and not f.en_ronda and
+            lambda f: f.estado == 'pendiente' and not f.en_ronda and f.id not in fallados and
             not float_is_zero(f.cantidad_faltant, precision_rounding=f.product_id.uom_id.rounding))
         if not faltantes:
             raise UserError('No hay faltantes pendientes con uds en FALTANTE que no esten ya en una ronda.')
@@ -701,62 +753,115 @@ class KoroshiFaltante(models.Model):
     @api.model
     def sincronizar_rondas(self):
         """Pasa a los faltantes lo que se ha hecho en las INT de ronda. Lo llama el cron cada 15 min."""
-        pendientes = self.search([('estado', '=', 'pendiente'), ('ronda_move_id', '!=', False)])
-        for f in pendientes:
-            m = f.ronda_move_id
-            rounding = f.product_id.uom_id.rounding
-            if m.state not in ('done', 'cancel'):
-                if m.picking_id and m.picking_id != f.ronda_picking_id:
-                    # "Crear pedido pendiente": la linea ha pasado a la INT nueva
-                    f.write({'ronda_picking_id': m.picking_id.id, 'rondas': f.rondas + 1})
-                continue
-            if m.state == 'cancel':
-                # v1.7: lo marcado en Lecturas manda
-                ronda = m.picking_id.name or ''
-                if f.ronda_resultado == 'no_existe':
-                    f.write({'estado': 'no_existe', 'ronda_move_id': False,
-                             'fecha_revision': f.ronda_fecha or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
-                             'nota': ('%s Ronda %s: la ubicacion ya no existe.' % (f.nota or '', ronda)).strip()})
-                    continue
-                if f.ronda_resultado == 'no_esta':
-                    if f.tipo == 'puesto_a_cero' or f.rondas >= RONDAS_PERDIDAS:
-                        f._cerrar_no_encontrado('No estaba en la ronda %s (%s.a ronda).' % (ronda, f.rondas),
-                                                m.write_uid)
-                    else:
-                        f.write({'ronda_move_id': False,
-                                 'nota': ('%s Ronda %s: no estaba; sigue pendiente (a la %s.a ronda sin aparecer, a '
-                                          'perdidas).' % (f.nota or '', ronda, RONDAS_PERDIDAS)).strip()})
-                    continue
-                if m.picking_id.state == 'cancel':
-                    # se ha cancelado la INT entera: no es "no encontrado", vuelve a pendiente sin ronda
-                    f.write({'ronda_move_id': False, 'ronda_picking_id': False,
-                             'nota': ('%s Ronda %s cancelada.' % (f.nota or '', m.picking_id.name or '')).strip()})
-                else:
-                    f._cerrar_no_encontrado('No encontrado en la ronda %s.' % (m.picking_id.name or ''),
-                                            m.write_uid)
-                continue
-            # hecho: encontrado donde se haya leido
-            hecho = m.product_uom._compute_quantity(m.quantity_done, f.product_id.uom_id)
-            lineas = m.move_line_ids.filtered(lambda l: l.qty_done > 0)
-            destino = lineas[:1].location_dest_id or m.location_dest_id
-            if float_compare(hecho, f.cantidad_faltant, precision_rounding=rounding) < 0:
-                # solo una parte: el resto sigue como otro faltante
-                resto = f.cantidad_faltant - hecho
-                otro = self._resto_de_ronda(m)
-                nuevo = f.copy({
-                    'cantidad': resto, 'cantidad_faltant': resto, 'fecha': f.fecha,
-                    'ronda_move_id': otro.id if otro else False,
-                    'ronda_picking_id': otro.picking_id.id if otro else False,
-                    'nota': 'Resto de una linea encontrada a medias en %s.' % (m.picking_id.name or ''),
-                })
-                f.write({'cantidad': max(f.cantidad - resto, 0.0), 'cantidad_faltant': hecho})
-                if otro and otro.state == 'cancel':
-                    nuevo._cerrar_no_encontrado('No encontrado en la ronda %s.' % (m.picking_id.name or ''),
-                                                m.write_uid)
-            f.write({'estado': 'encontrado', 'move_revision_id': m.id, 'ubicacion_revision_id': destino.id,
-                     'fecha_revision': m.date or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
-                     'ronda_resultado': 'esta', 'ronda_fecha': f.ronda_fecha or m.date})
+        self._sincronizar()
         return True
+
+    @api.model
+    def _sincronizar(self):
+        """v1.9 (R13): cada faltante en su savepoint. Si uno falla, se deshace solo el suyo, queda en el log con su
+        id y el cron sigue con los demas (antes un faltante malo paraba la ronda entera cada 15 min). Devuelve los
+        ids que han fallado (crear_ronda no los vuelve a meter en una ronda)."""
+        pendientes = self.search([('estado', '=', 'pendiente'), ('ronda_move_id', '!=', False)])
+        fallados = []
+        for fid in pendientes.ids:
+            try:
+                self._todo_o_nada(self._sincronizar_uno, fid)
+            except Exception:
+                fallados.append(fid)
+                _logger.exception('KOROSHI FALTANTES ronda: no se ha podido pasar el faltante id %s; se deja como '
+                                  'estaba y se sigue con los demas', fid)
+        if fallados:
+            _logger.warning('KOROSHI FALTANTES ronda: %s de %s faltantes sin pasar (ids %s)', len(fallados),
+                            len(pendientes), fallados)
+        return fallados
+
+    @api.model
+    def _sincronizar_uno(self, fid):
+        f = self.browse(fid).exists()
+        if not f or f.estado != 'pendiente' or not f.ronda_move_id:
+            return
+        m = f.ronda_move_id
+        rounding = f.product_id.uom_id.rounding
+        if m.state not in ('done', 'cancel'):
+            if m.picking_id and m.picking_id != f.ronda_picking_id:
+                # "Crear pedido pendiente": la linea ha pasado a la INT nueva
+                f.write({'ronda_picking_id': m.picking_id.id, 'rondas': f.rondas + 1})
+            return
+        if m.state == 'cancel':
+            # v1.7: lo marcado en Lecturas manda
+            ronda = m.picking_id.name or ''
+            if f.ronda_resultado == 'no_existe':
+                f.write({'estado': 'no_existe', 'ronda_move_id': False,
+                         'fecha_revision': f.ronda_fecha or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
+                         'nota': ('%s Ronda %s: la ubicacion ya no existe.' % (f.nota or '', ronda)).strip()})
+                return
+            if f.ronda_resultado == 'no_esta':
+                if f.tipo == 'puesto_a_cero' or f.rondas >= RONDAS_PERDIDAS:
+                    f._cerrar_no_encontrado('No estaba en la ronda %s (%s.a ronda).' % (ronda, f.rondas),
+                                            m.write_uid)
+                else:
+                    f.write({'ronda_move_id': False,
+                             'nota': ('%s Ronda %s: no estaba; sigue pendiente (a la %s.a ronda sin aparecer, a '
+                                      'perdidas).' % (f.nota or '', ronda, RONDAS_PERDIDAS)).strip()})
+                return
+            if m.picking_id.state == 'cancel':
+                # se ha cancelado la INT entera: no es "no encontrado", vuelve a pendiente sin ronda
+                f.write({'ronda_move_id': False, 'ronda_picking_id': False,
+                         'nota': ('%s Ronda %s cancelada.' % (f.nota or '', m.picking_id.name or '')).strip()})
+            else:
+                f._cerrar_no_encontrado('No encontrado en la ronda %s.' % (m.picking_id.name or ''),
+                                        m.write_uid)
+            return
+        # hecho: encontrado donde se haya leido
+        hecho = m.product_uom._compute_quantity(m.quantity_done, f.product_id.uom_id)
+        lineas = m.move_line_ids.filtered(lambda l: l.qty_done > 0)
+        destino = lineas[:1].location_dest_id or m.location_dest_id
+        if float_compare(hecho, f.cantidad_faltant, precision_rounding=rounding) < 0:
+            # solo una parte: el resto sigue como otro faltante
+            resto = f.cantidad_faltant - hecho
+            otro = self._resto_de_ronda(m)
+            nuevo = f.copy({
+                'cantidad': resto, 'cantidad_faltant': resto, 'fecha': f.fecha,
+                'ronda_move_id': otro.id if otro else False,
+                'ronda_picking_id': otro.picking_id.id if otro else False,
+                'nota': 'Resto de una linea encontrada a medias en %s.' % (m.picking_id.name or ''),
+            })
+            f.write({'cantidad': max(f.cantidad - resto, 0.0), 'cantidad_faltant': hecho})
+            if otro and otro.state == 'cancel':
+                nuevo._cerrar_no_encontrado('No encontrado en la ronda %s.' % (m.picking_id.name or ''),
+                                            m.write_uid)
+        f.write({'estado': 'encontrado', 'move_revision_id': m.id, 'ubicacion_revision_id': destino.id,
+                 'fecha_revision': m.date or fields.Datetime.now(), 'revisado_por': m.write_uid.id,
+                 'ronda_resultado': 'esta', 'ronda_fecha': f.ronda_fecha or m.date})
+
+    # ------------------------------------------------------------------ v1.9: contenedor que se archiva (R4)
+    @api.model
+    def en_ronda_de(self, ubicaciones):
+        """Faltantes pendientes con vuelta a alguna de esas ubicaciones que estan en una ronda abierta: mientras
+        tanto no se archiva el contenedor (la INT de la ronda lleva la prenda alli)."""
+        return self.search([('ubicacion_vieja_id', 'in', ubicaciones.ids), ('estado', '=', 'pendiente')]).filtered(
+            'en_ronda')
+
+    @api.model
+    def antes_de_archivar(self, ubicaciones):
+        """Se van a archivar estos contenedores (vacios). Los faltantes pendientes con vuelta a ellos pasan a
+        apuntar al hueco donde estaba cada uno (la proxima ronda busca alli). Si alguno esta en una ronda abierta,
+        error y no se cambia nada. Devuelve cuantos faltantes han cambiado."""
+        en_ronda = self.en_ronda_de(ubicaciones)
+        if en_ronda:
+            raise UserError('No se archiva: %s tiene %d faltante(s) en la ronda %s. Espera a que se cierre la ronda.'
+                            % (', '.join(en_ronda.mapped('ubicacion_vieja_id.name')), len(en_ronda),
+                               ', '.join(en_ronda.mapped('ronda_picking_id.name'))))
+        pendientes = self.search([('ubicacion_vieja_id', 'in', ubicaciones.ids), ('estado', '=', 'pendiente')])
+        for f in pendientes:
+            cont = f.ubicacion_vieja_id
+            hueco = cont.location_id
+            if not hueco or hueco.usage != 'internal':
+                continue
+            f.write({'ubicacion_vieja_id': hueco.id,
+                     'nota': ('%s Contenedor %s archivado: la ronda lo busca en %s.'
+                              % (f.nota or '', cont.name, nombre_corto(hueco))).strip()})
+        return len(pendientes)
 
     # ------------------------------------------------------------------ v1.7: ronda en Lecturas
     @api.model

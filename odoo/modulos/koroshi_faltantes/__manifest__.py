@@ -68,8 +68,17 @@ v1.8.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Contenedores (con 
   pantallas. La del operario de la tarea de la OUT no se guarda. Solo JS; nada en el servidor ni en la base de datos.
 v1.8.1 (20/11/2026): la tarjeta guardada vale lo que diga el parametro koroshi_operarios.minutos_tarjeta (60 por
   defecto), igual que en Contenedores. Necesita koroshi_operarios 2.22.1 (instalarla antes); sin ella se queda en 60.
+v1.9.0 (23/11/2026): para koroshi_contenedores 1.13.0 (revisión general del 23/11, R1, R4 y R13). reubicar() y
+  sin_alternativa() pueden pasar a Faltantes solo una parte de la línea (`cantidad`): «Cambiar» 5 -> 4 en
+  Contenedores quitaba a la OUT las 5 y mandaba 5 a FALTANTE; ahora la OUT sigue con 4 allí y solo 1 va a otro hueco
+  (o sale sin ella) y a FALTANTE. `origen` deja «Desde Contenedores (...)» en la nota del faltante y en el historial
+  de la OUT. mejor_destino() busca el hueco más cercano con stock libre suficiente entre todos, no solo entre los 5
+  primeros. La ronda (cron cada 15 min) pasa cada faltante en su savepoint con log: uno malo ya no para a los demás
+  ni entra en la ronda siguiente. antes_de_archivar(): al archivar un contenedor, sus faltantes pendientes pasan a
+  apuntar al hueco; con uno en una ronda abierta no se archiva. La pantalla Faltante de la PDA no cambia. Sin campos
+  nuevos en ninguna tabla.
 """,
-    'version': '13.0.1.8.1',
+    'version': '13.0.1.9.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
