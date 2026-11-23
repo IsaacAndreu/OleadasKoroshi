@@ -76,8 +76,11 @@ v1.9.0 (20/11/2026): la tarjeta es la misma que en Lecturas y Faltante (con koro
 v1.9.1 (20/11/2026): la tarjeta ya no caduca a los 15 min sin actividad: dura lo que diga el parámetro
   koroshi_operarios.minutos_tarjeta (60 por defecto), que se lee al entrar. Necesita koroshi_operarios 2.22.1
   (instalarla antes); sin ella se queda en 60.
+v1.9.2 (23/11/2026): con el cuadro de texto marcado, la lectura se quedaba escrita y no hacía nada (almacén,
+  compactar): el campo solo leía con Intro al final y el lector puede acabar con tabulador. Ahora vale Intro o
+  tabulador, como el Inicio PDA (koroshi_actividades 1.8.3). Solo JS.
 """,
-    'version': '13.0.1.9.1',
+    'version': '13.0.1.9.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

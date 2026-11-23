@@ -1,6 +1,7 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.9.2 (23/11): el campo lee con Intro o con tabulador al final.
  * v1.9 (20/11): la tarjeta es la misma que en Lecturas y Faltante (memoria de la PDA, clave
  *   koroshi_operarios_pda_<usuario>, {id, nombre, t}). Al entrar se coge la que haya si tiene menos de 15 min sin
  *   actividad; pasar la tarjeta aquí la deja puesta en las otras. La inactividad de 15 min la quita solo aquí.
@@ -215,7 +216,9 @@ var Pantalla = AbstractAction.extend({
     },
 
     _onKeydown: function (ev) {
-        if (ev.which === 13) {
+        // v1.9.2: Intro o tabulador al final (según cómo esté configurado el lector). Con el campo marcado, Odoo no
+        // manda la lectura al bus: si el lector acaba en tabulador, el código se quedaba escrito sin hacer nada.
+        if (ev.which === 13 || ev.which === 9) {
             ev.preventDefault();
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
