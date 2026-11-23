@@ -43,8 +43,13 @@ cada lectura. Solo apunta: todavía no cambia el stock. Además, buscar la refer
 y sin pasar por las traducciones: de 1 s a 0,4 s en producción) y la descripción se reescribe sin sangrías
 para que no dé el aviso «Unexpected indentation» al actualizar la lista de aplicaciones. Las variantes de la
 referencia se guardan al empezar el recuento (no se buscan en cada lectura).
+v1.2.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita koroshi_base 1.2.1 (instalarla antes). La
+tarjeta compartida y el lector salen de koroshi_base (comun.js): el campo ahora también lee cuando el lector para
+150 ms, como Contenedores (las PDA no mandan Intro y la lectura podía quedarse escrita); con «⌨ Escribir» espera al
+Intro. En las rutas, el permiso, la tarjeta y la búsqueda de la prenda salen de koroshi_base.pda: la tarjeta tiene que
+ser de un operario activo de la compañía; la búsqueda es la misma que antes. Sin campos nuevos.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

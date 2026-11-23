@@ -8,10 +8,13 @@ odoo.define('koroshi_recuentos.Referencia', function (require) {
  *   y «Caja hecha». A ciegas: la PDA no enseña lo que dice Odoo hasta terminar; si no cuadra, pide leer la caja otra
  *   vez. Cada lectura queda apuntada en Odoo. «Terminar» enseña el resultado. NO toca el stock (eso es la fase 3).
  *   Lo que se lee mientras se espera a Odoo va a una cola y se lee después, en orden (no se pierde ninguna prenda).
+ * v1.2 (23/11, O4): la tarjeta y el lector salen de koroshi_base.comun. El campo ahora también lee cuando el lector
+ *   para 150 ms (las PDA no mandan Intro y la lectura se quedaba escrita), como Contenedores; con «⌨ Escribir»
+ *   espera al Intro.
  * Todo dentro de .o_koroshi_recuentos. Sin aria-hidden (Odoo 13 lo oculta). */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
-var session = require('web.session');
+var comun = require('koroshi_base.comun');   // v1.2
 
 var REPETIDA_MS = 700;       // la misma lectura llega por el bus y por el campo: se descarta la copia
 var EN_ESPERA_MAX = 40;      // lecturas guardadas mientras se espera a Odoo (al contar se lee deprisa)
@@ -29,6 +32,7 @@ var Referencia = AbstractAction.extend({
     contentTemplate: 'koroshi_recuentos.Referencia',
     events: {
         'keydown .o_kr_codigo': '_onKeydown',
+        'input .o_kr_codigo': '_onEscribe',     // v1.2
         'click .o_kr_teclado': '_onTeclado',
         'click .o_kr_atras': '_onAtras',
         'click .o_kr_vaciar': '_onVaciar',
@@ -78,29 +82,20 @@ var Referencia = AbstractAction.extend({
     destroy: function () {
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearInterval(this.timer);
+        comun.cancelarLector(this);   // v1.2
         this._super.apply(this, arguments);
     },
 
     // ------------------------------------------------------------------ tarjeta (compartida con las otras pantallas)
-    _clave: function () { return 'koroshi_operarios_pda_' + (session.uid || ''); },
-    _guardada: function () {
-        try {
-            var v = window.localStorage.getItem(this._clave());
-            return v ? JSON.parse(v) : null;
-        } catch (e) { return null; }
-    },
+    // v1.2: de koroshi_base.comun.tarjeta
+    _guardada: function () { return comun.tarjeta.leer(); },
     _guardarPersona: function () {
         if (!this.persona) { return; }
-        this.guardadaEn = Date.now();
-        try {
-            window.localStorage.setItem(this._clave(), JSON.stringify(
-                {id: this.persona.id, nombre: this.persona.nombre, t: this.guardadaEn}));
-        } catch (e) { /* sin memoria: solo en esta pantalla */ }
+        this.guardadaEn = comun.tarjeta.guardar(this.persona);
     },
     _tomarGuardada: function () {
         var g = this._guardada();
-        if (!g || !g.id || (this.persona && this.persona.id === g.id)) { return false; }
-        if (g.t && Date.now() - g.t > PERSONA_MS) { return false; }
+        if (!comun.tarjeta.vigente(g, PERSONA_MS) || (this.persona && this.persona.id === g.id)) { return false; }
         this.persona = {id: g.id, nombre: g.nombre};
         this.actividadEn = g.t || Date.now();
         return true;
@@ -114,15 +109,12 @@ var Referencia = AbstractAction.extend({
     },
     _leerMinutosTarjeta: function () {
         var self = this;
-        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
-            .then(function (r) {
-                if (r && r.ok && r.minutos > 0) {
-                    PERSONA_MS = r.minutos * 60000;
-                    if (!self.persona && self._tomarGuardada()) { self._pintar(); }
-                }
-            }).guardedCatch(function (e) {
-                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            });
+        return comun.tarjeta.minutos(this).then(function (minutos) {
+            if (minutos > 0) {
+                PERSONA_MS = minutos * 60000;
+                if (!self.persona && self._tomarGuardada()) { self._pintar(); }
+            }
+        });
     },
     _vigilar: function () {
         var g = this._guardada();
@@ -151,13 +143,21 @@ var Referencia = AbstractAction.extend({
     },
 
     _onKeydown: function (ev) {
-        if (ev.which === 13) {
+        if (comun.esFinDeLectura(ev)) {     // v1.2: Intro o tabulador
             ev.preventDefault();
+            comun.cancelarLector(this);
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
             if (this.teclado) { this._ponerTeclado(false); }
             this._leer(codigo, 'campo');
         }
+    },
+
+    // v1.2: sin «⌨ Escribir» lo que entra es el lector: se lee cuando para (las PDA no mandan Intro)
+    _onEscribe: function (ev) {
+        var self = this;
+        if (this.teclado) { return comun.cancelarLector(this); }
+        comun.leerAlParar(this, ev.currentTarget, function (codigo) { self._leer(codigo, 'campo'); });
     },
 
     _onBarcodeScanned: function (codigo) { this._leer(codigo, 'bus'); },

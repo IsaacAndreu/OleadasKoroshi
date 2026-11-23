@@ -8,6 +8,8 @@
 #   estar lo que falta.
 # /caja: lo que dice Odoo que hay en un sitio (todas las referencias).
 # Con sudo y solo lectura: no crea, no escribe y no mueve nada. Solo ubicaciones internas de la compañía 8.
+# v1.2 (revisión general 23/11, O5 y R16): permiso, tarjeta y búsqueda de la prenda salen de koroshi_base.pda. La
+# tarjeta tiene que ser de un operario activo de la compañía; la búsqueda es la de antes (también archivados, sin nombre).
 # =============================================================================
 import datetime
 
@@ -15,7 +17,7 @@ from odoo import fields, http
 from odoo.exceptions import UserError
 from odoo.http import request
 
-from odoo.addons.koroshi_base import comun
+from odoo.addons.koroshi_base import comun, pda
 
 from .. import logica
 
@@ -45,24 +47,15 @@ def _fecha(dt):
 class KoroshiRecuentos(http.Controller):
 
     def _comprobar_usuario(self):
-        if not request.env.user.has_group('stock.group_stock_user'):
-            raise UserError('No tienes permiso para ver el inventario.')
+        pda.comprobar_grupo(request.env, 'No tienes permiso para ver el inventario.')   # v1.2
 
     # ------------------------------------------------------------------ artículos
     def _por_codigo(self, codigo):
-        """Variante por EAN (y UPC con 0 delante), código alternativo o referencia interna; vacío si no hay."""
-        posibles = [codigo]
-        if codigo.isdigit() and len(codigo) == 12:
-            posibles.append('0' + codigo)
-        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
-            posibles.append(codigo[1:])
-        Product = request.env['product.product'].sudo().with_context(active_test=False)
-        p = Product.search([('barcode', 'in', posibles)], limit=1)
-        if not p and 'product.barcode' in request.env:
-            p = request.env['product.barcode'].sudo().search([('name', 'in', posibles)], limit=1).product_id
-        if not p:
-            p = Product.search([('default_code', '=', codigo)], limit=1)
-        return p
+        """Variante por EAN (y UPC con 0 delante), código alternativo o referencia interna; vacío si no hay.
+        v1.2 (O5): la de koroshi_base.pda (con sudo, también archivados; sin buscar por nombre, como antes: el nombre
+        lo mira _variantes)."""
+        return pda.buscar_producto(request.env['product.product'].sudo().env, codigo, archivados=True,
+                                   por_nombre=False)
 
     def _variantes(self, modelo):
         """Todas las variantes del modelo (también las archivadas: pueden tener stock). La referencia está en el
@@ -277,10 +270,7 @@ class KoroshiRecuentos(http.Controller):
         return {'id': emp.id, 'nombre': emp.name} if emp else None
 
     def _empleado(self, employee_id):
-        emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-        if not emp:
-            raise UserError('Pasa antes tu tarjeta de operario.')
-        return emp
+        return pda.empleado_valido(request.env, employee_id)   # v1.2 (R16): activo y de la compañía
 
     def _recuento(self, recuento_id):
         rec = request.env['koroshi.recuento'].sudo().browse(int(recuento_id or 0)).exists()
