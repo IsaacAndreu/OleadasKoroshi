@@ -553,6 +553,12 @@ class KoroshiMonitor(http.Controller):
             res['jefe'] = jefe
             # v1.40.0: boton «Etiquetas» por zona (koroshi_zonas: koroshi.zonas.etiquetas.imprimir, la antigua 1843)
             res['etiquetas_zona'] = bool(jefe and 'koroshi.zonas.etiquetas' in request.env.registry)
+            # v1.42.0: seccion «Imprimir» (web, Zalando, About You, INT); si falla, el Monitor sale igual sin ella
+            try:
+                res['imprimir'] = request.env['koroshi.monitor.imprimir'].pendientes()
+            except Exception:
+                _logger.exception('KOROSHI MONITOR: no se ha podido calcular la seccion Imprimir')
+                res['imprimir'] = []
             if not jefe:
                 # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
                 res.pop('personas', None)

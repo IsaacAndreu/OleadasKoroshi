@@ -197,8 +197,15 @@ confirmacion antes. Solo jefes y solo si koroshi_zonas esta instalado (si no, no
 v1.41.0 (23/11/2026): el boton «Etiquetas» de cada zona pasa a la primera columna de «Totales», junto a la zona. En la
 1.40.0 iba en la ultima columna, despues de los operarios, y en pantallas normales quedaba fuera (habia que arrastrar
 la tabla a la derecha): Isaac no lo veia.
+v1.42.0 (23/11/2026): seccion «Imprimir» debajo de «Totales» (Isaac, nota de voz del 23/11: lo de imprimir de picking
+en un solo sitio, el Monitor). Un boton por cosa, con el numero de lo que saldria (apagado si es 0): «Web WEB_...» por
+cada agrupacion web de hoy (el «Picking Operations» de su INT Stock -> SORTER, que lleva las ubicaciones; el
+«Batch Transfer» de la agrupacion no las lleva y solo sale si aun no hay INT), «Zalando» y «About You» (OUT reservadas sin validar,
+«Picking Operations») e «INT» (traspasos internos de hoy reservados sin validar). Modelo nuevo koroshi.monitor.imprimir
+(abstracto, sin tablas): solo lee y abre el PDF. Lo ven todos los que entran al Monitor; las etiquetas de zona siguen
+siendo solo de jefes porque crean matriculas.
 """,
-    'version': '13.0.1.41.0',
+    'version': '13.0.1.42.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

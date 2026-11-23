@@ -183,6 +183,7 @@ var Monitor = AbstractAction.extend({
         'click .km-produccion': '_abrirProduccion',   // v1.31.0
         'click .km-mapa': '_abrirMapa',
         'click .km-etq-zona': '_etiquetasZona',     // v1.40.0
+        'click .km-imp': '_imprimir',               // v1.42.0
         'click .km-limpiar-filtros': '_limpiarFiltros',
         'dblclick th.km-sort': '_onSort',
         'click details > summary': '_onToggle',
@@ -307,6 +308,15 @@ var Monitor = AbstractAction.extend({
         return this._rpc({model: 'koroshi.zonas.etiquetas', method: 'imprimir', args: [ids, 'REAL']}).then(function (accion) {
             return self.do_action(accion);
         });
+    },
+
+    // v1.42.0: seccion «Imprimir»: abre el PDF de la lista de picking (koroshi.monitor.imprimir; solo lee)
+    _imprimir: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var $b = $(ev.currentTarget);
+        return this._rpc({model: 'koroshi.monitor.imprimir', method: 'imprimir', args: [$b.data('clave'), $b.data('ref') || 0]})
+            .then(function (accion) { return self.do_action(accion); });
     },
 
     _abrirMapa: function (ev) {
@@ -471,6 +481,16 @@ var Monitor = AbstractAction.extend({
                 ' title="Imprimir las etiquetas de las OUT sin hacer de esta zona">🖨 Etiquetas</button>' : '') + '</td><td class="r">' + n(z.u) + '</td><td class="r">' + n(z.l) + '</td><td class="r"><b>' + n(z.u - z.l) + '</b></td><td class="r">' + (z.u ? Math.round(100 * z.l / z.u) : 0) + ' %</td><td class="r">' + z.n + '</td><td class="r">' + z.h + '</td><td class="r">' + z.c + '</td><td class="r"><b>' + (z.c + z.p) + '</b></td><td>' + opsTxt(opsZona(zn)) + '</td></tr>';
         });
         h += '<tr class="km-tot"><td>Total</td><td class="r">' + n(T.u) + '</td><td class="r">' + n(T.l) + '</td><td class="r">' + n(T.u - T.l) + '</td><td class="r">' + pctT + ' %</td><td class="r">' + D.length + '</td><td class="r">' + T.h + '</td><td class="r">' + T.c + '</td><td class="r">' + (T.c + T.p) + '</td><td></td></tr></tbody></table></div>';
+
+        // v1.42.0: Imprimir (listas de picking de web, Zalando, About You e INT; las etiquetas de zona, en Totales)
+        if ((r.imprimir || []).length) {
+            h += '<h2>Imprimir</h2><div class="km-card km-imprimir">';
+            r.imprimir.forEach(function (b) {
+                h += '<button class="btn btn-primary km-imp" data-clave="' + e(b.clave) + '" data-ref="' + (b.ref || 0) + '"' +
+                    (b.n ? '' : ' disabled') + ' title="' + e(b.titulo) + '">🖨 ' + e(b.nombre) + ' <span class="badge">' + b.n + '</span></button> ';
+            });
+            h += '</div>';
+        }
 
         // Avance por zona
         h += '<h2>Avance por zona</h2><div class="km-ley"><span><i style="background:var(--km-ok)"></i>OUT hecha (validada)</span><span><i style="background:var(--km-cur)"></i>cogiéndose</span><span><i style="background:var(--km-pend)"></i>sin empezar</span></div><div class="km-card">';

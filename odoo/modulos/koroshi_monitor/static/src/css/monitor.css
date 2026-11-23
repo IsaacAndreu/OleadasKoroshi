@@ -182,3 +182,7 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.41.0: boton de etiquetas junto a la zona en «Totales» */
 .o_koroshi_monitor td.km-zona-etq { white-space: nowrap; }
 .o_koroshi_monitor td.km-zona-etq .km-etq-zona { margin-left: 6px; padding: 1px 8px; }
+
+/* v1.42.0: seccion «Imprimir» */
+.km-imprimir { display: flex; flex-wrap: wrap; gap: 8px; }
+.km-imprimir .km-imp .badge { margin-left: 4px; }
