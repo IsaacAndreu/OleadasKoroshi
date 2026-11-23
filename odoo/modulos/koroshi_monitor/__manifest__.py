@@ -194,8 +194,11 @@ v1.40.0 (23/11/2026): boton «Etiquetas» por zona en la tabla «Totales» de la
 Imprime las etiquetas de las OUT sin hacer de esa zona con lo de koroshi_zonas (koroshi.zonas.etiquetas.imprimir, la
 antigua accion 1843): reutiliza las matriculas CJ que ya tenga cada OUT, crea solo las que falten y abre el PDF. Pide
 confirmacion antes. Solo jefes y solo si koroshi_zonas esta instalado (si no, no sale el boton). Sin dependencia nueva.
+v1.41.0 (23/11/2026): el boton «Etiquetas» de cada zona pasa a la primera columna de «Totales», junto a la zona. En la
+1.40.0 iba en la ultima columna, despues de los operarios, y en pantallas normales quedaba fuera (habia que arrastrar
+la tabla a la derecha): Isaac no lo veia.
 """,
-    'version': '13.0.1.40.0',
+    'version': '13.0.1.41.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
