@@ -136,3 +136,19 @@ def turno_de(entrada, texto=None):
             return {'tramos': res, 'fin': res[-1][1], 'descanso': descanso, 'continuo': len(res) == 1,
                     'nombre': ' y '.join('%s-%s' % (a.strftime('%H:%M'), b.strftime('%H:%M')) for a, b in tramos)}
     return None
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# v1.2.0 (revision general 23/11, O5): codigos que se prueban al leer una prenda. Lo usa pda.buscar_producto.
+# ---------------------------------------------------------------------------------------------------------------------
+def variantes_codigo(codigo):
+    """El codigo leido y, si es un UPC de 12 cifras, con un 0 delante; si es un EAN de 13 que empieza por 0, sin el."""
+    codigo = (codigo or '').strip()
+    if not codigo:
+        return []
+    variantes = [codigo]
+    if codigo.isdigit() and len(codigo) == 12:
+        variantes.append('0' + codigo)
+    if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
+        variantes.append(codigo[1:])
+    return variantes

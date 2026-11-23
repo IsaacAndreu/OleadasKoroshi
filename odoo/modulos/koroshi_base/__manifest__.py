@@ -18,8 +18,18 @@ comun.turno_de(entrada) da los tramos, la hora de fin y el descanso del turno de
 del parametro koroshi_base.turnos (nuevo, noupdate): antes de las 07:00, 06:00-14:00 con 15 min de descanso; antes de
 las 11:00, 08:00-13:00 y 14:00-17:00; despues, sin turno. Tambien leer_turnos() y texto_turnos(env). Solo lo usan los
 modulos que pasen a usarlo (actividades, operarios, monitor, informe), cada uno con su version. Tests sin Odoo.
+v1.2.0 (23/11/2026): revision general del 23/11 (O4, O5, R16). Lo que estaba copiado en cada pantalla de la PDA, en un
+solo sitio. pda.py (rutas): comprobar_grupo(env, mensaje), empleado_valido(env, employee_id) (la tarjeta que manda la
+PDA tiene que existir, estar activa y ser de la compania; si no, «Pasa otra vez tu tarjeta») y buscar_producto(env,
+codigo) (EAN y UPC con o sin 0, codigo alternativo, referencia interna y nombre; comun.variantes_codigo, con tests).
+comun.js: comun.tarjeta (leer, guardar, vigente, minutos: la tarjeta compartida koroshi_operarios_pda_<usuario>) y el
+lector comun.leerAlParar (lee cuando el lector para 150 ms; con soloRafaga, solo lo que llega de golpe, para los
+campos donde tambien se escribe a mano), esFinDeLectura y cancelarLector. Sin modelos, vistas ni parametros nuevos:
+basta copiar y reiniciar (no hace falta -u, que actualizaria los ~23 modulos que dependen de este). Lo usan
+contenedores 1.15, faltantes 1.10, devoluciones 1.3, recuentos 1.2, prenda_suelo 1.1 y preparacion 3.35: instalar
+esta antes que ellos.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

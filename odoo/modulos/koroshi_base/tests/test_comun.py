@@ -103,5 +103,23 @@ class TestTurnos(unittest.TestCase):
         self.assertEqual(comun.leer_turnos(''), comun.leer_turnos(None))
 
 
+class TestVariantesCodigo(unittest.TestCase):
+    # v1.2.0 (O5)
+
+    def test_ean13(self):
+        self.assertEqual(comun.variantes_codigo('8445962847058'), ['8445962847058'])
+
+    def test_upc_12_con_cero_delante(self):
+        self.assertEqual(comun.variantes_codigo('445962847058'), ['445962847058', '0445962847058'])
+
+    def test_ean_con_cero_delante_sin_el(self):
+        self.assertEqual(comun.variantes_codigo('0445962847058'), ['0445962847058', '445962847058'])
+
+    def test_referencia_y_vacio(self):
+        self.assertEqual(comun.variantes_codigo(' 2621PT01-000014-34 '), ['2621PT01-000014-34'])
+        self.assertEqual(comun.variantes_codigo(''), [])
+        self.assertEqual(comun.variantes_codigo(None), [])
+
+
 if __name__ == '__main__':
     unittest.main()
