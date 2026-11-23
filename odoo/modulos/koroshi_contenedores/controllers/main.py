@@ -381,21 +381,28 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
-    def _reservas_a_faltantes(self, c, emp):
+    def _reservas_a_faltantes(self, c, emp, producto=None, dejar=0):
         """v1.11.0: cada línea de OUT reservada en el contenedor pasa por Faltantes como si el operario la marcara:
         reubicar en el hueco con stock libre más cercano que llegue (koroshi.faltante.reubicar) o, si no hay,
         sin_alternativa (la OUT sale sin ella). En los dos casos la unidad va a FALTANTE y queda su registro.
-        No se toca una línea que ya tiene algo leído: alguien la está preparando. Devuelve un resumen por línea."""
+        No se toca una línea que ya tiene algo leído: alguien la está preparando. Devuelve un resumen por línea.
+        v1.12.0: con producto, solo sus líneas, y se para cuando lo reservado que queda es <= dejar."""
         Faltante = request.env['koroshi.faltante'].sudo()
         Loc = request.env['stock.location'].sudo()
-        mls = request.env['stock.move.line'].sudo().search([
-            ('location_id', '=', c.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)])
+        dominio = [('location_id', '=', c.id), ('state', 'not in', ('done', 'cancel')), ('product_qty', '>', 0)]
+        if producto:
+            dominio.append(('product_id', '=', producto.id))
+        mls = request.env['stock.move.line'].sudo().search(dominio, order='product_qty desc, id')
         leidas = mls.filtered(lambda l: not float_is_zero(l.qty_done, precision_rounding=l.product_uom_id.rounding))
         if leidas:
             raise UserError('No se ha cambiado nada: %s ya tiene prendas leídas en %s (alguien la está '
                             'preparando). Espera a que acabe.' % (c.name, ', '.join(leidas.mapped('picking_id.name'))))
         resumen = []
+        queda = sum(mls.mapped('product_qty'))
         for ml in mls:
+            if producto and queda <= dejar:
+                break
+            queda -= ml.product_qty
             picking, product = ml.picking_id, ml.product_id
             necesario = ml.product_qty
             raiz = Faltante._raiz_stock(picking)
@@ -495,7 +502,8 @@ class KoroshiContenedores(http.Controller):
             return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/contenedores/cantidad', type='json', auth='user')
-    def cantidad(self, contenedor_id=False, employee_id=False, producto_id=False, uds=None, **kw):
+    def cantidad(self, contenedor_id=False, employee_id=False, producto_id=False, uds=None, pasar_faltantes=False,
+                 **kw):
         """v1.7: uds reales de un artículo en el contenedor (se ha contado y no cuadra). Ajuste de inventario de la
         diferencia (+ entra, - sale), como /cero y /anadir. No se baja de lo reservado para una OUT."""
         try:
@@ -517,23 +525,33 @@ class KoroshiContenedores(http.Controller):
                                 % c.name)
             actual = sum(quants.mapped('quantity'))
             reservadas = sum(quants.mapped('reserved_quantity'))
-            if nuevas < reservadas:
+            if nuevas < reservadas and not pasar_faltantes:
                 pedidos = self._pedidos_reservados(c, p)
-                raise UserError('No se baja a %d: %s uds de %s están reservadas para %s. Quita antes la reserva '
-                                'desde el pedido.' % (nuevas, _num(reservadas), p.display_name,
-                                                      ', '.join(pedidos) or 'un pedido'))
-            diferencia = nuevas - actual
-            if float_is_zero(diferencia, precision_rounding=p.uom_id.rounding):
-                raise UserError('%s ya tiene %d uds de %s: no se cambia nada.' % (c.name, nuevas, p.display_name))
-            if abs(diferencia) > MAX_ANADIR:
-                raise UserError('Cambio de más de %d uds: revisa la cantidad.' % MAX_ANADIR)
+                raise UserError('No se baja a %d: %s uds de %s están reservadas para %s.' % (
+                    nuevas, _num(reservadas), p.display_name, ', '.join(pedidos) or 'un pedido'))
             company = quants[:1].company_id or c.company_id or request.env['res.company'].sudo().browse(COMPANY_ID)
-            with request.env.cr.savepoint():
-                self._ajuste(p, diferencia, c, company, emp, 'cantidad',
-                             'KOROSHI contenedor %s: cambiar cantidad (%s)' % (c.name, emp.name))
-            return {'ok': True, 'msg': '%s: %s en %s pasa de %s a %d uds (%s%s)' % (
-                emp.name, p.display_name, c.name, _num(actual), nuevas, '+' if diferencia > 0 else '−',
-                _num(abs(diferencia))), 'contenedor': self._datos_contenedor(c)}
+            resumen = []
+            with request.env.cr.savepoint():    # todo o nada (también lo de Faltantes)
+                if nuevas < reservadas:
+                    # v1.12.0: lo reservado que no está pasa por Faltantes (como «Poner a cero», v1.11.0)
+                    resumen = self._reservas_a_faltantes(c, emp, producto=p, dejar=nuevas)
+                    quants = self._quants(c).filtered(lambda q: q.product_id == p)
+                    if sum(quants.mapped('reserved_quantity')) > nuevas:
+                        raise UserError('%s sigue con más de %d uds reservadas que no son de ninguna OUT abierta. '
+                                        'No se ha cambiado nada: avisa a IT.' % (p.display_name, nuevas))
+                antes = sum(quants.mapped('quantity'))
+                diferencia = nuevas - antes
+                if not resumen and float_is_zero(diferencia, precision_rounding=p.uom_id.rounding):
+                    raise UserError('%s ya tiene %d uds de %s: no se cambia nada.' % (c.name, nuevas, p.display_name))
+                if abs(diferencia) > MAX_ANADIR:
+                    raise UserError('Cambio de más de %d uds: revisa la cantidad.' % MAX_ANADIR)
+                if not float_is_zero(diferencia, precision_rounding=p.uom_id.rounding):
+                    self._ajuste(p, diferencia, c, company, emp, 'cantidad',
+                                 'KOROSHI contenedor %s: cambiar cantidad (%s)' % (c.name, emp.name))
+            msg = '%s: %s en %s pasa de %s a %d uds' % (emp.name, p.display_name, c.name, _num(actual), nuevas)
+            if resumen:
+                msg += '. A Faltantes: ' + '; '.join(resumen)
+            return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 

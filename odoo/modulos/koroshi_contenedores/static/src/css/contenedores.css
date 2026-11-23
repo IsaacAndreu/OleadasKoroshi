@@ -81,3 +81,4 @@
 .o_koroshi_contenedores .o_kc_tipo_hueco { background: #e8f5e9; color: #2e7d32; }
 .o_koroshi_contenedores .o_kc_tipo_lineal { background: #ede7f6; color: #4527a0; }
 .o_koroshi_contenedores .o_kc_tipo_articulo { background: #e3f2fd; color: #1565c0; }
+.o_koroshi_contenedores .o_kc_aviso_reserva { color: #b02a37; margin: 6px 0; }   /* v1.12 */

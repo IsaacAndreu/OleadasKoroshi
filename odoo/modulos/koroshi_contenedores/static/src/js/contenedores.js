@@ -1,6 +1,7 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.12 (23/11): «Cambiar» por debajo de lo reservado: lo que no está pasa a Faltantes (confirmar 2 veces).
  * v1.11 (23/11): «Poner a cero» con prendas reservadas: pasan a Faltantes (como al marcar un faltante).
  * v1.10 (23/11): «Archivar» en la ficha del contenedor abierto (si no tiene prendas en el sistema).
  * v1.9.3 (23/11): sin «⌨ Escribir», el campo lee al parar el lector (150 ms), sin esperar Intro.
@@ -797,9 +798,12 @@ var Pantalla = AbstractAction.extend({
         if (!/^\d+$/.test(v) || !(n >= 0)) {
             return this._aviso('mal', 'Escribe un número de uds (0 o más).');
         }
-        if (n < e.reservadas) {
-            return this._aviso('mal', 'No se puede bajar de ' + _n(e.reservadas) + ' uds: están reservadas para ' +
-                'un pedido.');
+        if (n < e.reservadas && e.confirmar !== n) {
+            // v1.12: se puede, pero las reservadas que no están pasan a Faltantes: se confirma con otro «Guardar»
+            e.confirmar = n;
+            e.nuevas = n;
+            this._pintar();
+            return;
         }
         if (n === e.uds) {
             return this._aviso('info', 'Ya tiene ' + n + ' uds: no se cambia nada.');
@@ -807,7 +811,7 @@ var Pantalla = AbstractAction.extend({
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/cantidad', params: {
             contenedor_id: this.detalle.id, employee_id: this.persona.id, producto_id: e.id,
-            uds: n}}).then(function (m) {
+            uds: n, pasar_faltantes: n < e.reservadas}}).then(function (m) {
             self._fin();
             if (!m || !m.ok) {
                 self._pitido(false);
@@ -1088,9 +1092,12 @@ var Pantalla = AbstractAction.extend({
         }
         if (e) {                        // v1.7: uds reales de un artículo
             html += '<div class="o_kc_editar_caja"><b>' + _e(e.nombre) + '</b><div>Ahora: ' + _n(e.uds) + ' uds' +
-                (e.reservadas ? ' · ' + _n(e.reservadas) + ' reservadas (no se puede bajar de ahí)' : '') +
-                '</div>Hay de verdad: <input type="number" class="o_kc_editar_uds" inputmode="numeric" min="' +
-                Math.ceil(e.reservadas) + '" step="1" value="' + Math.round(e.uds) + '"/>' +
+                (e.reservadas ? ' · ' + _n(e.reservadas) + ' reservadas para un pedido' : '') +
+                '</div>Hay de verdad: <input type="number" class="o_kc_editar_uds" inputmode="numeric" min="0" ' +
+                'step="1" value="' + (e.nuevas !== undefined ? e.nuevas : Math.round(e.uds)) + '"/>' +
+                (e.confirmar !== undefined ? '<div class="o_kc_aviso_reserva"><b>' +
+                    _n(e.reservadas - e.confirmar) + ' uds reservadas no están: pasan a Faltantes</b> (la OUT las ' +
+                    'coge de otro hueco con stock o, si no hay, sale sin ellas). Pulsa «Guardar» otra vez.</div>' : '') +
                 '<div><button type="button" class="o_kc_editar_ok">Guardar</button>' +
                 '<button type="button" class="o_kc_editar_no">Cancelar</button></div></div>';
             return html + '</div>';

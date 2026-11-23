@@ -92,8 +92,13 @@ v1.11.0 (23/11/2026): «Poner a cero» con prendas reservadas para una OUT (el c
   en el hueco con stock libre más cercano o, si no hay, sale sin ella; la unidad va a FALTANTE, queda su registro en
   Faltantes y una nota en la OUT. Si alguna línea ya tiene algo leído no se toca nada. Todo o nada. Depende ahora de
   koroshi_faltantes.
+v1.12.0 (23/11/2026): «Cambiar» la cantidad de un artículo por debajo de lo reservado (KO_241026_115: 2 uds
+  reservadas que no están y 18 de otro artículo que sí; «Poner a cero» se llevaría también las 18). Antes no se
+  dejaba bajar de lo reservado. Ahora avisa de cuántas pasan a Faltantes y se confirma con otro «Guardar»: esas
+  líneas pasan por Faltantes igual que en la 1.11.0 (solo las de ese artículo y solo las necesarias) y después se
+  ajusta la diferencia. Todo o nada.
 """,
-    'version': '13.0.1.11.0',
+    'version': '13.0.1.12.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
