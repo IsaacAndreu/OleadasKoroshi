@@ -110,8 +110,12 @@ actualizacion y siguio en la 2.5.2. Solo cambia eso.
 v2.6.2 (20/11/2026): Almacen Nath (las PDA) vuelve a ver todo el menu Faltantes (revision, rondas, crear ronda,
 puestos a 0, faltas por dia, faltas repetidas y recalcular). Pedido por Isaac. Va por Inventario administrador
 (stock.group_stock_manager), no por Jefes de almacen, que le daria la bandeja. Solo menus.
+v2.7.0 (23/11/2026): revision general del 23/11 (R14). En la bandeja, «Faltantes pendientes» se pone en ROJO si hay
+alguno de mas de koroshi_menu.dias_faltante_rojo dias (3 si no existe el parametro; 0 = nunca rojo), dice cuantos y
+el boton abre esos. Antes era siempre un contador en ambar: las uds en FALTANTE que nadie buscaba no destacaban.
+Sin campos nuevos.
 """,
-    'version': '13.0.2.6.2',
+    'version': '13.0.2.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

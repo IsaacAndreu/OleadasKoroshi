@@ -40,6 +40,7 @@ TIPO_TIENDAS = 'PED. TIENDAS'   # sale.order.s_order_type_id.name de los pedidos
 HORA_TIENDAS = '13:00'          # a esta hora las OUT de tienda con reserva deberían estar hechas (koroshi_menu.hora_tiendas)
 HORA_CAMION = '15:00'           # a esta hora el camión XPO debería estar cerrado (koroshi_menu.hora_camion)
 MINUTOS_SIN_CAJA = 60           # una lectura fuera de caja más vieja que esto, en una OUT sin validar: rojo
+DIAS_FALTANTE_ROJO = 3          # v2.7.0 (R14): un faltante pendiente más viejo que esto: rojo (koroshi_menu.dias_faltante_rojo)
 
 
 def _hm(dt):
@@ -433,9 +434,18 @@ class KoroshiBandeja(models.TransientModel):
         dom = [('estado', '=', 'pendiente')]
         n = F.search_count(dom)
         viejo = F.search(dom, order='fecha asc', limit=1)
-        return [self._contar(n, 'Faltantes pendientes', viejo and 'El más antiguo: %s' % _hm(viejo.fecha) or '',
-                             {'xmlid': 'koroshi_faltantes.action_koroshi_faltante_revision', 'domain': dom},
-                             rojo=False)]
+        # v2.7.0 (R14): en rojo si hay faltantes pendientes de más de N días (unidades en FALTANTE que nadie busca);
+        # antes, solo un contador en ámbar
+        dias = self._param_int('dias_faltante_rojo', DIAS_FALTANTE_ROJO)
+        dom_viejos = dom + [('fecha', '<', fields.Datetime.to_string(ahora - datetime.timedelta(days=dias)))]
+        viejos = dias > 0 and F.search_count(dom_viejos) or 0
+        detalle = viejo and 'El más antiguo: %s' % _hm(viejo.fecha) or ''
+        if viejos:
+            detalle = '%d con más de %d días. %s' % (viejos, dias, detalle)
+        return [self._contar(n, 'Faltantes pendientes', detalle,
+                             {'xmlid': 'koroshi_faltantes.action_koroshi_faltante_revision',
+                              'domain': viejos and dom_viejos or dom},
+                             rojo=bool(viejos))]
 
     def _rechazadas(self, ahora):
         L = 'koroshi.preparacion.lectura' in self.env and self.env['koroshi.preparacion.lectura'].sudo()
