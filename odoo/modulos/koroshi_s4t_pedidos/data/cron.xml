@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.1.0: reparto de la reserva de tiendas por prioridad, 20 min antes de que koroshi_zonas parta (03:50 UTC).
+         Hace lo que diga koroshi_s4t_pedidos.prioridad_modo: simular (por defecto, no cambia nada), real o apagado.
+         La primera vez, manana: nunca se lanza al instalar. -->
+    <record id="cron_koroshi_s4t_prioridad" model="ir.cron">
+        <field name="name">KOROSHI S4T: reserva de tiendas por prioridad</field>
+        <field name="model_id" ref="model_koroshi_s4t_prioridad"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_repartir()</field>
+        <field name="user_id" ref="base.user_admin"/>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="nextcall" eval="((DateTime.now() + timedelta(days=1)).replace(hour=3, minute=30, second=0)).strftime('%Y-%m-%d %H:%M:%S')"/>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

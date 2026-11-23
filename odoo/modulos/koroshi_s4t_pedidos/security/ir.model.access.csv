@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_s4t_prioridad_user,koroshi.s4t.prioridad usuario,model_koroshi_s4t_prioridad,stock.group_stock_user,1,0,0,0
+access_koroshi_s4t_prioridad_manager,koroshi.s4t.prioridad responsable,model_koroshi_s4t_prioridad,stock.group_stock_manager,1,1,1,1
+access_koroshi_s4t_prioridad_linea_user,koroshi.s4t.prioridad.linea usuario,model_koroshi_s4t_prioridad_linea,stock.group_stock_user,1,0,0,0
+access_koroshi_s4t_prioridad_linea_manager,koroshi.s4t.prioridad.linea responsable,model_koroshi_s4t_prioridad_linea,stock.group_stock_manager,1,1,1,1

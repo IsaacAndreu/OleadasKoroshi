@@ -44,3 +44,64 @@ def bloques(ids, tam):
     """[ids[0:tam], ids[tam:2*tam], ...]"""
     tam = max(1, int(tam))
     return [ids[i:i + tam] for i in range(0, len(ids), tam)]
+
+
+# =============================================================================
+# v1.1.0 (23/11/2026): reserva de las tiendas por prioridad (numero de pedido S4T, el mas bajo primero)
+# =============================================================================
+
+CLAVE_PRIORIDAD = 719403            # candado: un solo reparto a la vez
+PARAM_PRIORIDAD_MODO = 'koroshi_s4t_pedidos.prioridad_modo'          # simular (por defecto) | real | apagado
+PARAM_PRIORIDAD_LOTE = 'koroshi_s4t_pedidos.prioridad_prefijo_lote'  # lotes que si se aceptan (agrupacion del dia)
+MODOS_PRIORIDAD = ('simular', 'real', 'apagado')
+TIPO_TIENDAS = 'PED. TIENDAS'       # = koroshi_zonas/motor/modelo.py TIPO_PEDIDO
+PREFIJO_LOTE_TIENDA = 'TIENDA'      # = PREFIJO_AGRUPACION de la 1883: las OUT llegan en la agrupacion del dia
+SIN_PEDIDO = 10 ** 12
+TOLERANCIA = 0.001
+
+
+def modo_prioridad(valor):
+    v = (valor or '').strip().lower()
+    return v if v in MODOS_PRIORIDAD else 'simular'
+
+
+def numero_pedido(origin):
+    """'S-6665004409' -> 6665004409. Sin numero: SIN_PEDIDO (al final). Igual que koroshi_zonas/motor/evaluar.py:29
+    y que el Monitor, para que la reserva siga el mismo orden que la ronda."""
+    num = ''
+    for ch in origin or '':
+        if ch.isdigit():
+            num += ch
+        elif num:
+            break
+    return int(num) if num else SIN_PEDIDO
+
+
+def clave_prioridad(mov):
+    """Orden de reserva: numero de pedido, y a igual numero la OUT y el movimiento mas antiguos."""
+    return (mov['numero'], mov['picking_id'], mov['id'])
+
+
+def en_disputa(movs):
+    """movs: [{'numero', 'picking_id', 'id', 'pedido' (demanda), 'reservado'}] de UN articulo.
+    True si a alguno le falta reserva y otro de numero MAS ALTO tiene algo reservado: entonces el orden importa.
+    Si hay para todos, o el que no tiene es el de numero mas alto, no se toca nada."""
+    orden = sorted(movs, key=clave_prioridad)
+    falta_antes = False
+    for m in orden:
+        if falta_antes and m['reservado'] > TOLERANCIA:
+            return True
+        if m['pedido'] - m['reservado'] > TOLERANCIA:
+            falta_antes = True
+    return False
+
+
+def cambios(antes, despues):
+    """{clave: uds} antes y despues -> [(clave, antes, despues)] solo de las que cambian."""
+    res = []
+    for k in sorted(set(antes) | set(despues), key=str):
+        a = antes.get(k, 0.0)
+        d = despues.get(k, 0.0)
+        if abs(a - d) > TOLERANCIA:
+            res.append((k, a, d))
+    return res

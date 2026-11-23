@@ -32,13 +32,24 @@ bin/versiones/diseno-feed-s4t-sin-serialize_2026-11-19_v2.md).
 v1.0.1 (19/11/2026): sin el decorador @job. En el servidor queue_job es la 13.0.3.10.1: @job esta obsoleto y no
 hace falta para with_delay (Effective tampoco lo usa); aplicarlo podia crear registros de funcion/canal al instalar.
 La 1.0.0 no llego a subirse.
+v1.1.0 (23/11/2026): reserva de las tiendas por prioridad (Isaac: la misma que el Monitor, numero de pedido S4T, el
+mas bajo primero). Cron 03:30 UTC (20 min antes de que zonas parta) y menu Inventario > Informes > Reserva tiendas por
+prioridad (ejecuciones y «Repartir ahora»). Solo OUT de PED. TIENDAS que nadie ha empezado (sin leidas, cajas, lote
+que no sea TIENDA..., puesto de operario ni SORTER); solo los articulos en disputa; quitar y volver a reservar en orden,
+un savepoint por articulo. Parametro koroshi_s4t_pedidos.prioridad_modo: simular (por defecto), real o apagado.
+Modelos propios koroshi.s4t.prioridad(.linea); sin campos en tablas compartidas. Depende de koroshi_base y
+stock_picking_batch. Diseno: bin/versiones/diseno-reserva-tiendas-por-prioridad_2026-11-23.md.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Sales',
     'license': 'LGPL-3',
-    'depends': ['api_s4t_batch_update_PROD', 'sale_stock', 'queue_job'],
-    'data': [],
+    'depends': ['api_s4t_batch_update_PROD', 'sale_stock', 'queue_job', 'stock_picking_batch', 'koroshi_base'],
+    'data': [
+        'security/ir.model.access.csv',
+        'views/prioridad_views.xml',
+        'data/cron.xml',
+    ],
     'installable': True,
     'application': False,
 }

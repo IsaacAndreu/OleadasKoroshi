@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_s4t_prioridad_tree" model="ir.ui.view">
+        <field name="name">koroshi.s4t.prioridad.tree</field>
+        <field name="model">koroshi.s4t.prioridad</field>
+        <field name="arch" type="xml">
+            <tree string="Reparto por prioridad" decoration-muted="modo == 'simular'" decoration-danger="n_errores &gt; 0">
+                <field name="fecha"/>
+                <field name="modo"/>
+                <field name="origen"/>
+                <field name="n_out"/>
+                <field name="n_saltadas"/>
+                <field name="n_articulos"/>
+                <field name="n_lineas"/>
+                <field name="n_errores"/>
+                <field name="segundos"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_s4t_prioridad_form" model="ir.ui.view">
+        <field name="name">koroshi.s4t.prioridad.form</field>
+        <field name="model">koroshi.s4t.prioridad</field>
+        <field name="arch" type="xml">
+            <form string="Reparto por prioridad" create="false" edit="false">
+                <sheet>
+                    <h1><field name="name"/></h1>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="modo"/>
+                            <field name="origen"/>
+                            <field name="segundos"/>
+                        </group>
+                        <group>
+                            <field name="n_out"/>
+                            <field name="n_saltadas"/>
+                            <field name="n_articulos"/>
+                            <field name="n_lineas"/>
+                            <field name="n_errores"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Cambios de reserva">
+                            <field name="linea_ids">
+                                <tree decoration-success="diferencia &gt; 0" decoration-danger="diferencia &lt; 0">
+                                    <field name="pedido"/>
+                                    <field name="tienda"/>
+                                    <field name="picking_id"/>
+                                    <field name="product_id"/>
+                                    <field name="antes"/>
+                                    <field name="despues"/>
+                                    <field name="diferencia"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Resumen">
+                            <field name="resumen"/>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_s4t_prioridad" model="ir.actions.act_window">
+        <field name="name">Reserva de tiendas por prioridad</field>
+        <field name="res_model">koroshi.s4t.prioridad</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <record id="action_koroshi_s4t_prioridad_lanzar" model="ir.actions.server">
+        <field name="name">Repartir reserva por prioridad (ahora)</field>
+        <field name="model_id" ref="model_koroshi_s4t_prioridad"/>
+        <field name="state">code</field>
+        <field name="code">action = model.accion_repartir()</field>
+    </record>
+
+    <menuitem id="menu_koroshi_s4t_prioridad_root" name="Reserva tiendas por prioridad"
+              parent="stock.menu_warehouse_report" sequence="95" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_s4t_prioridad" name="Ejecuciones" parent="menu_koroshi_s4t_prioridad_root"
+              action="action_koroshi_s4t_prioridad" sequence="1"/>
+    <menuitem id="menu_koroshi_s4t_prioridad_lanzar" name="Repartir ahora" parent="menu_koroshi_s4t_prioridad_root"
+              action="action_koroshi_s4t_prioridad_lanzar" sequence="2"/>
+</odoo>

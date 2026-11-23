@@ -37,3 +37,21 @@ Diseño: `bin/versiones/diseno-feed-s4t-sin-serialize_2026-11-19_v2.md`.
 python odoo/modulos/koroshi_s4t_pedidos/pruebas/test_logica.py
 python odoo/modulos/koroshi_s4t_pedidos/pruebas/test_comun_jobs.py
 ```
+
+## v1.1.0: reserva de las tiendas por prioridad
+
+Que el stock reservado de las tiendas siga el mismo orden que el Monitor y que zonas: **número de pedido S4T, el más
+bajo primero**. Diseño: `bin/versiones/diseno-reserva-tiendas-por-prioridad_2026-11-23.md`.
+
+- **Cuándo:** cron «KOROSHI S4T: reserva de tiendas por prioridad» a las 03:30 UTC (20 min antes de que zonas parta)
+  y a mano en Inventario › Informes › Reserva tiendas por prioridad › Repartir ahora.
+- **Qué OUT:** PED. TIENDAS en Esperando/Preparada que nadie ha empezado (sin unidades leídas, sin cajas, sin lote
+  que no sea la agrupación `TIENDA…`, sin puesto de operario, fuera del SORTER). Las ya partidas por zonas (lote Z-)
+  no entran. Nunca Zalando, About ni web.
+- **Qué hace:** solo en los artículos en disputa (a una le falta y otra de número más alto tiene). Quita la reserva de
+  esos movimientos y vuelve a reservar uno a uno en orden. Un savepoint por artículo: si falla, ese artículo queda como
+  estaba.
+- **Modo** (`koroshi_s4t_pedidos.prioridad_modo`): `simular` (por defecto: lo hace y lo deshace, solo deja el informe),
+  `real` o `apagado`. Un valor mal escrito cuenta como `simular`.
+- **Informe:** cada ejecución con las OUT y artículos que ganan (verde) o pierden (rojo) unidades, las OUT saltadas y
+  cuánto tardó.
