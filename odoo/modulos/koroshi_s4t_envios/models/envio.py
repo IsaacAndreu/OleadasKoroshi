@@ -56,6 +56,8 @@ REINTENTABLES = (408, 409, 429)                 # v1.2: y cualquier 5xx
 TIMEOUT = 30
 MAX_INTENTOS = 5
 MAX_PEDIDOS_CRON = 500
+MAX_RED_SEGUIDOS = 3                            # v1.4.0 (R11): fallos de red seguidos que cortan la pasada del cron
+PARAM_RED_CAIDA = 'koroshi_s4t_envios.red_caida'   # v1.4.0: desde cuándo no se llega a S4T (para avisar una vez)
 
 
 class KoroshiS4tEnvio(models.Model):
@@ -281,6 +283,7 @@ class KoroshiS4tEnvio(models.Model):
             'is_final': self.is_final,
         }
         vals = {'intentos': self.intentos + 1}
+        red = False
         try:
             resp = requests.post(host + '/shipments', headers=cabeceras, data=json.dumps(payload), timeout=TIMEOUT)
             try:
@@ -313,11 +316,16 @@ class KoroshiS4tEnvio(models.Model):
                 _logger.warning('KOROSHI S4T ENVIOS: %s -> HTTP %s (%s)', self.name, resp.status_code,
                                 reintentable and 'se reintenta' or 'rechazado')
         except requests.exceptions.RequestException as e:
-            vals.update({'state': 'error', 'error': 'Red: %s' % str(e)[:1000]})
-            _logger.warning('KOROSHI S4T ENVIOS: %s -> error de red', self.name)
+            # v1.4.0 (R11): un error de red no es culpa del pedido: no cuenta como intento (antes, con 5 = 75 min de
+            # caída, el pedido salía del cron para siempre)
+            red = True
+            vals.update({'state': 'error', 'error': 'Red: %s' % str(e)[:1000], 'intentos': self.intentos})
+            _logger.warning('KOROSHI S4T ENVIOS: %s -> error de red (no cuenta como intento)', self.name)
         self.write(vals)
         if self.state == 'rechazado' or (self.state == 'error' and self.intentos >= MAX_INTENTOS):
             self._avisar()
+        if red:
+            return 'red'   # v1.4.0: el cron cuenta los fallos de red seguidos
         return self.state == 'enviado'
 
     def _avisar(self):
@@ -344,13 +352,20 @@ class KoroshiS4tEnvio(models.Model):
             _logger.exception('KOROSHI S4T ENVIOS: no se ha podido avisar de %s', self.name)
 
     def _enviar_en_orden(self):
-        """Envia los registros de UN pedido: primero los no finales; el final solo si los otros estan enviados."""
+        """Envia los registros de UN pedido: primero los no finales; el final solo si los otros estan enviados.
+        v1.4.0 (R11): devuelve (fallos de red, respuestas de S4T). Tras un fallo de red no se sigue con este pedido."""
         pendientes = self.filtered(lambda r: r.state in ('pendiente', 'error') and r.intentos < MAX_INTENTOS)
+        red = respuestas = 0
         for rec in pendientes.filtered(lambda r: not r.is_final):
-            rec._post()
+            if rec._post() == 'red':
+                return red + 1, respuestas
+            respuestas += 1
         if all(r.state == 'enviado' for r in self.filtered(lambda r: not r.is_final)):
             for rec in pendientes.filtered(lambda r: r.is_final):
-                rec._post()
+                if rec._post() == 'red':
+                    return red + 1, respuestas
+                respuestas += 1
+        return red, respuestas
 
     # ------------------------------------------------------------------
     # Cron
@@ -381,16 +396,33 @@ class KoroshiS4tEnvio(models.Model):
             pedidos |= Pedido.search(dominio + [('id', '<=', cursor), ('id', 'not in', pedidos.ids)],
                                      order='id asc', limit=MAX_PEDIDOS_CRON - len(pedidos))
         listos = esperando = enviados = errores = 0
+        red_seguidos = 0
+        cortado = False
+        ultimo_mirado = cursor
         for order in pedidos:
+            if red_seguidos >= MAX_RED_SEGUIDOS:
+                # v1.4.0 (R11): S4T no contesta: se corta la pasada (no 500 pedidos x 30 s de espera); el cursor se
+                # queda en el último mirado y la siguiente pasada sigue desde ahí
+                cortado = True
+                break
             try:
                 recs, motivo = self._sincronizar_pedido(order, modo)
                 if motivo:
+                    ultimo_mirado = order.id
                     esperando += 1
                     self.env.cr.commit()
                     continue
                 listos += 1
                 if modo == 'real':
-                    recs._enviar_en_orden()
+                    red, respuestas = recs._enviar_en_orden()
+                    if red:
+                        red_seguidos += red   # no cuenta como mirado; se vuelve a probar en otra pasada
+                    else:
+                        ultimo_mirado = order.id
+                        if respuestas:
+                            red_seguidos = 0
+                else:
+                    ultimo_mirado = order.id
                     enviados += len(recs.filtered(lambda r: r.state == 'enviado'))
                     errores += len(recs.filtered(lambda r: r.state == 'error'))
                 self.env.cr.commit()
@@ -398,13 +430,60 @@ class KoroshiS4tEnvio(models.Model):
                 self.env.cr.rollback()
                 errores += 1
                 _logger.exception('KOROSHI S4T ENVIOS: error en %s: %s', order.name, e)
-        if pedidos:
+        if cortado:
+            Param.set_param(PARAM_CURSOR, str(ultimo_mirado))
+            self.env.cr.commit()
+        elif pedidos:
             ultimo = pedidos[-1].id if len(pedidos) >= MAX_PEDIDOS_CRON else 0
             Param.set_param(PARAM_CURSOR, str(ultimo))
             self.env.cr.commit()
         _logger.info('KOROSHI S4T ENVIOS (modo %s): %d pedidos mirados, %d listos, %d esperando, '
-                     '%d envios OK, %d con error', modo, len(pedidos), listos, esperando, enviados, errores)
+                     '%d envios OK, %d con error%s', modo, len(pedidos), listos, esperando, enviados, errores,
+                     cortado and ' (CORTADO: %d fallos de red seguidos)' % red_seguidos or '')
+        if modo == 'real':
+            self._aviso_red(cortado, enviados, errores)
         return True
+
+    @api.model
+    def _aviso_red(self, cortado, enviados, errores):
+        """v1.4.0 (R11): correo resumen a koroshi_s4t_envios.avisar cuando el cron deja de llegar a S4T (una vez, no
+        cada 15 min) y cuando vuelve a llegar. Nunca para el cron."""
+        Param = self.env['ir.config_parameter'].sudo()
+        caida = Param.get_param(PARAM_RED_CAIDA) or ''
+        ahora = fields.Datetime.now()
+        if cortado and not caida:
+            Param.set_param(PARAM_RED_CAIDA, fields.Datetime.to_string(ahora))
+            self._correo_aviso(_('S4T no contesta: envíos parados'),
+                               _('Desde %s (UTC) el cron de envíos no llega a S4T: %d fallos de red seguidos y se ha '
+                                 'cortado la pasada. Los errores de red no gastan intentos: se vuelve a probar cada '
+                                 '15 min y se avisa cuando vuelva.') % (fields.Datetime.to_string(ahora),
+                                                                        MAX_RED_SEGUIDOS))
+        elif not cortado and caida:
+            Param.set_param(PARAM_RED_CAIDA, '')
+            self._correo_aviso(_('S4T vuelve a contestar'),
+                               _('El cron de envíos vuelve a llegar a S4T (caído desde %s UTC). En esta pasada: %d '
+                                 'envíos OK y %d con error.') % (caida, enviados, errores))
+        self.env.cr.commit()
+
+    @api.model
+    def _correo_aviso(self, asunto, texto):
+        correos = [c.strip() for c in (self.env['ir.config_parameter'].sudo().get_param(PARAM_AVISAR) or '')
+                   .replace(';', ',').split(',') if c.strip()]
+        _logger.warning('KOROSHI S4T ENVIOS AVISO: %s', asunto)
+        if not correos:
+            return False
+        try:
+            with self.env.cr.savepoint():
+                self.env['mail.mail'].sudo().create({
+                    'subject': 'KOROSHI S4T envíos: %s' % asunto,
+                    'body_html': '<p>%s</p>' % texto,
+                    'email_to': ', '.join(correos),
+                    'auto_delete': False,
+                })
+            return True
+        except Exception:
+            _logger.exception('KOROSHI S4T ENVIOS: no se ha podido avisar «%s»', asunto)
+            return False
 
     # ------------------------------------------------------------------
     # Botones

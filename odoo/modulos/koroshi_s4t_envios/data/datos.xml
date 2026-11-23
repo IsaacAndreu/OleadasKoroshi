@@ -14,6 +14,12 @@
             <field name="value">2026-11-01 00:00:00</field>
         </record>
 
+        <!-- v1.4.0 (R11): a quien se avisa (rechazos, intentos agotados, S4T sin contestar). Separados por comas. -->
+        <record id="param_avisar" model="ir.config_parameter">
+            <field name="key">koroshi_s4t_envios.avisar</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
+
         <!-- Cron ARCHIVADO (inactivo). Activarlo solo despues de poner el modo a 'real' y probar. -->
         <record id="cron_envios_s4t" model="ir.cron">
             <field name="name">KOROSHI - Envios a S4T (POST /shipments)</field>

@@ -26,8 +26,13 @@ cierre: el pedido pasa a SHIPPED cuando el camion ha salido. Si los bultos de un
 cierre, queda en «Bultos cambiados» y se corrige con el boton «Reenviar» (nunca solo); despues, solo una nota en el
 pedido. GLS como antes. Sin koroshi_monitor 1.29, como la v1.2. Campos nuevos solo en koroshi.s4t.envio. Sigue en
 modo diagnostico.
+v1.4.0 (23/11/2026): revision general del 23/11 (R11). Un error de red ya no cuenta como intento (con 5 = 75 min de
+caida, el pedido salia del cron para siempre). Tras 3 fallos de red seguidos se corta la pasada y la siguiente sigue
+desde el primer pedido que fallo. Correo a koroshi_s4t_envios.avisar cuando S4T deja de contestar (una vez) y cuando
+vuelve; el parametro lo crea el modulo (isaac.andreu@nath.es; antes no existia y los rechazos no avisaban a nadie).
+No cambia que se envia ni cuando.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',
