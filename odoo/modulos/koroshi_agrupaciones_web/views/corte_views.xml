@@ -46,7 +46,7 @@
                     <field name="resumen"/>
                     <field name="linea_ids">
                         <tree decoration-danger="accion in ('cancelada', 'cancelaria')"
-                              decoration-warning="accion == 'leida'">
+                              decoration-warning="accion in ('leida', 'error')">
                             <field name="accion"/>
                             <field name="agrupacion"/>
                             <field name="pedido"/>

@@ -38,6 +38,7 @@ ESTADOS_ABIERTOS = ('confirmed', 'waiting', 'assigned')
 TIPOS_FUERA = ('MARKETPLACE', 'TIENDA')
 DESTINOS_FUERA = ('ZALANDO', 'ABOUT YOU')
 CANDADO = 8130001        # pg_try_advisory_xact_lock: dos cortes a la vez (cron y boton) no se pisan
+MAX_INTENTOS = 3         # v1.1.0 (R10): veces que el cron vuelve a probar un corte que falla antes de dejarlo
 
 
 class KoroshiWebCorte(models.Model):
@@ -165,10 +166,30 @@ class KoroshiWebCorte(models.Model):
                 continue
             canceladas.append((p, falta, hay))
         if cancelar:
+            # v1.1.0 (R10): cada OUT en su savepoint. Si una no se puede cancelar, se queda como estaba, su línea lo
+            # dice y el corte sigue (antes tumbaba el corte entero: ni canceladas ni agrupaciones)
+            hechas, errores = [], []
             for p, falta, hay in canceladas:
-                p.action_cancel()
-                p.message_post(body=_('Cancelada por el corte de pedidos web de las %s: no estaba reservada del '
-                                      'todo. Falta: %s') % (hora_local.strftime('%H:%M'), html_escape('; '.join(falta))))
+                self.env['base'].flush()
+                try:
+                    with self.env.cr.savepoint():
+                        p.action_cancel()
+                        p.message_post(body=_('Cancelada por el corte de pedidos web de las %s: no estaba reservada '
+                                              'del todo. Falta: %s') % (hora_local.strftime('%H:%M'),
+                                                                         html_escape('; '.join(falta))))
+                        self.env['base'].flush()
+                    hechas.append((p, falta, hay))
+                except Exception as e:
+                    self.env.cache.invalidate()
+                    _logger.exception('KOROSHI Agrupaciones web: no se ha podido cancelar %s', p.name)
+                    errores.append('%s (%s): %s' % (p.name, p.origin or '', e))
+                    Linea.search([('corte_id', '=', corte.id), ('picking_id', '=', p.id)]).write(
+                        {'accion': 'error', 'falta': ('%s\nError al cancelar: %s' % ('\n'.join(falta), e)).strip()})
+            canceladas = hechas
+            if errores:
+                texto.append('NO se han podido cancelar %d OUT: %s' % (len(errores), '; '.join(errores)))
+                self._avisar('%d OUT web no se han podido cancelar en el corte de las %s' % (
+                    len(errores), hora_local.strftime('%H:%M')), '\n'.join(errores))
         texto.append('%s %d OUT web sin reserva completa%s.' % (
             cancelar and 'Canceladas' or 'Se cancelarían', len(canceladas),
             not self._si('cancelar') and ' (cancelación apagada: koroshi_agrupaciones_web.cancelar = 0)' or ''))
@@ -272,18 +293,68 @@ class KoroshiWebCorte(models.Model):
         if not pendiente:
             return True
         clave, hhmm, tarde = pendiente
-        self._set('ultimo_corte', clave)
         if tarde:
+            self._set('ultimo_corte', clave)
             _logger.warning('KOROSHI Agrupaciones web: el corte %s llega tarde (%s): no se hace', clave,
                             ahora.strftime('%H:%M'))
+            self._avisar('el corte %s NO se ha hecho (llega tarde)' % clave,
+                         'El corte de pedidos web %s no se ha hecho: el cron ha llegado a las %s, más de %s min tarde. '
+                         'Si hace falta, «Hacer el corte ahora» a mano.'
+                         % (clave, ahora.strftime('%H:%M'), self._entero('margen_minutos', 120)))
             return True
         hora = comun.zona().localize(datetime.datetime.combine(ahora.date(), datetime.time(hhmm[0], hhmm[1])))
+        # v1.1.0 (R10): ultimo_corte se apunta DESPUÉS de hacerlo. Si falla, se vuelve a probar en el siguiente cron
+        # (15 min), hasta MAX_INTENTOS veces; al primer fallo y al dejarlo, correo a koroshi_agrupaciones_web.avisar
+        self.env['base'].flush()
         try:
             with self.env.cr.savepoint():
                 self.hacer_corte(hora, simulacion=False, origen='cron')
-        except Exception:
+                self.env['base'].flush()
+        except Exception as e:
+            self.env.cache.invalidate()
             _logger.exception('KOROSHI Agrupaciones web: ha fallado el corte %s', clave)
+            previo = (self._param('fallos') or '').split('|')
+            n = int(previo[1]) + 1 if len(previo) == 2 and previo[0] == clave and previo[1].isdigit() else 1
+            if n >= MAX_INTENTOS:
+                self._set('ultimo_corte', clave)
+                self._set('fallos', '')
+                self._avisar('el corte %s NO se ha hecho (%d intentos)' % (clave, n),
+                             'El corte de pedidos web %s ha fallado %d veces y se deja. Último error: %s\n'
+                             'Si hace falta, «Hacer el corte ahora» a mano.' % (clave, n, e))
+            else:
+                self._set('fallos', '%s|%d' % (clave, n))
+                if n == 1:
+                    self._avisar('ha fallado el corte %s (se vuelve a probar)' % clave,
+                                 'El corte de pedidos web %s ha fallado: %s\nEl cron lo vuelve a probar cada 15 min '
+                                 '(hasta %d veces).' % (clave, e, MAX_INTENTOS))
+            return True
+        self._set('ultimo_corte', clave)
+        self._set('fallos', '')
         return True
+
+    @api.model
+    def _avisar(self, asunto, texto):
+        """v1.1.0 (R10): correo a koroshi_agrupaciones_web.avisar (separados por comas). Nunca rompe el corte: sin
+        destinatarios o si el correo falla, queda en el log."""
+        destinatarios = ','.join(x.strip() for x in (self._param('avisar') or '').replace(';', ',').split(',')
+                                 if x.strip())
+        _logger.warning('KOROSHI Agrupaciones web AVISO: %s', asunto)
+        if not destinatarios:
+            return False
+        try:
+            servidor = self.env['ir.mail_server'].sudo().search([('name', '=', self._param('servidor', 'NATH'))],
+                                                                limit=1)
+            with self.env.cr.savepoint():
+                mail = self.env['mail.mail'].sudo().create({
+                    'subject': 'KOROSHI Agrupaciones web: %s' % asunto, 'email_to': destinatarios,
+                    'body_html': '<pre style="font-size:12px">%s</pre>' % html_escape(texto or ''),
+                    'mail_server_id': servidor.id or False, 'auto_delete': False,
+                })
+                mail.send()
+            return True
+        except Exception:
+            _logger.exception('KOROSHI Agrupaciones web: no se ha podido mandar el aviso «%s»', asunto)
+            return False
 
     @api.model
     def _abrir(self, corte):
@@ -325,6 +396,7 @@ class KoroshiWebCorteLinea(models.Model):
         ('agrupada', 'Agrupada'), ('agruparia', 'Se agruparía'),
         ('cancelada', 'Cancelada'), ('cancelaria', 'Se cancelaría'),
         ('leida', 'Sin reserva completa, pero ya tiene algo leído: no se toca'),
+        ('error', 'No se ha podido cancelar (sigue como estaba)'),   # v1.1.0 (R10)
     ], 'Qué se ha hecho')
     agrupacion = fields.Char('Agrupación')
     falta = fields.Text('Falta (reservado de pedido)')

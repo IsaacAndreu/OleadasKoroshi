@@ -36,5 +36,10 @@
             <field name="key">koroshi_agrupaciones_web.servidor</field>
             <field name="value">NATH</field>
         </record>
+        <!-- v1.1.0 (R10): a quien se avisa si un corte falla, llega tarde o no puede cancelar una OUT (comas) -->
+        <record id="param_avisar" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.avisar</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
     </data>
 </odoo>

@@ -24,9 +24,14 @@ y Hacer corte ahora. Filtros «Reserva incompleta» y «Web sin agrupar» en la 
 Sin campos en tablas compartidas: escribe en sus dos tablas, en stock.picking.batch, en el estado de las OUT que
 cancela, en sus parametros y en mail.mail. No toca la PDA.
 
+v1.1.0 (23/11/2026): revision general del 23/11 (R10), avisos. ultimo_corte se apunta DESPUES de hacer el corte:
+  si falla, el cron lo vuelve a probar cada 15 min (hasta 3 veces). Correo a koroshi_agrupaciones_web.avisar
+  (isaac.andreu@nath.es de inicio) al primer fallo, al dejarlo, si el corte llega tarde y se salta, y si una OUT no
+  se puede cancelar. Cada cancelacion va en su savepoint: una OUT que falla se queda como estaba (linea «No se ha
+  podido cancelar») y el corte sigue; antes tumbaba el corte entero. No cambia que se cancela ni que se agrupa.
 v1.0.0 (18/11/2026): primera version (cortes 06:00 y 11:00, tope 100 uds, cancelacion con correo a Betty).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
