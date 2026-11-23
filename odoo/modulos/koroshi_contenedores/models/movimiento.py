@@ -13,7 +13,7 @@ class KoroshiContenedorMovimiento(models.Model):
     # cantidad (uds = las que salen del contenedor a FALTANTE; reservadas = las que ha perdido la reserva aquí)
     accion = fields.Selection([('mover', 'Mover'), ('archivar', 'Archivar vacío'), ('cero', 'Poner a cero'),
                                ('anadir', 'Añadir prendas'), ('cantidad', 'Cambiar cantidad'),
-                               ('faltante', 'A Faltantes')], 'Acción',
+                               ('faltante', 'A Faltantes'), ('cambiar_articulo', 'Cambiar artículo')], 'Acción',
                               default='mover', required=True)
     contenedor = fields.Char('Contenedor', required=True, index=True)
     origen_id = fields.Many2one('stock.location', 'Origen (hueco)', ondelete='set null')
@@ -30,6 +30,11 @@ class KoroshiContenedorMovimiento(models.Model):
     # v1.13 (R3): id de la tanda de «Añadir prendas» que pone la PDA; un reintento con la misma tanda no se repite
     tanda = fields.Char('Tanda (PDA)', index=True, readonly=True)
     faltante_id = fields.Many2one('koroshi.faltante', 'Faltante', ondelete='set null', readonly=True)   # v1.13
+    # v1.14 (R23): «Es otro» (error de talla). producto_id = lo que decía Odoo (sale del contenedor, move_id);
+    # producto_nuevo_id = lo que hay de verdad (entra, move_nuevo_id). Una línea por cambio
+    producto_nuevo_id = fields.Many2one('product.product', 'Artículo real', ondelete='set null', index=True,
+                                        readonly=True)
+    move_nuevo_id = fields.Many2one('stock.move', 'Movimiento del artículo real', ondelete='set null', readonly=True)
 
     _sql_constraints = [
         ('tanda_producto_unica', 'unique (tanda, producto_id)',

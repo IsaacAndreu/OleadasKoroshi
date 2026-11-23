@@ -16,12 +16,14 @@
                 <field name="user_id" optional="hide"/>
                 <field name="contenedor"/>
                 <field name="producto_id" optional="show"/>
+                <field name="producto_nuevo_id" optional="show"/>
                 <field name="origen"/>
                 <field name="destino"/>
                 <field name="lineas"/>
                 <field name="uds"/>
                 <field name="reservadas"/>
                 <field name="move_id" optional="hide"/>
+                <field name="move_nuevo_id" optional="hide"/>
                 <field name="faltante_id" optional="hide"/>
                 <field name="tanda" optional="hide"/>
             </tree>
@@ -35,10 +37,13 @@
             <search>
                 <field name="contenedor"/>
                 <field name="producto_id"/>
+                <field name="producto_nuevo_id"/>
                 <field name="employee_id"/>
-                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes)"
-                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante'))]"/>
+                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes / es otro)"
+                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante', 'cambiar_articulo'))]"/>
                 <filter name="faltantes" string="A Faltantes" domain="[('accion', '=', 'faltante')]"/>
+                <filter name="cambiar_articulo" string="Cambiar artículo (errores de talla)"
+                        domain="[('accion', '=', 'cambiar_articulo')]"/>
                 <filter name="hoy" string="Hoy"
                         domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
                 <group expand="0" string="Agrupar por">

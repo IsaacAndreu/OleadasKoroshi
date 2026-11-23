@@ -14,6 +14,8 @@
 # validar ni si Odoo ha cambiado mientras se contaba (R2); «Añadir» con id de tanda (R3); «Poner a cero» cierra sus
 # faltantes como no encontrados y «Archivar» no deja faltantes con vuelta al contenedor (R4); cada faltante deja su
 # línea en el registro; la compañía sale de koroshi_base (O6).
+# v1.14 (R23): /cambiar_articulo («Es otro»): lo que Odoo llama A en el contenedor es B (error de talla). Un ajuste de
+# -N de A y otro de +N de B en un savepoint, y UNA línea en el registro con los dos movimientos.
 # =============================================================================
 import re
 
@@ -242,6 +244,18 @@ class KoroshiContenedores(http.Controller):
         """Ajuste de inventario de qty uds (+ entra en el contenedor, - sale) contra la ubicación de pérdidas de
         inventario del artículo, como un ajuste de Odoo. Mismo movimiento que koroshi_faltantes._mover (probado en
         producción). Deja su línea en el registro (quién, cuándo, artículo, uds y movimiento)."""
+        move = self._mover_ajuste(producto, qty, contenedor, company, nombre)
+        request.env['koroshi.contenedor.movimiento'].sudo().create({
+            'accion': accion, 'contenedor': contenedor.name, 'origen_id': contenedor.location_id.id,
+            'origen': contenedor.location_id.complete_name, 'destino': contenedor.location_id.complete_name,
+            'uds': qty, 'lineas': 1, 'producto_id': producto.id, 'move_id': move.id, 'employee_id': emp.id,
+            'tanda': tanda or False,
+        })
+        return move
+
+    def _mover_ajuste(self, producto, qty, contenedor, company, nombre):
+        """v1.14: el movimiento de stock de _ajuste, sin línea en el registro (/cambiar_articulo deja una sola para
+        los dos movimientos)."""
         perdidas = producto.with_context(force_company=company.id).property_stock_inventory
         if not perdidas:
             raise UserError('El artículo %s no tiene ubicación de pérdidas de inventario. Avisa a IT.'
@@ -270,12 +284,6 @@ class KoroshiContenedores(http.Controller):
         move._action_done()
         if move.state != 'done':
             raise UserError('No se ha podido ajustar %s en %s.' % (producto.display_name, contenedor.name))
-        request.env['koroshi.contenedor.movimiento'].sudo().create({
-            'accion': accion, 'contenedor': contenedor.name, 'origen_id': contenedor.location_id.id,
-            'origen': contenedor.location_id.complete_name, 'destino': contenedor.location_id.complete_name,
-            'uds': qty, 'lineas': 1, 'producto_id': producto.id, 'move_id': move.id, 'employee_id': emp.id,
-            'tanda': tanda or False,
-        })
         return move
 
     @http.route('/koroshi/contenedores/detalle', type='json', auth='user')
@@ -383,8 +391,9 @@ class KoroshiContenedores(http.Controller):
                 'reservadas': sum(f['reservadas'] for f in filas)}
 
     @http.route('/koroshi/contenedores/producto', type='json', auth='user')
-    def producto(self, codigo='', **kw):
-        """Prenda leída para añadir: EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna."""
+    def producto(self, codigo='', modelo_de=False, **kw):
+        """Prenda leída para añadir: EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna.
+        v1.14: con modelo_de (id del artículo que dice Odoo, para «Es otro») dice también si es el mismo modelo."""
         try:
             self._comprobar_usuario()
             codigo = (codigo or '').strip()
@@ -393,7 +402,11 @@ class KoroshiContenedores(http.Controller):
             p = self._buscar_producto(codigo)
             if not p:
                 raise UserError('%s no es una prenda conocida: no se añade.' % codigo)
-            return {'ok': True, 'producto': {'id': p.id, 'nombre': p.display_name}}
+            res = {'id': p.id, 'nombre': p.display_name}
+            if modelo_de:   # v1.14
+                a = request.env['product.product'].sudo().browse(int(modelo_de)).exists()
+                res['mismo_modelo'] = bool(a) and logica.mismo_modelo(a.name, p.name)
+            return {'ok': True, 'producto': res}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
@@ -631,6 +644,117 @@ class KoroshiContenedores(http.Controller):
             msg = '%s: %s en %s pasa de %s a %d uds' % (emp.name, p.display_name, c.name, _num(actual), nuevas)
             if resumen:
                 msg += '. A Faltantes: ' + '; '.join(resumen)
+            return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _esperando(self, producto, limite=5):
+        """v1.14: OUT abiertas de la compañía con el artículo sin reservar del todo (para avisar al entrar stock)."""
+        moves = request.env['stock.move'].sudo().search([
+            ('product_id', '=', producto.id), ('state', 'in', ('confirmed', 'partially_available')),
+            ('picking_id.picking_type_id.code', '=', 'outgoing'), ('company_id', '=', COMPANY_ID)],
+            order='id', limit=50)
+        pickings = moves.mapped('picking_id')
+        nombres = ['%s%s' % (p.name, ' (%s)' % p.origin if p.origin else '') for p in pickings[:limite]]
+        return nombres, max(0, len(pickings) - limite)
+
+    @http.route('/koroshi/contenedores/cambiar_articulo', type='json', auth='user')
+    def cambiar_articulo(self, contenedor_id=False, employee_id=False, producto_id=False, producto_real_id=False,
+                         uds=None, antes=None, tanda=False, pasar_faltantes=False, otro_modelo=False, **kw):
+        """v1.14 (R23), «Es otro»: `uds` de lo que Odoo llama A (producto_id) en el contenedor son en realidad B
+        (producto_real_id), un error de talla. En un savepoint: lo reservado de A que ya no cabe pasa por Faltantes
+        (como «Cambiar»: otro hueco o la OUT sale sin ello), ajuste de -uds de A y de +uds de B contra pérdidas, y una
+        sola línea «Cambiar artículo» en el registro con los dos movimientos. B entra libre (no se reserva nada).
+        Las mismas protecciones que «Cambiar» (R2): nada si hay prendas de A o de B leídas sin validar en el
+        contenedor ni si las uds de A han cambiado desde que se abrió (antes). tanda: un reintento no se repite.
+        pasar_faltantes y otro_modelo: la PDA ya lo ha avisado y el operario ha vuelto a pulsar «Guardar»."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            c = self._contenedor(contenedor_id)
+            Product = request.env['product.product'].sudo()
+            a = Product.browse(int(producto_id or 0)).exists()
+            b = Product.browse(int(producto_real_id or 0)).exists()
+            if not a or not b:
+                raise UserError('Artículo no válido. Vuelve a abrir el contenedor.')
+            if a == b:
+                raise UserError('Es el mismo artículo. Si faltan o sobran uds, usa «Cambiar».')
+            Mov = request.env['koroshi.contenedor.movimiento'].sudo()
+            tanda = (tanda or '').strip()[:64] if isinstance(tanda, str) else ''
+            if tanda:
+                ya = Mov.search([('tanda', '=', tanda)], limit=1)
+                if ya:
+                    return {'ok': True, 'repetida': True,
+                            'msg': 'Ya estaba guardado: %s uds de %s son %s en %s (no se hace otra vez)' % (
+                                _num(ya.uds), ya.producto_id.display_name, ya.producto_nuevo_id.display_name,
+                                ya.contenedor),
+                            'contenedor': self._datos_contenedor(c)}
+            if not logica.mismo_modelo(a.name, b.name) and not otro_modelo:
+                raise UserError('%s no es el mismo modelo que %s: confírmalo en la PDA.' % (
+                    b.display_name, a.display_name))
+            if 'tracking' in a._fields and (a.tracking != 'none' or b.tracking != 'none'):
+                raise UserError('Artículo con lote o número de serie: hazlo desde Odoo o avisa a IT.')
+            try:
+                n = int(uds)
+            except (TypeError, ValueError):
+                raise UserError('Escribe cuántas uds son del otro artículo (un número).')
+            quants = self._quants(c).filtered(lambda q: q.product_id == a)
+            if quants.filtered(lambda q: q.lot_id or q.package_id or q.owner_id):
+                raise UserError('%s tiene prendas con lote, paquete o propietario: hazlo desde Odoo o avisa a IT.'
+                                % c.name)
+            actual = sum(quants.mapped('quantity'))
+            reservadas = sum(quants.mapped('reserved_quantity'))
+            error = logica.error_uds_cambio(n, actual, MAX_ANADIR)
+            if error:
+                raise UserError(error)
+            leidas = self._leidas(c, a) | self._leidas(c, b)
+            if leidas:
+                raise UserError('No se cambia nada: hay prendas de %s leídas para %s y sin validar (están en un '
+                                'carro). Vuelve a probar cuando se valide.' % (
+                                    ', '.join(leidas.mapped('product_id.display_name')),
+                                    ', '.join(leidas.mapped('picking_id.name')) or 'una OUT'))
+            if antes is not None:
+                try:
+                    antes = float(antes)
+                except (TypeError, ValueError):
+                    antes = None
+            if antes is not None and float_compare(antes, actual, precision_rounding=a.uom_id.rounding) != 0:
+                raise UserError('No se cambia nada: %s tenía %s uds de %s al abrirlo y ahora tiene %s (se ha movido '
+                                'stock mientras tanto). Vuelve a abrir el contenedor.' % (
+                                    c.name, _num(antes), a.display_name, _num(actual)))
+            a_faltantes = logica.reservas_a_faltantes(n, actual, reservadas)
+            if a_faltantes > 0 and not pasar_faltantes:
+                raise UserError('%s uds de %s están reservadas para %s y no quedarían: confírmalo en la PDA.' % (
+                    _num(a_faltantes), a.display_name, ', '.join(self._pedidos_reservados(c, a)) or 'un pedido'))
+            company = quants[:1].company_id or c.company_id or request.env['res.company'].sudo().browse(COMPANY_ID)
+            nombre = 'KOROSHI contenedor %s: %s es %s (%s)' % (c.name, a.display_name, b.display_name, emp.name)
+            resumen = []
+            with request.env.cr.savepoint():    # todo o nada (también lo de Faltantes)
+                if a_faltantes > 0:
+                    resumen, _f = self._reservas_a_faltantes(c, emp, producto=a, dejar=actual - n,
+                                                             que='es otro artículo')
+                    quants = self._quants(c).filtered(lambda q: q.product_id == a)
+                    if float_compare(sum(quants.mapped('reserved_quantity')), actual - n,
+                                     precision_rounding=a.uom_id.rounding) > 0:
+                        raise UserError('%s sigue con más de %s uds reservadas que no son de ninguna OUT abierta. '
+                                        'No se ha cambiado nada: avisa a IT.' % (a.display_name, _num(actual - n)))
+                move_a = self._mover_ajuste(a, -n, c, company, nombre)
+                move_b = self._mover_ajuste(b, n, c, company, nombre)
+                Mov.create({
+                    'accion': 'cambiar_articulo', 'contenedor': c.name, 'origen_id': c.location_id.id,
+                    'origen': c.location_id.complete_name, 'destino': c.location_id.complete_name,
+                    'uds': n, 'lineas': 1, 'producto_id': a.id, 'producto_nuevo_id': b.id,
+                    'move_id': move_a.id, 'move_nuevo_id': move_b.id, 'employee_id': emp.id, 'tanda': tanda or False,
+                })
+                request.env['stock.move'].flush()   # la restricción de la tanda salta aquí dentro
+            msg = '%s: en %s, %d uds de %s son %s (%s pasa de %s a %s uds)' % (
+                emp.name, c.name, n, a.display_name, b.display_name, a.display_name, _num(actual), _num(actual - n))
+            if resumen:
+                msg += '. A Faltantes: ' + '; '.join(resumen)
+            esperando, mas = self._esperando(b)
+            if esperando:
+                msg += '. OUT esperando %s: %s%s (ya hay stock aquí; no se ha reservado nada)' % (
+                    b.display_name, ', '.join(esperando), ' y %d más' % mas if mas else '')
             return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}

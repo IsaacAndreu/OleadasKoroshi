@@ -109,8 +109,18 @@ v1.13.0 (23/11/2026): correcciones de la revisión general del 23/11 (R1-R4, ras
   pendientes del contenedor a su hueco y no archiva si alguno está en una ronda abierta. Cada línea que pasa a
   Faltantes queda en el registro (acción «A Faltantes») y el faltante lleva la nota «Desde Contenedores (...)».
   La compañía sale de koroshi_base. Campos nuevos solo en koroshi.contenedor.movimiento (tanda, faltante_id).
+v1.14.0 (23/11/2026): revisión general del 23/11 (R23), errores de talla. Botón «Es otro» al lado de «Cambiar» en el
+  contenedor abierto: lo que Odoo llama A es en realidad B. Se lee una prenda de B, se ponen las uds (como mucho las de
+  A) y en una sola operación sale A y entra B (dos ajustes contra pérdidas, como «Cambiar»), con UNA línea «Cambiar
+  artículo» en el registro (artículo, artículo real y los dos movimientos; filtro propio). Si las uds de A reservadas no
+  caben en lo que queda, pasan por Faltantes como en «Cambiar» (otro hueco o la OUT sale sin ellas). B entra libre; si
+  hay OUT esperándolo, el mensaje lo dice (no se reserva nada). Mismo modelo = la referencia sin la talla final; si no
+  lo es, aviso en rojo y otro «Guardar». No se hace con prendas de A o de B leídas sin validar en el contenedor ni si
+  las uds de A han cambiado desde que se abrió; un reintento sin conexión no se repite (tanda). Campos nuevos solo en
+  koroshi.contenedor.movimiento (producto_nuevo_id, move_nuevo_id). Diseño aprobado por Isaac:
+  bin/versiones/diseno-cambiar-articulo_2026-11-23.md. Al actualizar, se actualiza también koroshi_menu.
 """,
-    'version': '13.0.1.13.0',
+    'version': '13.0.1.14.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

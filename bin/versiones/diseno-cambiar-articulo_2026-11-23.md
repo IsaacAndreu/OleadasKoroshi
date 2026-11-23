@@ -1,6 +1,7 @@
 # «Cambiar artículo» en Contenedores (errores de talla) — diseño v1 (23/11/2026)
 
-**Estado: solo diseño. No hay código ni nada instalado.** Revisión general del 23/11, R23 (entrega 5). Módulo:
+**Estado: aprobado por Isaac el 23/11 con las 5 propuestas (botón «Es otro»). Hecho en contenedores 1.14.0, sin
+instalar.** Revisión general del 23/11, R23 (entrega 5). Módulo:
 **koroshi_contenedores** (servidor 1.13.0; esto sería la 1.14.0). Espera el sí de Isaac (preguntas al final).
 
 ## 0. Qué pasa hoy

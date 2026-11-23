@@ -1,6 +1,9 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.14 (23/11, R23): «Es otro» al lado de «Cambiar»: lo que Odoo llama A en el contenedor es otra prenda (error de
+ *   talla). Se lee una prenda de verdad (B), se ponen las uds y «Guardar»: sale A y entra B en una sola operación.
+ *   Si no es el mismo modelo o hay reservas de A que no quedarían, avisa y hay que pulsar «Guardar» otra vez.
  * v1.12 (23/11): «Cambiar» por debajo de lo reservado: lo que no está pasa a Faltantes (confirmar 2 veces).
  * v1.11 (23/11): «Poner a cero» con prendas reservadas: pasan a Faltantes (como al marcar un faltante).
  * v1.10 (23/11): «Archivar» en la ficha del contenedor abierto (si no tiene prendas en el sistema).
@@ -91,6 +94,11 @@ var Pantalla = AbstractAction.extend({
         'input .o_kc_codigo': '_onEscribe',
         'click .o_kc_sugerencia': '_onSugerencia',
         'click .o_kc_abrir': '_onVer',
+        // v1.14: «Es otro»
+        'click .o_kc_otro': '_onOtro',
+        'click .o_kc_otro_ok': '_onOtroOk',
+        'click .o_kc_otro_no': '_onOtroNo',
+        'keydown .o_kc_otro_uds': '_onOtroKey',
     },
 
     init: function () {
@@ -114,6 +122,7 @@ var Pantalla = AbstractAction.extend({
         this.origenHueco = null;        // v1.6: hueco del que salen los «Mover marcados» (para «Atrás»)
         this.teclado = false;           // v1.6: campo con teclado de la PDA (para escribir L94)
         this.editando = null;           // v1.7: artículo del contenedor abierto al que se cambia la cantidad
+        this.otro = null;               // v1.14: «Es otro» {id, nombre, uds, reservadas, b, n, confirmado, tanda}
         this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
         this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
         this.rafagaTimer = null;        // v1.9.3: lectura del campo al parar el lector
@@ -221,6 +230,7 @@ var Pantalla = AbstractAction.extend({
         this.articulo = null;
         this.origenHueco = null;
         this.editando = null;
+        this.otro = null;               // v1.14
         this.candidatos = null;
         if (conPersona) { this.persona = null; }
         this._pintar();
@@ -321,6 +331,7 @@ var Pantalla = AbstractAction.extend({
             return this._aviso('info', codigo + ' leído: va en cuanto acabe lo anterior.');
         }
         if (this.anadiendo) { return this._leerPrenda(codigo); }   // v1.5: modo «Añadir prendas»
+        if (this.otro) { return this._leerOtro(codigo); }          // v1.14: «Es otro»: la prenda de verdad
         this.ocupado = true;
         return this._rpc({route: '/koroshi/contenedores/leer', params: {codigo: codigo}}).then(function (r) {
             self._fin();
@@ -688,6 +699,7 @@ var Pantalla = AbstractAction.extend({
             return this._onCancelarAnadir();
         }
         if (this.confirmando) { return this._onConfirmarNo(); }
+        if (this.otro) { return this._onOtroNo(); }             // v1.14
         if (this.editando) { return this._onEditarNo(); }       // v1.7
         if (this.detalle) { return this._onVolverHueco(); }
         if (this.conts.length) {
@@ -774,7 +786,7 @@ var Pantalla = AbstractAction.extend({
 
     _onEditar: function (ev) {
         var id = parseInt($(ev.currentTarget).data('producto'), 10);
-        if (this.ocupado || !this.detalle || !this.persona || this.anadiendo || !id) { return; }
+        if (this.ocupado || !this.detalle || !this.persona || this.anadiendo || this.otro || !id) { return; }
         var lineas = _.filter(this.detalle.lineas, function (l) { return l.producto_id === id; });
         if (!lineas.length) { return; }
         this.editando = {
@@ -846,6 +858,132 @@ var Pantalla = AbstractAction.extend({
             self._pintar();
             self._foco();
         }, self._sinConexion.bind(self));
+    },
+
+    // ------------------------------------------------------------------ v1.14 (R23): «Es otro» (error de talla)
+    _onOtro: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('producto'), 10);
+        if (this.ocupado || !this.detalle || !this.persona || this.anadiendo || this.editando || !id) { return; }
+        var lineas = _.filter(this.detalle.lineas, function (l) { return l.producto_id === id; });
+        if (!lineas.length) { return; }
+        this.otro = {
+            id: id, nombre: lineas[0].producto,
+            uds: _.reduce(lineas, function (s, l) { return s + l.uds; }, 0),
+            reservadas: _.reduce(lineas, function (s, l) { return s + l.reservadas; }, 0),
+            b: null, n: undefined, confirmado: null, tanda: null, tandaClave: null,
+        };
+        this.confirmando = false;
+        this.actividadEn = Date.now();
+        this._aviso('info', 'Lee una prenda de las que hay DE VERDAD en el contenedor.');
+        this._pintar();
+        this._foco();
+    },
+
+    _onOtroNo: function () {
+        this.otro = null;
+        this._aviso('', 'No se ha cambiado nada.');
+        this._pintar();
+        this._foco();
+    },
+
+    _leerOtro: function (codigo) {
+        var self = this;
+        var o = this.otro;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/producto', params: {codigo: codigo, modelo_de: o.id}})
+            .then(function (r) {
+                self._fin();
+                if (self.otro !== o) { return; }
+                if (!r || !r.ok) {
+                    self._pitido(false);
+                    self._aviso('mal', (r && r.msg) || 'No se ha podido leer.');
+                    return;
+                }
+                if (r.producto.id === o.id) {
+                    self._pitido(false);
+                    self._aviso('mal', 'Es el mismo artículo que dice Odoo. Si faltan o sobran uds, usa «Cambiar».');
+                    return;
+                }
+                o.b = r.producto;
+                o.confirmado = null;
+                self._pitido(true);
+                self._aviso(r.producto.mismo_modelo ? 'ok' : 'mal', r.producto.mismo_modelo
+                    ? 'Ahora pon cuántas uds son ' + r.producto.nombre + ' y «Guardar».'
+                    : 'Ojo: NO es el mismo modelo. Revisa la prenda antes de guardar.');
+                self._pintar();
+                var $q = self.$('.o_kc_otro_uds');
+                $q.focus();
+                $q.select();
+            }, self._sinConexion.bind(self));
+    },
+
+    _onOtroKey: function (ev) {
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        ev.stopPropagation();
+        var v = (ev.currentTarget.value || '').trim();
+        if (v.length > 5) {             // una lectura del escáner: es otra prenda, no una cantidad
+            ev.currentTarget.value = '';
+            return this._leer(v, false, 'campo');
+        }
+        this._onOtroOk();
+    },
+
+    _onOtroOk: function () {
+        var self = this;
+        var o = this.otro;
+        if (this.ocupado || !o || !o.b || !this.detalle || !this.persona) { return; }
+        var $q = this.$('.o_kc_otro_uds');
+        var v = ($q.val() || '').trim();
+        if (v.length > 5) {             // el lector ha escrito en la casilla (la PDA no manda Intro)
+            $q.val('');
+            return this._leer(v, false, 'campo');
+        }
+        var n = parseInt(v, 10);
+        if (!/^\d+$/.test(v) || !(n >= 1)) {
+            return this._aviso('mal', 'Escribe cuántas uds son ' + o.b.nombre + ' (1 o más).');
+        }
+        if (n > o.uds) {
+            return this._aviso('mal', 'Solo hay ' + _n(o.uds) + ' uds de ' + o.nombre + ' en el contenedor.');
+        }
+        var aFaltantes = Math.max(0, o.reservadas - (o.uds - n));
+        var clave = o.b.id + '|' + n;
+        if ((aFaltantes > 0 || !o.b.mismo_modelo) && o.confirmado !== clave) {
+            // como «Cambiar» (v1.12): lo que tiene consecuencias se confirma con otro «Guardar»
+            o.confirmado = clave;
+            o.n = n;
+            o.aFaltantes = aFaltantes;
+            this._aviso('info', 'Lee el aviso en rojo y pulsa «Guardar» otra vez.');
+            this._pintar();
+            return;
+        }
+        if (!o.tanda || o.tandaClave !== clave) {   // misma operación = misma tanda (un reintento no se repite)
+            o.tanda = _idTanda();
+            o.tandaClave = clave;
+        }
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/cambiar_articulo', params: {
+            contenedor_id: this.detalle.id, employee_id: this.persona.id, producto_id: o.id,
+            producto_real_id: o.b.id, uds: n, antes: o.uds, tanda: o.tanda,
+            pasar_faltantes: aFaltantes > 0, otro_modelo: !o.b.mismo_modelo}}).then(function (m) {
+            self._fin();
+            if (!m || !m.ok) {
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido cambiar.');
+                return;
+            }
+            self.otro = null;
+            self.detalle = m.contenedor;
+            self._refrescarCont(m.contenedor);
+            self._pitido(true);
+            self._aviso('ok', '✓ ' + m.msg);
+            self._pintar();
+            self._foco();
+        }, function () {
+            // sin respuesta: puede haberse guardado o no. Misma tanda: al volver a pulsar no se hace dos veces
+            self._sinConexion();
+            self._aviso('mal', 'Sin conexión al guardar. Vuelve a pulsar «Guardar» (no se hace dos veces).');
+        });
     },
 
     // ------------------------------------------------------------------ v1.7: buscar por un trozo del nombre
@@ -1093,7 +1231,8 @@ var Pantalla = AbstractAction.extend({
         var c = this.detalle;
         if (!c) { return ''; }
         var e = this.editando;
-        var puedeEditar = !this.anadiendo && !this.confirmando && !e;
+        var o = this.otro;              // v1.14
+        var puedeEditar = !this.anadiendo && !this.confirmando && !e && !o;
         var html = '<button type="button" class="o_kc_volver_hueco">' + (this.hueco ? '← Volver al hueco' : '← Volver') +
             '</button>' +
             '<div class="o_kc_card"><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">En: ' + _e(c.hueco) + '</div>';
@@ -1104,11 +1243,34 @@ var Pantalla = AbstractAction.extend({
                     return '<tr><td>' + _e(l.producto) + '</td><td class="o_kc_n">' + _n(l.uds) +
                         (l.reservadas ? ' (res. ' + _n(l.reservadas) + ')' : '') +
                         (puedeEditar ? '<button type="button" class="o_kc_editar" data-producto="' + l.producto_id +
-                            '">Cambiar</button>' : '') + '</td></tr>';
+                            '">Cambiar</button><button type="button" class="o_kc_otro" data-producto="' +
+                            l.producto_id + '">Es otro</button>' : '') + '</td></tr>';
                 }).join('') + (c.mas ? '<tr><td colspan="2">… y ' + c.mas + ' referencias más</td></tr>' : '') +
                 '</table>';
         } else {
             html += '<div class="o_kc_vacio">Sin prendas en el sistema</div>';
+        }
+        if (o) {                        // v1.14: «Es otro»
+            html += '<div class="o_kc_editar_caja o_kc_otro_caja"><div>Odoo dice: <b>' + _e(o.nombre) + '</b> · ' +
+                _n(o.uds) + ' uds' + (o.reservadas ? ' · ' + _n(o.reservadas) + ' reservadas para un pedido' : '') +
+                '</div>';
+            if (!o.b) {
+                html += '<div class="o_kc_otro_lee">Lee una prenda de las que hay DE VERDAD.</div>';
+            } else {
+                html += '<div>De verdad es: <b>' + _e(o.b.nombre) + '</b></div>' +
+                    (o.b.mismo_modelo ? '' : '<div class="o_kc_aviso_reserva"><b>NO es el mismo modelo</b> (no es ' +
+                        'solo otra talla). Si de verdad es así, pulsa «Guardar» otra vez.</div>') +
+                    '¿Cuántas uds son ' + _e(o.b.nombre) + '? <input type="number" class="o_kc_otro_uds" ' +
+                    'inputmode="numeric" min="1" step="1" value="' +
+                    (o.n !== undefined ? o.n : Math.round(o.uds)) + '"/>' +
+                    (o.confirmado && o.aFaltantes > 0 ? '<div class="o_kc_aviso_reserva"><b>' + _n(o.aFaltantes) +
+                        ' uds de ' + _e(o.nombre) + ' reservadas no quedarían: pasan a Faltantes</b> (la OUT las ' +
+                        'coge de otro hueco con stock o, si no hay, sale sin ellas). Pulsa «Guardar» otra vez.</div>'
+                        : '');
+            }
+            html += '<div><button type="button" class="o_kc_otro_ok"' + (o.b ? '' : ' disabled="disabled"') +
+                '>Guardar</button><button type="button" class="o_kc_otro_no">Cancelar</button></div></div>';
+            return html + '</div>';
         }
         if (e) {                        // v1.7: uds reales de un artículo
             html += '<div class="o_kc_editar_caja"><b>' + _e(e.nombre) + '</b><div>Ahora: ' + _n(e.uds) + ' uds' +
@@ -1172,8 +1334,12 @@ var Pantalla = AbstractAction.extend({
             paso = 'Ahora escanea la ubicación de destino (o más contenedores).';
         } else if (this.anadiendo) {
             paso = 'Añadir prendas: lee cada prenda y después «Guardar»';
+        } else if (this.otro) {         // v1.14
+            paso = this.otro.b ? 'Es otro: pon cuántas uds son y «Guardar»'
+                : 'Es otro: lee una prenda de las que hay de verdad';
         } else if (this.detalle) {
-            paso = 'Contenedor: «Cambiar» la cantidad de un artículo, ponerlo a cero o añadir prendas';
+            paso = 'Contenedor: «Cambiar» la cantidad de un artículo, «Es otro» si es otra talla, ponerlo a cero ' +
+                'o añadir prendas';
         } else if (this.candidatos) {
             paso = 'Toca lo que buscas';
         } else if (this.hueco) {

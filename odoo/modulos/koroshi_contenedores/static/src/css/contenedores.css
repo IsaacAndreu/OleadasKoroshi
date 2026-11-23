@@ -65,6 +65,14 @@
 .o_koroshi_contenedores .o_kc_editar_caja input { width: 90px; font-size: 22px; padding: 4px 8px; margin: 6px 8px 6px 0; }
 .o_koroshi_contenedores .o_kc_editar_caja button { padding: 8px 14px; margin-right: 6px; font-size: 16px; }
 .o_koroshi_contenedores .o_kc_editar_ok { background: #1565c0; color: #fff; border: 0; border-radius: 6px; }
+/* v1.14: «Es otro» (error de talla) */
+.o_koroshi_contenedores .o_kc_otro { padding: 4px 10px; margin-left: 6px; border: 1px solid #8e24aa;
+    border-radius: 6px; background: #fff; color: #8e24aa; font-size: 14px; }
+.o_koroshi_contenedores .o_kc_otro_caja { border-color: #8e24aa; background: #f3e5f5; }
+.o_koroshi_contenedores .o_kc_otro_caja input { width: 90px; font-size: 22px; padding: 4px 8px; margin: 6px 8px 6px 0; }
+.o_koroshi_contenedores .o_kc_otro_ok { background: #8e24aa; color: #fff; border: 0; border-radius: 6px; }
+.o_koroshi_contenedores .o_kc_otro_ok[disabled] { opacity: 0.4; }
+.o_koroshi_contenedores .o_kc_otro_lee { font-size: 18px; font-weight: bold; margin: 8px 0; }
 .o_koroshi_contenedores .o_kc_abrir { float: right; margin-right: 6px; padding: 4px 10px; border: 1px solid #1565c0;
     border-radius: 6px; background: #fff; color: #1565c0; }
 .o_koroshi_contenedores .o_kc_sugerencias:empty { display: none; }
