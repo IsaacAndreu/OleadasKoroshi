@@ -182,6 +182,7 @@ var Monitor = AbstractAction.extend({
         'click .km-envios': '_abrirEnvios',
         'click .km-produccion': '_abrirProduccion',   // v1.31.0
         'click .km-mapa': '_abrirMapa',
+        'click .km-etq-zona': '_etiquetasZona',     // v1.40.0
         'click .km-limpiar-filtros': '_limpiarFiltros',
         'dblclick th.km-sort': '_onSort',
         'click details > summary': '_onToggle',
@@ -292,6 +293,22 @@ var Monitor = AbstractAction.extend({
     // El mapa operativo reutiliza el mismo endpoint y detecta las zonas KOR
     // creadas hoy. Se abre dentro de Odoo para no duplicar el plano dentro de
     // esta pantalla ni cargarlo cuando no hay zonas reales.
+    // v1.40.0: imprimir las etiquetas de una zona con lo de koroshi_zonas (la antigua accion 1843): reserva las
+    // matriculas CJ que falten y abre el PDF. Las OUT hechas o canceladas se saltan alli mismo.
+    _etiquetasZona: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var zona = $(ev.currentTarget).data('zona');
+        var ids = (this._ultimo && this._ultimo.D || []).filter(function (o) { return o.z === zona && o.est !== 'hecha'; })
+            .map(function (o) { return o.id; });
+        if (!ids.length) { window.alert('La zona ' + zona + ' no tiene OUT sin hacer: no hay etiquetas que imprimir.'); return; }
+        if (!window.confirm('¿Imprimir las etiquetas de la zona ' + zona + ' (' + ids.length + ' OUT sin hacer)?\n\n' +
+                'Se crean las matrículas CJ que les falten; las que ya tengan se reutilizan.')) { return; }
+        return this._rpc({model: 'koroshi.zonas.etiquetas', method: 'imprimir', args: [ids, 'REAL']}).then(function (accion) {
+            return self.do_action(accion);
+        });
+    },
+
     _abrirMapa: function (ev) {
         ev.preventDefault();
         this.do_action({
@@ -358,6 +375,7 @@ var Monitor = AbstractAction.extend({
         this._ultimaCarga = Date.now();     // v1.27
         return this._rpc({route: '/koroshi_monitor/datos', params: {prefijo: this.prefijo}}).then(function (r) {
             self.prefijo = r.prefijo;
+            self._ultimo = r;     // v1.40.0: para el boton de etiquetas por zona
             var scroll = self.el.scrollTop;
             self._pintar(r);
             self.el.scrollTop = scroll;
@@ -435,7 +453,7 @@ var Monitor = AbstractAction.extend({
         h += tablaOperarios(r.operarios, false, r.jefe);
 
         // Totales
-        h += '<h2>Totales: lo que llevan y lo que les falta</h2><div class="km-card km-scroll"><table><thead><tr><th>Zona</th><th class="r">Uds total</th><th class="r">Uds cogidas</th><th class="r">Uds que faltan</th><th class="r">%</th><th class="r">OUT total</th><th class="r">OUT hechas</th><th class="r">OUT cogiéndose</th><th class="r">OUT que faltan</th><th>Operario</th></tr></thead><tbody>';
+        h += '<h2>Totales: lo que llevan y lo que les falta</h2><div class="km-card km-scroll"><table><thead><tr><th>Zona</th><th class="r">Uds total</th><th class="r">Uds cogidas</th><th class="r">Uds que faltan</th><th class="r">%</th><th class="r">OUT total</th><th class="r">OUT hechas</th><th class="r">OUT cogiéndose</th><th class="r">OUT que faltan</th><th>Operario</th>' + (r.etiquetas_zona ? '<th></th>' : '') + '</tr></thead><tbody>';
         // v1.18: operarios de cada zona (la tarea es de la agrupacion entera)
         var opsZona = function (zn) {
             var o = {ops: [], ops_ahora: []};
@@ -448,9 +466,11 @@ var Monitor = AbstractAction.extend({
         };
         zonas.forEach(function (zn) {
             var z = Z[zn];
-            h += '<tr><td>' + zt(zn) + '</td><td class="r">' + n(z.u) + '</td><td class="r">' + n(z.l) + '</td><td class="r"><b>' + n(z.u - z.l) + '</b></td><td class="r">' + (z.u ? Math.round(100 * z.l / z.u) : 0) + ' %</td><td class="r">' + z.n + '</td><td class="r">' + z.h + '</td><td class="r">' + z.c + '</td><td class="r"><b>' + (z.c + z.p) + '</b></td><td>' + opsTxt(opsZona(zn)) + '</td></tr>';
+            h += '<tr><td>' + zt(zn) + '</td><td class="r">' + n(z.u) + '</td><td class="r">' + n(z.l) + '</td><td class="r"><b>' + n(z.u - z.l) + '</b></td><td class="r">' + (z.u ? Math.round(100 * z.l / z.u) : 0) + ' %</td><td class="r">' + z.n + '</td><td class="r">' + z.h + '</td><td class="r">' + z.c + '</td><td class="r"><b>' + (z.c + z.p) + '</b></td><td>' + opsTxt(opsZona(zn)) + '</td>' +
+                (r.etiquetas_zona ? '<td><button class="btn btn-sm btn-secondary km-etq-zona" data-zona="' + e(zn) + '"' + (z.c + z.p ? '' : ' disabled') +
+                    ' title="Imprimir las etiquetas de las OUT sin hacer de esta zona">🖨 Etiquetas ' + e(zn) + '</button></td>' : '') + '</tr>';
         });
-        h += '<tr class="km-tot"><td>Total</td><td class="r">' + n(T.u) + '</td><td class="r">' + n(T.l) + '</td><td class="r">' + n(T.u - T.l) + '</td><td class="r">' + pctT + ' %</td><td class="r">' + D.length + '</td><td class="r">' + T.h + '</td><td class="r">' + T.c + '</td><td class="r">' + (T.c + T.p) + '</td><td></td></tr></tbody></table></div>';
+        h += '<tr class="km-tot"><td>Total</td><td class="r">' + n(T.u) + '</td><td class="r">' + n(T.l) + '</td><td class="r">' + n(T.u - T.l) + '</td><td class="r">' + pctT + ' %</td><td class="r">' + D.length + '</td><td class="r">' + T.h + '</td><td class="r">' + T.c + '</td><td class="r">' + (T.c + T.p) + '</td><td></td>' + (r.etiquetas_zona ? '<td></td>' : '') + '</tr></tbody></table></div>';
 
         // Avance por zona
         h += '<h2>Avance por zona</h2><div class="km-ley"><span><i style="background:var(--km-ok)"></i>OUT hecha (validada)</span><span><i style="background:var(--km-cur)"></i>cogiéndose</span><span><i style="background:var(--km-pend)"></i>sin empezar</span></div><div class="km-card">';
