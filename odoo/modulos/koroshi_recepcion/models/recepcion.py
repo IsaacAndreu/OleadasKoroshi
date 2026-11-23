@@ -62,7 +62,7 @@ class KoroshiRecepcion(models.Model):
     tanda_ids = fields.One2many('koroshi.recepcion.tanda', 'recepcion_id', 'Etiquetas')
     teorico_ids = fields.One2many('koroshi.recepcion.teorico', 'recepcion_id', 'Teórico guardado',
                                   help='Foto de lo que traían las IN, tomada antes de la primera validación: después '
-                                       'Odoo cambia las cantidades de las IN validadas (lo que sobra se suma).'),
+                                       'Odoo cambia las cantidades de las IN validadas (lo que sobra se suma).')
     company_id = fields.Many2one('res.company', default=lambda s: comun.COMPANY_ID, readonly=True)
     notas = fields.Text('Notas')
     # resúmenes

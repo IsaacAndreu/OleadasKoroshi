@@ -40,8 +40,12 @@ Parámetro opcional koroshi_recepcion.tipo_in_id: el id del tipo de operación d
 entrada de la compañía 8 que llega a EFFEC/RECEP_KO: el 44 en producción el 23/11).
 
 v1.0.0 (23/11/2026): primera versión (diseño v6 aprobado por Isaac el 23/11).
+v1.0.1 (23/11/2026): el campo teorico_ids (la foto del teórico) no existía en Odoo: su definición acababa en coma y
+  quedaba como una tupla («Trailing comma after field definition» en el log al instalar la 1.0.0). Con la 1.0.0
+  fallaban la comparación, la ficha de la oficina, cambiar las IN y validar. Solo se quita la coma; comprobar.py lo
+  detecta desde ahora (E9).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

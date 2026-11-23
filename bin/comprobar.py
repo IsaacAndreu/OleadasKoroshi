@@ -20,6 +20,8 @@ ERRORES (paran):
   E7 Un .py que no compila.
   E8 groups="grupo" sin el modulo delante dentro de una vista (arch): «External ID must be fully qualified» y no se
      actualiza (koroshi_menu 2.6.0, 19/11). En un <menuitem> si vale sin modulo.
+  E9 Campo de Odoo con una coma al final («campo = fields.X(...),»): queda como tupla y Odoo no crea el campo; solo
+     lo dice en el log («Trailing comma after field definition»). koroshi_recepcion 1.0.0, teorico_ids, 23/11.
 AVISOS (no paran):
   A1 <function> dentro de noupdate="1": solo corre al INSTALAR, no al actualizar.
 
@@ -136,6 +138,23 @@ def campos_compartidos(texto):
     return salida
 
 
+def campos_con_coma(texto):
+    """[(campo, linea)] de las clases con «campo = fields.X(...),» (tupla de un solo fields.X): E9."""
+    salida = []
+    for clase in [n for n in ast.walk(ast.parse(texto)) if isinstance(n, ast.ClassDef)]:
+        for nodo in clase.body:
+            if not (isinstance(nodo, ast.Assign) and isinstance(nodo.value, ast.Tuple)):
+                continue
+            for el in nodo.value.elts:
+                if (isinstance(el, ast.Call) and isinstance(el.func, ast.Attribute)
+                        and isinstance(el.func.value, ast.Name) and el.func.value.id == 'fields'):
+                    for t in nodo.targets:
+                        if isinstance(t, ast.Name):
+                            salida.append((t.id, nodo.lineno))
+                    break
+    return salida
+
+
 def comprobar_modulo(modulo, ok_campos=None):
     """Devuelve (errores, avisos): listas de textos 'CODIGO ruta:linea: que pasa'."""
     errores, avisos = [], []
@@ -173,6 +192,8 @@ def comprobar_modulo(modulo, ok_campos=None):
                     errores.append('E4 %s:%d: campo nuevo %s.%s en una tabla compartida. Prohibido sin preguntar '
                                    '(no_overscan, 03/11). Si esta aprobado, anadirlo a bin/campos_compartidos_aprobados.txt'
                                    % (rel, n, modelo, campo))
+            for campo, n in campos_con_coma(texto):
+                errores.append('E9 %s:%d: el campo %s acaba en coma: es una tupla y Odoo no lo crea' % (rel, n, campo))
             for m in RE_ALTER.finditer(texto):
                 errores.append('E4 %s:%d: ALTER TABLE ... ADD en una tabla compartida (%s)'
                                % (rel, linea_de(texto, m.start()), m.group(1)))
