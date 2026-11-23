@@ -217,8 +217,21 @@ class KoroshiS4tTraspaso(models.Model):
             ('company_id', '=', COMPANY_ID), ('code', '=', 'incoming'), ('sequence_code', '=', 'DEV'),
             ('warehouse_id.code', '=', 'EFFEC')], limit=1)
 
+    def _recalcular_productos(self):
+        """v1.4.0 (R12): vuelve a buscar el artículo de las líneas que no lo tenían. El producto es un calculado
+        guardado que solo cambia con artículo, color y talla: crear después el artículo en Odoo no lo arreglaba nunca.
+        Devuelve los traspasos que ahora tienen todas sus líneas con artículo."""
+        Linea = self.env['koroshi.s4t.traspaso.linea']
+        sin = self.mapped('line_ids').filtered(lambda l: not l.product_id)
+        if sin:
+            for nombre in ('sku', 'product_id'):
+                self.env.add_to_compute(Linea._fields[nombre], sin)
+            sin.recompute()
+        return self.filtered(lambda r: r.line_ids and all(r.line_ids.mapped('product_id')))
+
     def _procesar_uno(self):
         self.ensure_one()
+        self._recalcular_productos()   # v1.4.0 (R12)
         faltan = self.line_ids.filtered(lambda l: not l.product_id)
         if faltan:
             raise UserError(_('Articulos no encontrados en Odoo: %s') % ', '.join(faltan.mapped('sku')))
@@ -331,9 +344,57 @@ class KoroshiS4tTraspaso(models.Model):
         # v1.1: tambien los que dieron error, hasta MAX_INTENTOS veces
         pendientes = self.search(['|', ('state', '=', 'nuevo'),
                                   '&', ('state', '=', 'error'), ('intentos', '<', MAX_INTENTOS)])
+        # v1.4.0 (R12): y los que agotaron los intentos por un artículo que no estaba y ahora ya está en Odoo
+        agotados = self.search([('state', '=', 'error'), ('intentos', '>=', MAX_INTENTOS),
+                                ('line_ids.product_id', '=', False)])
+        pendientes |= agotados._recalcular_productos()
         hechos = pendientes.action_procesar()
         self.env.cr.commit()
         _logger.info('KOROSHI S4T TRASPASOS: %d procesados de %d nuevos o con error', hechos, len(pendientes))
+        self._aviso_diario()
+        return True
+
+    @api.model
+    def _aviso_diario(self):
+        """v1.4.0 (R12): una vez al día (desde la hora de conciliación), si hay traspasos en error, correo a
+        koroshi_s4t_traspasos.avisar con la lista. Antes, tras MAX_INTENTOS, silencio. Nunca para el cron."""
+        Param = self.env['ir.config_parameter'].sudo()
+        ahora = comun.ahora_local()
+        hoy = ahora.date().isoformat()
+        if Param.get_param(P + 'ultimo_aviso') == hoy:
+            return False
+        try:
+            hh, mm = [int(x) for x in (Param.get_param(P + 'hora_conciliacion') or '06:00').split(':')]
+        except ValueError:
+            hh, mm = 6, 0
+        if (ahora.hour, ahora.minute) < (hh, mm):
+            return False
+        Param.set_param(P + 'ultimo_aviso', hoy)
+        errores = self.search([('state', '=', 'error')], order='id')
+        correos = [c.strip() for c in (Param.get_param(P + 'avisar') or '').replace(';', ',').split(',') if c.strip()]
+        if errores:
+            _logger.warning('KOROSHI S4T TRASPASOS AVISO: %d traspasos en error', len(errores))
+        if not errores or not correos:
+            self.env.cr.commit()
+            return False
+        filas = ''.join('<tr><td>%s</td><td>%s</td><td>%s</td><td>%s</td></tr>' % (
+            r.name, r.tipo, r.intentos, (r.error or '').replace('&', '&amp;').replace('<', '&lt;')[:300])
+            for r in errores[:200])
+        try:
+            with self.env.cr.savepoint():
+                self.env['mail.mail'].sudo().create({
+                    'subject': 'KOROSHI S4T traspasos: %d en error' % len(errores),
+                    'email_to': ', '.join(correos),
+                    'body_html': '<p>Traspasos de S4T en error (Inventario &gt; S4T &gt; Traspasos). Los que '
+                                 'tienen %d intentos ya no se reintentan solos, salvo si faltaba un artículo y ya '
+                                 'está en Odoo.</p><table border="1" cellpadding="3" style="border-collapse:collapse;'
+                                 'font-size:12px"><tr><th>Traspaso</th><th>Tipo</th><th>Intentos</th><th>Error</th>'
+                                 '</tr>%s</table>' % (MAX_INTENTOS, filas),
+                    'auto_delete': False,
+                })
+        except Exception:
+            _logger.exception('KOROSHI S4T TRASPASOS: no se ha podido mandar el aviso diario')
+        self.env.cr.commit()
         return True
 
 

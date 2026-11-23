@@ -26,8 +26,13 @@ v1.3.0 (19/11/2026): puesta en marcha para dar entrada a las devoluciones web. P
 (DEV automatica de cada devolucion e-commerce). Boton 'Sin DEV' para las que no deben crear recepcion. 'Recuperar por
 fecha' ya no procesa todos los nuevos: solo los que acaba de guardar y solo en modo real. Sin campos en tablas
 compartidas (solo un estado nuevo en el modelo propio).
+v1.4.0 (23/11/2026): revision general del 23/11 (R12). Al procesar se vuelve a buscar el articulo de las lineas que
+no lo tenian (antes, crear el articulo en Odoo no arreglaba la correccion en error: el producto calculado no se
+recalculaba) y los que agotaron los intentos por eso vuelven a probarse cuando el articulo ya esta. Una vez al dia
+(desde la hora de conciliacion), correo a koroshi_s4t_traspasos.avisar con los traspasos en error (antes, tras 5
+intentos, silencio). No cambia que se crea.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Inventory',
     'license': 'LGPL-3',

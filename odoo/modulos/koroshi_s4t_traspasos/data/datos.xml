@@ -6,6 +6,11 @@
             <field name="key">koroshi_s4t_traspasos.modo</field>
             <field name="value">guardar</field>
         </record>
+        <!-- v1.4.0 (R12): a quien va el correo diario con los traspasos en error. Separados por comas. -->
+        <record id="param_avisar" model="ir.config_parameter">
+            <field name="key">koroshi_s4t_traspasos.avisar</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
         <!-- Cron ARCHIVADO (inactivo). Primera descarga: "Ejecutar manualmente", revisar, y despues activarlo. -->
         <record id="cron_traspasos_s4t" model="ir.cron">
             <field name="name">KOROSHI - Traspasos S4T (devoluciones y correcciones)</field>
