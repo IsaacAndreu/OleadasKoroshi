@@ -14,5 +14,16 @@
             <field name="key">koroshi_monitor.manifiesto_cc</field>
             <field name="value">jessica.castillero@xpo.com, ndg.comprometido.barcelona@xpo.com, xpo.comprometido.salidas.barcelona@xpo.com, eloy.canoayora@xpo.com, marta.bernabeu@xpo.com, expediciones@koroshi.tv</field>
         </record>
+        <!-- v1.43.0 (23/11): correo GLS de tiendas del día (Consulta de envíos > Enviar correo GLS). Isaac: Erika
+             en principal y Spain, Sonia y Betty en copia. Son registros nuevos: se crean al actualizar aunque el
+             bloque sea noupdate (noupdate solo impide pisar los que ya existen). -->
+        <record id="param_gls_para" model="ir.config_parameter">
+            <field name="key">koroshi_monitor.gls_para</field>
+            <field name="value">expediciones@koroshi.tv</field>
+        </record>
+        <record id="param_gls_cc" model="ir.config_parameter">
+            <field name="key">koroshi_monitor.gls_cc</field>
+            <field name="value">spain@koroshi.tv, sonia@koroshi.tv, betty@nath.es</field>
+        </record>
     </data>
 </odoo>

@@ -258,7 +258,10 @@ class KoroshiConsultaEnvios(http.Controller):
             'nota': libro.add_format(dict(base, italic=True, font_color='#667085')),
         }
 
-    def _excel_tiendas(self, env, picks, etiqueta, dia_desde, dia_hasta, fechas=None, manuales=None, avisos=None):
+    def _excel_tiendas(self, env, picks, etiqueta, dia_desde, dia_hasta, fechas=None, manuales=None, avisos=None,
+                       tabla=None):
+        """v1.43.0: con tabla={} la rellena con lo mismo que el Excel ({cab, filas, total, coincide}) para el
+        cuerpo del correo GLS."""
         salida = io.BytesIO()
         libro = xlsxwriter.Workbook(salida, {'in_memory': True})
         f = self._formatos_excel(libro)
@@ -351,12 +354,25 @@ class KoroshiConsultaEnvios(http.Controller):
             formatos = [f['wrap'], f['wrap'], f['wrap'], f['fecha'], f['wrap'], f['wrap'],
                         f['num'], f['num'], f['ok'] if coincide else f['mal'], f['num'], f['num'], f['wrap'],
                         f['wrap']]
+            if tabla is not None:
+                tabla.setdefault('filas', []).append(
+                    [v.strftime('%d/%m/%Y %H:%M') if isinstance(v, datetime.datetime) else ('' if v is None else v)
+                     for v in valores])
+                tabla.setdefault('coincide', []).append(coincide)
             for col, valor in enumerate(valores):
                 if valor is None:
                     hoja.write_blank(fila, col, None, formatos[col])
                 else:
                     hoja.write(fila, col, valor, formatos[col])
         total = 3 + len(nombres)
+        if tabla is not None:
+            tabla['cab'] = cab
+            tabla['total'] = ['TOTAL %d tiendas' % len(nombres), '%d pedidos' % len(grupos),
+                              '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), '', '', '',
+                              sum([t['bultos'] for t in tiendas.values()]), sum([t['cajas'] for t in tiendas.values()]),
+                              '', sum([t['pedidas'] for t in tiendas.values()]),
+                              sum([t['hechas'] for t in tiendas.values()]), '', '']
+            tabla.setdefault('filas', [])
         hoja.write(total, 0, 'TOTAL %d tiendas' % len(nombres), f['total'])
         hoja.write(total, 1, '%d pedidos' % len(grupos), f['total'])
         hoja.write(total, 2, '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), f['total'])
@@ -830,6 +846,144 @@ class KoroshiConsultaEnvios(http.Controller):
             'mensaje': 'Manifiesto del %s enviado a %s%s.' % (
                 texto_dia, ', '.join(para), cc and ' (copia a %s)' % ', '.join(cc) or ''),
             'cierre': self._info_cierre(cierre),
+        }
+
+    # ------------------------------------------------------------------
+    # v1.43.0: correo GLS de tiendas del día (Isaac, 23/11: «un correo tmb para el de GLS ... con el excel que
+    # hacemos»; hasta ahora lo mandaba Betty a mano). El Excel de Tiendas GLS del día adjunto y la misma tabla en el
+    # cuerpo. NO se guarda en koroshi.envio.cierre: ese modelo es el «camión XPO cerrado» para koroshi_s4t_envios
+    # (is_final) y para la bandeja del jefe (koroshi_menu); un registro GLS ahí cambiaría lo que hacen. Los envíos
+    # se cuentan por los correos (mail.mail) con el mismo asunto.
+    # ------------------------------------------------------------------
+    @staticmethod
+    def _destinatarios_gls(env):
+        Param = env['ir.config_parameter'].sudo()
+
+        def lista(clave):
+            texto = (Param.get_param(clave) or '').replace(';', ',')
+            return [c.strip() for c in texto.split(',') if c.strip()]
+        return lista('koroshi_monitor.gls_para'), lista('koroshi_monitor.gls_cc')
+
+    @staticmethod
+    def _asunto_gls(dia_fecha):
+        return 'PEDIDOS DE TIENDA GLS %s' % dia_fecha.strftime('%d/%m/%Y')
+
+    def _correos_gls(self, env, dia_fecha):
+        """Correos GLS de ese día que han salido o están saliendo (no los fallidos), del más nuevo al más viejo."""
+        return env['mail.mail'].sudo().search([
+            ('subject', '=like', self._asunto_gls(dia_fecha) + '%'),
+            ('state', 'in', ('outgoing', 'sent', 'received'))], order='id desc')
+
+    def _datos_gls(self, env, dia):
+        dia_desde, _dia_hasta, inicio, fin = self._rango_utc(dia, dia)
+        picks, fechas, manuales, avisos = self._datos_excel(env, 'tiendas', 'gls', dia_desde, dia_desde, inicio, fin)
+        tabla = {}
+        contenido, _n = self._excel_tiendas(env, picks, 'GLS', dia_desde, dia_desde, fechas, manuales, avisos,
+                                            tabla=tabla)
+        return dia_desde, picks, contenido, tabla
+
+    def _info_gls(self, env, dia_fecha):
+        correos = self._correos_gls(env, dia_fecha)
+        if not correos:
+            return False
+        ultimo = correos[0]
+        return {'envios': len(correos), 'cuando': self._hora(ultimo.create_date),
+                'usuario': ultimo.create_uid.name or ''}
+
+    @staticmethod
+    def _html_tabla_gls(tabla, titulo):
+        celda = 'border:1px solid #D9DEE5;padding:3px 6px;font-family:Arial;font-size:12px;vertical-align:top;'
+        h = ['<p style="font-family:Arial;font-weight:bold;font-size:14px;">%s</p>' % escape(titulo),
+             '<table style="border-collapse:collapse;">',
+             '<tr>%s</tr>' % ''.join(['<th style="%sbackground:#315B85;color:#fff;">%s</th>' % (celda, escape(c))
+                                      for c in tabla.get('cab', [])])]
+        for fila, ok in zip(tabla.get('filas', []), tabla.get('coincide', [])):
+            tds = []
+            for col, valor in enumerate(fila):
+                extra = ''
+                if col == 8:
+                    extra = ok and 'background:#ECFDF3;color:#067647;font-weight:bold;' or \
+                        'background:#FFF0EE;color:#B42318;font-weight:bold;'
+                elif isinstance(valor, (int, float)):
+                    extra = 'text-align:right;'
+                tds.append('<td style="%s%s">%s</td>' % (celda, extra, escape(str(valor)).replace('\n', '<br/>')))
+            h.append('<tr>%s</tr>' % ''.join(tds))
+        if tabla.get('total'):
+            h.append('<tr>%s</tr>' % ''.join(['<td style="%sbackground:#E8EEF6;font-weight:bold;%s">%s</td>' % (
+                celda, isinstance(v, (int, float)) and 'text-align:right;' or '', escape(str(v)))
+                for v in tabla['total']]))
+        h.append('</table>')
+        return ''.join(h)
+
+    @http.route('/koroshi_monitor/gls/resumen', type='json', auth='user')
+    def gls_resumen(self, dia=None, **kw):
+        _comprobar_jefe()
+        env = self._env()
+        dia_fecha, picks, _contenido, tabla = self._datos_gls(env, dia)
+        para, cc = self._destinatarios_gls(env)
+        total = tabla.get('total') or []
+        return {
+            'dia': dia_fecha.strftime('%Y-%m-%d'),
+            'dia_texto': dia_fecha.strftime('%d/%m/%Y'),
+            'outs': len(picks),
+            'tiendas': len(tabla.get('filas') or []),
+            'etiquetas': total and total[6] or 0,
+            'cajas': total and total[7] or 0,
+            'no_coinciden': len([c for c in tabla.get('coincide') or [] if not c]),
+            'para': para,
+            'cc': cc,
+            'enviado': self._info_gls(env, dia_fecha),
+        }
+
+    @http.route('/koroshi_monitor/gls/enviar', type='json', auth='user')
+    def gls_enviar(self, dia=None, reenviar=False, **kw):
+        """Manda el Excel de Tiendas GLS del día (para/cc en parámetros). No sale nada si no se pulsa."""
+        _comprobar_jefe()
+        env = self._env()
+        dia_fecha, picks, contenido, tabla = self._datos_gls(env, dia)
+        texto_dia = dia_fecha.strftime('%d/%m/%Y')
+        if not picks:
+            return {'error': 'El %s no hay ningún pedido de tienda con etiqueta GLS: no hay nada que enviar.'
+                    % texto_dia}
+        para, cc = self._destinatarios_gls(env)
+        if not para:
+            return {'error': 'Falta el destinatario del correo GLS (parámetro koroshi_monitor.gls_para).'}
+        anteriores = self._correos_gls(env, dia_fecha)
+        if anteriores and not reenviar:
+            return {'error': 'El correo GLS del %s ya se envió (%s). Si hay que mandarlo otra vez, usa «Reenviar».'
+                    % (texto_dia, self._hora(anteriores[0].create_date)), 'ya_enviado': True}
+        usuario = request.env.user
+        titulo = 'PEDIDOS DE TIENDA · GLS · %s' % texto_dia
+        try:
+            with env.cr.savepoint():
+                adjunto = env['ir.attachment'].sudo().create({
+                    'name': 'Pedidos de tienda GLS %s.xlsx' % dia_fecha.strftime('%d-%m-%Y'),
+                    'datas': base64.b64encode(contenido),
+                    'mimetype': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                })
+                cuerpo = ('<p>Hola Erika,</p><p>Estos son los pedidos que salen con GLS.</p>%s'
+                          '<p>Un saludo,<br/>%s</p>') % (self._html_tabla_gls(tabla, titulo),
+                                                       escape(usuario.name or ''))
+                correo = env['mail.mail'].sudo().create({
+                    'subject': self._asunto_gls(dia_fecha) + (anteriores and ' (corregido)' or ''),
+                    'body_html': cuerpo,
+                    'email_from': usuario.email_formatted or env.company.email or False,
+                    'email_to': ', '.join(para),
+                    'email_cc': ', '.join(cc),
+                    'attachment_ids': [(4, adjunto.id)],
+                    'auto_delete': False,
+                })
+                adjunto.write({'res_model': 'mail.mail', 'res_id': correo.id})
+                correo.send(raise_exception=False)
+                if correo.state == 'exception':
+                    raise UserError(correo.failure_reason or 'el servidor de correo no lo ha aceptado')
+        except UserError as error:
+            return {'error': 'No se ha enviado el correo: %s' % (error.args and error.args[0] or error)}
+        return {
+            'ok': True,
+            'mensaje': 'Correo GLS del %s enviado a %s%s.' % (
+                texto_dia, ', '.join(para), cc and ' (copia a %s)' % ', '.join(cc) or ''),
+            'enviado': self._info_gls(env, dia_fecha),
         }
 
     # ------------------------------------------------------------------

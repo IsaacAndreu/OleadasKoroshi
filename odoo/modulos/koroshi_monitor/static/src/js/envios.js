@@ -28,6 +28,8 @@ var ConsultaEnvios = AbstractAction.extend({
         'click .ke-extra-quitar': '_onQuitar',
         'click .ke-cierre-ver': '_onCierreVer',          // v1.29.0
         'click .ke-cierre-enviar': '_onCierreEnviar',    // v1.29.0
+        'click .ke-gls-ver': '_onGlsVer',                // v1.43.0
+        'click .ke-gls-enviar': '_onGlsEnviar',          // v1.43.0
     },
 
     init: function () {
@@ -77,7 +79,7 @@ var ConsultaEnvios = AbstractAction.extend({
             '<label>Desde<input class="ke-export-control ke-export-desde" type="date" value="' + e(this.desde) + '"></label>' +
             '<label>Hasta<input class="ke-export-control ke-export-hasta" type="date" value="' + e(this.hasta) + '"></label>' +
             '<button class="btn btn-success ke-excel" type="button">Descargar Excel</button></div></section>' +
-            (tiendas ? this._htmlCierre() : '') +
+            (tiendas ? this._htmlCierre() + this._htmlGls() : '') +
             '<section class="ke-extra"><form class="ke-extra-form"><div><h2>Añadir un pedido u OUT al Excel de un día</h2>' +
             '<p>Si al Excel le falta algo (por ejemplo, de un día anterior), escríbelo aquí y saldrá junto al resto de ese día.</p></div>' +
             '<div class="ke-export-camps"><label>Pedido u OUT<input class="ke-extra-texto" type="text" autocomplete="off" placeholder="' +
@@ -160,6 +162,76 @@ var ConsultaEnvios = AbstractAction.extend({
             return self._onCierreVer();
         }).guardedCatch(function () {
             self.$('.ke-cierre-enviar').prop('disabled', false);
+        });
+    },
+
+    // v1.43.0: correo GLS de tiendas del día (Excel de Tiendas GLS adjunto y la tabla en el cuerpo). Solo si se pulsa.
+    _htmlGls: function () {
+        return '<section class="ke-cierre ke-gls"><div class="ke-cierre-cab"><div><h2>Enviar correo GLS de tiendas</h2>' +
+            '<p>Manda a Erika el Excel de Tiendas GLS del día, con la tabla en el correo y copia a Spain, Sonia y Betty. Primero revisa el resumen.</p></div>' +
+            '<div class="ke-export-camps"><label>Día<input class="ke-gls-dia" type="date" value="' + e(this.desde) + '"></label>' +
+            '<button class="btn btn-secondary ke-gls-ver" type="button">Ver resumen</button></div></div>' +
+            '<div class="ke-gls-resumen"></div></section>';
+    },
+
+    _htmlResumenGls: function (r) {
+        var h = '<div class="ke-cierre-datos"><div><span>Tiendas</span><b>' + numero(r.tiendas) + '</b></div>' +
+            '<div><span>OUT</span><b>' + numero(r.outs) + '</b></div>' +
+            '<div><span>Etiquetas GLS</span><b>' + numero(r.etiquetas) + '</b></div>' +
+            '<div><span>Cajas preparadas</span><b>' + numero(r.cajas) + '</b></div></div>';
+        if (r.no_coinciden) {
+            h += '<div class="ke-cierre-dif">' + r.no_coinciden + (r.no_coinciden === 1 ? ' tienda no coincide' : ' tiendas no coinciden') +
+                ' (etiquetas GLS y cajas). Sale igual en el correo, en rojo.</div>';
+        } else if (r.outs) {
+            h += '<div class="ke-cierre-ok">Las etiquetas GLS coinciden con las cajas en todas las tiendas.</div>';
+        }
+        h += '<p class="ke-cierre-para"><b>Para:</b> ' + e((r.para || []).join(', ') || '— (falta el parámetro koroshi_monitor.gls_para)') +
+            '<br/><b>CC:</b> ' + e((r.cc || []).join(', ') || '—') + '</p>';
+        if (r.enviado) {
+            h += '<div class="ke-cierre-hecho">Correo GLS ya enviado ' + e(r.enviado.cuando) + ' por ' + e(r.enviado.usuario) +
+                (r.enviado.envios > 1 ? ' (' + r.enviado.envios + ' veces)' : '') + '.</div>' +
+                '<button class="btn btn-outline-danger ke-gls-enviar" type="button" data-reenviar="1">Reenviar correo GLS corregido</button>';
+        } else if (!r.outs) {
+            h += '<div class="ke-cierre-dif">Ese día no hay ningún pedido de tienda con etiqueta GLS.</div>';
+        } else {
+            h += '<button class="btn btn-danger ke-gls-enviar" type="button">Enviar correo GLS</button>';
+        }
+        return h;
+    },
+
+    _onGlsVer: function (ev) {
+        if (ev) { ev.preventDefault(); }
+        var self = this;
+        var dia = this.$('.ke-gls-dia').val() || this._hoy();
+        this.$('.ke-gls-resumen').html('<p class="ke-muted">Calculando…</p>');
+        return this._rpc({route: '/koroshi_monitor/gls/resumen', params: {dia: dia}}).then(function (r) {
+            self.gls = r;
+            self.$('.ke-gls-resumen').html(self._htmlResumenGls(r));
+        }).guardedCatch(function () {
+            self.$('.ke-gls-resumen').html('<div class="ke-cierre-dif">No se ha podido consultar Odoo.</div>');
+        });
+    },
+
+    _onGlsEnviar: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var r = this.gls;
+        if (!r) { return; }
+        var reenviar = ev.currentTarget.getAttribute('data-reenviar') === '1';
+        var pregunta = (reenviar ? '¿Mandar OTRA VEZ el correo GLS del ' : '¿Mandar el correo GLS del ') + r.dia_texto +
+            ' a ' + (r.para || []).join(', ') + '?\n\n' + r.tiendas + ' tiendas, ' + r.outs + ' OUT, ' + r.etiquetas + ' etiquetas GLS.';
+        if (!window.confirm(pregunta)) { return; }
+        this.$('.ke-gls-enviar').prop('disabled', true);
+        return this._rpc({route: '/koroshi_monitor/gls/enviar', params: {dia: r.dia, reenviar: reenviar}}).then(function (res) {
+            if (res.error) {
+                self.do_warn('No se ha enviado', res.error);
+                self.$('.ke-gls-enviar').prop('disabled', false);
+                return;
+            }
+            self.do_notify('Correo GLS enviado', res.mensaje);
+            return self._onGlsVer();
+        }).guardedCatch(function () {
+            self.$('.ke-gls-enviar').prop('disabled', false);
         });
     },
 

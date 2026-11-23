@@ -204,8 +204,15 @@ cada agrupacion web de hoy (el «Picking Operations» de su INT Stock -> SORTER,
 «Picking Operations») e «INT» (traspasos internos de hoy reservados sin validar). Modelo nuevo koroshi.monitor.imprimir
 (abstracto, sin tablas): solo lee y abre el PDF. Lo ven todos los que entran al Monitor; las etiquetas de zona siguen
 siendo solo de jefes porque crean matriculas.
+v1.43.0 (23/11/2026): CORREO GLS DE TIENDAS (Isaac, 23/11; reabre el «solo XPO» del 17/11). En Consulta de envios,
+debajo de «Cerrar camion XPO», «Enviar correo GLS de tiendas»: resumen del dia y boton que manda el Excel de Tiendas GLS
+del dia (el mismo del boton de descarga) con la misma tabla en el cuerpo («Hola Erika, estos son los pedidos que salen
+con GLS»), como el que mandaba Betty a mano. Asunto «PEDIDOS DE TIENDA GLS dd/mm/aaaa»; si se reenvia, «(corregido)».
+Para y CC en parametros nuevos koroshi_monitor.gls_para (expediciones@koroshi.tv) y koroshi_monitor.gls_cc (spain,
+sonia, betty). No se guarda en koroshi.envio.cierre (ese es el camion XPO para koroshi_s4t_envios y la bandeja del
+jefe): los envios se cuentan por los correos con ese asunto. Solo jefes.
 """,
-    'version': '13.0.1.42.0',
+    'version': '13.0.1.43.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
