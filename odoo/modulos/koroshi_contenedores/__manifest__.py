@@ -79,8 +79,11 @@ v1.9.1 (20/11/2026): la tarjeta ya no caduca a los 15 min sin actividad: dura lo
 v1.9.2 (23/11/2026): con el cuadro de texto marcado, la lectura se quedaba escrita y no hacía nada (almacén,
   compactar): el campo solo leía con Intro al final y el lector puede acabar con tabulador. Ahora vale Intro o
   tabulador, como el Inicio PDA (koroshi_actividades 1.8.3). Solo JS.
+v1.9.3 (23/11/2026): la 1.9.2 no lo arregló en las PDA: el lector no manda ni Intro ni tabulador al final. Odoo en
+  el móvil lee cuando pasan 55 ms sin teclas, pero solo si no hay ningún campo marcado. Ahora, sin «⌨ Escribir», el
+  campo lee solo cuando el lector para 150 ms. Con «⌨ Escribir» sigue igual (Intro y sugerencias). Solo JS.
 """,
-    'version': '13.0.1.9.2',
+    'version': '13.0.1.9.3',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

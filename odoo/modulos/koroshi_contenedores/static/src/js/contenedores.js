@@ -1,6 +1,7 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.9.3 (23/11): sin «⌨ Escribir», el campo lee al parar el lector (150 ms), sin esperar Intro.
  * v1.9.2 (23/11): el campo lee con Intro o con tabulador al final.
  * v1.9 (20/11): la tarjeta es la misma que en Lecturas y Faltante (memoria de la PDA, clave
  *   koroshi_operarios_pda_<usuario>, {id, nombre, t}). Al entrar se coge la que haya si tiene menos de 15 min sin
@@ -33,6 +34,7 @@ var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
 var session = require('web.session');
 var REPETIDA_MS = 700;
+var RAFAGA_MS = 150;     // v1.9.3: sin teclado, el campo lee cuando el lector para 150 ms (Odoo usa 55 ms)
 var PERSONA_MS = 3600000;        // v1.6: 15 min (antes 3) sin actividad; v1.9.1: parametro
                                 // koroshi_operarios.minutos_tarjeta (60 por defecto), se lee al entrar
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
@@ -102,6 +104,7 @@ var Pantalla = AbstractAction.extend({
         this.editando = null;           // v1.7: artículo del contenedor abierto al que se cambia la cantidad
         this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
         this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
+        this.rafagaTimer = null;        // v1.9.3: lectura del campo al parar el lector
     },
 
     start: function () {
@@ -126,6 +129,7 @@ var Pantalla = AbstractAction.extend({
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearInterval(this.timer);
         clearTimeout(this.buscarTimer);
+        clearTimeout(this.rafagaTimer);     // v1.9.3
         this._super.apply(this, arguments);
     },
 
@@ -220,6 +224,7 @@ var Pantalla = AbstractAction.extend({
         // manda la lectura al bus: si el lector acaba en tabulador, el código se quedaba escrito sin hacer nada.
         if (ev.which === 13 || ev.which === 9) {
             ev.preventDefault();
+            clearTimeout(this.rafagaTimer);     // v1.9.3: ya se lee ahora
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
             this._sugerencias(null);            // v1.7
@@ -789,7 +794,21 @@ var Pantalla = AbstractAction.extend({
     _onEscribe: function (ev) {
         var self = this;
         clearTimeout(this.buscarTimer);
+        clearTimeout(this.rafagaTimer);
         var v = (ev.currentTarget.value || '').trim();
+        // v1.9.3: sin «⌨ Escribir» no hay teclado: lo que entra en el campo es el lector. Las PDA no mandan Intro ni
+        // tabulador al final (Odoo en el móvil lee al pasar 55 ms sin teclas, pero solo si no hay campo marcado), así
+        // que con el campo marcado la lectura se quedaba escrita. Ahora se lee al parar la ráfaga, como hace Odoo.
+        if (!this.teclado) {
+            var campo = ev.currentTarget;
+            this.rafagaTimer = setTimeout(function () {
+                var codigo = (campo.value || '').trim();
+                if (!codigo) { return; }          // ya se leyó con Intro o tabulador
+                campo.value = '';
+                self._leer(codigo, false, 'campo');
+            }, RAFAGA_MS);
+            return this._sugerencias(null);
+        }
         if (!this.teclado || v.length < 3) { return this._sugerencias(null); }   // v1.8: desde 3 (L94)
         this.buscarTimer = setTimeout(function () {
             self._rpc({route: '/koroshi/contenedores/buscar', params: {texto: v}}).then(function (r) {
