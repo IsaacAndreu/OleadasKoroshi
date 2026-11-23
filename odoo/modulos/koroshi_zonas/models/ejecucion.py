@@ -39,6 +39,13 @@ TZ = comun.TZ                   # v1.4.0: de koroshi_base
 HISTORICO_DESDE = datetime.date(2026, 10, 22)
 DIAS_CRON = 7                   # el cron vuelve a medir los ultimos dias (OUT que se validan tarde)
 PARAM_REGLA_DUENO = 'koroshi_zonas.regla_dueno'
+# v1.7.0 (revisión general 23/11, R9): a quién se avisa por correo si el reparto falla, y a qué hora (local) mira el
+# vigilante si hay reparto real de hoy
+PARAM_AVISAR = 'koroshi_zonas.avisar'
+PARAM_VIGILANTE_HORA = 'koroshi_zonas.vigilante_hora'
+PARAM_VIGILANTE_ULTIMO = 'koroshi_zonas.vigilante_ultimo'
+VIGILANTE_HORA = '05:15'
+VIGILANTE_HASTA = 12                # después de las 12:00 locales ya no avisa
 
 
 class KoroshiZonasEjecucion(models.Model):
@@ -614,9 +621,34 @@ class KoroshiZonasEjecucion(models.Model):
 
     # ------------------------------------------------------------------ cron del reparto (fase 3)
     @api.model
+    def _avisar(self, asunto, texto):
+        """v1.7.0 (R9): correo a los de koroshi_zonas.avisar (separados por comas). Nunca rompe el cron: si no hay
+        destinatarios o el correo falla, queda en el log."""
+        destinatarios = (self.env['ir.config_parameter'].sudo().get_param(PARAM_AVISAR) or '').strip()
+        _logger.warning('KOROSHI Zonas AVISO: %s', asunto)
+        if not destinatarios:
+            _logger.warning('KOROSHI Zonas: sin destinatarios en %s; el aviso solo queda en el log', PARAM_AVISAR)
+            return False
+        try:
+            cuerpo = (texto or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            correo = self.env['mail.mail'].sudo().create({
+                'subject': 'KOROSHI Zonas: %s' % asunto,
+                'email_to': destinatarios,
+                'body_html': '<pre style="font-size:12px">%s</pre>' % cuerpo,
+                'auto_delete': False,
+            })
+            correo.send()
+            return True
+        except Exception:
+            _logger.exception('KOROSHI Zonas: no se ha podido enviar el aviso «%s»', asunto)
+            return False
+
+    @api.model
     def cron_partir(self):
         """Cron 'KOROSHI Zonas: partir OUT'. Modo sombra: DIAGNOSTICO que se guarda para compararlo despues
-        con lo que haga el cron 202. Modo real: parte (el cron 202 tiene que estar desactivado)."""
+        con lo que haga el cron 202. Modo real: parte (el cron 202 tiene que estar desactivado).
+        v1.7.0 (R9): en real, si falla o no acaba en «hecho», correo a koroshi_zonas.avisar (antes solo log y canal;
+        lo que fallaba antes de crear la ejecución no dejaba ni ejecución ni mensaje)."""
         cfg = self.env['koroshi.zonas.config'].obtener()
         if cfg.modo_cron == 'real':
             cron202 = self.env['ir.cron'].sudo().search([('id', '=', 202), ('active', '=', True)])
@@ -625,8 +657,24 @@ class KoroshiZonasEjecucion(models.Model):
                          'esta en modo real: partirian los dos. Desactiva el cron 202 o vuelve al modo sombra.')
                 _logger.error(texto)
                 self.browse()._publicar(texto)
+                self._avisar('NO se ha partido nada hoy (cron 202 activo)', texto)
                 return False
-            return self.lanzar('REAL')
+            try:
+                with self.env.cr.savepoint():
+                    ej = self.lanzar('REAL')
+            except Exception as e:
+                _logger.exception('KOROSHI Zonas: el reparto real ha fallado antes de acabar')
+                self.env.cache.invalidate()
+                self._avisar('ERROR: el reparto de hoy NO se ha hecho',
+                             'El reparto real de las zonas ha fallado antes de acabar y no ha partido nada.\n'
+                             'Error: %s\n\nSi hace falta, lanzar la accion 1883 a mano (solo si el modulo falla).'
+                             % e)
+                return False
+            if ej.estado != 'hecho':
+                estados = dict(self._fields['estado'].selection)
+                self._avisar('el reparto de hoy ha acabado en «%s»' % estados.get(ej.estado, ej.estado),
+                             '%s\n\n%s' % (ej.display_name, ej.informe or ''))
+            return ej
         # v1.3.0: la sombra que se compara con el 202 se calcula como la 1883 (si no, nunca saldria igual). Despues,
         # un diagnostico con lo nuevo (OUT de dias anteriores, orden por urgencia, aviso de hora de fin) para ver
         # que cambiaria al pasar a real. No se compara.
@@ -640,6 +688,39 @@ class KoroshiZonasEjecucion(models.Model):
         except Exception:
             _logger.exception('KOROSHI Zonas: diagnostico con lo nuevo de la 1.3.0')
         return ej
+
+    @api.model
+    def cron_vigilar(self):
+        """v1.7.0 (R9): vigilante. Cada 15 min; una vez al día, a partir de koroshi_zonas.vigilante_hora (05:15 hora
+        del almacén, también con el cambio de hora) y antes de las 12:00, mira si hay un reparto real «hecho» de hoy.
+        Si no, correo a koroshi_zonas.avisar. Solo con el módulo en modo real. Solo lee (y apunta el día en un
+        parámetro para no avisar dos veces)."""
+        Param = self.env['ir.config_parameter'].sudo()
+        ahora = comun.ahora_local()
+        hoy = ahora.date()
+        if Param.get_param(PARAM_VIGILANTE_ULTIMO) == hoy.isoformat():
+            return False
+        texto_hora = (Param.get_param(PARAM_VIGILANTE_HORA) or VIGILANTE_HORA).strip()
+        try:
+            hh, mm = [int(x) for x in texto_hora.split(':')]
+        except ValueError:
+            texto_hora = VIGILANTE_HORA
+            hh, mm = [int(x) for x in VIGILANTE_HORA.split(':')]
+        if (ahora.hour, ahora.minute) < (hh, mm) or ahora.hour >= VIGILANTE_HASTA:
+            return False
+        Param.set_param(PARAM_VIGILANTE_ULTIMO, hoy.isoformat())
+        if self.env['koroshi.zonas.config'].obtener().modo_cron != 'real':
+            return False
+        if self.search_count([('fecha', '=', hoy), ('modo', '=', 'real'), ('estado', '=', 'hecho')]):
+            return True
+        ultima = self.search([('fecha', '=', hoy)], order='id desc', limit=1)
+        detalle = ('Última ejecución de hoy: %s (%s).' % (ultima.display_name, ultima.estado) if ultima
+                   else 'Hoy no hay ninguna ejecución: el cron «partir OUT» no ha llegado a crearla.')
+        self._avisar('a las %s NO hay reparto real de hoy' % texto_hora,
+                     'A las %s no hay ningún reparto real «Hecho» con fecha %s.\n%s\n\nMirar las ejecuciones de '
+                     'KOROSHI Zonas y el log. Si hace falta, lanzar la acción 1883 a mano.'
+                     % (texto_hora, hoy.strftime('%d/%m/%Y'), detalle))
+        return False
 
     @api.model
     def cron_comparar(self):

@@ -57,6 +57,19 @@
         <field name="active" eval="True"/>
     </record>
 
+    <!-- v1.7.0 (R9): vigilante. Cada 15 min; una vez al dia, desde koroshi_zonas.vigilante_hora (05:15 hora local),
+         mira si hay reparto real hecho de hoy y, si no, manda correo a koroshi_zonas.avisar. Solo lee. -->
+    <record id="cron_koroshi_zonas_vigilar" model="ir.cron">
+        <field name="name">KOROSHI Zonas: vigilante del reparto (05:15)</field>
+        <field name="model_id" ref="model_koroshi_zonas_ejecucion"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_vigilar()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+
     <!-- Fase 3. Correo de las zonas del dia (antes la accion 1868, con su cron 201 desactivado desde el 27/10).
          DESACTIVADO: activarlo cuando se quiera, con los destinatarios en la configuracion. -->
     <record id="cron_koroshi_zonas_correo" model="ir.cron">

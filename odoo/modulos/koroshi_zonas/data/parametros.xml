@@ -8,5 +8,14 @@
             <field name="key">koroshi_zonas.regla_dueno</field>
             <field name="value">primera_linea</field>
         </record>
+        <!-- v1.7.0 (R9): a quien se avisa por correo si el reparto falla o a las 05:15 no hay reparto (comas) -->
+        <record id="param_avisar" model="ir.config_parameter">
+            <field name="key">koroshi_zonas.avisar</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
+        <record id="param_vigilante_hora" model="ir.config_parameter">
+            <field name="key">koroshi_zonas.vigilante_hora</field>
+            <field name="value">05:15</field>
+        </record>
     </data>
 </odoo>

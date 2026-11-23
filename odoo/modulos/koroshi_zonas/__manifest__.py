@@ -42,6 +42,12 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.7.0 (23/11/2026): revision general del 23/11 (R9), avisos cuando falla el reparto. En modo real, si el reparto
+  falla antes de acabar (antes no quedaba ni ejecucion ni mensaje), si acaba en algo que no es «Hecho» o si el cron
+  202 sigue activo, correo a los del parametro koroshi_zonas.avisar (isaac.andreu@nath.es de inicio). Cron nuevo
+  «vigilante del reparto»: cada 15 min y una vez al dia desde koroshi_zonas.vigilante_hora (05:15 hora local, con
+  el cambio de hora incluido) mira si hay reparto real hecho de hoy y, si no, avisa. El reparto no cambia. Sin
+  campos nuevos. La 1.7.0 que tenia prevista la sesion «Zonas: mejorar» (modo del dia) pasa a ser la 1.8.0.
 v1.6.0 (19/11/2026): orden por numero de pedido. KOROSHI (Sonia) pide que las tiendas vayan en el orden en que entran
   los pedidos (S-6665..., ascendente), no por numero de tienda (K##): el 19/11 se hicieron pedidos de detras antes que
   otros de delante. Nuevo ajuste 'Ordenar por numero de pedido' (marcado): las CAJA del carro de la PDA y de las
@@ -79,7 +85,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
