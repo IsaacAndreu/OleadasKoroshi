@@ -20,7 +20,7 @@ from odoo import api, fields, models
 from odoo.exceptions import UserError
 from odoo.tools import float_compare
 
-from odoo.addons.koroshi_base import comun
+from odoo.addons.koroshi_base import comun, pda
 from odoo.addons.koroshi_faltantes.models.faltante import nombre_corto
 from odoo.addons.koroshi_preparacion.models import ruta
 
@@ -81,20 +81,10 @@ class KoroshiPrendaSuelo(models.Model):
 
     @api.model
     def producto_por_codigo(self, codigo):
-        """Variante por EAN (y UPC con 0 delante), código alternativo o referencia interna; vacío si no hay."""
-        codigo = (codigo or '').strip()
-        posibles = [codigo]
-        if codigo.isdigit() and len(codigo) == 12:
-            posibles.append('0' + codigo)
-        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
-            posibles.append(codigo[1:])
-        Product = self.env['product.product'].sudo().with_context(active_test=False)
-        p = Product.search([('barcode', 'in', posibles)], limit=1)
-        if not p and 'product.barcode' in self.env:
-            p = self.env['product.barcode'].sudo().search([('name', 'in', posibles)], limit=1).product_id
-        if not p and codigo:
-            p = Product.search([('default_code', '=', codigo)], limit=1)
-        return p
+        """Variante por EAN (y UPC con 0 delante), código alternativo o referencia interna; vacío si no hay.
+        v1.1.0 (O5): la de koroshi_base.pda (con sudo, también archivados, sin buscar por nombre: como antes)."""
+        return pda.buscar_producto(self.env['product.product'].sudo().env, codigo, archivados=True,
+                                   por_nombre=False)
 
     @api.model
     def ubicacion_por_codigo(self, codigo):

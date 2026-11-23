@@ -37,8 +37,12 @@ v1.0.0 (23/11/2026): primera versión (fase 1 del diseño). Entra por su propio 
 actividad del Inicio abre un tramo de tiempo y cortaría el de Picking. El botón en Lecturas es la fase 2. La regla del
 lineal no pasa a koroshi_base todavía (actualizar koroshi_base arrastra a todos los módulos que dependen de él): se usa
 la de koroshi_faltantes (nombre_corto) y la ruta de koroshi_preparacion (metros).
+v1.1.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Incluye la 1.0.0 (sin instalar). Necesita koroshi_base
+1.2.1 (instalarla antes). La tarjeta compartida y el lector salen de koroshi_base (comun.js): el campo también lee
+cuando el lector para 150 ms, como Contenedores (las PDA no mandan Intro); con «⌨ Escribir» espera al Intro. Permiso,
+tarjeta y búsqueda de la prenda salen de koroshi_base.pda (la misma regla de antes, que estaba en koroshi_operarios).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

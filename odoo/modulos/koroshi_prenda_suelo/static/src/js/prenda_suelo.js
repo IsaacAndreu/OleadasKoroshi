@@ -5,10 +5,12 @@ odoo.define('koroshi_prenda_suelo.Pantalla', function (require) {
  * cerca). La PDA da una sola orden (A faltante, B a un compañero, C/D a su hueco, E a la mesa de los jefes) y abajo,
  * en pequeño, las otras opciones. «Hecho» / «No sirve» quedan apuntados en Odoo (Prendas del suelo).
  * La tarjeta es la misma que en Lecturas, Contenedores, Faltante y Referencia (localStorage koroshi_operarios_pda_<uid>).
+ * v1.1.0 (23/11, O4): la tarjeta y el lector salen de koroshi_base.comun. El campo también lee cuando el lector para
+ *   150 ms (las PDA no mandan Intro), como Contenedores; con «⌨ Escribir» espera al Intro.
  * Todo dentro de .o_koroshi_prenda_suelo. Sin aria-hidden (Odoo 13 lo oculta). */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
-var session = require('web.session');
+var comun = require('koroshi_base.comun');   // v1.1.0
 
 var REPETIDA_MS = 700;       // la misma lectura llega por el bus y por el campo: se descarta la copia
 var PERSONA_MS = 3600000;    // tarjeta sin actividad: parámetro koroshi_operarios.minutos_tarjeta (60 por defecto)
@@ -21,6 +23,7 @@ var PrendaSuelo = AbstractAction.extend({
     contentTemplate: 'koroshi_prenda_suelo.Pantalla',
     events: {
         'keydown .o_kps_codigo': '_onKeydown',
+        'input .o_kps_codigo': '_onEscribe',     // v1.1.0
         'click .o_kps_teclado': '_onTeclado',
         'click .o_kps_vaciar': '_onVaciar',
         'click .o_kps_hecho': '_onHecho',
@@ -63,29 +66,20 @@ var PrendaSuelo = AbstractAction.extend({
     destroy: function () {
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearInterval(this.timer);
+        comun.cancelarLector(this);   // v1.1.0
         this._super.apply(this, arguments);
     },
 
     // ------------------------------------------------------------------ tarjeta (compartida con las otras pantallas)
-    _clave: function () { return 'koroshi_operarios_pda_' + (session.uid || ''); },
-    _guardada: function () {
-        try {
-            var v = window.localStorage.getItem(this._clave());
-            return v ? JSON.parse(v) : null;
-        } catch (e) { return null; }
-    },
+    // v1.1.0: de koroshi_base.comun.tarjeta
+    _guardada: function () { return comun.tarjeta.leer(); },
     _guardarPersona: function () {
         if (!this.persona) { return; }
-        this.guardadaEn = Date.now();
-        try {
-            window.localStorage.setItem(this._clave(), JSON.stringify(
-                {id: this.persona.id, nombre: this.persona.nombre, t: this.guardadaEn}));
-        } catch (e) { /* sin memoria: solo en esta pantalla */ }
+        this.guardadaEn = comun.tarjeta.guardar(this.persona);
     },
     _tomarGuardada: function () {
         var g = this._guardada();
-        if (!g || !g.id || (this.persona && this.persona.id === g.id)) { return false; }
-        if (g.t && Date.now() - g.t > PERSONA_MS) { return false; }
+        if (!comun.tarjeta.vigente(g, PERSONA_MS) || (this.persona && this.persona.id === g.id)) { return false; }
         this.persona = {id: g.id, nombre: g.nombre};
         this.actividadEn = g.t || Date.now();
         return true;
@@ -99,15 +93,12 @@ var PrendaSuelo = AbstractAction.extend({
     },
     _leerMinutosTarjeta: function () {
         var self = this;
-        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
-            .then(function (r) {
-                if (r && r.ok && r.minutos > 0) {
-                    PERSONA_MS = r.minutos * 60000;
-                    if (!self.persona && self._tomarGuardada()) { self._pintar(); }
-                }
-            }).guardedCatch(function (e) {
-                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            });
+        return comun.tarjeta.minutos(this).then(function (minutos) {
+            if (minutos > 0) {
+                PERSONA_MS = minutos * 60000;
+                if (!self.persona && self._tomarGuardada()) { self._pintar(); }
+            }
+        });
     },
     _vigilar: function () {
         var g = this._guardada();
@@ -131,13 +122,21 @@ var PrendaSuelo = AbstractAction.extend({
     },
 
     _onKeydown: function (ev) {
-        if (ev.which === 13) {
+        if (comun.esFinDeLectura(ev)) {     // v1.1.0: Intro o tabulador
             ev.preventDefault();
+            comun.cancelarLector(this);
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
             if (this.teclado) { this._ponerTeclado(false); }
             this._leer(codigo, 'campo');
         }
+    },
+
+    // v1.1.0: sin «⌨ Escribir» lo que entra es el lector: se lee cuando para (las PDA no mandan Intro)
+    _onEscribe: function (ev) {
+        var self = this;
+        if (this.teclado) { return comun.cancelarLector(this); }
+        comun.leerAlParar(this, ev.currentTarget, function (codigo) { self._leer(codigo, 'campo'); });
     },
 
     _onBarcodeScanned: function (codigo) { this._leer(codigo, 'bus'); },
