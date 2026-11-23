@@ -186,8 +186,12 @@ esa hora. Partido (08-13 y 14-17): de 13 a 14 solo cuenta lo leido. Con un filtr
 Con koroshi_base 1.0 no hay turnos y todo queda como en la 1.37. Calculo en controllers/produccion_calc.py
 (presencia_con_turno), tests sin Odoo. Tambien: en data/parametros.xml el CC del cierre del camion pasa a ser el del
 servidor (con expediciones@koroshi.tv); el registro es noupdate, asi que solo deja el repo igual que el servidor.
+v1.39.0 (23/11/2026): «Cada tienda en cada zona» ordenada por prioridad (peticion de Isaac): numero de pedido S4T
+(S-6665..., el mas bajo primero), el mismo orden que «Siguiente tienda». Antes, por numero de tienda K##. Columna nueva
+«Prio.» con la posicion y el final del numero de pedido. Tambien siguen ese orden las listas «Tiendas listas para juntar»
+y «Les falta 1 o 2 zonas». Solo pantalla (monitor.js y monitor.css).
 """,
-    'version': '13.0.1.38.0',
+    'version': '13.0.1.39.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

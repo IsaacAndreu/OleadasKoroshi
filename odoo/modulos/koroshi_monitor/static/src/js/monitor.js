@@ -470,8 +470,12 @@ var Monitor = AbstractAction.extend({
             if (cols.indexOf(c) < 0) { cols.push(c); }
         });
         cols.sort(function (a, b) { return ordenZona(a) - ordenZona(b) || (a < b ? -1 : 1); });
-        // v1.9: por numero de tienda (con dos rondas las cajas empiezan otra vez en 01)
-        orden.sort(function (a, b) { return knum(P[a].tienda) - knum(P[b].tienda) || (parseInt(P[a].caja, 10) || 0) - (parseInt(P[b].caja, 10) || 0); });
+        // v1.39.0 (Isaac, 23/11): por prioridad = numero de pedido S4T (S-6665..., el mas bajo primero), el mismo orden
+        // que «Siguiente tienda». Antes (v1.9) por numero de tienda K##. Sin numero S-, detras, por K##.
+        orden.sort(function (a, b) {
+            return numPedido(a) - numPedido(b) || knum(P[a].tienda) - knum(P[b].tienda) ||
+                (parseInt(P[a].caja, 10) || 0) - (parseInt(P[b].caja, 10) || 0);
+        });
         // v1.9: tiendas listas para juntar = todas sus OUT hechas (validadas, o con todo lo que hay cogido)
         // v1.10: y etiquetadas = ademas todas sus OUT tienen la etiqueta del transportista (numero de seguimiento)
         var listas = [], casi = [], etiquetadas = [];
@@ -508,11 +512,12 @@ var Monitor = AbstractAction.extend({
             '<div class="km-ley"><span><i style="background:var(--km-ok)"></i>OUT hecha</span><span><i style="background:var(--km-cur)"></i>cogiéndose</span>' +
             '<span><i style="background:var(--km-bar)"></i>sin empezar</span><span><i style="background:#b9b6ad"></i>tienda con todo hecho: a juntar</span>' +
             '<span><i style="background:#3d5a80"></i>tienda con etiqueta del transportista: terminada</span></div>';
-        h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th><th class="r">Bultos</th></tr></thead><tbody>';
-        orden.forEach(function (k) {
+        h += '<div class="km-card km-scroll"><table class="km-matriz"><thead><tr><th class="r" title="Prioridad: nº de pedido S4T, el más bajo primero">Prio.</th><th>Caja</th><th>Tienda</th>' + cols.map(function (z) { return '<th>' + zt(z) + '</th>'; }).join('') + '<th class="r">Leído</th><th class="r">Bultos</th></tr></thead><tbody>';
+        orden.forEach(function (k, i) {
             var p = P[k], u = 0, l = 0, b = 0;
             h += '<tr' + (p.etq ? ' class="km-r-etq" title="Tienda con la etiqueta del transportista: terminada"' :
-                (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '')) + '><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
+                (p.lista ? ' class="km-r-lista" title="Tienda con todas sus OUT hechas: lista para juntar"' : '')) + '><td class="r km-prio-col" title="' + e(k) + '">' + (i + 1) +
+                '<small>' + e(String(k).replace(/^\s*S-6665/, '')) + '</small></td><td><b>' + e(p.caja) + '</b></td><td title="' + e(p.tienda) + ' · ' + e(k) + '"><b>' + e(kno(p.tienda)) + '</b> <small>' + e(p.tienda.split(' - ').slice(1).join(' - ')) + '</small></td>';
             cols.forEach(function (z) {
                 var o = p.z[z];
                 if (!o) { h += '<td></td>'; return; }
@@ -557,6 +562,8 @@ var Monitor = AbstractAction.extend({
 // Odoo, letra grande y solo lo que se esta cogiendo. El modo pantalla se queda guardado en ese navegador.
 var TV_KEY = 'koroshi_monitor_tv';
 
+// v1.39.0: numero de pedido S4T ('S-6665004417' -> 6665004417); sin numero, al final
+function numPedido(pedido) { var m = /^\s*S-(\d+)/.exec(pedido || ''); return m ? parseInt(m[1], 10) : 9e15; }
 function kno(tienda) { return (tienda || '').split(' - ')[0]; }
 function knum(tienda) { return parseInt(kno(tienda).replace(/\D/g, ''), 10) || 999; }
 

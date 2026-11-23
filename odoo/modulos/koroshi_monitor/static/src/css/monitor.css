@@ -176,3 +176,6 @@ body.km-tv .o_action_manager { height: 100vh; }
 .o_koroshi_monitor .km-sin-caja { color: #c62828; }
 .km-tv .o_koroshi_monitor .km-prio-k { font-size: 34px; }
 .km-tv .o_koroshi_monitor .km-prio-1 .km-prio-k { font-size: 44px; }
+/* v1.39.0: columna de prioridad (nº de pedido S4T) en «Cada tienda en cada zona» */
+.o_koroshi_monitor .km-prio-col { font-weight: 700; color: #1f5fbf; }
+.o_koroshi_monitor .km-prio-col small { display: block; font-weight: 400; font-size: 10.5px; color: var(--km-muted); }
