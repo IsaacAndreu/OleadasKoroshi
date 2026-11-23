@@ -37,8 +37,12 @@ koroshi_monitor, la misma cuenta que la pantalla Produccion por hora: con korosh
 presencia descuenta los descansos del turno; con versiones anteriores, sin descansos. Tablas nuevas
 koroshi.informe.tipo.dia y koroshi.informe.hora.dia, y campos presencia y u/h real en koroshi.informe.operario.dia
 (todas propias). Al actualizar, el cron vuelve a calcular todos los dias guardados. Depende de koroshi_monitor.
+v1.4.0 (23/11/2026): revision general del 23/11 (R18). Tras mandar el informe desde el cron se mira el estado del
+correo: mail.send() no da error si el servidor de correo falla (deja el correo en «Excepcion») y el informe se daba
+por enviado. Ahora queda en el log como ERROR, con el motivo, y el correo vuelve a la cola de Odoo para otro intento.
+No cambia el contenido ni cuando se manda. Sin campos nuevos.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

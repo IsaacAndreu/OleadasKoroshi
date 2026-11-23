@@ -1139,6 +1139,23 @@ class KoroshiInforme(models.AbstractModel):
     def _enviar_seguro(self, tipo, dia):
         try:
             with self.env.cr.savepoint():
-                self.enviar(tipo, dia)
+                mail = self.enviar(tipo, dia)
         except Exception:
             _logger.exception('KOROSHI Informe: no se ha podido mandar el informe %s', tipo)
+            return False
+        # v1.4.0 (R18): mail.send() no da error si el servidor de correo falla: deja el correo en «Excepción» y antes
+        # el cron lo daba por enviado (y ya no lo repetía). Ahora se mira el estado: si no ha salido, queda en el log
+        # como error y vuelve a la cola de correo de Odoo para un segundo intento.
+        estado = mail.state if mail else 'sin correo'
+        if estado == 'sent' or (mail and mail.state == 'outgoing'):
+            return True
+        _logger.error('KOROSHI Informe: el informe %s del %s NO ha salido (correo %s en estado %s: %s). Se vuelve a '
+                      'poner en la cola de correo para otro intento.', tipo, dia, mail.id if mail else '-', estado,
+                      (mail.failure_reason or '')[:500] if mail else '')
+        if mail and mail.state == 'exception':
+            try:
+                with self.env.cr.savepoint():
+                    mail.mark_outgoing()
+            except Exception:
+                _logger.exception('KOROSHI Informe: no se ha podido volver a poner en cola el correo %s', mail.id)
+        return False
