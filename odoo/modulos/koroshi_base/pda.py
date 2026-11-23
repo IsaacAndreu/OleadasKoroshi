@@ -14,7 +14,8 @@ from .comun import COMPANY_ID, variantes_codigo
 
 GRUPO_ALMACEN = 'stock.group_stock_user'
 SIN_TARJETA = 'Pasa antes tu tarjeta de operario.'
-TARJETA_NO_VALE = 'Esa tarjeta ya no vale (operario de baja o de otra empresa). Pasa otra vez tu tarjeta.'
+TARJETA_NO_VALE = ('Esa tarjeta ya no vale (operario de baja, sin tarjeta o de otra empresa). Pasa otra vez tu '
+                   'tarjeta.')
 
 
 def comprobar_grupo(env, mensaje='No tienes permiso para esto.', grupo=GRUPO_ALMACEN):
@@ -23,9 +24,17 @@ def comprobar_grupo(env, mensaje='No tienes permiso para esto.', grupo=GRUPO_ALM
         raise UserError(mensaje)
 
 
+def es_empleado_valido(env, emp):
+    """v1.2.1: la misma regla que koroshi_operarios._empleado_valido (v2.13, auditoria 13/11): empleado activo, con
+    tarjeta (ID de credencial) y sin empresa o de una empresa del usuario de Odoo de la PDA."""
+    if not emp or not emp.active or not (emp.barcode or '').strip():
+        return False
+    return not emp.company_id or emp.company_id in env.user.company_ids
+
+
 def empleado_valido(env, employee_id, obligatorio=True, mensaje=SIN_TARJETA):
-    """Operario (hr.employee, con sudo) de la tarjeta que manda la PDA: tiene que existir, estar activo y ser de la
-    compania (o sin compania). Si no vale, UserError. Sin id: UserError(mensaje) si es obligatorio; si no, vacio."""
+    """Operario (hr.employee, con sudo) de la tarjeta que manda la PDA; tiene que cumplir es_empleado_valido. Si no
+    vale, UserError. Sin id: UserError(mensaje) si es obligatorio; si no, vacio."""
     Emp = env['hr.employee'].sudo()
     try:
         eid = int(employee_id or 0)
@@ -36,7 +45,7 @@ def empleado_valido(env, employee_id, obligatorio=True, mensaje=SIN_TARJETA):
             raise UserError(mensaje)
         return Emp.browse()
     emp = Emp.with_context(active_test=False).browse(eid).exists()
-    if not emp or not emp.active or (emp.company_id and emp.company_id.id != COMPANY_ID):
+    if not es_empleado_valido(env, emp):
         raise UserError(TARJETA_NO_VALE)
     return emp.with_context(active_test=True)
 

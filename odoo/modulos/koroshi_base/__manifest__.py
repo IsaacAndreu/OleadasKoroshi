@@ -28,8 +28,12 @@ campos donde tambien se escribe a mano), esFinDeLectura y cancelarLector. Sin mo
 basta copiar y reiniciar (no hace falta -u, que actualizaria los ~23 modulos que dependen de este). Lo usan
 contenedores 1.15, faltantes 1.10, devoluciones 1.3, recuentos 1.2, prenda_suelo 1.1 y preparacion 3.35: instalar
 esta antes que ellos.
+v1.2.1 (23/11/2026): empleado_valido usa la misma regla que koroshi_operarios (v2.13): activo, con tarjeta (ID de
+credencial) y sin empresa o de una empresa del usuario de la PDA (la 1.2.0 pedia la compania 8 y no miraba la
+tarjeta). Nueva es_empleado_valido(env, emp), que devuelve si/no (para Prenda en el suelo). Sustituye a la 1.2.0, que
+no se ha instalado.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.2.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
