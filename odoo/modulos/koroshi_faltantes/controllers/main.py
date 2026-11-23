@@ -14,10 +14,15 @@
 #
 # Lee y escribe con el usuario de la sesion (derechos normales de almacen). La tarjeta del operario se busca
 # con sudo en todas las empresas, como en koroshi_operarios.
+# v1.10 (revisión general 23/11, O5 y R16): el operario que manda la PDA tiene que ser activo y de la compañía
+# (koroshi_base.pda.empleado_valido) y la prenda se busca como en las demás pantallas (pda.buscar_producto: también
+# código alternativo, UPC/EAN con o sin 0 y nombre; antes solo EAN y referencia interna).
 # =============================================================================
 from odoo import http
 from odoo.exceptions import UserError, ValidationError
 from odoo.http import request
+
+from odoo.addons.koroshi_base import pda
 
 from ..models.faltante import PREFIJOS_ZONA, nombre_corto
 
@@ -110,7 +115,7 @@ class KoroshiFaltantes(http.Controller):
 
     def _operario(self, employee_id, picking=None):
         """El de la tarjeta leida o, si no hay, el de la tarea abierta de esa OUT o agrupacion."""
-        emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
+        emp = pda.empleado_valido(request.env, employee_id, obligatorio=False)   # v1.10 (R16)
         if emp or not picking:
             return emp
         Tarea = request.env['koroshi.operario.tarea'].sudo()
@@ -127,9 +132,7 @@ class KoroshiFaltantes(http.Controller):
         return pk
 
     def _producto(self, codigo):
-        Product = request.env['product.product']
-        return (Product.search([('barcode', '=', codigo)], limit=1) or
-                Product.search([('default_code', '=', codigo)], limit=1))
+        return pda.buscar_producto(request.env, codigo)   # v1.10 (O5)
 
     def _ubicacion(self, codigo, company):
         Loc = request.env['stock.location']

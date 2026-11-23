@@ -77,8 +77,14 @@ v1.9.0 (23/11/2026): para koroshi_contenedores 1.13.0 (revisión general del 23/
   ni entra en la ronda siguiente. antes_de_archivar(): al archivar un contenedor, sus faltantes pendientes pasan a
   apuntar al hueco; con uno en una ronda abierta no se archiva. La pantalla Faltante de la PDA no cambia. Sin campos
   nuevos en ninguna tabla.
+v1.10.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita koroshi_base 1.2.0 (instalarla antes). La
+  tarjeta compartida sale de koroshi_base (comun.js). El campo de lectura de la pantalla Faltante ahora también lee
+  cuando el lector para (las PDA no mandan Enter y la lectura podía quedarse escrita), pero solo lo que llega de golpe:
+  lo que se escribe a mano («23649») sigue esperando al Enter. En las rutas, el operario que manda la PDA tiene que
+  ser activo y de la compañía (si no, «Pasa otra vez tu tarjeta») y la prenda se busca como en las demás pantallas
+  (también código alternativo, UPC con 0 y nombre). Sin campos nuevos.
 """,
-    'version': '13.0.1.9.0',
+    'version': '13.0.1.10.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -20,11 +20,13 @@ odoo.define('koroshi_faltantes.Pantalla', function (require) {
  * v1.8 (20/11): la tarjeta es la misma que en Lecturas y Contenedores (memoria de la PDA, clave
  *   koroshi_operarios_pda_<usuario>, {id, nombre, t}). Sin operario de Lecturas, al entrar se coge la guardada si
  *   tiene menos de 15 min sin actividad; leer una tarjeta aqui la deja puesta en las otras pantallas.
+ * v1.10 (23/11, O4): la tarjeta y el lector salen de koroshi_base.comun. El campo ahora tambien lee cuando el lector
+ *   para (las PDA no mandan Intro), pero solo lo que llega de golpe: lo escrito a mano («23649») espera al Enter.
  * No cambia la app de codigo de barras.
  */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
-var session = require('web.session');
+var comun = require('koroshi_base.comun');   // v1.10
 
 var REPETIDA_MS = 700;        // la misma lectura dos veces seguidas (bus + campo) cuenta una
 var CONFIRMAR_MS = 5000;      // tiempo para la segunda pulsacion de "No esta en ninguna ubicacion"
@@ -36,6 +38,7 @@ var Pantalla = AbstractAction.extend({
     contentTemplate: 'koroshi_faltantes.Pantalla',
     events: {
         'keydown .o_kf_codigo': '_onKeydown',
+        'input .o_kf_codigo': '_onEscribe',     // v1.10
         'click .o_kf_pend': '_onMarcar',
         'click .o_kf_continuar': '_onContinuar',
         'click .o_kf_nada': '_onNada',
@@ -115,44 +118,31 @@ var Pantalla = AbstractAction.extend({
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearTimeout(this.timerConfirmar);
         clearTimeout(this.timerVolver);
+        comun.cancelarLector(this);   // v1.10
         this._super.apply(this, arguments);
     },
 
     // ------------------------------------------------------------ v1.8: tarjeta compartida con Lecturas y Contenedores
-    _clave: function () {
-        return 'koroshi_operarios_pda_' + (session.uid || '');
-    },
-    _guardada: function () {
-        try {
-            var v = window.localStorage.getItem(this._clave());
-            return v ? JSON.parse(v) : null;
-        } catch (e) { return null; }
-    },
+    // v1.10: de koroshi_base.comun.tarjeta
     _tomarGuardada: function () {
-        var g = this._guardada();
-        if (!g || !g.id || (g.t && Date.now() - g.t > TARJETA_MS)) { return false; }
+        var g = comun.tarjeta.leer();
+        if (!comun.tarjeta.vigente(g, TARJETA_MS)) { return false; }
         this.operario = {id: g.id, nombre: g.nombre, tarjeta: true};
         return true;
     },
     // v1.8.1: cuanto dura la tarjeta sin actividad (si falla, se queda con el valor de antes)
     _leerMinutosTarjeta: function () {
         var self = this;
-        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
-            .then(function (r) {
-                if (r && r.ok && r.minutos > 0) {
-                    TARJETA_MS = r.minutos * 60000;
-                    if (!self.operario && self._tomarGuardada()) { self._pintar(); }
-                }
-            }).guardedCatch(function (e) {
-                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            });
+        return comun.tarjeta.minutos(this).then(function (minutos) {
+            if (minutos > 0) {
+                TARJETA_MS = minutos * 60000;
+                if (!self.operario && self._tomarGuardada()) { self._pintar(); }
+            }
+        });
     },
     _guardarTarjeta: function () {
         if (!this.operario || !this.operario.tarjeta) { return; }
-        try {
-            window.localStorage.setItem(this._clave(), JSON.stringify(
-                {id: this.operario.id, nombre: this.operario.nombre, t: Date.now()}));
-        } catch (e) { /* sin memoria: solo en esta pantalla */ }
+        comun.tarjeta.guardar(this.operario);
     },
 
     // ------------------------------------------------------------ estado
@@ -183,8 +173,15 @@ var Pantalla = AbstractAction.extend({
         this._leer(barcode);
     },
 
+    // v1.10: el lector de la PDA no manda Enter: se lee cuando para (solo lo que llega de golpe, no lo escrito a mano)
+    _onEscribe: function (ev) {
+        var self = this;
+        comun.leerAlParar(this, ev.currentTarget, function (codigo) { self._leer(codigo); }, {soloRafaga: true});
+    },
+
     _onKeydown: function (ev) {
         if (ev.key === 'Enter' || ev.keyCode === 13) {
+            comun.cancelarLector(this);   // v1.10
             ev.preventDefault();
             var $i = this.$('.o_kf_codigo');
             var c = ($i.val() || '').trim();
