@@ -16,6 +16,8 @@
 # línea en el registro; la compañía sale de koroshi_base (O6).
 # v1.14 (R23): /cambiar_articulo («Es otro»): lo que Odoo llama A en el contenedor es B (error de talla). Un ajuste de
 # -N de A y otro de +N de B en un savepoint, y UNA línea en el registro con los dos movimientos.
+# v1.15 (revisión general 23/11, O5 y R16): grupo, tarjeta y búsqueda de la prenda salen de koroshi_base.pda (1.2.0).
+# La tarjeta tiene que ser de un operario activo de la compañía (antes bastaba con que existiera).
 # =============================================================================
 import re
 
@@ -23,7 +25,7 @@ from odoo import http
 from odoo.exceptions import UserError
 from odoo.http import request
 from odoo.tools import float_compare, float_is_zero
-from odoo.addons.koroshi_base import comun
+from odoo.addons.koroshi_base import comun, pda
 
 from .. import logica
 
@@ -78,8 +80,7 @@ def _literal(texto):
 class KoroshiContenedores(http.Controller):
 
     def _comprobar_usuario(self):
-        if not request.env.user.has_group('stock.group_stock_user'):
-            raise UserError('No tienes permiso para mover contenedores.')
+        pda.comprobar_grupo(request.env, 'No tienes permiso para mover contenedores.')   # v1.15
 
     def _datos_contenedor(self, loc):
         Quant = request.env['stock.quant'].sudo()
@@ -216,10 +217,7 @@ class KoroshiContenedores(http.Controller):
 
     # ------------------------------------------------------------------ v1.5: compactar un hueco
     def _empleado(self, employee_id):
-        emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-        if not emp:
-            raise UserError('Pasa antes tu tarjeta de operario.')
-        return emp
+        return pda.empleado_valido(request.env, employee_id)   # v1.15 (R16): activo y de la compañía
 
     def _contenedor(self, contenedor_id):
         c = request.env['stock.location'].sudo().browse(int(contenedor_id or 0)).exists()
@@ -356,21 +354,9 @@ class KoroshiContenedores(http.Controller):
             return {'ok': False, 'msg': _msg(e)}
 
     def _buscar_producto(self, codigo):
-        """Prenda por EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna. Vacío si no hay."""
-        variantes = [codigo]
-        if codigo.isdigit() and len(codigo) == 12:
-            variantes.append('0' + codigo)
-        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
-            variantes.append(codigo[1:])
-        Product = request.env['product.product'].sudo()
-        p = Product.search([('barcode', 'in', variantes)], limit=1)
-        if not p and 'product.barcode' in request.env:
-            p = request.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1).product_id
-        if not p:
-            p = Product.search([('default_code', '=', codigo)], limit=1)
-        if not p:   # v1.8: muchos artículos no tienen referencia interna: la referencia es el nombre
-            p = Product.search([('name', '=', codigo), ('company_id', 'in', [COMPANY_ID, False])], limit=1)
-        return p
+        """Prenda por EAN (y UPC/EAN con 0 delante), código alternativo, referencia interna o nombre. Vacío si no hay.
+        v1.15 (O5): la de koroshi_base.pda, la misma en todas las pantallas (con sudo, como antes)."""
+        return pda.buscar_producto(request.env['product.product'].sudo().env, codigo)
 
     def _donde(self, producto):
         """v1.6: dónde hay stock de un artículo (ubicaciones internas de la compañía), por hueco y contenedor, para

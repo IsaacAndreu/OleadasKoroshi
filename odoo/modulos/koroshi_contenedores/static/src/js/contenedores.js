@@ -1,6 +1,8 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.15 (23/11, O4): la tarjeta y el lector «leer al parar» salen de koroshi_base.comun (los mismos en todas las
+ *   pantallas de la PDA). Mismo comportamiento que antes.
  * v1.14 (23/11, R23): «Es otro» al lado de «Cambiar»: lo que Odoo llama A en el contenedor es otra prenda (error de
  *   talla). Se lee una prenda de verdad (B), se ponen las uds y «Guardar»: sale A y entra B en una sola operación.
  *   Si no es el mismo modelo o hay reservas de A que no quedarían, avisa y hay que pulsar «Guardar» otra vez.
@@ -41,9 +43,8 @@ odoo.define('koroshi_contenedores.Pantalla', function (require) {
  * Todo dentro de .o_koroshi_contenedores. */
 var AbstractAction = require('web.AbstractAction');
 var core = require('web.core');
-var session = require('web.session');
+var comun = require('koroshi_base.comun');   // v1.15
 var REPETIDA_MS = 700;
-var RAFAGA_MS = 150;     // v1.9.3: sin teclado, el campo lee cuando el lector para 150 ms (Odoo usa 55 ms)
 var PERSONA_MS = 3600000;        // v1.6: 15 min (antes 3) sin actividad; v1.9.1: parametro
                                 // koroshi_operarios.minutos_tarjeta (60 por defecto), se lee al entrar
 var EN_ESPERA_MAX = 5;          // v1.4: lecturas guardadas mientras se espera a Odoo
@@ -125,7 +126,6 @@ var Pantalla = AbstractAction.extend({
         this.otro = null;               // v1.14: «Es otro» {id, nombre, uds, reservadas, b, n, confirmado, tanda}
         this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
         this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
-        this.rafagaTimer = null;        // v1.9.3: lectura del campo al parar el lector
     },
 
     start: function () {
@@ -150,34 +150,22 @@ var Pantalla = AbstractAction.extend({
         core.bus.off('barcode_scanned', this, this._onBarcodeScanned);
         clearInterval(this.timer);
         clearTimeout(this.buscarTimer);
-        clearTimeout(this.rafagaTimer);     // v1.9.3
+        comun.cancelarLector(this);         // v1.9.3; v1.15: de koroshi_base
         this._super.apply(this, arguments);
     },
 
     // ------------------------------------------------------------ v1.9: tarjeta compartida con Lecturas y Faltante
-    _clave: function () {
-        return 'koroshi_operarios_pda_' + (session.uid || '');
-    },
-    _guardada: function () {
-        try {
-            var v = window.localStorage.getItem(this._clave());
-            return v ? JSON.parse(v) : null;
-        } catch (e) { return null; }
-    },
+    // v1.15: de koroshi_base.comun.tarjeta
+    _guardada: function () { return comun.tarjeta.leer(); },
     _guardarPersona: function () {
         if (!this.persona) { return; }
-        this.guardadaEn = Date.now();
-        try {
-            window.localStorage.setItem(this._clave(), JSON.stringify(
-                {id: this.persona.id, nombre: this.persona.nombre, t: this.guardadaEn}));
-        } catch (e) { /* sin memoria: solo en esta pantalla */ }
+        this.guardadaEn = comun.tarjeta.guardar(this.persona);
     },
     // Coge la tarjeta guardada si es reciente (sin hora = de Lecturas antigua: vale) y no está a mitad de añadir
     // prendas. Devuelve true si ha cambiado la persona.
     _tomarGuardada: function () {
         var g = this._guardada();
-        if (!g || !g.id || (this.persona && this.persona.id === g.id)) { return false; }
-        if (g.t && Date.now() - g.t > PERSONA_MS) { return false; }
+        if (!comun.tarjeta.vigente(g, PERSONA_MS) || (this.persona && this.persona.id === g.id)) { return false; }
         if (this.anadiendo && this.anadiendo.length) { return false; }
         this.persona = {id: g.id, nombre: g.nombre};
         this.actividadEn = g.t || Date.now();
@@ -193,15 +181,12 @@ var Pantalla = AbstractAction.extend({
     // v1.9.1: cuánto dura la tarjeta sin actividad (si falla, se queda con el valor de antes)
     _leerMinutosTarjeta: function () {
         var self = this;
-        return this._rpc({route: '/koroshi/operarios/minutos_tarjeta', params: {}}, {shadow: true})
-            .then(function (r) {
-                if (r && r.ok && r.minutos > 0) {
-                    PERSONA_MS = r.minutos * 60000;
-                    if (!self.persona && self._tomarGuardada()) { self._pintar(); }
-                }
-            }).guardedCatch(function (e) {
-                if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
-            });
+        return comun.tarjeta.minutos(this).then(function (minutos) {
+            if (minutos > 0) {
+                PERSONA_MS = minutos * 60000;
+                if (!self.persona && self._tomarGuardada()) { self._pintar(); }
+            }
+        });
     },
 
     _vigilar: function () {
@@ -244,9 +229,9 @@ var Pantalla = AbstractAction.extend({
     _onKeydown: function (ev) {
         // v1.9.2: Intro o tabulador al final (según cómo esté configurado el lector). Con el campo marcado, Odoo no
         // manda la lectura al bus: si el lector acaba en tabulador, el código se quedaba escrito sin hacer nada.
-        if (ev.which === 13 || ev.which === 9) {
+        if (comun.esFinDeLectura(ev)) {
             ev.preventDefault();
-            clearTimeout(this.rafagaTimer);     // v1.9.3: ya se lee ahora
+            comun.cancelarLector(this);         // v1.9.3: ya se lee ahora
             var codigo = (ev.currentTarget.value || '').trim();
             ev.currentTarget.value = '';
             this._sugerencias(null);            // v1.7
@@ -991,21 +976,15 @@ var Pantalla = AbstractAction.extend({
     _onEscribe: function (ev) {
         var self = this;
         clearTimeout(this.buscarTimer);
-        clearTimeout(this.rafagaTimer);
         var v = (ev.currentTarget.value || '').trim();
         // v1.9.3: sin «⌨ Escribir» no hay teclado: lo que entra en el campo es el lector. Las PDA no mandan Intro ni
         // tabulador al final (Odoo en el móvil lee al pasar 55 ms sin teclas, pero solo si no hay campo marcado), así
         // que con el campo marcado la lectura se quedaba escrita. Ahora se lee al parar la ráfaga, como hace Odoo.
-        if (!this.teclado) {
-            var campo = ev.currentTarget;
-            this.rafagaTimer = setTimeout(function () {
-                var codigo = (campo.value || '').trim();
-                if (!codigo) { return; }          // ya se leyó con Intro o tabulador
-                campo.value = '';
-                self._leer(codigo, false, 'campo');
-            }, RAFAGA_MS);
+        if (!this.teclado) {     // v1.15: el lector común de koroshi_base
+            comun.leerAlParar(this, ev.currentTarget, function (codigo) { self._leer(codigo, false, 'campo'); });
             return this._sugerencias(null);
         }
+        comun.cancelarLector(this);
         if (!this.teclado || v.length < 3) { return this._sugerencias(null); }   // v1.8: desde 3 (L94)
         this.buscarTimer = setTimeout(function () {
             self._rpc({route: '/koroshi/contenedores/buscar', params: {texto: v}}).then(function (r) {

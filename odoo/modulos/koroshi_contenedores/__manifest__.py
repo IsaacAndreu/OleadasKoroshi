@@ -119,8 +119,13 @@ v1.14.0 (23/11/2026): revisión general del 23/11 (R23), errores de talla. Botó
   las uds de A han cambiado desde que se abrió; un reintento sin conexión no se repite (tanda). Campos nuevos solo en
   koroshi.contenedor.movimiento (producto_nuevo_id, move_nuevo_id). Diseño aprobado por Isaac:
   bin/versiones/diseno-cambiar-articulo_2026-11-23.md. Al actualizar, se actualiza también koroshi_menu.
+v1.15.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita koroshi_base 1.2.0 (instalarla antes). La
+  tarjeta compartida y el lector «leer al parar» de la PDA salen de koroshi_base (comun.js), igual que en Faltante,
+  Devoluciones, Referencia y Prenda en el suelo: mismo comportamiento que la 1.9.3. En las rutas, el permiso, la
+  tarjeta y la búsqueda de la prenda salen de koroshi_base.pda: la tarjeta tiene que ser de un operario activo de la
+  compañía (antes bastaba con que existiera); la búsqueda es la misma que antes. Incluye la 1.14.0 (sin instalar).
 """,
-    'version': '13.0.1.14.0',
+    'version': '13.0.1.15.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
