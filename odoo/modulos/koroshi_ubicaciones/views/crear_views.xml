@@ -1,0 +1,120 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===== Crear e imprimir (pantalla del PC de Recepciones) ===== -->
+    <record id="view_koroshi_ubicaciones_crear_form" model="ir.ui.view">
+        <field name="name">koroshi.ubicaciones.crear.form</field>
+        <field name="model">koroshi.ubicaciones.crear</field>
+        <field name="arch" type="xml">
+            <form string="Crear e imprimir">
+                <sheet>
+                    <h1>Crear e imprimir etiquetas</h1>
+                    <p class="text-muted">Contenedores y lineales: se crean en Odoo y se abre el PDF de sus etiquetas
+                        (Zebra 4x6). Sin exportar nada.</p>
+                    <group>
+                        <field name="modo" widget="radio" options="{'horizontal': true}"/>
+                    </group>
+                    <group attrs="{'invisible': [('modo', '!=', 'contenedores')]}">
+                        <field name="cantidad"/>
+                        <field name="prefijo" widget="radio" options="{'horizontal': true}"/>
+                    </group>
+                    <group attrs="{'invisible': [('modo', '!=', 'lineal')]}">
+                        <group>
+                            <field name="lineal" placeholder="L200 o MU-05"/>
+                        </group>
+                        <group>
+                            <field name="p_desde"/>
+                            <field name="p_hasta"/>
+                            <field name="c_desde"/>
+                            <field name="c_hasta"/>
+                        </group>
+                    </group>
+                    <group attrs="{'invisible': [('modo', '!=', 'reimprimir')]}">
+                        <field name="texto" placeholder="L94 · L94 P10-P20 · KO_171126 · KO_171126_001-050"/>
+                    </group>
+                    <group attrs="{'invisible': [('modo', '=', 'reimprimir')]}">
+                        <field name="padre_id" options="{'no_create': True, 'no_open': True}"/>
+                    </group>
+                    <field name="se_puede" invisible="1"/>
+                    <div class="alert alert-info" role="status" attrs="{'invisible': [('se_puede', '=', False)]}">
+                        <field name="resumen" readonly="1" nolabel="1"/>
+                    </div>
+                    <div class="alert alert-warning" role="status" attrs="{'invisible': [('se_puede', '=', True)]}">
+                        <field name="resumen" readonly="1" nolabel="1"/>
+                    </div>
+                    <button name="action_crear_imprimir" type="object" class="btn-primary btn-lg"
+                            string="🖨 Crear e imprimir" attrs="{'invisible': ['|', ('modo', '=', 'reimprimir'), ('se_puede', '=', False)]}"
+                            confirm="¿Crear y abrir las etiquetas? Lo que se crea no se borra solo."/>
+                    <button name="action_crear_imprimir" type="object" class="btn-primary btn-lg"
+                            string="🖨 Imprimir" attrs="{'invisible': ['|', ('modo', '!=', 'reimprimir'), ('se_puede', '=', False)]}"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_ubicaciones_crear" model="ir.actions.act_window">
+        <field name="name">Crear e imprimir</field>
+        <field name="res_model">koroshi.ubicaciones.crear</field>
+        <field name="view_mode">form</field>
+        <field name="target">current</field>
+    </record>
+
+    <!-- ===== Tandas: lo que se ha creado o impreso, para volver a imprimir ===== -->
+    <record id="view_koroshi_ubicaciones_tanda_tree" model="ir.ui.view">
+        <field name="name">koroshi.ubicaciones.tanda.tree</field>
+        <field name="model">koroshi.ubicaciones.tanda</field>
+        <field name="arch" type="xml">
+            <tree string="Tandas de etiquetas" create="false" edit="false" delete="false">
+                <field name="fecha"/>
+                <field name="tipo"/>
+                <field name="name"/>
+                <field name="cantidad"/>
+                <field name="user_id"/>
+                <button name="action_imprimir" type="object" string="🖨 Volver a imprimir" class="btn-link"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_ubicaciones_tanda_form" model="ir.ui.view">
+        <field name="name">koroshi.ubicaciones.tanda.form</field>
+        <field name="model">koroshi.ubicaciones.tanda</field>
+        <field name="arch" type="xml">
+            <form string="Tanda de etiquetas" create="false" edit="false" delete="false">
+                <header>
+                    <button name="action_imprimir" type="object" string="🖨 Volver a imprimir" class="btn-primary"/>
+                </header>
+                <sheet>
+                    <group>
+                        <field name="name"/>
+                        <field name="tipo"/>
+                        <field name="fecha"/>
+                        <field name="user_id"/>
+                        <field name="cantidad"/>
+                    </group>
+                    <field name="ubicacion_ids">
+                        <tree>
+                            <field name="complete_name"/>
+                            <field name="barcode"/>
+                        </tree>
+                    </field>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_ubicaciones_tanda" model="ir.actions.act_window">
+        <field name="name">Etiquetas creadas e impresas</field>
+        <field name="res_model">koroshi.ubicaciones.tanda</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <!-- KOROSHI > Almacén (sección de koroshi_menu) y la barra de arriba de Inventario, como el buscador de stock -->
+    <menuitem id="menu_koroshi_ubicaciones_crear" name="Crear e imprimir (lineales y contenedores)"
+              parent="koroshi_menu.menu_koroshi_sec_almacen" action="action_koroshi_ubicaciones_crear" sequence="7"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_ubicaciones_tanda" name="Etiquetas creadas e impresas"
+              parent="koroshi_menu.menu_koroshi_sec_almacen" action="action_koroshi_ubicaciones_tanda" sequence="8"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_ubicaciones_crear_inventario" name="Crear e imprimir"
+              parent="stock.menu_stock_root" action="action_koroshi_ubicaciones_crear" sequence="2"
+              groups="stock.group_stock_user"/>
+</odoo>
