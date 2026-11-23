@@ -1,0 +1,46 @@
+/* KOROSHI Recepción de contenedores: pantalla para PDA y tablet (botones grandes, para el dedo). */
+.o_koroshi_recepcion { padding: 8px; font-size: 16px; max-width: 1100px; margin: 0 auto; }
+.o_koroshi_recepcion .o_kr_cab { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.o_koroshi_recepcion .o_kr_titulo { font-size: 20px; font-weight: 700; }
+.o_koroshi_recepcion .o_kr_codigo { flex: 1; min-width: 200px; font-size: 18px; padding: 8px; }
+.o_koroshi_recepcion .o_kr_persona { margin: 6px 0; }
+.o_koroshi_recepcion .o_kr_aviso { min-height: 24px; padding: 6px 8px; border-radius: 6px; margin: 4px 0; font-weight: 600; }
+.o_koroshi_recepcion .o_kr_aviso.o_kr_ok { background: #d4edda; color: #155724; }
+.o_koroshi_recepcion .o_kr_aviso.o_kr_mal { background: #f8d7da; color: #721c24; }
+.o_koroshi_recepcion .o_kr_aviso.o_kr_info { background: #e2e8f0; color: #1a202c; }
+.o_koroshi_recepcion button { font-size: 17px; padding: 10px 14px; border-radius: 8px; border: 1px solid #999;
+                              background: #f4f4f4; margin: 3px; min-height: 48px; }
+.o_koroshi_recepcion button.o_kr_primario { background: #2b6cb0; color: #fff; border-color: #2b6cb0; font-weight: 700; }
+.o_koroshi_recepcion button.o_kr_peligro { background: #c53030; color: #fff; border-color: #c53030; }
+.o_koroshi_recepcion button:disabled { opacity: .5; }
+.o_koroshi_recepcion .o_kr_tarjetas { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.o_koroshi_recepcion .o_kr_tarjeta { border: 2px solid #ccc; border-radius: 10px; padding: 10px; cursor: pointer; background: #fff; }
+.o_koroshi_recepcion .o_kr_tarjeta.o_kr_leyendo { border-color: #dd6b20; background: #fffaf0; }
+.o_koroshi_recepcion .o_kr_tarjeta b { font-size: 19px; }
+.o_koroshi_recepcion .o_kr_grande { font-size: 22px; font-weight: 700; }
+.o_koroshi_recepcion .o_kr_fila { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 6px 0; }
+.o_koroshi_recepcion .o_kr_caja { border: 2px solid #ccc; border-radius: 10px; padding: 8px 10px; background: #fff; flex: 1; min-width: 200px; }
+.o_koroshi_recepcion .o_kr_caja.o_kr_falta { border-color: #c53030; background: #fff5f5; }
+.o_koroshi_recepcion .o_kr_caja.o_kr_hecho { border-color: #2f855a; background: #f0fff4; }
+.o_koroshi_recepcion .o_kr_etq { font-size: 12px; color: #555; text-transform: uppercase; letter-spacing: 1px; }
+.o_koroshi_recepcion .o_kr_palets { display: flex; flex-wrap: wrap; gap: 4px; }
+.o_koroshi_recepcion .o_kr_palets button { min-width: 84px; }
+.o_koroshi_recepcion .o_kr_palets button.o_kr_activo { background: #dd6b20; color: #fff; border-color: #dd6b20; font-weight: 700; }
+.o_koroshi_recepcion .o_kr_teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; max-width: 360px; }
+.o_koroshi_recepcion .o_kr_teclado button { font-size: 24px; min-height: 58px; margin: 0; }
+.o_koroshi_recepcion .o_kr_cantidad { font-size: 34px; font-weight: 800; min-width: 120px; text-align: center;
+                                      border: 2px solid #2b6cb0; border-radius: 8px; padding: 4px 10px; }
+.o_koroshi_recepcion table { width: 100%; border-collapse: collapse; background: #fff; }
+.o_koroshi_recepcion th, .o_koroshi_recepcion td { padding: 6px; border-bottom: 1px solid #ddd; text-align: left; }
+.o_koroshi_recepcion td.o_kr_n, .o_koroshi_recepcion th.o_kr_n { text-align: right; }
+.o_koroshi_recepcion tr.o_kr_falta td { background: #fff5f5; }
+.o_koroshi_recepcion tr.o_kr_sobra td, .o_koroshi_recepcion tr.o_kr_no_venia td { background: #fffbea; }
+.o_koroshi_recepcion tr.o_kr_ok td { background: #f0fff4; }
+.o_koroshi_recepcion tr.o_kr_modelo td { font-weight: 700; cursor: pointer; background: #edf2f7; }
+.o_koroshi_recepcion .o_kr_resultados button { display: block; width: 100%; text-align: left; }
+.o_koroshi_recepcion .o_kr_resultados .o_kr_de_in { border-color: #2b6cb0; }
+.o_koroshi_recepcion input.o_kr_campo { font-size: 18px; padding: 8px; width: 100%; max-width: 420px; }
+.o_koroshi_recepcion label { display: block; margin-top: 8px; font-weight: 600; }
+.o_koroshi_recepcion .o_kr_in { display: flex; gap: 8px; align-items: center; padding: 6px; border-bottom: 1px solid #eee; }
+.o_koroshi_recepcion .o_kr_in input[type=checkbox] { width: 28px; height: 28px; }
+.o_koroshi_recepcion .o_kr_gris { color: #777; }

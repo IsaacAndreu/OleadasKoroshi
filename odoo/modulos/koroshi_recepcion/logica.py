@@ -1,0 +1,192 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# KOROSHI Recepción: cálculos sin Odoo (Python puro), para probarlos sin servidor: tests/test_logica.py.
+#
+#   - referencia de KOROSHI: «2711JA43-000062-S» = modelo 2711JA43, color 000062, talla S;
+#   - palés: «PAL-03 A» (palé 3, cara A), nombre = código de barras;
+#   - comparar lo que traen las IN (teórico, por artículo) con lo leído;
+#   - repartir lo leído entre los movimientos pendientes de las IN, por orden.
+# Diseño: bin/versiones/diseno-recepciones-packing-list_2026-11-23_v6.md
+# =============================================================================
+import re
+
+MAX_CAJAS = 2000            # contenedores de control de una vez (un contenedor marítimo grande: ~700 cajas)
+MAX_PALETS = 99             # PAL-01 … PAL-99
+MAX_UDS_LECTURA = 5000      # uds de un artículo en una caja (más = error al escribir)
+CARAS = ('A', 'B')
+
+RE_PALET = re.compile(r'^PAL\s*-?\s*(\d{1,2})\s*-?\s*([AB])$', re.I)
+RE_REF = re.compile(r'^([^-\s]+)-([^-\s]+)-(\S+)$')
+
+
+# ----------------------------------------------------------------------------- referencias
+def partes_referencia(ref):
+    """«2711JA43-000062-S» -> ('2711JA43', '000062', 'S'). Si no tiene esa forma: (ref, '', '')."""
+    ref = (ref or '').strip()
+    m = RE_REF.match(ref)
+    if not m:
+        return ref, '', ''
+    return m.group(1), m.group(2), m.group(3)
+
+
+ORDEN_TALLAS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '2XL', '3XL', 'XXXL', '4XL', '5XL']
+
+
+def clave_talla(talla):
+    """Para ordenar tallas: XS < S < M < L < XL…; los números por su valor (2, 4, 6, 12 años…); lo demás al final."""
+    t = (talla or '').upper()
+    if t in ORDEN_TALLAS:
+        return (0, ORDEN_TALLAS.index(t), t)
+    num = re.match(r'^(\d+)', t)
+    if num:
+        return (1, int(num.group(1)), t)
+    return (2, 0, t)
+
+
+# ----------------------------------------------------------------------------- palés
+def nombre_palet(numero, cara):
+    """3, 'a' -> «PAL-03 A»."""
+    cara = (cara or '').upper()
+    if cara not in CARAS:
+        raise ValueError('La cara de un palé es A o B.')
+    if not (1 <= int(numero) <= MAX_PALETS):
+        raise ValueError('Los palés van del 1 al %d.' % MAX_PALETS)
+    return 'PAL-%02d %s' % (int(numero), cara)
+
+
+def nombres_palets(cuantos):
+    """3 -> PAL-01 A, PAL-01 B, PAL-02 A, PAL-02 B, PAL-03 A, PAL-03 B."""
+    if not (1 <= int(cuantos) <= MAX_PALETS):
+        raise ValueError('Se pueden tener de 1 a %d palés.' % MAX_PALETS)
+    return [nombre_palet(n, c) for n in range(1, int(cuantos) + 1) for c in CARAS]
+
+
+def palet_de(codigo):
+    """«PAL-03 A», «pal3a», «PAL-3-B» -> «PAL-03 A». Si no es un palé, None."""
+    m = RE_PALET.match((codigo or '').strip())
+    if not m:
+        return None
+    try:
+        return nombre_palet(int(m.group(1)), m.group(2))
+    except ValueError:
+        return None
+
+
+def numero_palet(nombre):
+    """«PAL-03 A» -> (3, 'A'); None si no es un palé."""
+    p = palet_de(nombre)
+    return p and (int(p[4:6]), p[7]) or None
+
+
+# ----------------------------------------------------------------------------- buscador
+def es_final_ean(texto):
+    """El operario escribe los últimos 4 dígitos del EAN (o 3 a 6): solo cifras."""
+    t = (texto or '').strip()
+    return t.isdigit() and 3 <= len(t) <= 6
+
+
+def cantidad_valida(texto):
+    """'12' -> 12. Lanza ValueError con el motivo, en castellano."""
+    try:
+        n = float(str(texto).replace(',', '.'))
+    except (TypeError, ValueError):
+        raise ValueError('La cantidad tiene que ser un número.')
+    if n != int(n):
+        raise ValueError('La cantidad tiene que ser un número entero de prendas.')
+    n = int(n)
+    if n <= 0:
+        raise ValueError('La cantidad tiene que ser mayor que 0.')
+    if n > MAX_UDS_LECTURA:
+        raise ValueError('%d prendas en una caja son demasiadas: revisa la cantidad.' % n)
+    return n
+
+
+# ----------------------------------------------------------------------------- comparar
+def comparar(teorico, leido):
+    """teorico, leido: {producto: uds}. Devuelve {producto: (teorico, leido, diferencia, estado)}.
+    estado: 'ok' (igual), 'falta' (leído < teórico), 'sobra' (leído > teórico, venía en las IN), 'no_venia' (leído sin
+    estar en ninguna IN)."""
+    res = {}
+    for p in set(teorico) | set(leido):
+        t = teorico.get(p, 0) or 0
+        l = leido.get(p, 0) or 0
+        if not t and not l:
+            continue
+        d = l - t
+        if not t:
+            estado = 'no_venia'
+        elif d == 0:
+            estado = 'ok'
+        elif d < 0:
+            estado = 'falta'
+        else:
+            estado = 'sobra'
+        res[p] = (t, l, d, estado)
+    return res
+
+
+# ----------------------------------------------------------------------------- repartir lo leído entre las IN
+def repartir(pendientes, leidos):
+    """Reparte lo leído entre los movimientos pendientes de las IN.
+
+    pendientes: [(movimiento, producto, uds_pendientes)] en el orden en que se llenan (fecha prevista de la IN).
+    leidos: [(lectura, producto, destino, uds)] en orden de lectura.
+
+    Devuelve (lineas, sin_in):
+      lineas: [(movimiento, destino, uds, [lecturas])]: una línea hecha por movimiento y destino. Lo que pasa de lo
+              pendiente de un artículo va al ÚLTIMO movimiento de ese artículo (la prenda está en el almacén: Odoo
+              tiene que tenerla), y se ve como «sobra» al comparar.
+      sin_in: [lectura]: lecturas de artículos que no están en ninguna IN pendiente. No se pasan a stock.
+    """
+    por_producto = {}
+    for mov, prod, uds in pendientes:
+        por_producto.setdefault(prod, []).append([mov, max(uds or 0, 0)])
+    acumulado = {}           # (mov, destino) -> [uds, [lecturas]]
+    orden = []
+    sin_in = []
+    for lectura, prod, destino, uds in leidos:
+        movs = por_producto.get(prod)
+        if not movs:
+            sin_in.append(lectura)
+            continue
+        queda = uds
+        for m in movs:
+            if queda <= 0:
+                break
+            toma = min(queda, m[1])
+            if toma > 0:
+                m[1] -= toma
+                queda -= toma
+                _sumar(acumulado, orden, m[0], destino, toma, lectura)
+        if queda > 0:        # sobra: al último movimiento del artículo
+            _sumar(acumulado, orden, movs[-1][0], destino, queda, lectura)
+    lineas = [(mov, dest, acumulado[(mov, dest)][0], acumulado[(mov, dest)][1]) for mov, dest in orden]
+    return lineas, sin_in
+
+
+def _sumar(acumulado, orden, mov, destino, uds, lectura):
+    clave = (mov, destino)
+    if clave not in acumulado:
+        acumulado[clave] = [0, []]
+        orden.append(clave)
+    acumulado[clave][0] += uds
+    if lectura not in acumulado[clave][1]:
+        acumulado[clave][1].append(lectura)
+
+
+# ----------------------------------------------------------------------------- exportar
+def csv_celda(valor):
+    """Una celda para un CSV con «;» (Excel en castellano): comillas si hace falta; números con coma decimal."""
+    if valor is None or valor is False:
+        return ''
+    if isinstance(valor, float):
+        valor = ('%g' % round(valor, 2)).replace('.', ',')
+    s = str(valor)
+    if any(c in s for c in ';"\n\r'):
+        s = '"%s"' % s.replace('"', '""')
+    return s
+
+
+def csv_texto(filas):
+    """[[celdas]] -> texto CSV con «;» y saltos \\r\\n."""
+    return '\r\n'.join(';'.join(csv_celda(c) for c in fila) for fila in filas) + '\r\n'

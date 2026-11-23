@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Zebra 4x6 del PC de Recepciones (el mismo papel que koroshi_ubicaciones). Una etiqueta por caja KO_ o cara de
+         palé. La caja lleva debajo el muelle, el día de llegada y la matrícula del contenedor. -->
+    <report id="action_etiqueta_tanda"
+            model="koroshi.recepcion.tanda"
+            string="KOROSHI Etiquetas de recepción (4x6)"
+            report_type="qweb-pdf"
+            name="koroshi_recepcion.etiqueta_tanda"
+            file="koroshi_recepcion.etiqueta_tanda"
+            paperformat="koroshi_ubicaciones.paperformat_koroshi_ubicacion"
+            print_report_name="'Etiquetas recepcion'"
+            menu="False"/>
+
+    <template id="etiqueta_tanda">
+        <t t-call="web.basic_layout">
+            <t t-foreach="etiquetas" t-as="et">
+                <div t-if="not et_first" style="page-break-before: always;"/>
+                <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #000; padding: 0 4mm;
+                                         text-align: center;">
+                    <div style="font-size: 11pt; letter-spacing: 3px;" t-esc="et['arriba']"/>
+                    <t t-if="et['tipo'] == 'palet'">
+                        <div style="font-size: 96pt; font-weight: 900; line-height: 1.0; margin-bottom: 4mm;"
+                             t-esc="et['grande']"/>
+                    </t>
+                    <t t-else="">
+                        <div style="font-size: 30pt; font-weight: 900; line-height: 1.1; margin: 6mm 0 6mm 0;
+                                    white-space: nowrap;" t-esc="et['grande']"/>
+                    </t>
+                    <img alt="codigo" t-att-src="et['url']" style="width: 92mm; height: 30mm;"/>
+                    <div style="font-size: 16pt; font-weight: 700; margin-top: 1mm;" t-esc="et['codigo']"/>
+                    <div style="font-size: 13pt; margin-top: 3mm;" t-esc="et['pie']"/>
+                </div>
+            </t>
+        </t>
+    </template>
+</odoo>

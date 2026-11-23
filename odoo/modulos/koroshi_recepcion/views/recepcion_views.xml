@@ -1,0 +1,285 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ===================================================================== Recepción (contenedor) -->
+    <record id="view_koroshi_recepcion_tree" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.tree</field>
+        <field name="model">koroshi.recepcion</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="state in ('validada', 'cancelada')" decoration-info="state == 'leyendo'">
+                <field name="name"/>
+                <field name="matricula"/>
+                <field name="referencia"/>
+                <field name="muelle"/>
+                <field name="fecha_llegada"/>
+                <field name="picking_ids" widget="many2many_tags"/>
+                <field name="cajas"/>
+                <field name="palets"/>
+                <field name="state"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recepcion_form" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.form</field>
+        <field name="model">koroshi.recepcion</field>
+        <field name="arch" type="xml">
+            <form>
+                <header>
+                    <button name="action_pantalla" type="object" string="Abrir en la pantalla" class="oe_highlight"
+                            attrs="{'invisible': [('state', 'in', ('validada', 'cancelada'))]}"/>
+                    <button name="action_comparar" type="object" string="Comparar con las IN"/>
+                    <button name="action_exportar" type="object" string="Exportar (Excel)"
+                            groups="stock.group_stock_manager"/>
+                    <button name="action_reabrir" type="object" string="Reabrir" groups="stock.group_stock_manager"
+                            attrs="{'invisible': [('state', '!=', 'validada')]}"
+                            confirm="Vuelve a «Leyendo» para recibir las cajas que faltaban (sus IN pendientes). ¿Seguro?"/>
+                    <button name="action_validar_parcial" type="object" string="Validar lo leído hasta ahora"
+                            groups="stock.group_stock_manager" attrs="{'invisible': [('state', '!=', 'leyendo')]}"
+                            confirm="Se pasa a stock lo leído y no validado, y la lectura sigue. ¿Seguro?"/>
+                    <button name="action_validar" type="object" string="Validar" groups="stock.group_stock_manager"
+                            attrs="{'invisible': [('state', '!=', 'leyendo')]}"
+                            confirm="Se pasa a stock lo leído, se validan las IN y lo que no ha llegado queda pendiente. Mira antes la comparación. ¿Seguro?"/>
+                    <button name="action_cancelar" type="object" string="Cancelar"
+                            attrs="{'invisible': [('state', 'in', ('validada', 'cancelada'))]}"
+                            confirm="¿Cancelar esta recepción? (solo si no tiene nada pasado a stock)"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente,leyendo,validada"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1><field name="name"/></h1>
+                        <h2><field name="matricula" placeholder="Matrícula del contenedor"/></h2>
+                    </div>
+                    <group>
+                        <group>
+                            <field name="referencia"/>
+                            <field name="muelle"/>
+                            <field name="fecha_llegada"/>
+                        </group>
+                        <group>
+                            <field name="cajas"/>
+                            <field name="palets"/>
+                            <field name="cajas_leidas"/>
+                            <field name="uds_leidas"/>
+                            <field name="uds_validadas"/>
+                            <field name="uds_teoricas"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="IN que trae">
+                            <field name="picking_ids" domain="[('picking_type_id.code', '=', 'incoming'), ('company_id', '=', company_id)]"
+                                   attrs="{'readonly': [('state', 'in', ('validada', 'cancelada'))]}">
+                                <tree>
+                                    <field name="name"/>
+                                    <field name="origin"/>
+                                    <field name="scheduled_date"/>
+                                    <field name="backorder_id"/>
+                                    <field name="state"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Lecturas">
+                            <field name="lectura_ids" readonly="1">
+                                <tree decoration-muted="estado == 'anulada'" decoration-success="validada">
+                                    <field name="fecha"/>
+                                    <field name="palet_id"/>
+                                    <field name="contenedor_id"/>
+                                    <field name="producto_id"/>
+                                    <field name="cantidad" sum="Uds"/>
+                                    <field name="employee_id"/>
+                                    <field name="estado"/>
+                                    <field name="validada"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Etiquetas">
+                            <field name="tanda_ids" readonly="1">
+                                <tree>
+                                    <field name="fecha"/>
+                                    <field name="name"/>
+                                    <field name="employee_id"/>
+                                    <button name="action_imprimir" type="object" string="Imprimir" icon="fa-print"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Cajas (KO_)">
+                            <field name="contenedor_ids" readonly="1">
+                                <tree>
+                                    <field name="complete_name"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Notas">
+                            <field name="notas"/>
+                        </page>
+                    </notebook>
+                    <field name="company_id" invisible="1"/>
+                </sheet>
+                <div class="oe_chatter">
+                    <field name="message_follower_ids" widget="mail_followers"/>
+                    <field name="message_ids" widget="mail_thread"/>
+                </div>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recepcion_search" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.search</field>
+        <field name="model">koroshi.recepcion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="matricula"/>
+                <field name="name"/>
+                <field name="referencia"/>
+                <field name="picking_ids"/>
+                <filter name="abiertas" string="Abiertas" domain="[('state', 'in', ('pendiente', 'leyendo'))]"/>
+                <filter name="validadas" string="Validadas" domain="[('state', '=', 'validada')]"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_recepcion" model="ir.actions.act_window">
+        <field name="name">Recepciones de contenedores</field>
+        <field name="res_model">koroshi.recepcion</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_abiertas': 1}</field>
+    </record>
+
+    <!-- ===================================================================== Lecturas -->
+    <record id="view_koroshi_recepcion_lectura_tree" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.lectura.tree</field>
+        <field name="model">koroshi.recepcion.lectura</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" decoration-muted="estado == 'anulada'" decoration-success="validada">
+                <field name="recepcion_id"/>
+                <field name="matricula"/>
+                <field name="fecha"/>
+                <field name="palet_id"/>
+                <field name="contenedor_id"/>
+                <field name="modelo"/>
+                <field name="talla"/>
+                <field name="producto_id"/>
+                <field name="cantidad" sum="Uds"/>
+                <field name="employee_id"/>
+                <field name="estado"/>
+                <field name="validada"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recepcion_lectura_search" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.lectura.search</field>
+        <field name="model">koroshi.recepcion.lectura</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="matricula"/>
+                <field name="recepcion_id"/>
+                <field name="producto_id"/>
+                <field name="modelo"/>
+                <field name="contenedor_id"/>
+                <field name="palet_id"/>
+                <filter name="leidas" string="Leídas" domain="[('estado', '=', 'ok')]"/>
+                <filter name="sin_validar" string="Sin pasar a stock" domain="[('estado', '=', 'ok'), ('validada', '=', False)]"/>
+                <filter name="anuladas" string="Anuladas" domain="[('estado', '=', 'anulada')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_palet" string="Palé" context="{'group_by': 'palet_id'}"/>
+                    <filter name="g_caja" string="Caja" context="{'group_by': 'contenedor_id'}"/>
+                    <filter name="g_modelo" string="Modelo" context="{'group_by': 'modelo'}"/>
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_recepcion_lectura" model="ir.actions.act_window">
+        <field name="name">Lecturas de recepción</field>
+        <field name="res_model">koroshi.recepcion.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_leidas': 1}</field>
+    </record>
+
+    <!-- ===================================================================== Comparación -->
+    <record id="view_koroshi_recepcion_comparacion_tree" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.comparacion.tree</field>
+        <field name="model">koroshi.recepcion.comparacion</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false" decoration-danger="estado == 'falta'"
+                  decoration-warning="estado in ('sobra', 'no_venia')" decoration-success="estado == 'ok'">
+                <field name="recepcion_id"/>
+                <field name="modelo"/>
+                <field name="color"/>
+                <field name="talla"/>
+                <field name="ean"/>
+                <field name="producto_id"/>
+                <field name="teorico" sum="Teórico"/>
+                <field name="leido" sum="Leído"/>
+                <field name="diferencia" sum="Diferencia"/>
+                <field name="estado"/>
+                <field name="donde"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_recepcion_comparacion_search" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.comparacion.search</field>
+        <field name="model">koroshi.recepcion.comparacion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="modelo"/>
+                <field name="producto_id"/>
+                <field name="ean"/>
+                <filter name="diferencias" string="Con diferencias" domain="[('estado', '!=', 'ok')]"/>
+                <filter name="falta" string="Falta cantidad" domain="[('estado', '=', 'falta')]"/>
+                <filter name="sobra" string="Sobra" domain="[('estado', '=', 'sobra')]"/>
+                <filter name="no_venia" string="No venía en las IN" domain="[('estado', '=', 'no_venia')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_modelo" string="Modelo" context="{'group_by': 'modelo'}"/>
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <!-- ===================================================================== Responsables -->
+    <record id="view_koroshi_recepcion_responsable_tree" model="ir.ui.view">
+        <field name="name">koroshi.recepcion.responsable.tree</field>
+        <field name="model">koroshi.recepcion.responsable</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="employee_id"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_koroshi_recepcion_responsable" model="ir.actions.act_window">
+        <field name="name">Responsables de recepción</field>
+        <field name="res_model">koroshi.recepcion.responsable</field>
+        <field name="view_mode">tree</field>
+        <field name="help" type="html">
+            <p>Las personas que, con su tarjeta, pueden comparar y validar desde la pantalla de recepción.</p>
+        </field>
+    </record>
+
+    <!-- ===================================================================== Pantalla (PDA o tablet) -->
+    <record id="action_koroshi_recepcion_pantalla" model="ir.actions.client">
+        <field name="name">Recepción de contenedores</field>
+        <field name="tag">koroshi_recepcion_pantalla</field>
+    </record>
+
+    <!-- ===================================================================== Menús -->
+    <menuitem id="menu_koroshi_recepcion_pantalla" name="Recepción de contenedores (pantalla)"
+              parent="koroshi_menu.menu_koroshi_sec_almacen" action="action_koroshi_recepcion_pantalla" sequence="6"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_recepcion_lista" name="Recepciones de contenedores"
+              parent="koroshi_menu.menu_koroshi_sec_almacen" action="action_koroshi_recepcion" sequence="7"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_recepcion_lecturas" name="Lecturas de recepción"
+              parent="koroshi_menu.menu_koroshi_sec_almacen" action="action_koroshi_recepcion_lectura" sequence="8"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_recepcion_responsables" name="Responsables de recepción"
+              parent="koroshi_menu.menu_koroshi_config" action="action_koroshi_recepcion_responsable" sequence="40"
+              groups="stock.group_stock_manager"/>
+    <!-- También arriba en Inventario, para el PC de Recepciones -->
+    <menuitem id="menu_koroshi_recepcion_inventario" name="Recepción contenedores"
+              parent="stock.menu_stock_root" action="action_koroshi_recepcion" sequence="2"
+              groups="stock.group_stock_user"/>
+</odoo>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- Número de cada contenedor que se recibe: RC/0001… -->
+    <record id="seq_koroshi_recepcion" model="ir.sequence">
+        <field name="name">KOROSHI Recepción por contenedor</field>
+        <field name="code">koroshi.recepcion</field>
+        <field name="prefix">RC/</field>
+        <field name="padding">4</field>
+        <field name="company_id" eval="False"/>
+    </record>
+</odoo>

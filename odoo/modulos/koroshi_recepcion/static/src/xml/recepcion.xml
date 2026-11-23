@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_recepcion.Pantalla">
+        <div class="o_koroshi_recepcion">
+            <header class="o_kr_cab">
+                <div class="o_kr_titulo">Recepción de contenedores</div>
+                <input type="text" class="o_kr_codigo" autocomplete="off" inputmode="none"
+                       placeholder="Lee la tarjeta, la caja (KO_), el palé o la prenda"/>
+            </header>
+            <div class="o_kr_persona"/>
+            <div class="o_kr_aviso"/>
+            <div class="o_kr_cuerpo"/>
+        </div>
+    </t>
+</templates>
