@@ -82,8 +82,12 @@ v1.9.2 (23/11/2026): con el cuadro de texto marcado, la lectura se quedaba escri
 v1.9.3 (23/11/2026): la 1.9.2 no lo arregló en las PDA: el lector no manda ni Intro ni tabulador al final. Odoo en
   el móvil lee cuando pasan 55 ms sin teclas, pero solo si no hay ningún campo marcado. Ahora, sin «⌨ Escribir», el
   campo lee solo cuando el lector para 150 ms. Con «⌨ Escribir» sigue igual (Intro y sugerencias). Solo JS.
+v1.10.0 (23/11/2026): el almacén pide archivar un contenedor desde su ficha (abierto desde la lista de mover o del
+  hueco); antes solo se podía con las casillas de la lista del hueco. Botón «Archivar» cuando no tiene prendas en el
+  sistema (si tiene, antes «Poner a cero»), con la misma confirmación «¿está físicamente vacío?». Ruta nueva
+  /koroshi/contenedores/archivar_uno; queda en el registro como «Archivar vacío» con quién lo hizo.
 """,
-    'version': '13.0.1.9.3',
+    'version': '13.0.1.10.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

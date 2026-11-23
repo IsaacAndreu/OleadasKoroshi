@@ -1,6 +1,7 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.10 (23/11): «Archivar» en la ficha del contenedor abierto (si no tiene prendas en el sistema).
  * v1.9.3 (23/11): sin «⌨ Escribir», el campo lee al parar el lector (150 ms), sin esperar Intro.
  * v1.9.2 (23/11): el campo lee con Intro o con tabulador al final.
  * v1.9 (20/11): la tarjeta es la misma que en Lecturas y Faltante (memoria de la PDA, clave
@@ -63,6 +64,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_ver': '_onVer',
         'click .o_kc_volver_hueco': '_onVolverHueco',
         'click .o_kc_cero': '_onCero',
+        'click .o_kc_archivar_uno': '_onArchivarUno',     // v1.10
         'click .o_kc_anadir': '_onAnadir',
         'click .o_kc_quitar_ultima': '_onQuitarUltima',
         'click .o_kc_guardar_anadir': '_onGuardarAnadir',
@@ -439,6 +441,7 @@ var Pantalla = AbstractAction.extend({
 
     _onConfirmarSi: function () {
         if (this.confirmando === 'cero') { return this._hacerCero(); }
+        if (this.confirmando === 'archivar_uno') { return this._hacerArchivarUno(); }   // v1.10
         var self = this;
         var ids = this._idsMarcados();
         if (this.ocupado || !this.hueco || !this.persona || this.confirmando !== 'archivar' || !ids.length) { return; }
@@ -528,6 +531,36 @@ var Pantalla = AbstractAction.extend({
         if (this.ocupado || !this.detalle || !this.persona) { return; }
         this.confirmando = 'cero';
         this._pintar();
+    },
+
+    // v1.10: archivar el contenedor abierto (vacío en el sistema), con confirmación
+    _onArchivarUno: function () {
+        if (this.ocupado || !this.detalle || !this.persona || this.detalle.n_lineas) { return; }
+        this.confirmando = 'archivar_uno';
+        this._pintar();
+    },
+
+    _hacerArchivarUno: function () {
+        var self = this;
+        if (this.ocupado || !this.detalle || !this.persona) { return; }
+        var id = this.detalle.id;
+        this.ocupado = true;
+        return this._rpc({route: '/koroshi/contenedores/archivar_uno', params: {
+            contenedor_id: id, employee_id: this.persona.id, confirmado: true}}).then(function (m) {
+            self._fin();
+            self.confirmando = false;
+            if (!m || !m.ok) {
+                self._pitido(false);
+                self._aviso('mal', (m && m.msg) || 'No se ha podido archivar.');
+                self._pintar();
+                return;
+            }
+            // fuera de la lista de mover y de las casillas; vuelve al hueco (o al inicio) como «Volver»
+            self.conts = _.reject(self.conts, function (x) { return x.id === id; });
+            delete self.marcados[id];
+            self._onVolverHueco();
+            self._aviso('ok', '✓ ' + m.msg);
+        }, self._sinConexion.bind(self));
     },
 
     _hacerCero: function () {
@@ -1080,10 +1113,19 @@ var Pantalla = AbstractAction.extend({
                 _n(c.uds) + ' uds saldrán del stock (ajuste de inventario, queda apuntado quién lo hace).</div>' +
                 '<button type="button" class="o_kc_confirmar_si">Sí, vacío: poner a cero</button>' +
                 '<button type="button" class="o_kc_confirmar_no">No</button></div>';
+        } else if (this.confirmando === 'archivar_uno') {     // v1.10
+            html += '<div class="o_kc_confirmar"><div><b>¿' + _e(c.nombre) + ' está FÍSICAMENTE vacío?</b> Se ' +
+                'archiva y deja de salir en Odoo (queda apuntado quién lo hace).</div>' +
+                '<button type="button" class="o_kc_confirmar_si">Sí, vacío: archivar</button>' +
+                '<button type="button" class="o_kc_confirmar_no">No</button></div>';
         } else {
             html += '<div class="o_kc_acciones">' +
-                (c.n_lineas ? '<button type="button" class="o_kc_cero">Poner a cero</button>' : '') +
+                (c.n_lineas ? '<button type="button" class="o_kc_cero">Poner a cero</button>'
+                    : '<button type="button" class="o_kc_archivar_uno">Archivar</button>') +   // v1.10
                 '<button type="button" class="o_kc_anadir">Añadir prendas</button></div>';
+            if (c.n_lineas) {
+                html += '<div class="o_kc_vacio">Para archivarlo, antes «Poner a cero».</div>';
+            }
         }
         return html + '</div>';
     },

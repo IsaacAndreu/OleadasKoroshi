@@ -310,6 +310,27 @@ class KoroshiContenedores(http.Controller):
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
+    @http.route('/koroshi/contenedores/archivar_uno', type='json', auth='user')
+    def archivar_uno(self, contenedor_id=False, employee_id=False, confirmado=False, **kw):
+        """v1.10.0: archiva el contenedor abierto (botón «Archivar» de su ficha), esté en la lista de mover o en la
+        del hueco. Mismas reglas que «Archivar marcados»: confirmado y sin prendas ni reservas en el sistema."""
+        try:
+            self._comprobar_usuario()
+            if not confirmado:
+                raise UserError('Confirma que está físicamente vacío.')
+            emp = self._empleado(employee_id)
+            c = self._contenedor(contenedor_id)
+            if self._quants(c):
+                raise UserError('No se archiva: %s tiene prendas en el sistema. Ponlo a cero primero.' % c.name)
+            hueco = c.location_id
+            c.write({'active': False})
+            request.env['koroshi.contenedor.movimiento'].sudo().create({
+                'accion': 'archivar', 'contenedor': c.name, 'origen_id': hueco.id, 'origen': hueco.complete_name,
+                'destino': '(archivado, vacío, confirmado)', 'employee_id': emp.id})
+            return {'ok': True, 'msg': '%s: %s archivado (estaba en %s)' % (emp.name, c.name, hueco.complete_name)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
     def _buscar_producto(self, codigo):
         """Prenda por EAN (y UPC/EAN con 0 delante), código alternativo o referencia interna. Vacío si no hay."""
         variantes = [codigo]
