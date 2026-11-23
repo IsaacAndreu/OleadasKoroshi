@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mapa NAU-2 · prototipo v1</title>
+<style>
+  :root {
+    --fondo: #f6f7f9; --panel: #ffffff; --texto: #1f2933; --suave: #5f6b7a; --borde: #d8dde3;
+    --acento: #1d4ed8; --ejemplo: #b45309; --ejemplo-fondo: #fff7ed;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--fondo); color: var(--texto);
+    font: 13px/1.35 system-ui, "Segoe UI", Roboto, sans-serif; }
+  body { display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Barra estrecha arriba: todos los controles */
+  #barra { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 6px 12px;
+    background: var(--panel); border-bottom: 1px solid var(--borde); min-height: 44px; }
+  #barra h1 { font-size: 14px; margin: 0 6px 0 0; font-weight: 600; white-space: nowrap; }
+  #migas { display: flex; gap: 4px; align-items: center; color: var(--suave); white-space: nowrap; }
+  #migas a { color: var(--acento); cursor: pointer; text-decoration: none; }
+  #migas a:hover { text-decoration: underline; }
+  #resultado-busqueda { max-width: 170px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .sep { width: 1px; height: 22px; background: var(--borde); }
+  select, input[type=search], button { font: inherit; height: 28px; border: 1px solid var(--borde);
+    border-radius: 5px; background: #fff; color: var(--texto); padding: 0 8px; }
+  input[type=search] { width: 160px; }
+  #medida { max-width: 250px; }
+  button { cursor: pointer; }
+  button[aria-pressed=true] { background: #e0e7ff; border-color: #94a3d8; color: #1e3a8a; }
+  button:disabled, select:disabled { opacity: .5; cursor: default; }
+  .marca-ejemplo { display: inline-block; font-size: 11px; font-weight: 700; letter-spacing: .03em;
+    color: var(--ejemplo); background: var(--ejemplo-fondo); border: 1px dashed var(--ejemplo);
+    border-radius: 4px; padding: 1px 6px; white-space: nowrap; }
+  .oculto { display: none !important; }
+
+  /* El plano ocupa todo lo demás */
+  #zona { flex: 1; position: relative; min-height: 0; }
+  #nave, #vista-lineal { position: absolute; inset: 0; }
+  #nave { }
+  #vista-lineal { display: grid; grid-template-columns: 1fr 340px; }
+  #alzado { position: relative; min-width: 0; }
+  #hueco { border-left: 1px solid var(--borde); background: var(--panel); overflow: auto; padding: 12px 14px; }
+  #hueco h2 { font-size: 15px; margin: 0 0 6px; }
+  #hueco table { border-collapse: collapse; width: 100%; margin-top: 6px; }
+  #hueco th, #hueco td { text-align: left; padding: 3px 4px; border-bottom: 1px solid #eef0f3; font-size: 12px; }
+  #hueco td.num, #hueco th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .caja-ejemplo { border: 2px dashed var(--ejemplo); background: var(--ejemplo-fondo); border-radius: 6px;
+    padding: 8px 10px; margin-top: 12px; }
+  .caja-real { border: 1px solid var(--borde); border-radius: 6px; padding: 8px 10px; }
+  .suave { color: var(--suave); }
+
+  /* Línea de estado abajo, una sola línea */
+  #estado { padding: 3px 12px; font-size: 11.5px; color: var(--suave); background: var(--panel);
+    border-top: 1px solid var(--borde); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+</style>
+</head>
+<body>
+  <div id="barra">
+    <h1>Mapa NAU-2</h1>
+    <nav id="migas" aria-label="Nivel de zoom"></nav>
+    <span class="sep" role="presentation"></span>
+    <label for="medida" class="suave">Medida</label>
+    <select id="medida"></select>
+    <span class="sep" role="presentation"></span>
+    <button id="b-contorno" aria-pressed="false" title="Línea entre posiciones de zona 0 y zona Z que se tocan">Límite de zona</button>
+    <button id="b-flechas" aria-pressed="false" title="Flechas de movimientos (DATOS DE EJEMPLO)">Flechas <span class="marca-ejemplo">EJEMPLO</span></button>
+    <span class="sep" role="presentation"></span>
+    <button id="b-comparar" aria-pressed="false" title="Hoy y plan Z5+01 lado a lado, con el zoom sincronizado">Antes / después</button>
+    <button id="b-diferencia" aria-pressed="false" disabled title="Pinta solo lo que cambia entre hoy y el plan">Diferencia</button>
+    <span class="sep" role="presentation"></span>
+    <input id="buscar" type="search" placeholder="Buscar: L45, L45 P05, I16…" aria-label="Buscar lineal, posición, temporada o modelo">
+    <span id="resultado-busqueda" class="suave"></span>
+    <span style="flex:1"></span>
+    <button id="b-ajustar" title="Ver la nave entera">Nave entera</button>
+    <button id="b-png" title="Guardar lo que se ve como imagen PNG">PNG</button>
+  </div>
+
+  <div id="zona">
+    <div id="nave"></div>
+    <div id="vista-lineal" class="oculto">
+      <div id="alzado"></div>
+      <aside id="hueco"></aside>
+    </div>
+  </div>
+  <div id="estado">Cargando datos.json…</div>
+
+  <!-- Apache ECharts, versión fija. Un único fichero, sin compilar. -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="mapa.js"></script>
+</body>
+</html>
