@@ -213,8 +213,18 @@ línea (la pieza sale de FALTANTE o, en los puestos a 0, de pérdidas). Si está
 «La ubicación no existe» (dos toques, en lugar de «Faltante»): la línea desaparece y se pasa a la siguiente. Validar:
 lo leído se valida y lo demás se cancela (sin pedido pendiente); con todo marcado y nada leído, la INT se cancela. El
 resultado se aplica al momento (koroshi_faltantes). Sin campos ni vistas nuevas.
+v3.34.0 (23/11/2026): revisión general del 23/11, entrega 2 (R5-R8). R5: lo leído se escribe en la base de datos antes
+de calcular el estado y fuera de su try; antes, si esa escritura fallaba (dos PDA a la vez), la PDA recibía «ok» y no
+se guardaba nada. R6: /validar deja en el log una línea con los ms de cada tramo (comprobaciones, validar con el
+asistente de pedido pendiente, cierre de tarea y estado) y el transportista, para decidir con datos si XPO/S4T van a
+una cola; y al validar solo se cierran la tarea y la asignación de esa OUT (o agrupación), no cron_cerrar() de todo
+el almacén dentro de la transacción (el cron de 5 min sigue haciendo el resto). R7: el estado ligero trae la
+ubicación de cada línea y, si ha cambiado (Contenedores, Faltantes), la PDA carga la OUT entera; yendo solo también
+se refresca cada koroshi_preparacion.refresco_solo_s segundos sin leer (30; 0 = no). R8: mientras se cierra una caja
+con red, el botón Caja está apagado («Cerrando caja…») y una CJ leída no cuenta. Sin campos ni vistas nuevas; un
+parámetro nuevo. No toca koroshi_operarios (usa sus métodos de tarea y asignación).
 """,
-    'version': '13.0.3.33.0',
+    'version': '13.0.3.34.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -226,6 +236,7 @@ resultado se aplica al momento (koroshi_faltantes). Sin campos ni vistas nuevas.
         'data/parametros_v315.xml',
         'data/parametros_v317.xml',
         'data/parametros_v322.xml',
+        'data/parametros_v334.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
     ],

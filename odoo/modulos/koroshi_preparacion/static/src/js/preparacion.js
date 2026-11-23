@@ -1,6 +1,10 @@
 odoo.define('koroshi_preparacion.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Preparación en Lecturas v3.2.0 - pantalla para preparar una OUT suelta sin salir de Lecturas.
+ * v3.34: el estado ligero trae la ubicación de cada línea: si ha cambiado (Contenedores, Faltantes), se carga la OUT
+ *   entera (antes se seguía viendo el hueco viejo). Yendo solo también se refresca, cada refresco_solo_s segundos sin
+ *   leer (parámetro koroshi_preparacion.refresco_solo_s, 30 por defecto). Mientras se cierra una caja (con red), el
+ *   botón Caja está apagado («Cerrando caja…») y una CJ leída no cuenta: no se cierran dos cajas por un doble toque.
  * v3.29: ROBUSTEZ. Una caja cerrada sin conexión que Odoo no acepta PARA la cola (antes la caja siguiente se llevaba
  * sus uds): la PDA pide otra etiqueta, «Probar otra vez» o «Dejar lo leído fuera de caja». Mover, deshacer y validar
  * van con id y tiempo máximo y se reintentan solos (no se hacen dos veces); validar contesta «validada» si ya lo
@@ -209,8 +213,11 @@ var Pantalla = AbstractAction.extend({
             if (self.refrescarAlEmpezar) { self.refrescarAlEmpezar = false; self._recargar(); }   // v3.14
             // v3.3: preparar a dos -> se ve lo que lee el compañero (y si valida, se vuelve a Lecturas)
             self.timerDos = setInterval(function () {
-                if (self.estado && self.estado.a_dos && self.modo === 'leer' && !self.enviando && !self.cola.length &&
-                        !self.sinRed) {
+                if (!self.estado || self.modo !== 'leer' || self.enviando || self.cola.length || self.sinRed) { return; }
+                // v3.34 (R7): yendo solo, también cada refresco_solo_s s sin respuesta nueva de Odoo (0 = nunca)
+                var solo = (self.estado.refresco_solo_s || 0) * 1000;
+                if (self.estado.a_dos || (solo > 0 && Date.now() - (self.ultimoEstado || 0) >= solo)) {
+                    self.ultimoEstado = Date.now();
                     self._recargar(null, true);   // v3.5: ligero
                 }
             }, A_DOS_MS);
@@ -308,6 +315,7 @@ var Pantalla = AbstractAction.extend({
     // orden): entonces hay que cargar la OUT entera.
     _aplicar: function (nuevo) {
         if (!nuevo) { return true; }
+        this.ultimoEstado = Date.now();   // v3.34 (R7): el refresco yendo solo cuenta desde aquí
         if (!nuevo.ligero) {
             this.estado = nuevo;
             this._reaplicarPendientes();   // v3.6
@@ -318,6 +326,9 @@ var Pantalla = AbstractAction.extend({
         if (!viejo || !viejo.lineas || viejo.lineas.length !== din.length) { return false; }
         for (var i = 0; i < din.length; i++) {
             if (viejo.lineas[i].id !== din[i][0]) { return false; }
+            // v3.34 (R7): la ubicación ha cambiado (la ha movido Contenedores o Faltantes): hay que cargar entera
+            if (din[i].length > 5 && viejo.lineas[i].ubicacion_id !== undefined &&
+                    viejo.lineas[i].ubicacion_id !== din[i][5]) { return false; }
         }
         var lineas = viejo.lineas;
         din.forEach(function (d, j) {
@@ -435,6 +446,12 @@ var Pantalla = AbstractAction.extend({
 
     _pendientes: function () {
         return this.cola.filter(function (i) { return i.tipo === 'leer' || i.tipo === 'cantidad'; }).length;
+    },
+
+    // v3.34 (R8): una caja que se está cerrando con red (en la cola o enviándose). Las cerradas sin red no cuentan:
+    // esas ya están cerradas en la PDA y se puede seguir.
+    _cajaEnVuelo: function () {
+        return this.cola.some(function (i) { return i.tipo === 'caja' && !i.local; });
     },
 
     // v3.22: cajas cerradas en la PDA que Odoo aún no tiene
@@ -815,6 +832,11 @@ var Pantalla = AbstractAction.extend({
         var tipo = this.modo === 'caja' ? 'caja' : 'leer';
         // v3.15: en una agrupación, leer una CJ es cerrar la caja de esa tienda (su etiqueta dice de qué OUT es)
         if (tipo === 'leer' && this._esLote() && RE_CJ.test(codigo)) { tipo = 'caja'; }
+        if (tipo === 'caja' && this._cajaEnVuelo()) {
+            // v3.34 (R8): ya se está cerrando una caja: esta lectura no cuenta (no se cierran dos por un doble toque)
+            this._aviso('Cerrando caja… Espera a que acabe y vuelve a leer la etiqueta si hace falta.', 'info');
+            return this._pitido(false);
+        }
         // v3.24.1: con tipos de caja, se lee la CJ y luego se dice qué caja es (no se cierra con un tipo supuesto)
         if (tipo === 'caja' && !this.tipoHoja && RE_CJ.test(codigo.toUpperCase()) &&
                 ((this.estado && this.estado.tipos_caja) || []).length) {
@@ -867,6 +889,7 @@ var Pantalla = AbstractAction.extend({
         this.cola.push(item);
         this._guardarCola();
         if (item.optimista) { this._pintar(); }
+        if (tipo === 'caja') { this.$('.o_kp_caja').prop('disabled', true).text('Cerrando caja…'); }   // v3.34 (R8)
         this._enviar();
     },
 
@@ -998,6 +1021,7 @@ var Pantalla = AbstractAction.extend({
     // ------------------------------------------------------------ caja
     _onCaja: function () {
         if (!this._out() || this.modo === 'rechazada') { return; }
+        if (this._cajaEnVuelo()) { this._aviso('Cerrando caja…', 'info'); return this._foco(); }   // v3.34 (R8)
         if (this.modo === 'pack') { this._cerrarHoja(); }
         if (!this.estado.sin_caja) {
             this._aviso('No hay nada leído fuera de caja.', 'info');
@@ -1020,6 +1044,7 @@ var Pantalla = AbstractAction.extend({
         this._aviso('Cerrando caja…', 'info');
         this.cola.push(auto);
         this._guardarCola();
+        this.$('.o_kp_caja').prop('disabled', true).text('Cerrando caja…');   // v3.34 (R8)
         this._enviar();
         return this._foco();
     },
@@ -2522,9 +2547,10 @@ var Pantalla = AbstractAction.extend({
         var conRed = !this.sinRed;
         var guardando = this.cola.length > 0 || this.enviando;
         var mias = e.a_dos ? e.mias_sin_caja : e.sin_caja;   // v3.3: a dos, solo lo suyo
+        var cerrando = this._cajaEnVuelo();   // v3.34 (R8)
         this.$('.o_kp_caja').toggle(out.con_caja !== false)   // v3.14: en las INT no hay botón Caja
-            .prop('disabled', !libre || !mias)   // v3.22: también sin red (Odoo la cierra al volver)
-            .text(conRed ? 'Caja' : 'Caja (sin red)')
+            .prop('disabled', !libre || !mias || cerrando)   // v3.22: también sin red (Odoo la cierra al volver)
+            .text(cerrando ? 'Cerrando caja…' : (conRed ? 'Caja' : 'Caja (sin red)'))
             .toggleClass('o_kp_destacado', !!mias && e.todo_leido);
         var armado = this.incompletoOut === out.id;   // v3.27: Zalando / About You, validar incompleto
         this.$('.o_kp_validar').prop('disabled', !libre || !conRed || guardando || !!e.sin_caja ||

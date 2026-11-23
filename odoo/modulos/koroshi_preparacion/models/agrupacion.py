@@ -121,7 +121,7 @@ class Agrupacion(models.AbstractModel):
             completa = L._completa(ml)
             if ligero:
                 lineas.append([ml.id, round(ml.product_uom_qty), round(ml.qty_done), ml.result_package_id.name or '',
-                               completa])
+                               completa, L._ubi(ml).id])   # v3.34 (R7): con la ubicación
             else:
                 d = L._linea_json(ml, fotos, alternativos)
                 i = info[ml.picking_id.id]
@@ -188,6 +188,7 @@ class Agrupacion(models.AbstractModel):
             'tipos_caja': L.tipos_caja(lote.company_id or None),   # v3.24
             'alarma_min': L.minutos_alarma(),   # v3.22
             'alarma_horario': L.horario_alarma(),   # v3.23
+            'refresco_solo_s': L.segundos_refresco(),   # v3.34 (R7)
         })
         return res
 
@@ -397,7 +398,7 @@ class Agrupacion(models.AbstractModel):
                 continue
             if r['estado'] == 'preguntar':
                 self._olvidar()
-                self._cerrar_tareas()
+                self._cerrar_tareas(lote)
                 txt = _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')
                 if validadas:
                     txt = _('%s OUT validadas. ') % len(validadas) + txt
@@ -405,18 +406,19 @@ class Agrupacion(models.AbstractModel):
             L._apuntar(p, employee, 'validar', p.name, 'ok', _('%s validada (agrupación %s).') % (p.name, lote.name))
             validadas.append(p)
         self._olvidar()   # v3.29: el estado de la respuesta, con las OUT que quedan de verdad
-        self._cerrar_tareas()
+        self._cerrar_tareas(lote)
         if errores:
             txt = (_('%s OUT validadas. ') % len(validadas) if validadas else '') + _('Sin validar: ') + '; '.join(errores)
             return {'ok': False, 'que': 'no_validada', 'msg': txt}
         return {'ok': True, 'que': 'validada', 'msg': _('%s: %s OUT validadas.') % (lote.name, len(validadas))}
 
     @api.model
-    def _cerrar_tareas(self):
+    def _cerrar_tareas(self, lote):
         try:
-            # cierra ya la tarea del operario si la agrupación está entera (lo mismo que tras validar una OUT)
+            # cierra ya la tarea del operario si la agrupación está entera (lo mismo que tras validar una OUT).
+            # v3.34 (R6): solo las de esta agrupación, no cron_cerrar() de todo el almacén
             with self.env.cr.savepoint():
-                self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
+                self._l().cerrar_tareas_de(lote.picking_ids)
         except Exception:
             _logger.exception('KOROSHI Preparación: no se han podido cerrar las tareas tras validar una agrupación')
 

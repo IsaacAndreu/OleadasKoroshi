@@ -11,6 +11,7 @@
 # =============================================================================
 import logging
 import re
+import time
 
 import json
 import psycopg2
@@ -42,7 +43,9 @@ PARAM_ORDEN = 'koroshi_preparacion.orden'   # v3.17: 'ubicacion' = como la app d
 PARAM_ALARMA = 'koroshi_preparacion.minutos_alarma'   # v3.22: minutos sin leer con la OUT abierta -> alarma; 0 = sin
 ALARMA_DEFECTO = '4'
 PARAM_HORARIO_ALARMA = 'koroshi_preparacion.horario_alarma'   # v3.23: tramos HH:MM-HH:MM separados por comas
-HORARIO_DEFECTO = '06:00-10:00,10:15-13:00,14:00-17:00'   # sin la pausa de 10:00-10:15 ni la comida de 13 a 14
+HORARIO_DEFECTO = '06:00-10:00,10:15-13:00,14:00-17:00'
+PARAM_REFRESCO_SOLO = 'koroshi_preparacion.refresco_solo_s'   # v3.34 (R7): segundos entre refrescos yendo solo; 0 = no
+REFRESCO_SOLO_DEFECTO = '30'   # sin la pausa de 10:00-10:15 ni la comida de 13 a 14
 
 
 class Ocupada(UserError):
@@ -81,6 +84,16 @@ class Lectura(models.Model):
     @api.model
     def _param(self, clave, defecto=''):
         return self.env['ir.config_parameter'].sudo().get_param(clave, defecto) or defecto
+
+    @api.model
+    def segundos_refresco(self):
+        """v3.34 (R7): cada cuántos segundos la PDA vuelve a pedir el estado (ligero) yendo solo, sin leer nada, para
+        ver lo que han cambiado otros (Contenedores, Faltantes). 0 = nunca (como antes). Mínimo 10."""
+        try:
+            n = int(float(self._param(PARAM_REFRESCO_SOLO, REFRESCO_SOLO_DEFECTO)))
+        except (TypeError, ValueError):
+            n = int(REFRESCO_SOLO_DEFECTO)
+        return 0 if n <= 0 else max(n, 10)
 
     @api.model
     def minutos_alarma(self):
@@ -440,7 +453,9 @@ class Lectura(models.Model):
             leidas = ml.qty_done
             completa = self._completa(ml)
             if ligero:
-                lineas.append([ml.id, round(pedidas), round(leidas), ml.result_package_id.name or '', completa])
+                # v3.34 (R7): sexto dato, la ubicación: si ha cambiado (Contenedores, Faltantes), la PDA carga entera
+                lineas.append([ml.id, round(pedidas), round(leidas), ml.result_package_id.name or '', completa,
+                               self._ubi(ml).id])
                 if not siguiente and not completa and not ml.result_package_id:
                     siguiente = ml.id
                 continue
@@ -506,6 +521,7 @@ class Lectura(models.Model):
             'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
             'alarma_min': self.minutos_alarma(),   # v3.22
             'alarma_horario': self.horario_alarma(),   # v3.23
+            'refresco_solo_s': self.segundos_refresco(),   # v3.34 (R7)
         })
         return res
 
@@ -530,6 +546,7 @@ class Lectura(models.Model):
             'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
             'ubicacion': self._ubi(ml).name or '',   # v3.33: en la ronda de faltantes, el destino
             'ubicacion_completa': self._ubi(ml).complete_name or '',
+            'ubicacion_id': self._ubi(ml).id,   # v3.34 (R7): para ver en el estado ligero si ha cambiado
             # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
             'ubicacion_codigos': [c for c in (self._ubi(ml).barcode, self._ubi(ml).location_id.barcode) if c],
             'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
@@ -1126,7 +1143,17 @@ class Lectura(models.Model):
         v3.29: la PDA manda un id_lectura y, si no le llega la respuesta (Odoo tarda), vuelve a mandar el mismo: si ya
         se validó, contesta «validada» (antes decía «ya está validada» como error y el operario no sabía qué había
         pasado). Una OUT ya hecha también contesta «validada». La OUT se bloquea: dos validaciones a la vez de la
-        misma OUT no pueden pasar (la segunda espera y vuelve a probar)."""
+        misma OUT no pueden pasar (la segunda espera y vuelve a probar).
+        v3.34 (R6): la respuesta lleva '_tiempos' (ms de cada tramo); la ruta los pone en el log y los quita."""
+        t0 = time.monotonic()
+        tiempos = {}
+
+        def con_tiempos(res, tramo=None, desde=None):
+            if tramo:
+                tiempos[tramo] = int((time.monotonic() - desde) * 1000)
+            res['_tiempos'] = tiempos
+            return res
+
         previa = self._repetida(id_lectura)
         if previa:
             return self._respuesta_repetida(previa)
@@ -1172,6 +1199,10 @@ class Lectura(models.Model):
         if self._con_caja(picking) and self._pack_auto(picking):
             pedido_pendiente = 'si'   # v3.27: Zalando / About You: lo que no sale nunca se cancela, queda pendiente
         ronda = self._es_ronda(picking)   # v3.33
+        tiempos['comprobaciones'] = int((time.monotonic() - t0) * 1000)   # v3.34: incluye la caja sola de Zalando
+        if caja_auto:
+            tiempos['caja_auto'] = 1
+        t1 = time.monotonic()
         try:
             if ronda:
                 r = self._validar_ronda(Faltante, picking, employee)
@@ -1184,7 +1215,8 @@ class Lectura(models.Model):
         except (UserError, ValidationError) as e:
             msg = e.name if hasattr(e, 'name') else str(e)
             self._apuntar(picking, employee, 'validar', picking.name, 'error', msg)
-            return {'ok': False, 'que': 'no_validada', 'msg': msg}
+            return con_tiempos({'ok': False, 'que': 'no_validada', 'msg': msg}, 'validar', t1)
+        tiempos['validar'] = int((time.monotonic() - t1) * 1000)   # button_validate (+ asistente pedido pendiente)
         if r['estado'] == 'pendientes':
             if a_dos:
                 # v3.3: preparar a dos
@@ -1200,7 +1232,8 @@ class Lectura(models.Model):
             return {'ok': False, 'que': 'quedan', 'n': r['n'],
                     'msg': _('Quedan %s líneas por coger: léelas o pulsa «Faltante».') % r['n']}
         if r['estado'] == 'preguntar':
-            return {'ok': True, 'que': 'preguntar', 'msg': _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')}
+            return con_tiempos({'ok': True, 'que': 'preguntar',
+                                'msg': _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')})
         msg = _('%s validada.') % picking.name
         if ronda:   # v3.33
             try:
@@ -1213,15 +1246,45 @@ class Lectura(models.Model):
             msg = _('%s validada incompleta (faltan %s uds): lo que falta, en %s.') % (
                 picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
         self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg, id_lectura=id_lectura)
+        t2 = time.monotonic()
         try:
-            # cierra ya la tarea del operario (lo mismo que hace koroshi_faltantes al validar)
+            # cierra ya la tarea del operario de esta OUT (v3.34, R6: solo la suya; antes cron_cerrar() de todas las
+            # tareas del almacén dentro de esta transacción)
             with self.env.cr.savepoint():
-                self.env['koroshi.operario.tarea'].sudo().cron_cerrar()
+                self.cerrar_tareas_de(picking)
         except Exception:
             _logger.exception('KOROSHI Preparación: no se han podido cerrar las tareas tras validar %s', picking.name)
         res = {'ok': True, 'que': 'validada', 'msg': msg, 'incompleta': bool(incompleto)}
         res.update(caja_auto)
-        return res
+        return con_tiempos(res, 'tarea', t2)
+
+    @api.model
+    def cerrar_tareas_de(self, pickings):
+        """v3.34 (R6): lo mismo que koroshi.operario.tarea.cron_cerrar() pero solo con las tareas y asignaciones de
+        estas OUT (o de su agrupación), que acaban de validarse. Antes reabre las cerradas por inactividad en las que el
+        operario volvió a leer (como cron_cerrar, para no perder esas uds). Lo demás lo sigue haciendo el cron cada
+        5 min. Devuelve cuántas tareas ha cerrado."""
+        if 'koroshi.operario.tarea' not in self.env:
+            return 0
+        Tarea = self.env['koroshi.operario.tarea'].sudo()
+        Tarea._reabrir_inactivas()
+        lotes = pickings.mapped('batch_id')
+        dominio = [('picking_id', 'in', pickings.ids)]
+        if lotes:
+            dominio = ['|', ('picking_id', 'in', pickings.ids), ('batch_id', 'in', lotes.ids)]
+        n = 0
+        for t in Tarea.search([('estado', '=', 'curso')] + dominio):
+            propias = t._pickings()
+            if propias and Tarea._validado(propias):
+                fin = Tarea._hora_validacion(propias)
+                t._cerrar('acabada', 'validada', fin if fin >= t.inicio else t.inicio)
+                n += 1
+        if 'koroshi.operario.asignacion' in self.env:
+            Asig = self.env['koroshi.operario.asignacion'].sudo()
+            for a in Asig.search([('estado', 'in', ('cola', 'curso', 'oficina'))] + dominio):
+                if a._terminada():
+                    a._cerrar_hecha()
+        return n
 
 
 class Equipo(models.Model):

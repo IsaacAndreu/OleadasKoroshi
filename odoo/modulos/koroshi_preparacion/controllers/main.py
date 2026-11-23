@@ -5,8 +5,11 @@
 # v3.15: con lote_id (en vez de picking_id) las rutas trabajan con la agrupación Z- entera (models/agrupacion.py).
 # v3.29: todo lo que la PDA manda con id_lectura y Odoo no acepta queda apuntado (con diferida=True si venía de la
 # cola de la PDA). Mover, deshacer y validar llevan también id_lectura: si la PDA reintenta, no se hace dos veces.
+# v3.34: lo pendiente se escribe en la base de datos ANTES de calcular el estado y fuera de su try (R5); /validar deja
+# una línea en el log con los ms de cada tramo y el transportista (R6).
 # =============================================================================
 import logging
+import time
 
 from odoo import http
 from odoo.exceptions import UserError, ValidationError
@@ -46,6 +49,10 @@ class KoroshiPreparacion(http.Controller):
         return request.env['stock.picking.batch'].browse(int(lote_id or 0)).exists()
 
     def _con_estado(self, picking, res, employee=None, ligero=False, lote=None, agrupacion=None):
+        # v3.34 (R5): lo leído se escribe aquí, fuera del try. Antes se escribía al calcular el estado, dentro del try:
+        # si la escritura fallaba (dos PDA a la vez en la misma línea), el error se tragaba, la PDA recibía «ok» y no
+        # se guardaba nada. Ahora el error sale: Odoo repite la petición o la PDA la reintenta con el mismo id.
+        request.env['stock.move.line'].flush()
         try:
             if lote:
                 lote.invalidate_cache()
@@ -269,6 +276,7 @@ class KoroshiPreparacion(http.Controller):
         emp = self._empleado(employee_id)
         pp = pedido_pendiente if pedido_pendiente in ('si', 'no') else None
         Agrupacion = self._agrupacion()
+        t0 = time.monotonic()
         try:
             if lote_id:
                 res = Agrupacion.validar(lote, emp, pp)
@@ -279,4 +287,30 @@ class KoroshiPreparacion(http.Controller):
             return {'ok': False, 'que': 'ocupada', 'msg': _msg(e)}
         except (UserError, ValidationError) as e:
             res = {'ok': False, 'que': 'no_validada', 'msg': _msg(e)}
-        return self._con_estado(picking, res, emp, lote=lote, agrupacion=Agrupacion)
+        t1 = time.monotonic()
+        tiempos = res.pop('_tiempos', None) or {}
+        res = self._con_estado(picking, res, emp, lote=lote, agrupacion=Agrupacion)
+        self._log_validar(picking, lote, pp, res, tiempos, t0, t1)
+        return res
+
+    def _log_validar(self, picking, lote, pp, res, tiempos, t0, t1):
+        """v3.34 (R6): una línea por validación con los ms de cada tramo, para saber dónde se van los 30-50 s. Sin
+        optimizar nada: con una semana de log se decide (p. ej. si XPO/S4T van a una cola). Nunca rompe la respuesta."""
+        try:
+            t2 = time.monotonic()
+            pickings = lote.picking_ids if lote else picking
+            transportistas = ', '.join(sorted(set(pickings.mapped('carrier_id.name')))) or 'sin transportista'
+            pendiente = 'no'
+            if pickings.mapped('backorder_ids'):
+                pendiente = 'crea pedido pendiente'
+            elif pp == 'no' and any(m.state == 'cancel' for m in pickings.mapped('move_lines')):
+                pendiente = 'cancela lo que falta'
+            _logger.info(
+                'KOROSHI Preparación validar %s [%s]: %s en %d ms (comprobaciones %s, validar %s, tarea %s, estado %d ms); '
+                'asistente de pedido pendiente: %s%s',
+                (lote or picking).display_name if (lote or picking) else '-', transportistas, res.get('que') or '-',
+                int((t2 - t0) * 1000), tiempos.get('comprobaciones', '-'), tiempos.get('validar', '-'),
+                tiempos.get('tarea', '-'), int((t2 - t1) * 1000), pendiente,
+                ' (con caja sola Zalando/About You)' if tiempos.get('caja_auto') else '')
+        except Exception:
+            _logger.exception('KOROSHI Preparación: no se ha podido apuntar el tiempo de validar')
