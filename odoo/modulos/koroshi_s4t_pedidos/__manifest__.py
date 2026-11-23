@@ -39,8 +39,16 @@ que no sea TIENDA..., puesto de operario ni SORTER); solo los articulos en dispu
 un savepoint por articulo. Parametro koroshi_s4t_pedidos.prioridad_modo: simular (por defecto), real o apagado.
 Modelos propios koroshi.s4t.prioridad(.linea); sin campos en tablas compartidas. Depende de koroshi_base y
 stock_picking_batch. Diseno: bin/versiones/diseno-reserva-tiendas-por-prioridad_2026-11-23.md.
+v1.2.0 (23/11/2026): revision general del 23/11 (R15), antes de poner prioridad_modo = real. Incluye la 1.1.0 (sin
+instalar). «No empezada» se vuelve a mirar dentro del savepoint de cada articulo, con lo ultimo de la base (en real hay
+commit por articulo y el reparto tarda): si una OUT se ha empezado entretanto, ese articulo se salta y lo dice el
+informe. «Repartir ahora» no deja en horario de trabajo (koroshi_s4t_pedidos.prioridad_horario, 06:00-17:00 si no
+existe), tampoco en simular. El reparto para koroshi_s4t_pedidos.prioridad_margen_zonas min (5) antes del cron «partir
+OUT» de koroshi_zonas, leyendo su siguiente hora, y no empieza si ya le toca: lo hecho hasta ahi queda. No toca
+koroshi_zonas. Sigue entrando en SIMULAR. En simular la comprobacion de dentro no ve lo que pase durante el reparto
+(no cambia nada, solo bloquea las lineas de cada articulo un momento).
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Sales',
     'license': 'LGPL-3',

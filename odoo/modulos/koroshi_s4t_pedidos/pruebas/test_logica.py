@@ -89,5 +89,28 @@ class TestPrioridad(unittest.TestCase):
         self.assertEqual(logica.CLAVE_PRIORIDAD, 719403)
 
 
+
+class TestCuandoNo(unittest.TestCase):
+    """v1.2.0 (R15): horario de trabajo y reparto de zonas."""
+
+    def test_horario(self):
+        self.assertTrue(logica.en_horario(6, 0, '06:00-17:00'))
+        self.assertTrue(logica.en_horario(16, 59, '06:00-17:00'))
+        self.assertFalse(logica.en_horario(17, 0, '06:00-17:00'))
+        self.assertFalse(logica.en_horario(5, 59, '06:00-17:00'))
+        self.assertFalse(logica.en_horario(10, 5, '06:00-10:00,10:15-17:00'))
+
+    def test_horario_mal_escrito(self):
+        self.assertTrue(logica.en_horario(9, 0, 'basura'))
+        self.assertTrue(logica.en_horario(9, 0, ''))
+
+    def test_zonas(self):
+        import datetime
+        z = datetime.datetime(2026, 11, 24, 3, 50)
+        self.assertFalse(logica.parar_por_zonas(datetime.datetime(2026, 11, 24, 3, 30), z, 5))
+        self.assertTrue(logica.parar_por_zonas(datetime.datetime(2026, 11, 24, 3, 46), z, 5))
+        self.assertTrue(logica.parar_por_zonas(datetime.datetime(2026, 11, 24, 3, 55), z, 5))   # zonas en marcha
+        self.assertFalse(logica.parar_por_zonas(datetime.datetime(2026, 11, 24, 3, 55), None, 5))
+
 if __name__ == '__main__':
     unittest.main()

@@ -105,3 +105,41 @@ def cambios(antes, despues):
         if abs(a - d) > TOLERANCIA:
             res.append((k, a, d))
     return res
+
+
+# v1.2.0 (revision general 23/11, R15): cuando no se puede repartir
+PARAM_PRIORIDAD_HORARIO = 'koroshi_s4t_pedidos.prioridad_horario'    # horario de trabajo: el boton no deja
+HORARIO_DEFECTO = '06:00-17:00'
+PARAM_PRIORIDAD_MARGEN = 'koroshi_s4t_pedidos.prioridad_margen_zonas'  # min antes del reparto de zonas para parar
+MARGEN_ZONAS_DEFECTO = 5
+
+
+def leer_horario(texto):
+    """'06:00-10:00,10:15-17:00' -> [(360, 600), (615, 1020)] en minutos. Mal escrito -> el de por defecto."""
+    tramos = []
+    for t in (texto or '').split(','):
+        t = t.strip()
+        if not t:
+            continue
+        try:
+            a, b = t.split('-')
+            ha, ma = [int(x) for x in a.strip().split(':')]
+            hb, mb = [int(x) for x in b.strip().split(':')]
+        except ValueError:
+            return leer_horario(HORARIO_DEFECTO) if texto != HORARIO_DEFECTO else [(360, 1020)]
+        tramos.append((ha * 60 + ma, hb * 60 + mb))
+    return tramos or leer_horario(HORARIO_DEFECTO)
+
+
+def en_horario(hora, minuto, texto):
+    """True si la hora local (hora, minuto) cae dentro de algun tramo del horario de trabajo."""
+    m = hora * 60 + minuto
+    return any(a <= m < b for a, b in leer_horario(texto))
+
+
+def parar_por_zonas(ahora_utc, siguiente_zonas_utc, margen_min):
+    """True si falta menos de margen_min minutos para el reparto de zonas, o ya le toca (su nextcall ha pasado: esta
+    en marcha o a punto). Sin cron de zonas (None) no para nunca. Fechas sin zona, en UTC."""
+    if siguiente_zonas_utc is None:
+        return False
+    return (siguiente_zonas_utc - ahora_utc).total_seconds() < margen_min * 60

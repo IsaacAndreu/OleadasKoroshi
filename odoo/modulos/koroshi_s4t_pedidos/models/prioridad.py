@@ -16,13 +16,21 @@
 #      articulo a articulo; 'real' guarda (commit por articulo); 'apagado' no hace nada.
 #   4. Informe: koroshi.s4t.prioridad con las lineas que ganan o pierden unidades.
 # Sin campos en tablas compartidas.
+# v1.2.0 (revision general 23/11, R15), antes de pasar a real:
+#   - «no empezada» se vuelve a mirar DENTRO del savepoint de cada articulo (el reparto tarda y hay commit por
+#     articulo: una OUT que alguien empieza a leer mientras tanto ya no se toca; ese articulo se salta).
+#   - el boton no deja repartir en horario de trabajo (koroshi_s4t_pedidos.prioridad_horario, 06:00-17:00).
+#   - se para koroshi_s4t_pedidos.prioridad_margen_zonas min (5) antes del cron de koroshi_zonas «partir OUT» (lee su
+#     siguiente hora; no toca koroshi_zonas), y no empieza si ya le toca a zonas. Lo hecho hasta ahi queda.
 # =============================================================================
+import datetime
 import logging
 import time
 
 import psycopg2
 
 from odoo import _, api, fields, models
+from odoo.exceptions import UserError
 from odoo.service.model import PG_CONCURRENCY_ERRORS_TO_RETRY
 
 from odoo.addons.koroshi_base import comun
@@ -38,6 +46,10 @@ ESTADOS_MOVE = ('confirmed', 'partially_available', 'assigned')
 
 class _Deshacer(Exception):
     """Para deshacer el savepoint de un articulo en modo simular."""
+
+
+class _Saltar(Exception):
+    """v1.2.0: una OUT del articulo se ha empezado mientras se repartia: ese articulo no se toca."""
 
 
 class PrioridadEjecucion(models.Model):
@@ -66,6 +78,18 @@ class PrioridadEjecucion(models.Model):
 
     @api.model
     def accion_repartir(self):
+        # v1.2.0 (R15): con el almacen trabajando no se reparte a mano (quita y vuelve a poner reservas de OUT que se
+        # estan preparando). Tampoco en simular: bloquea las lineas mientras prueba cada articulo
+        horario = (self.env['ir.config_parameter'].sudo().get_param(logica.PARAM_PRIORIDAD_HORARIO)
+                   or logica.HORARIO_DEFECTO)
+        ahora = comun.ahora_local()
+        if logica.en_horario(ahora.hour, ahora.minute, horario):
+            raise UserError(_('No se reparte por prioridad en horario de trabajo (%s, parametro %s): quitaria '
+                              'reservas a OUT que se estan preparando. Hazlo fuera de ese horario o espera al cron.')
+                            % (horario, logica.PARAM_PRIORIDAD_HORARIO))
+        if self._parar_por_zonas():
+            raise UserError(_('Ahora no: esta a punto de empezar (o en marcha) el reparto de zonas. Espera a que '
+                              'acabe.'))
         ejecucion = self._lanzar('manual')
         if not ejecucion:
             return {'type': 'ir.actions.act_window_close'}
@@ -95,48 +119,85 @@ class PrioridadEjecucion(models.Model):
             _logger.warning('KOROSHI S4T PRIORIDAD: ya hay otro reparto en marcha; este no hace nada')
             return False
 
+    @api.model
+    def _parar_por_zonas(self):
+        """v1.2.0 (R15): True si falta poco para el cron «partir OUT» de koroshi_zonas o ya le toca. Solo lee su
+        siguiente hora (sin koroshi_zonas instalado, nunca)."""
+        cron = self.env.ref('koroshi_zonas.cron_koroshi_zonas_partir', raise_if_not_found=False)
+        if not cron or not cron.sudo().active:
+            return False
+        margen = logica.leer_entero(self.env['ir.config_parameter'].sudo().get_param(logica.PARAM_PRIORIDAD_MARGEN),
+                                    logica.MARGEN_ZONAS_DEFECTO, 0)
+        return logica.parar_por_zonas(datetime.datetime.utcnow(), cron.sudo().nextcall, margen)
+
+    def _en_cola(self, outs):
+        en_cola = set()
+        if outs and 'koroshi.operario.asignacion' in self.env:
+            for a in self.env['koroshi.operario.asignacion'].search_read(
+                    [('picking_id', 'in', outs.ids), ('tipo', '=', 'out'),
+                     ('estado', 'in', ('cola', 'curso', 'oficina'))], ['picking_id']):
+                en_cola.add(a['picking_id'][0])
+        return en_cola
+
+    def _sorter(self):
+        return self.env['stock.location'].search([('barcode', '=', 'SORTER'),
+                                                  ('company_id', '=', comun.COMPANY_ID)], limit=1)
+
+    def _prefijo(self):
+        return (self.env['ir.config_parameter'].sudo().get_param(logica.PARAM_PRIORIDAD_LOTE)
+                or logica.PREFIJO_LOTE_TIENDA)
+
+    def _motivo_empezada(self, p, prefijo, sorter, en_cola):
+        """Por que esta OUT no se toca ('' = se puede tocar). v1.2.0: lo usan _candidatas y la comprobacion de
+        dentro del savepoint de cada articulo."""
+        lote = p.batch_id if 'batch_id' in p._fields else False
+        if p.state not in ('confirmed', 'assigned'):
+            return 'estado %s' % p.state
+        if logica.numero_pedido(p.origin) == logica.SIN_PEDIDO:
+            return 'sin numero de pedido'
+        if lote and not (lote.name or '').startswith(prefijo):
+            return 'en el lote %s' % lote.name
+        if p.id in en_cola:
+            return 'en el puesto de un operario'
+        if sorter and p.location_id == sorter:
+            return 'sale del SORTER'
+        for ml in p.move_line_ids:
+            if ml.qty_done > 0:
+                return 'ya tiene unidades leidas'
+            if ml.result_package_id:
+                return 'ya tiene cajas'
+            if sorter and ml.location_id == sorter:
+                return 'tiene lineas en el SORTER'
+        return ''
+
+    def _comprobar_sin_empezar(self, move_ids):
+        """v1.2.0 (R15): dentro del savepoint del articulo, con lo ultimo de la base: si alguna OUT de sus movimientos
+        se ha empezado (o ha cambiado de lote o de puesto) desde que se miro, _Saltar."""
+        self.env['base'].flush()
+        self.env.cache.invalidate()
+        pickings = self.env['stock.move'].browse(move_ids).mapped('picking_id')
+        prefijo, sorter, en_cola = self._prefijo(), self._sorter(), self._en_cola(pickings)
+        for p in pickings:
+            motivo = self._motivo_empezada(p, prefijo, sorter, en_cola)
+            if motivo:
+                raise _Saltar('%s %s: %s' % (p.name, p.origin or '', motivo))
+
     def _candidatas(self):
         """(OUT validas, [textos de saltadas])"""
         env = self.env
-        prefijo = (env['ir.config_parameter'].sudo().get_param(logica.PARAM_PRIORIDAD_LOTE)
-                   or logica.PREFIJO_LOTE_TIENDA)
+        prefijo = self._prefijo()
         outs = env['stock.picking'].search([
             ('company_id', '=', comun.COMPANY_ID),
             ('picking_type_code', '=', 'outgoing'),
             ('state', 'in', ('confirmed', 'assigned')),
             ('sale_id.s_order_type_id.name', '=', logica.TIPO_TIENDAS),
         ], order='id')
-        sorter = env['stock.location'].search([('barcode', '=', 'SORTER'),
-                                               ('company_id', '=', comun.COMPANY_ID)], limit=1)
-        en_cola = set()
-        if outs and 'koroshi.operario.asignacion' in env:
-            for a in env['koroshi.operario.asignacion'].search_read(
-                    [('picking_id', 'in', outs.ids), ('tipo', '=', 'out'),
-                     ('estado', 'in', ('cola', 'curso', 'oficina'))], ['picking_id']):
-                en_cola.add(a['picking_id'][0])
+        sorter = self._sorter()
+        en_cola = self._en_cola(outs)
         validas = env['stock.picking']
         saltadas = []
         for p in outs:
-            motivo = ''
-            lote = p.batch_id if 'batch_id' in p._fields else False
-            if logica.numero_pedido(p.origin) == logica.SIN_PEDIDO:
-                motivo = 'sin numero de pedido'
-            elif lote and not (lote.name or '').startswith(prefijo):
-                motivo = 'en el lote %s' % lote.name
-            elif p.id in en_cola:
-                motivo = 'en el puesto de un operario'
-            elif sorter and p.location_id == sorter:
-                motivo = 'sale del SORTER'
-            else:
-                for ml in p.move_line_ids:
-                    if ml.qty_done > 0:
-                        motivo = 'ya tiene unidades leidas'
-                    elif ml.result_package_id:
-                        motivo = 'ya tiene cajas'
-                    elif sorter and ml.location_id == sorter:
-                        motivo = 'tiene lineas en el SORTER'
-                    if motivo:
-                        break
+            motivo = self._motivo_empezada(p, prefijo, sorter, en_cola)
             if motivo:
                 saltadas.append('%s %s: %s' % (p.name, p.origin or '', motivo))
             else:
@@ -185,13 +246,22 @@ class PrioridadEjecucion(models.Model):
         antes_total = {}
         despues_total = {}
         errores = []
-        for prod_id, movs in disputa.items():
+        saltados = []           # v1.2.0: articulos con una OUT empezada mientras tanto
+        parado = ''             # v1.2.0: se ha parado antes del reparto de zonas
+        if modo == 'real':
+            guardar(self.env)   # v1.2.0: transaccion nueva: la comprobacion de cada articulo ve lo ultimo de la base
+        for n_articulo, (prod_id, movs) in enumerate(disputa.items()):
+            if self._parar_por_zonas():
+                parado = 'PARADO antes del reparto de zonas: %d de %d articulos sin mirar.' % (
+                    len(disputa) - n_articulo, len(disputa))
+                break
             ids = [m['id'] for m in movs]
             antes = {m['id']: m['reservado'] for m in movs}
             despues = None
             for intento in range(2):
                 try:
                     with cr.savepoint():
+                        self._comprobar_sin_empezar(ids)   # v1.2.0 (R15): con lo ultimo de la base
                         despues = self._repartir_articulo(ids)
                         # Todo a la base dentro del savepoint: lo que se deshace es la base, no solo la cache
                         self.env['base'].flush()
@@ -203,6 +273,10 @@ class PrioridadEjecucion(models.Model):
                 except _Deshacer:
                     # Nada de lo simulado puede quedarse en la cache ni pendiente de escribir
                     self.env.clear()
+                    break
+                except _Saltar as e:
+                    self.env.clear()
+                    saltados.append('articulo %s: %s' % (prod_id, e))
                     break
                 except psycopg2.OperationalError as e:
                     if e.pgcode not in PG_CONCURRENCY_ERRORS_TO_RETRY or intento:
@@ -249,6 +323,11 @@ class PrioridadEjecucion(models.Model):
                                             len(vals_lineas), len(errores), segundos)]
         if modo == 'simular':
             resumen.append('SIMULAR: no se ha cambiado ninguna reserva. Esto es lo que haria en real.')
+        if parado:
+            resumen.append(parado)
+        if saltados:
+            resumen.append('Articulos saltados (una OUT se ha empezado mientras se repartia; se quedan como estaban):')
+            resumen += ['  ' + s for s in saltados[:100]]
         if errores:
             resumen.append('Errores (esos articulos se quedan como estaban):')
             resumen += ['  ' + e for e in errores[:50]]
