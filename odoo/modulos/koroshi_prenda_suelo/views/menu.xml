@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Icono propio en la PDA (como «Referencia»). No va como actividad del Inicio PDA: abriría un tramo de tiempo. -->
+    <menuitem id="menu_koroshi_prenda_suelo_app" name="Prenda en el suelo"
+              action="action_koroshi_prenda_suelo_pantalla"
+              web_icon="koroshi_prenda_suelo,static/description/icon.png" sequence="5"
+              groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_prenda_suelo_oficina" name="Prendas del suelo"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" action="action_koroshi_prenda_suelo"
+              sequence="97"/>
+</odoo>

@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pantalla de la PDA -->
+    <record id="action_koroshi_prenda_suelo_pantalla" model="ir.actions.client">
+        <field name="name">Prenda en el suelo</field>
+        <field name="tag">koroshi_prenda_suelo</field>
+    </record>
+
+    <!-- Oficina: solo mirar (se crean desde la PDA) -->
+    <record id="view_koroshi_prenda_suelo_tree" model="ir.ui.view">
+        <field name="name">koroshi.prenda.suelo.tree</field>
+        <field name="model">koroshi.prenda.suelo</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false"
+                  decoration-muted="resultado == 'pendiente'" decoration-danger="resultado == 'no_sirve'"
+                  decoration-success="resultado in ('hecho', 'encontrada')">
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="product_id"/>
+                <field name="ubicacion_operario_id" optional="show"/>
+                <field name="caso"/>
+                <field name="destino"/>
+                <field name="para_employee_id" optional="hide"/>
+                <field name="picking_id" optional="hide"/>
+                <field name="resultado"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_prenda_suelo_form" model="ir.ui.view">
+        <field name="name">koroshi.prenda.suelo.form</field>
+        <field name="model">koroshi.prenda.suelo</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <h1><field name="name"/></h1>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                            <field name="codigo"/>
+                            <field name="ubicacion_operario_id"/>
+                        </group>
+                        <group>
+                            <field name="caso"/>
+                            <field name="destino"/>
+                            <field name="destino_ubicacion_id"/>
+                            <field name="picking_id"/>
+                            <field name="para_employee_id"/>
+                            <field name="faltante_id"/>
+                            <field name="resultado"/>
+                            <field name="nota"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_prenda_suelo_search" model="ir.ui.view">
+        <field name="name">koroshi.prenda.suelo.search</field>
+        <field name="model">koroshi.prenda.suelo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="product_id"/>
+                <field name="employee_id"/>
+                <field name="ubicacion_operario_id"/>
+                <filter name="hoy" string="Hoy" domain="[('dia', '=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="no_sirve" string="No sirve" domain="[('resultado', '=', 'no_sirve')]"/>
+                <separator/>
+                <filter name="por_caso" string="Caso" context="{'group_by': 'caso'}"/>
+                <filter name="por_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                <filter name="por_dia" string="Día" context="{'group_by': 'dia'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_prenda_suelo" model="ir.actions.act_window">
+        <field name="name">Prendas del suelo</field>
+        <field name="res_model">koroshi.prenda.suelo</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'search_default_hoy': 1}</field>
+    </record>
+</odoo>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: si la oficina lo cambia, al actualizar el módulo no se pisa -->
+    <data noupdate="1">
+        <record id="param_sitio_sin_hueco" model="ir.config_parameter">
+            <field name="key">koroshi_prenda_suelo.sitio_sin_hueco</field>
+            <field name="value">la mesa de los jefes</field>
+        </record>
+    </data>
+</odoo>
