@@ -23,10 +23,24 @@ class ReportStockQuantity(models.Model):
     warehouse_id = fields.Many2one('stock.warehouse', readonly=True)
 
     def init(self):
+        # TUCTUC 24/11/2026: el "WITH forecast_qty AS (...) SELECT ... FROM forecast_qty" pasa a ser
+        # "SELECT ... FROM (...) AS forecast_qty". Misma consulta y mismo resultado (se mantiene UNION, no UNION ALL).
+        # En PostgreSQL 11 un CTE es una barrera: se calculaba entero (todos los productos x 6 meses de fechas) y el
+        # filtro product_id = X de la pantalla Previsto se aplicaba al final (minutos). Como subconsulta, PostgreSQL
+        # mete el filtro dentro de cada parte del UNION y usa los indices por producto (en nath: 220 s -> 0,15 s,
+        # 185 = 185 filas). Copia y motivo: repo OleadasKoroshi, odoo/nucleo_tuctuc/README.md.
         tools.drop_view_if_exists(self._cr, 'report_stock_quantity')
         query = """
 CREATE or REPLACE VIEW report_stock_quantity AS (
-WITH forecast_qty AS (
+SELECT
+    MIN(id) as id,
+    product_id,
+    state,
+    date,
+    sum(product_qty) as product_qty,
+    company_id,
+    warehouse_id
+FROM (
     SELECT
         m.id,
         m.product_id,
@@ -112,16 +126,7 @@ WITH forecast_qty AS (
         product_qty != 0 AND
         (whs.id IS NULL or whd.id IS NULL OR whs.id != whd.id) AND
         m.state NOT IN ('cancel', 'draft')
-)
-SELECT
-    MIN(id) as id,
-    product_id,
-    state,
-    date,
-    sum(product_qty) as product_qty,
-    company_id,
-    warehouse_id
-FROM forecast_qty
+) AS forecast_qty
 GROUP BY product_id, state, date, company_id, warehouse_id
 );
 """

@@ -613,7 +613,11 @@ class StockQuant(models.Model):
         :param domain: List for the domain, empty by default.
         :param extend: If True, enables form, graph and pivot views. False by default.
         """
-        self._quant_tasks()
+        # TUCTUC 24/11/2026: ya no se llama a self._quant_tasks() en cada clic del boton Stock / Inventario > Stock.
+        # _merge_quants (GROUP BY sobre los 6,5 M quants + UPDATE/DELETE) y _unlink_zero_quants costaban 9,4 s +
+        # 2,3 s por clic (medido 23/11) y escribian en stock_quant. Los sigue haciendo el planificador
+        # (stock_rule.py, run_scheduler) y custom_addons/procurement_ext. Copia y motivo: repo OleadasKoroshi,
+        # odoo/nucleo_tuctuc/README.md.
         ctx = dict(self.env.context or {})
         ctx.pop('group_by', None)
         action = {

@@ -25,7 +25,11 @@ class StockMoveLine(models.Model):
         check_company=True,
         help="Change to a better name", index=True)
     company_id = fields.Many2one('res.company', string='Company', readonly=True, required=True, index=True)
-    product_id = fields.Many2one('product.product', 'Product', ondelete="cascade", check_company=True, domain="[('type', '!=', 'service'), '|', ('company_id', '=', False), ('company_id', '=', company_id)]")
+    # TUCTUC 24/11/2026: index=True. Sin indice, cada pantalla de movimientos de un producto (trazabilidad, boton de
+    # la ficha) recorria la tabla entera (19 M filas, 11 GB, ~1 s por consulta). El indice
+    # stock_move_line_product_id_index se crea antes A MANO con CREATE INDEX CONCURRENTLY (sin bloquear la tabla);
+    # al actualizar stock, Odoo lo encuentra hecho y no lo vuelve a crear. Repo OleadasKoroshi, odoo/nucleo_tuctuc.
+    product_id = fields.Many2one('product.product', 'Product', ondelete="cascade", check_company=True, index=True, domain="[('type', '!=', 'service'), '|', ('company_id', '=', False), ('company_id', '=', company_id)]")
     product_uom_id = fields.Many2one('uom.uom', 'Unit of Measure', required=True)
     product_qty = fields.Float(
         'Real Reserved Quantity', digits=0,

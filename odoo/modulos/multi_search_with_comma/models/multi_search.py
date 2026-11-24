@@ -27,8 +27,11 @@ def _where_calc(self, domain, active_test=True):
         if not any(item[0] == 'active' for item in domain):
             domain = [('active', '=', 1)] + domain
     #is_multi_search_installed = self.env['ir.module.module'].search([('state','=','installed'),('name','=','multi_search')], limit=1)
-    self.env.cr.execute("SELECT id FROM ir_module_module WHERE name='multi_search_with_comma' and state='installed' limit 1")
-    is_multi_search_installed = self.env.cr.fetchone()
+    # 11.0.1 (24/11/2026, tuctuc): antes se preguntaba a la base de datos en CADA busqueda de CUALQUIER modelo
+    #   SELECT id FROM ir_module_module WHERE name='multi_search_with_comma' and state='installed' limit 1
+    # (una consulta de mas por search(), tambien dentro de bucles de miles). El registro ya cargado de la base de
+    # datos sabe que modulos estan instalados: mismo resultado sin ir a la base de datos.
+    is_multi_search_installed = 'multi_search_with_comma' in self.env.registry._init_modules
     if domain:
         modified_domain = []
         #_logger.info(str(domain))
