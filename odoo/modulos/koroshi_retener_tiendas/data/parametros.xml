@@ -2,7 +2,7 @@
 <odoo>
     <!-- Parametros (Ajustes > Tecnico > Parametros del sistema). noupdate: al actualizar no se pisan.
          Se instala en modo AVISO: revisa y avisa, pero no aparta nada (los enganches de zonas y operarios devuelven
-         una lista vacia). s4t = 0: no pregunta a S4T hasta confirmar el campo de estado (P0 del diseno).
+         una lista vacia). s4t = 1: pregunta el estado al dashboard de S4T (v1.1.0, comprobado el 24/11).
          ultima la escribe el cron. -->
     <data noupdate="1">
         <record id="param_modo" model="ir.config_parameter">
@@ -27,11 +27,20 @@
         </record>
         <record id="param_s4t" model="ir.config_parameter">
             <field name="key">koroshi_retener_tiendas.s4t</field>
-            <field name="value">0</field>
+            <field name="value">1</field>
         </record>
-        <record id="param_s4t_paginas" model="ir.config_parameter">
-            <field name="key">koroshi_retener_tiendas.s4t_paginas</field>
-            <field name="value">40</field>
+        <!-- v1.1.0 -->
+        <record id="param_s4t_limite" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.s4t_limite</field>
+            <field name="value">3000</field>
+        </record>
+        <record id="param_s4t_almacen" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.s4t_almacen</field>
+            <field name="value">2</field>
+        </record>
+        <record id="param_ventana_horas" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.ventana_horas</field>
+            <field name="value">3</field>
         </record>
     </data>
 </odoo>

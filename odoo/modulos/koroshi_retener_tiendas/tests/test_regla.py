@@ -51,6 +51,37 @@ class TestRegla(unittest.TestCase):
         self.assertEqual(est, {'6665004614': 'CANCELLED', '6665004712': 'PENDING'})
         self.assertEqual(campos, {'numero': 'orderNumber', 'estado': 'status'})
 
+    def test_payload_real_dashboard(self):
+        # Respuesta de /dashboard/orders/data del 24/11 (recortada)
+        items = [{'id': 35631476, 'numero_orden': '6665004760', 'numero_pedido': '0181000060', 'type': 'B2B',
+                  'cliente': '00000060', 'nombre_cliente': 'K60 - LOS PRADOS', 'status': 'PENDING',
+                  'status_name': 'Pendiente', 'fecha_orden': '2026-11-24'},
+                 {'id': 1, 'numero_orden': '6665004662', 'numero_pedido': '0181000060', 'status': 'CANCELLED',
+                  'status_name': 'Cancelada'}]
+        est, campos = regla.estados_de_items(items, {'6665004760', '6665004662'})
+        self.assertEqual(est, {'6665004760': 'PENDING', '6665004662': 'CANCELLED'})
+        self.assertEqual(campos, {'numero': 'numero_orden', 'estado': 'status'})
+
+    def test_ventana(self):
+        # tarde (15:00) + noche (01:28): pedidos distintos, no se retienen
+        p = [dict(ped(1, 'a', 'K40'), creado=DT(2026, 10, 15, 13, 0)),
+             dict(ped(2, 'b', 'K40'), creado=DT(2026, 10, 15, 23, 28))]
+        self.assertEqual(regla.decidir(p, {}, False, 3), {})
+        # con ventana 0 (toda la noche) si
+        self.assertEqual(len(regla.decidir(p, {}, False, 0)), 2)
+        # 24/11: 01:14, 01:38 y 02:15 -> un grupo; el de tarde (15:16) va aparte
+        p = [dict(ped(1, '4613', 'K80'), creado=DT(2026, 11, 23, 14, 16)),
+             dict(ped(2, '4660', 'K80'), creado=DT(2026, 11, 24, 0, 14)),
+             dict(ped(3, '4709', 'K80'), creado=DT(2026, 11, 24, 0, 38)),
+             dict(ped(4, '4758', 'K80'), creado=DT(2026, 11, 24, 1, 14))]
+        r = regla.decidir(p, {}, False, 3)
+        self.assertEqual(sorted(r), [2, 3, 4])
+        est = {'4613': 'READY', '4660': 'CANCELLED', '4709': 'CANCELLED', '4758': 'PENDING'}
+        r = regla.decidir(p, est, True, 3)
+        self.assertEqual(r[4], (False, regla.UNICO_VIVO, 'PENDING'))
+        self.assertTrue(r[2][0] and r[3][0])
+        self.assertNotIn(1, r)
+
     def test_un_pedido_por_tienda(self):
         p = [ped(1, '1', 'K1'), ped(2, '2', 'K2'), ped(3, '3', '')]
         self.assertEqual(regla.decidir(p, {}, False), {})

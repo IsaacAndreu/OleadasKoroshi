@@ -26,12 +26,12 @@ PARAM_HORA_NOCHE = P + 'hora_noche'        # desde que hora del dia anterior cue
 PARAM_TIPO = P + 'tipo_pedido'             # tipo de pedido de las tiendas: 'PED. TIENDAS'
 PARAM_AVISAR = P + 'avisar'                # correos separados por comas
 PARAM_S4T = P + 's4t'                      # 1 = preguntar el estado a S4T; 0 = solo duplicados (P0 del diseno)
-PARAM_S4T_PAGINAS = P + 's4t_paginas'      # maximo de paginas de 500 pedidos que se leen de la API
+PARAM_S4T_LIMITE = P + 's4t_limite'        # maximo de ordenes que se piden al dashboard de S4T (v1.1.0)
+PARAM_S4T_ALMACEN = P + 's4t_almacen'      # almacen_id de NAU-2 en S4T (v1.1.0)
+PARAM_VENTANA = P + 'ventana_horas'        # duplicado = pedidos de la tienda a menos de estas horas (v1.1.0)
 
 MARGEN_MIN = 60
 TIMEOUT = 30
-TAMANO_PAGINA = 500
-VIEWED = 'true'     # NUNCA 'false': marcaria como vistos los pedidos nuevos y Odoo ya no los crearia
 
 
 class KoroshiPedidoRetenido(models.Model):
@@ -115,10 +115,13 @@ class KoroshiPedidoRetenido(models.Model):
 
     # ------------------------------------------------------------------ S4T
     @api.model
-    def _estados_s4t(self, numeros):
-        """Estado de los pedidos en S4T. Solo GET y siempre viewed=true (viewed=false marcaria como vistos los
-        pedidos nuevos y no se volverian a crear en Odoo). Devuelve (ok, {numero: ESTADO}, nota para el aviso)."""
-        if self._param(PARAM_S4T, '0') != '1':
+    def _estados_s4t(self, numeros, dia_desde, dia_hasta):
+        """Estado de los pedidos en S4T. v1.1.0: el endpoint del dashboard de S4T «Órdenes B2B» (comprobado el 24/11:
+        GET /dashboard/orders/data?type=B2B&almacen_id=2&date_from=&date_to=, con numero_orden y status =
+        PENDING/READY/CANCELLED). Solo GET y no lleva viewed: no marca nada como visto (/orders/b2b con
+        viewed=false si lo haria). dia_desde/dia_hasta: fechas de pedido (fecha_orden) de la noche.
+        Devuelve (ok, {numero: ESTADO}, nota para el aviso)."""
+        if self._param(PARAM_S4T, '1') != '1':
             return False, {}, 'no se pregunta (parámetro %s = 0): solo se miran los duplicados' % PARAM_S4T
         if not numeros:
             return True, {}, 'no hay pedidos que preguntar'
@@ -131,39 +134,29 @@ class KoroshiPedidoRetenido(models.Model):
         if '/api/service' not in base:
             base += '/api/service'
         try:
-            paginas = max(int(self._param(PARAM_S4T_PAGINAS, '40')), 1)
+            limite = max(int(self._param(PARAM_S4T_LIMITE, '3000')), 1)
         except ValueError:
-            paginas = 40
-        pendientes = set(numeros)
-        estados = {}
-        campos = {}
-        leidos = 0
+            limite = 3000
+        params = {'type': 'B2B', 'almacen_id': self._param(PARAM_S4T_ALMACEN, '2'), 'limit': limite,
+                  'date_from': dia_desde.isoformat(), 'date_to': dia_hasta.isoformat()}
         try:
-            for pagina in range(paginas):
-                params = {'viewed': VIEWED, 'skip': pagina * TAMANO_PAGINA, 'limit': TAMANO_PAGINA}
-                r = requests.get('%s/orders/b2b' % base, headers={'X-Api-Key': config.api_key}, params=params,
-                                 timeout=TIMEOUT)
-                if r.status_code != 200:
-                    return False, {}, 'S4T contesta HTTP %s: solo se miran los duplicados' % r.status_code
-                datos = r.json()
-                items = datos
-                if isinstance(datos, dict):
-                    items = next((v for v in datos.values() if isinstance(v, list)), [])
-                if not items:
-                    break
-                leidos += len(items)
-                est, cam = regla.estados_de_items(items, pendientes)
-                estados.update(est)
-                for k, v in cam.items():
-                    campos.setdefault(k, v)
-                pendientes -= set(est)
-                if not pendientes or len(items) < TAMANO_PAGINA:
-                    break
+            r = requests.get('%s/dashboard/orders/data' % base, headers={'X-Api-Key': config.api_key},
+                             params=params, timeout=TIMEOUT)
+            if r.status_code != 200:
+                return False, {}, 'S4T contesta HTTP %s: solo se miran los duplicados' % r.status_code
+            datos = r.json()
         except Exception as e:
             _logger.warning('KOROSHI Retener: S4T no contesta: %s', e)
             return False, {}, 'S4T sin respuesta (%s): solo se miran los duplicados' % str(e)[:120]
-        nota = 'leídos %s pedidos; %s de %s encontrados (campos: %s)' % (
-            leidos, len(estados), len(numeros), ', '.join('%s=%s' % kv for kv in sorted(campos.items())) or '-')
+        items = datos.get('orders') if isinstance(datos, dict) else datos
+        if not isinstance(items, list):
+            return False, {}, 'S4T contesta sin lista de órdenes: solo se miran los duplicados'
+        estados, campos = regla.estados_de_items(items, set(numeros))
+        cortada = isinstance(datos, dict) and (datos.get('summary') or {}).get('truncated')
+        nota = '%s órdenes del %s al %s; %s de %s pedidos encontrados (campos: %s)%s' % (
+            len(items), dia_desde.strftime('%d/%m'), dia_hasta.strftime('%d/%m'), len(estados), len(numeros),
+            ', '.join('%s=%s' % kv for kv in sorted(campos.items())) or '-',
+            cortada and '. OJO: S4T ha cortado la lista (subir %s)' % PARAM_S4T_LIMITE or '')
         _logger.info('KOROSHI Retener: S4T %s', nota)
         return True, estados, nota
 
@@ -176,8 +169,13 @@ class KoroshiPedidoRetenido(models.Model):
         hora_noche = regla.hora(self._param(PARAM_HORA_NOCHE, '14:00'), (14, 0))
         noche = regla.inicio_noche(ahora.replace(tzinfo=None), hora_noche).date() + datetime.timedelta(days=1)
         pedidos = self._pedidos_noche(ahora)
-        ok, estados, nota = self._estados_s4t([regla.numero_s4t(p['name']) for p in pedidos if p['tienda']])
-        resultado = regla.decidir(pedidos, estados, ok)
+        ok, estados, nota = self._estados_s4t([regla.numero_s4t(p['name']) for p in pedidos if p['tienda']],
+                                              noche - datetime.timedelta(days=1), noche)
+        try:
+            ventana = float(self._param(PARAM_VENTANA, '3'))
+        except ValueError:
+            ventana = 3.0
+        resultado = regla.decidir(pedidos, estados, ok, ventana)
         Fila = self.sudo()
         existentes = dict((f.sale_id.id, f) for f in Fila.search([('noche', '=', noche)]))
         for p in pedidos:

@@ -157,3 +157,19 @@ Sí la propongo como **complemento** para los cancelados en S4T (P2).
 - Sin hacer todavía: P2 (quitar la reserva a los cancelados), los enganches en `koroshi_zonas` y `koroshi_operarios`
   (P6: los tienen otras sesiones) y el ajuste de la reserva por prioridad (P4). Hasta entonces, el modo real no
   aparta nada aunque se encienda.
+
+## 9. Comprobado en producción el 24/11 (solo lectura) y koroshi_retener_tiendas 1.1.0, SIN INSTALAR
+
+- **P0 resuelta.** La acción 1987 no había llegado a funcionar: da `NameError: requests` (las acciones de servidor no
+  tienen `requests`); al lanzarla no hizo nada. El estado está en el dashboard de S4T «Órdenes B2B», que llama a
+  `GET /api/service/dashboard/orders/data?type=B2B&almacen_id=2&status=&date_from=&date_to=` (cabecera `x-api-key`),
+  con `numero_orden` y `status` (PENDING / READY / CANCELLED). No lleva `viewed`. El 24/11 da **99 CANCELLED**
+  (las dos tandas y S-6665004737, cancelada después). La 1.1.0 pregunta ahí y viene con `s4t` = 1.
+- **La tienda no está en el cliente del pedido**: `partner_id` es «DIGITAL E-GLOBAL XPERIENCE, SL»; la tienda es la
+  dirección de entrega, contacto hijo con `name` = «K60 - LOS PRADOS». El módulo ya leía `partner_shipping_id.name`.
+  En 120 días, 3.393 pedidos y todos tienen tienda K##.
+- **P3 resuelta (duplicados).** Con «toda la noche desde las 14:00» salen 13 noches con alguna tienda repetida; 11
+  son un pedido de tarde (14:15, 15:00, 17:15) más el de la noche, a 9-11 h, pedidos distintos. Con «pedidos de la
+  tienda a menos de 3 h uno de otro, entrados antes de las 04:40» solo salen **2 noches: 07/10 (50 tiendas, 100
+  pedidos) y 24/11 (49 tiendas, 147 pedidos)**, los dos incidentes reales. Ningún falso aviso. Parámetro
+  `ventana_horas` = 3.

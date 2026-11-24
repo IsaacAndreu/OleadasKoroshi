@@ -6,7 +6,8 @@
 #   horas(texto) / hora_pendiente()   a que horas del dia se revisa y cual toca ahora
 #   numero_s4t(nombre)                'S-6665004614' -> '6665004614'
 #   estados_de_items(items, numeros)  estado de cada pedido en la respuesta de la API de S4T
-#   decidir(pedidos, estados, s4t_ok) que pedidos se retienen y por que
+#   grupos_seguidos(lista, horas)     pedidos de una tienda que entran a menos de 'horas' unos de otros
+#   decidir(pedidos, estados, s4t_ok, ventana_horas)  que pedidos se retienen y por que
 #   texto_aviso(...)                  el correo para el responsable
 # Diseno: bin/versiones/diseno-retener-pedidos-tienda_2026-11-24.md
 # =============================================================================
@@ -116,22 +117,45 @@ def estados_de_items(items, numeros):
     return estados, campos
 
 
-def decidir(pedidos, estados, s4t_ok):
+def grupos_seguidos(lista, horas):
+    """Parte los pedidos de una tienda en grupos de pedidos seguidos: cada uno entra a menos de 'horas' horas del
+    anterior. lista: [{'creado': datetime, ...}]. Sin 'creado' (o horas <= 0) todo es un solo grupo.
+    v1.1.0: medido en Odoo el 24/11 (120 dias): los duplicados de verdad (07/10 y 24/11) entran en menos de 2 h; un
+    pedido de tarde (14:15, 15:00, 17:15) y el de la noche estan a 9-11 h y son pedidos distintos."""
+    if not lista:
+        return []
+    if not horas or horas <= 0 or any(not p.get('creado') for p in lista):
+        return [list(lista)]
+    orden = sorted(lista, key=lambda p: p['creado'])
+    grupos = [[orden[0]]]
+    for p in orden[1:]:
+        if p['creado'] - grupos[-1][-1]['creado'] <= datetime.timedelta(hours=horas):
+            grupos[-1].append(p)
+        else:
+            grupos.append([p])
+    return grupos
+
+
+def decidir(pedidos, estados, s4t_ok, ventana_horas=0):
     """Que pedidos de la noche se retienen.
 
-    pedidos: [{'id', 'name', 'tienda', ...}] (los que no tienen tienda K## no se miran).
+    pedidos: [{'id', 'name', 'tienda', 'creado', ...}] (los que no tienen tienda K## no se miran).
     estados: {numero sin prefijo: ESTADO S4T}. s4t_ok: True si la API ha contestado.
     Reglas (diseno 24/11):
       - Pedido cancelado en S4T: se retiene siempre.
-      - Tienda con mas de un pedido en la noche: se retienen todos, salvo que S4T haya contestado, conozca todos
-        los pedidos de esa tienda y solo uno siga vivo: ese pasa (UNICO_VIVO) y se retienen los cancelados.
+      - Tienda con mas de un pedido seguido (a menos de ventana_horas uno de otro; 0 = toda la noche): se retienen
+        todos los del grupo, salvo que S4T haya contestado, conozca todos los del grupo y solo uno siga vivo: ese
+        pasa (UNICO_VIVO) y se retienen los cancelados.
     Devuelve {id: (retener, motivo, estado_s4t)} solo de los pedidos que se apuntan (retenidos y unicos vivos)."""
     por_tienda = {}
     for p in pedidos:
         if p.get('tienda'):
             por_tienda.setdefault(p['tienda'], []).append(p)
     salida = {}
-    for tienda, lista in por_tienda.items():
+    grupos = []
+    for lista in por_tienda.values():
+        grupos.extend(grupos_seguidos(lista, ventana_horas))
+    for lista in grupos:
         info = []
         for p in lista:
             est = estados.get(numero_s4t(p['name']), '') if s4t_ok else ''
