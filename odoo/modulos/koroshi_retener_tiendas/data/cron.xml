@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Cada 15 min: a las horas de koroshi_retener_tiendas.horas (04:40 y 05:45 hora local) revisa los pedidos de
+         tienda de la noche y, si hay retenidos sin decidir, manda el correo. -->
+    <record id="cron_revisar" model="ir.cron">
+        <field name="name">KOROSHI Retener pedidos de tienda: revisar la noche</field>
+        <field name="model_id" ref="model_koroshi_pedido_retenido"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_revisar()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

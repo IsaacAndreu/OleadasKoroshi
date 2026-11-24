@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_koroshi_pedido_retenido_tree" model="ir.ui.view">
+        <field name="name">koroshi.pedido.retenido.tree</field>
+        <field name="model">koroshi.pedido.retenido</field>
+        <field name="arch" type="xml">
+            <tree create="false" delete="false"
+                  decoration-danger="retener and decision == 'pendiente'"
+                  decoration-success="not retener or decision == 'preparar'"
+                  decoration-muted="decision == 'cancelado'">
+                <field name="noche"/>
+                <field name="tienda"/>
+                <field name="pedido"/>
+                <field name="creado"/>
+                <field name="uds" sum="Uds"/>
+                <field name="n_out"/>
+                <field name="estado_s4t"/>
+                <field name="motivo"/>
+                <field name="retener"/>
+                <field name="decision"/>
+                <field name="decidido_por"/>
+                <button name="accion_preparar" type="object" string="Preparar este" icon="fa-check"
+                        groups="stock.group_stock_manager"
+                        attrs="{'invisible': ['|', ('retener', '=', False), ('decision', '!=', 'pendiente')]}"
+                        confirm="El pedido deja de estar retenido y sus OUT se pueden preparar. ¿Seguro?"/>
+                <button name="accion_cancelado" type="object" string="Ya cancelado en Odoo" icon="fa-times"
+                        groups="stock.group_stock_manager"
+                        attrs="{'invisible': ['|', ('retener', '=', False), ('decision', '!=', 'pendiente')]}"
+                        confirm="Solo apunta la decisión: las OUT se cancelan a mano, como siempre. ¿Seguro?"/>
+                <button name="accion_pendiente" type="object" string="Volver a sin decidir" icon="fa-undo"
+                        groups="stock.group_stock_manager"
+                        attrs="{'invisible': [('decision', '=', 'pendiente')]}"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_pedido_retenido_search" model="ir.ui.view">
+        <field name="name">koroshi.pedido.retenido.search</field>
+        <field name="model">koroshi.pedido.retenido</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="pedido"/>
+                <field name="tienda"/>
+                <filter name="sin_decidir" string="Retenidos sin decidir"
+                        domain="[('retener', '=', True), ('decision', '=', 'pendiente')]"/>
+                <filter name="retenidos" string="Retenidos" domain="[('retener', '=', True)]"/>
+                <separator/>
+                <filter name="noche" string="Noche" date="noche"/>
+                <group expand="1" string="Agrupar por">
+                    <filter name="por_noche" string="Noche" context="{'group_by': 'noche'}"/>
+                    <filter name="por_tienda" string="Tienda" context="{'group_by': 'tienda'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_pedido_retenido" model="ir.actions.act_window">
+        <field name="name">Pedidos de tienda retenidos</field>
+        <field name="res_model">koroshi.pedido.retenido</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_por_noche': 1, 'search_default_por_tienda': 1}</field>
+        <field name="help" type="html">
+            <p>Pedidos de tienda (S-) de una noche con más de un pedido de la misma tienda o cancelados en S4T.</p>
+            <p>Retenido = no entra en las zonas ni en el reparto de operarios hasta que un responsable decide
+               (solo con el módulo en modo real). El módulo no cancela nada.</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_pedido_retenido_revisar" model="ir.actions.server">
+        <field name="name">Revisar ahora (sin correo)</field>
+        <field name="model_id" ref="model_koroshi_pedido_retenido"/>
+        <field name="state">code</field>
+        <field name="code">action = model.accion_revisar_ahora()</field>
+    </record>
+
+    <menuitem id="menu_koroshi_retenidos" name="Pedidos de tienda retenidos" parent="koroshi_menu.menu_koroshi_app"
+              sequence="26" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_retenidos_lista" name="Retenidos por noche y tienda" parent="menu_koroshi_retenidos"
+              sequence="10" action="action_koroshi_pedido_retenido"/>
+    <menuitem id="menu_koroshi_retenidos_revisar" name="Revisar ahora (sin correo)" parent="menu_koroshi_retenidos"
+              sequence="20" action="action_koroshi_pedido_retenido_revisar" groups="stock.group_stock_manager"/>
+</odoo>

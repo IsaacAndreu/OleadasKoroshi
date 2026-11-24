@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Parametros (Ajustes > Tecnico > Parametros del sistema). noupdate: al actualizar no se pisan.
+         Se instala en modo AVISO: revisa y avisa, pero no aparta nada (los enganches de zonas y operarios devuelven
+         una lista vacia). s4t = 0: no pregunta a S4T hasta confirmar el campo de estado (P0 del diseno).
+         ultima la escribe el cron. -->
+    <data noupdate="1">
+        <record id="param_modo" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.modo</field>
+            <field name="value">aviso</field>
+        </record>
+        <record id="param_horas" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.horas</field>
+            <field name="value">04:40,05:45</field>
+        </record>
+        <record id="param_hora_noche" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.hora_noche</field>
+            <field name="value">14:00</field>
+        </record>
+        <record id="param_tipo_pedido" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.tipo_pedido</field>
+            <field name="value">PED. TIENDAS</field>
+        </record>
+        <record id="param_avisar" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.avisar</field>
+            <field name="value">isaac.andreu@nath.es</field>
+        </record>
+        <record id="param_s4t" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.s4t</field>
+            <field name="value">0</field>
+        </record>
+        <record id="param_s4t_paginas" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.s4t_paginas</field>
+            <field name="value">40</field>
+        </record>
+    </data>
+</odoo>

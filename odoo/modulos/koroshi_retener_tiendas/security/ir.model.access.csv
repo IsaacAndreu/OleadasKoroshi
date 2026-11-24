@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_pedido_retenido_usuario,koroshi.pedido.retenido usuario,model_koroshi_pedido_retenido,stock.group_stock_user,1,0,0,0
+access_koroshi_pedido_retenido_responsable,koroshi.pedido.retenido responsable,model_koroshi_pedido_retenido,stock.group_stock_manager,1,1,0,0
+access_koroshi_pedido_retenido_admin,koroshi.pedido.retenido admin,model_koroshi_pedido_retenido,base.group_system,1,1,1,1
