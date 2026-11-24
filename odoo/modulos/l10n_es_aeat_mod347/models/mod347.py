@@ -190,6 +190,46 @@ class L10nEsAeatMod347Report(models.Model):
             ("parent_state", "=", "posted"),
         ]
 
+    def _dominios_347(self, taxes):
+        """El dominio de _account_move_line_domain partido en dos mitades que no se solapan:
+        1) apuntes de impuesto (tax_line_id en T);
+        2) apuntes con impuesto (tax_ids en T) que no son de esos impuestos (tax_line_id fuera de T o vacío).
+        La unión es exactamente "tax_ids en T OR tax_line_id en T"."""
+        comun = [
+            ("partner_id", "!=", False),
+            ("move_id", "not in", self._asientos_excluidos_347()),
+            ("date", ">=", self.date_start),
+            ("date", "<=", self.date_end),
+            ("parent_state", "=", "posted"),
+        ]
+        return [
+            comun + [("tax_line_id", "in", taxes.ids)],
+            comun
+            + [
+                ("tax_ids", "in", taxes.ids),
+                "|",
+                ("tax_line_id", "not in", taxes.ids),
+                ("tax_line_id", "=", False),
+            ],
+        ]
+
+    def _saldos_cliente_asiento_347(self, dominios):
+        """Suma de balance por cliente y asiento de varios dominios que no se solapan:
+        {partner_id: {move_id: saldo}}. El saldo del cliente es la suma de sus asientos."""
+        saldos = {}
+        for dominio in dominios:
+            for grupo in self.env["account.move.line"].read_group(
+                dominio,
+                ["partner_id", "move_id", "balance"],
+                ["partner_id", "move_id"],
+                lazy=False,
+            ):
+                if grupo["partner_id"] and grupo["move_id"]:
+                    asientos = saldos.setdefault(grupo["partner_id"][0], {})
+                    move_id = grupo["move_id"][0]
+                    asientos[move_id] = asientos.get(move_id, 0.0) + grupo["balance"]
+        return saldos
+
     def _asientos_excluidos_347(self):
         """Ids de los asientos marcados «No incluir en el 347» (con las reglas del usuario)."""
         return self.env["account.move"].search([("not_in_mod347", "=", True)]).ids
@@ -243,43 +283,35 @@ class L10nEsAeatMod347Report(models.Model):
         partner_obj = self.env["res.partner"]
         map_line = self.env.ref(map_ref)
         taxes = self._get_taxes(map_line)
-        domain = self._account_move_line_domain(taxes)
+        # tuctuc v2.1.3: el dominio de antes, con "tax_ids in T OR tax_line_id in T", hacía recorrer a
+        # PostgreSQL todos los apuntes del periodo (1,68 M en el 347 de 2024 de PRIME: 14 min y sin acabar).
+        # Se parte en dos mitades que no se solapan y se suman (mismo resultado).
+        dominios = self._dominios_347(taxes)
         if partner_record:
-            domain += [("partner_id", "=", partner_record.partner_id.id)]
-        groups = self.env["account.move.line"].read_group(
-            domain, ["partner_id", "balance"], ["partner_id"],
-        )
-        validos = self._clientes_validos_347(g["partner_id"][0] for g in groups)
-        filtered_groups = list(
-            filter(
-                lambda d: d["partner_id"][0] in validos
-                and abs(d["balance"]) > self.operations_limit,
-                groups,
-            )
-        )
-        for group in filtered_groups:
-            partner = partner_obj.browse(group["partner_id"][0])
+            dominios = [
+                d + [("partner_id", "=", partner_record.partner_id.id)] for d in dominios
+            ]
+        # Dos consultas en total (una por mitad), agrupadas por cliente y asiento, en vez de una por cliente.
+        por_cliente = self._saldos_cliente_asiento_347(dominios)
+        validos = self._clientes_validos_347(por_cliente)
+        filtered_groups = []
+        for partner_id, asientos in por_cliente.items():
+            balance = sum(asientos.values())
+            if partner_id in validos and abs(balance) > self.operations_limit:
+                filtered_groups.append((partner_id, balance, asientos))
+        for partner_id, balance, saldos_asiento in filtered_groups:
+            partner = partner_obj.browse(partner_id)
             vals = {
                 "report_id": self.id,
                 "partner_id": partner.id,
                 "representative_vat": "",
                 "operation_key": key,
-                "amount": (-1 if key == "B" else 1) * group["balance"],
+                "amount": (-1 if key == "B" else 1) * balance,
             }
             vals.update(self._get_partner_347_identification(partner))
-            move_groups = self.env["account.move.line"].read_group(
-                group["__domain"], ["move_id", "balance"], ["move_id"],
-            )
             vals["move_record_ids"] = [
-                (
-                    0,
-                    0,
-                    {
-                        "move_id": move_group["move_id"][0],
-                        "amount": move_group["balance"],
-                    },
-                )
-                for move_group in move_groups
+                (0, 0, {"move_id": move_id, "amount": amount})
+                for move_id, amount in saldos_asiento.items()
             ]
             if partner_record:
                 vals["move_record_ids"][0:0] = [

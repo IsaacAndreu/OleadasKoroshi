@@ -16,9 +16,12 @@
     "description": """
 Historial de tuctuc:
 
-v2.1.3 (24/11/2026): «Calcular» deja de sacar todos los clientes (726.000) y todos los asientos (838.000)
-para cada cliente del 347: el filtro «No incluir en el 347» se hace con la lista corta de los marcados.
-El 347 de 2024 de PRIME COLLECTIONS (1,68 M apuntes) no acababa en 10 minutos. Mismo resultado.
+v2.1.3 (24/11/2026): «Calcular» del 347 de 2024 de PRIME COLLECTIONS (1,68 M apuntes) no acababa. Tres causas:
+1) por cada cliente sacaba todos los clientes (726.000) y asientos (838.000) para quitar los «No incluir en
+el 347»: ahora se quitan los 48 asientos marcados y los clientes se filtran solo entre los que salen;
+2) el filtro «tax_ids en T O tax_line_id en T» recorría todos los apuntes del año (14 min una sola consulta):
+ahora son dos consultas que no se solapan (0,3 s y 4,2 s medidas con EXPLAIN ANALYZE);
+3) una consulta por cliente: ahora dos por clave, agrupadas por cliente y asiento. Mismo resultado.
 """,
     "author": "Tecnativa,PESOL,Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/l10n-spain",
