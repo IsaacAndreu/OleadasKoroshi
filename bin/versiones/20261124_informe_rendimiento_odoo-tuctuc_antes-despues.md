@@ -30,7 +30,7 @@ Todo queda guardado:
 el cálculo usa. Odoo entonces vuelve a empezar solo (hasta 5 veces), y por eso puede tardar el doble. Si el informe
 queda a 0, se vuelve a pulsar «Calcular». Isaac ha decidido dejarlo así de momento.
 
-## 2. Hecho y probado; entra con el reinicio de hoy a las 17:00
+## 2. Hecho y probado; entra con el reinicio de esta tarde (después de las 18:00)
 
 | Pantalla o acción | Qué se ha cambiado | Antes | Ahora | Resultado |
 |---|---|---|---|---|
@@ -51,14 +51,15 @@ ninguna actualización futura los borre.
 | **Consumo de embalaje por paquete** (módulo de consumo de cajas) | Movimientos de stock (20,6 millones de filas) | 6 a 21 s por paquete | Milisegundos |
 | Movimientos creados desde **compras** | Movimientos de stock (20,6 millones) | Recorría la tabla entera (hoy no hay ninguno, pero Odoo lo pregunta) | Inmediato |
 
-*Estado a las 16:30 (hora de aquí): el primero espera a que acaben dos exportaciones de stock en marcha. Cuando
-estén, se comprobará que la base de datos los usa.*
+*Estado a las 16:50 (hora de aquí): aún no se han creado, porque esperan a que acaben las exportaciones de stock en
+marcha. Se terminan esta tarde, después de las 18:00, con el reinicio. Después se comprobará que la base de datos
+los usa.*
 
 ## 4. Pendiente: siguientes candidatos encontrados hoy
 
 | Proceso | Cuánto tarda hoy | Qué se ve | Mejora estimada |
 |---|---|---|---|
-| **Exportar stock a la tienda externa** (Code22men, cola de trabajos) | 12 min de media, hasta 37 min; 86 ejecuciones | Ocupa la base de datos todo ese rato y retrasa a otros (hoy ha retrasado estos índices) | Alta: probablemente minutos → segundos, con la misma suma directa del punto 2 |
+| **Exportar stock a las tiendas online** (Code22men, TUCTUC-Prod y Locker Gear) | Unas **31 horas de cola al día**: cada 30 min se mandan todos los productos, con 2 llamadas a la tienda por producto (en Code22men, 28 min por cada 1.000) | Ocupa 1-2 de las 5 plazas de la cola todo el día y bloquea las actualizaciones de módulos mientras dura (hoy ha retrasado estos índices) | Muy alta: mandar solo lo que cambia y en lotes de 250 por llamada; de horas a minutos al día |
 | **Lector de códigos de barras** (cargar ubicaciones) | 18 s cada vez | Hay 759.880 ubicaciones (730.337 con código de barras); hay que saber por qué tantas | Alta, pero antes hay que entender esas ubicaciones |
 | **Conciliación bancaria** | Hasta 128 s y 3.129 consultas al abrir | Pantalla lenta para contabilidad | Por estudiar |
 | **Validar un movimiento de ubicación** | 117 s | — | Por estudiar |

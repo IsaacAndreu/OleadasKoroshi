@@ -1,6 +1,8 @@
-# Traspaso: rendimiento de odoo.tuctuc.com (24/11/2026, 16:40 hora de aquí)
+# Traspaso: rendimiento de odoo.tuctuc.com (24/11/2026, actualizado a las 16:50 hora de aquí)
 
-Para seguir en otra sesión de Claude. Leer antes:
+Para seguir en otra sesión de Claude. **Isaac lo hará esta tarde a partir de las 18:00 (17:00 UTC), cuando ya no
+trabaja nadie en tuctuc.** Esta sesión lo ha dejado aquí: **no ha reiniciado** y no ha tocado nada más en el
+servidor. Leer antes:
 - `CLAUDE.md`;
 - `odoo/nucleo_tuctuc/README.md`: qué está cambiado en el núcleo y cómo se instala y se vuelve atrás;
 - `bin/versiones/20261124_informe_rendimiento_odoo-tuctuc_antes-despues.md`: el informe para dirección, con las cifras;
@@ -38,18 +40,34 @@ unset PGPASSWORD PGHOST PGUSER PGDATABASE
 | Qué | Estado |
 |---|---|
 | 349 (1.2.2), 347 (2.1.3), Previsto, trazabilidad, botón Stock, búsqueda con comas | Instalado y comprobado (ver el informe) |
-| Búsqueda por stock (`qty_available = N`…), etiqueta `nucleo_tuctuc/busqueda-stock/2026-11-24` | Copiado al servidor a las 15:05 UTC. **Entra con el reinicio de las 17:00 (16:00 UTC)**. Copia de seguridad: `copias_modulos/nucleo_busqueda_stock_2026-11-24_150526` |
-| `index=True` en `stock_package_level.picking_id`, `stock_move.created_purchase_line_id` y `dms_package_consume` 1.0.1 (`consume_package_id`); etiquetas `nucleo_tuctuc/indices/2026-11-24` y `dms_package_consume/v1.0.1` | Copiado a las 15:30 UTC (copia: `copias_modulos/indices_2026-11-24_153003/antes.tgz`). Entra con el mismo reinicio. Solo sirve para que una actualización futura no borre los índices |
-| Los tres índices (`stock_move_created_purchase_line_id_index` y `stock_move_consume_package_id_index`, parciales `WHERE ... IS NOT NULL`, y `stock_package_level_picking_id_index`) | Lanzados a las 15:23 UTC con `nohup psql` y `CREATE INDEX CONCURRENTLY`; registro en `~/crear_indices3.log`. **A las 15:36 UTC seguían esperando** (`virtualxid`) a que acabasen dos trabajos de cola `export_inventory` de Code22men abiertos desde las 15:10 UTC |
+| Búsqueda por stock (`qty_available = N`…), etiqueta `nucleo_tuctuc/busqueda-stock/2026-11-24` | Copiado al servidor a las 15:05 UTC. **Sin activar: entra con el próximo reinicio** (no se ha hecho). Copia de seguridad: `copias_modulos/nucleo_busqueda_stock_2026-11-24_150526` |
+| `index=True` en `stock_package_level.picking_id`, `stock_move.created_purchase_line_id` y `dms_package_consume` 1.0.1 (`consume_package_id`); etiquetas `nucleo_tuctuc/indices/2026-11-24` y `dms_package_consume/v1.0.1` | Copiado a las 15:30 UTC (copia: `copias_modulos/indices_2026-11-24_153003/antes.tgz`), comprobado igual que el repo. Entra con el mismo reinicio. Solo sirve para que una actualización futura no borre los índices |
+| Los tres índices (`stock_move_created_purchase_line_id_index` y `stock_move_consume_package_id_index`, parciales `WHERE ... IS NOT NULL`, y `stock_package_level_picking_id_index`) | Lanzados a las 15:23 UTC con `nohup psql` (proceso 2699525; registro en `~/crear_indices3.log`). **A las 15:47 UTC aún no había empezado ninguno**: el primero llevaba 24 min esperando (`virtualxid`) a que se cerrasen las transacciones de los trabajos `export_inventory` abiertos (Code22men desde las 15:10 y TUCTUC-Prod desde las 15:40). No bloquea a nadie mientras espera. El reinicio corta esas exportaciones y los índices siguen solos; **no lanzarlos otra vez** (`IF NOT EXISTS`) sin mirar antes si el psql sigue vivo |
 
-## Qué falta hoy
+## Qué falta hoy (a partir de las 18:00 aquí, 17:00 UTC)
 
+0. **Antes de reiniciar, la cola de trabajos.** Esta es la trampa:
+   - El reinicio corta los trabajos de cola en marcha y los deja en estado «started» para siempre. No se
+     reencolan solos: el 1723467 «Workflow Line: Validate Order [ECI-#352746]» sigue así desde el reinicio de las
+     14:27 UTC.
+   - La cola tiene 5 plazas (`channels = root:5`). Por cómo funciona el gestor de colas de OCA (`queue_job`, al
+     arrancar carga también los «started» como en marcha), creo que cada trabajo colgado ocupa una plaza. **No está
+     comprobado en este servidor.**
+   - Si el reinicio corta 4 exportaciones más, serían 5 colgados y la cola entera podría pararse: pedidos,
+     facturas, seguimientos y exportaciones.
+   - Exportaciones de stock: Code22men, TUCTUC-Prod y Locker Gear, en bloques de 1.000 productos, cada 30 min, de
+     8 a 28 min cada bloque. Antes de reiniciar, mirar `select id, name, date_started from queue_job where
+     state='started'`.
+   - **Plan propuesto a Isaac, sin respuesta aún:** reiniciar y, justo después, «Reencolar» en Ajustes › Técnico ›
+     Trabajos en cola los que queden en «started», el 1723467 incluido, con su sí. Exportar otra vez solo vuelve a
+     mandar el stock actual. El Validate Order se cortó sin guardar nada, porque su transacción se deshizo.
+   - Después, comprobar que la cola se mueve: trabajos nuevos pasan a `done`.
 1. **Índices**:
    - cuando `~/crear_indices3.log` diga tres veces `CREATE INDEX`, comprobar `indisvalid` en `pg_index`;
    - con `EXPLAIN`, comprobar que `consume_package_id = X`, `created_purchase_line_id IN (...)` y
      `stock_package_level.picking_id = X` usan Index Scan;
    - si alguno queda INVALID: `DROP INDEX CONCURRENTLY ...` y repetir.
-2. **Reinicio a las 17:00 aquí** (Isaac ya dijo sí):
+2. **Reinicio** (Isaac había dicho sí a las 17:00; ahora lo hace él o la otra sesión desde las 18:00):
    - `sudo systemctl restart tuctuc-erp`;
    - comprobar que responde y que el registro está limpio;
    - en pantalla, Inventario › Productos, filtrar por Stock = 10: deben salir ~52 plantillas en ~20 s.
@@ -58,15 +76,47 @@ unset PGPASSWORD PGHOST PGUSER PGDATABASE
      hacer con él; no tocarlo sin preguntar.
 3. Actualizar el apartado 3 del informe y la línea de tuctuc en `TABLERO.md`.
 4. Limpiar en el servidor `~/20261124_nucleo_tuctuc_busqueda_stock.tar.gz`, `~/20261124_tuctuc_indices.tar.gz`,
-   `~/tuctuc_indices.tgz`, `/tmp/bs`, `/tmp/ix` y `~/crear_indices*.log`.
+   `~/tuctuc_indices.tgz`, `~/tuctuc_integration.tgz`, `/tmp/bs`, `/tmp/ix` y `~/crear_indices*.log`. Esto último,
+   cuando el psql de los índices haya acabado.
 
 ## Siguientes candidatos (orden que propuse a Isaac)
 
-1. **`sale.integration.export_inventory`** (Code22men, «Export Product Quantities to External»):
-   - 86 ejecuciones; 732 s de media y 2.253 s como máximo;
-   - mantiene la transacción abierta todo ese rato (hoy ha frenado los índices);
-   - probablemente calcula el stock producto a producto: mirar si se puede usar la suma de quants como en
-     `_buscar_stock_por_quants`.
+1. **`sale.integration.export_inventory`**, analizado a las 16:45. Código en `nath/custom_addons/integration`:
+   `models/sale_integration.py` (`export_inventory`, `_collect_inventory_data`), `models/product_product.py`
+   (`export_inventory_by_jobs`) e `integration_shopify/shopify_api.py:510`. Una copia de lectura se bajó a
+   `C:\Users\tuctuc\Downloads\tuctuc_integration.tgz`; todavía no está en el repo.
+   - **Últimas 24 h**:
+     - Code22men: 24 bloques, 1.706 s de media;
+     - TUCTUC-Prod: 131 bloques, 465 s de media;
+     - Locker Gear: 12 bloques, 931 s de media.
+     - En total, unas 31 h de cola al día. Las tres integraciones usan `free_qty`; el tamaño de bloque es
+       `integration.export_inventory_block_size` = 1000.
+   - **Por qué tarda**:
+     - Cada vez manda TODOS los productos, aunque no hayan cambiado.
+     - Calcula `free_qty` uno a uno: un `with_context(location=...)` por producto, sin precarga en lote.
+     - Shopify hace 2 llamadas HTTP por producto: `fetch_one(VARIANT)` y `apply(INVENT_LEVEL)`. Code22men sale a
+       1,7 s por producto, que es el límite de llamadas de Shopify.
+     - Tiene la transacción abierta («idle in transaction») mientras habla con Shopify: la última consulta SQL es
+       del principio.
+   - **Efecto en Odoo** (medido a las 15:46 UTC):
+     - No escribe ni bloquea filas (`backend_xid` vacío).
+     - Tiene unas 125 tablas en AccessShare durante 30 min. Eso bloquea DDL: índices y actualizaciones de módulo.
+       Un `-u` que haga ALTER sobre esas tablas esperaría y pondría en fila a todos los demás, y Odoo se quedaría
+       «pensando». **Hasta arreglarlo, actualizar módulos solo sin exportaciones en marcha.**
+     - También retrasa el vacuum (xmin). Hoy no se ve hinchazón grande: máximo un 7 % de filas muertas.
+     - Ocupa 1-2 de las 5 plazas de la cola todo el día.
+   - **Mejoras, de más a menos ganancia**:
+     1. Mandar solo lo que ha cambiado: guardar la última cantidad enviada por producto y ubicación externa.
+     2. Una llamada por producto en vez de dos: guardar `inventory_item_id`. Mejor aún, la llamada de Shopify por
+        lotes (hasta 250 cantidades por llamada).
+     3. Calcular las cantidades, cerrar la transacción y después llamar a Shopify.
+     4. Calcular `free_qty` del bloque de una vez.
+   - **Antes de tocarlo**:
+     - confirmar si TUCTUC-Prod y Locker Gear también son Shopify;
+     - ver qué cron lanza `export_inventory_by_jobs` y cada cuánto;
+     - medir cuántos productos cambian de stock en 30 min.
+   - Mismo método que la búsqueda por stock: copia exacta del servidor, cambio, prueba en real sin escribir y con
+     rollback (comparar lo que se mandaría) e instalar con el sí de Isaac.
 2. **`stock_barcode` `get_all_locations_by_barcode`**: 18 s cada vez. Hay 759.880 ubicaciones (730.337 con código
    de barras). Antes, preguntar a Isaac por qué hay tantas.
 3. Conciliación bancaria `get_bank_statement_data` (hasta 128 s, 3.129 consultas); `stock.location.move`
