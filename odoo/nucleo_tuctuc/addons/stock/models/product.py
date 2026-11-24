@@ -331,7 +331,70 @@ class Product(models.Model):
                 self.env.context.get('package_id')
             )
             return [('id', 'in', product_ids)]
+        # TUCTUC 24/11/2026: el resto de busquedas sin fechas (= 10, = 0, < 5, != 0...) tambien con los quants.
+        # Antes iban a _search_product_quantity, que calcula qty_available de TODOS los productos uno a uno
+        # (306.743 en tuctuc: ~19 min por busqueda). Mismo resultado: ver _buscar_stock_por_quants.
+        if operator in OPERATORS and isinstance(value, (float, int)) \
+                and not ({'from_date', 'to_date'} & set(self.env.context.keys())):
+            return [('id', 'in', self._buscar_stock_por_quants(operator, value))]
         return self._search_product_quantity(operator, value, 'qty_available')
+
+    def _productos_stock_aparte(self):
+        """ TUCTUC 24/11/2026. Productos cuyo qty_available NO es la suma de sus quants y hay que calcular como
+        siempre (campo calculado). En stock, ninguno; mrp anade los kits (bom tipo phantom). """
+        return self.browse()
+
+    def _buscar_stock_por_quants(self, operator, value):
+        """ TUCTUC 24/11/2026. Ids de los productos (los mismos que self.search([])) cuyo qty_available cumple
+        "operator value", sin calcularlo producto a producto.
+
+        Sin fechas en el contexto, _compute_quantities_dict da qty_available = suma de los quants de las ubicaciones
+        de _get_domain_locations (con lot_id/owner_id/package_id del contexto si vienen), redondeada a la unidad de
+        medida del producto; 0 si no tiene quants; y _compute_quantities pone 0 a los servicios. Aqui se suma en SQL
+        con el mismo dominio y las mismas reglas de acceso, y los productos de _productos_stock_aparte (kits) se
+        calculan como siempre. Repo OleadasKoroshi, odoo/nucleo_tuctuc/README.md.
+        """
+        comparar = OPERATORS[operator]
+        Quant = self.env['stock.quant']
+        domain_quant = list(self._get_domain_locations()[0])
+        # igual que _compute_quantities -> _compute_quantities_dict: el filtro entra si la clave no es None
+        for clave in ('lot_id', 'owner_id', 'package_id'):
+            if self.env.context.get(clave) is not None:
+                domain_quant.append((clave, '=', self.env.context.get(clave)))
+        query = Quant._where_calc(domain_quant)
+        Quant._apply_ir_rules(query, 'read')
+        from_clause, where_clause, params = query.get_sql()
+        self.env.cr.execute(
+            'SELECT "stock_quant".product_id, SUM("stock_quant".quantity) FROM %s WHERE %s '
+            'GROUP BY "stock_quant".product_id' % (from_clause, where_clause or 'TRUE'), params)
+        sumas = dict(self.env.cr.fetchall())
+
+        aparte = self._productos_stock_aparte()
+        if comparar(0.0, value):
+            # los productos sin quants (stock 0) tambien cumplen: hacen falta todos, como en _search_product_quantity
+            candidatos = self.with_context(prefetch_fields=False).search([], order='id')
+        else:
+            candidatos = self.with_context(prefetch_fields=False).search(
+                [('id', 'in', list(set(sumas) | set(aparte.ids)))], order='id')
+        aparte_ids = set(aparte.ids)
+        candidatos_ids = set(candidatos.ids)
+
+        con_quants = self.browse([pid for pid in sumas if pid in candidatos_ids]).with_context(prefetch_fields=False)
+        redondeo = {p.id: (p.type, p.uom_id.rounding) for p in con_quants}
+
+        ids = []
+        for pid in candidatos.ids:
+            if pid in aparte_ids:
+                continue
+            qty = 0.0
+            if pid in redondeo and redondeo[pid][0] != 'service':
+                qty = float_round(sumas[pid], precision_rounding=redondeo[pid][1])
+            if comparar(qty, value):
+                ids.append(pid)
+        for product in self.browse([pid for pid in candidatos.ids if pid in aparte_ids]):
+            if comparar(product.qty_available, value):
+                ids.append(product.id)
+        return ids
 
     def _search_virtual_available(self, operator, value):
         # TDE FIXME: should probably clean the search methods

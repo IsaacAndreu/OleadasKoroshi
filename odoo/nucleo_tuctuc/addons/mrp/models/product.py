@@ -98,6 +98,25 @@ class ProductProduct(models.Model):
                 continue
             product.mrp_product_qty = float_round(mapped_data.get(product.id, 0), precision_rounding=product.uom_id.rounding)
 
+    def _productos_stock_aparte(self):
+        """ TUCTUC 24/11/2026 (ver stock/models/product.py, _buscar_stock_por_quants). Los kits no tienen el stock
+        en sus quants: _compute_quantities_dict (abajo) lo calcula con los componentes. Mismo criterio que
+        mrp.bom._get_product2bom(productos, bom_type='phantom'): producto no servicio con una lista de materiales
+        tipo phantom de la variante, o de la plantilla sin variante (misma empresa del contexto si la hay).
+        Se buscan primero las listas de materiales (pocas) en vez de pasar todos los productos (134 s en tuctuc). """
+        res = super(ProductProduct, self)._productos_stock_aparte()
+        dominio = [('type', '=', 'phantom')]
+        if self.env.context.get('company_id'):
+            dominio += ['|', ('company_id', '=', False), ('company_id', '=', self.env.context.get('company_id'))]
+        boms = self.env['mrp.bom'].search(dominio)
+        variantes = boms.filtered(lambda b: b.product_id).mapped('product_id')
+        plantillas = boms.filtered(lambda b: not b.product_id).mapped('product_tmpl_id')
+        if not variantes and not plantillas:
+            return res
+        kits = self.search([('type', '!=', 'service'), '|', ('id', 'in', variantes.ids),
+                            ('product_tmpl_id', 'in', plantillas.ids)])
+        return res | kits
+
     def _compute_quantities_dict(self, lot_id, owner_id, package_id, from_date=False, to_date=False):
         """ When the product is a kit, this override computes the fields :
          - 'virtual_available'
