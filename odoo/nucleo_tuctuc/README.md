@@ -16,6 +16,16 @@ Punto de partida: commit `da2223c` (copia exacta del servidor, 24/11/2026). El c
 | `addons/stock/report/report_stock_quantity.py` | **Previsto**: el CTE `WITH forecast_qty` pasa a subconsulta (mismo SQL que en nath, comprobado sin espacios) | minutos | en nath 220 s -> 0,15 s | rehacer la vista a mano (abajo) |
 | `addons/stock/models/stock_move_line.py` (`product_id`) | `index=True`: **trazabilidad** / movimientos de un producto | ~1 s por consulta, tabla entera (19 M filas) | ms | índice a mano con `CONCURRENTLY` (abajo) |
 
+### Búsqueda por stock (`qty_available = N`, `< N`, `!= 0`...) — 24/11/2026, 2.º paquete
+
+| Archivo | Qué |
+|---|---|
+| `addons/stock/models/product.py` (`_search_qty_available`) | Sin fechas en el contexto, ya no va a `_search_product_quantity` (calcula el stock de los 306.743 productos uno a uno: ~19 min) sino a `_buscar_stock_por_quants`: suma de quants en SQL con el mismo dominio y reglas, redondeo por unidad de medida, servicios a 0. Gancho `_productos_stock_aparte`. «> 0» (ya rápida) no cambia |
+| `addons/mrp/models/product.py` (`_productos_stock_aparte`) | Kits (bom phantom), calculados como siempre: se buscan primero las boms (0,2 s) en vez de pasar todos los productos a `_get_product2bom` (113 s). Mismos 1.510 kits |
+
+Entra con un reinicio (solo Python). Punto de partida `a3a00be`; prueba en real:
+`bin/versiones/20261124_prueba_buscar_stock_codigo_nuevo_ROLLBACK.py`.
+
 `_quant_tasks` (fusionar quants duplicados y borrar los que quedan a cero) lo sigue haciendo el planificador
 (`stock_rule.py`, `run_scheduler`) y `custom_addons/procurement_ext`. Medido el 23/11: 0 grupos duplicados y 29
 quants a cero.
