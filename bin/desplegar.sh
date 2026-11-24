@@ -70,12 +70,13 @@ fi
 command -v unzip >/dev/null 2>&1 || { red "Falta unzip en el servidor."; exit 1; }
 
 # version del manifest ('13.0.1.3.0') de un fichero; vacio si no hay
-version_de(){ grep -oE "'version'[[:space:]]*:[[:space:]]*'[^']+'" "$1" 2>/dev/null | head -1 | sed -E "s/.*'([^']+)'$/\1/" || true; }
+# Comillas simples (KOROSHI) o dobles (modulos de la OCA, p. ej. l10n_es_aeat_*; 24/11/2026)
+version_de(){ tr '"' "'" < "$1" 2>/dev/null | grep -oE "'version'[[:space:]]*:[[:space:]]*'[^']+'" | head -1 | sed -E "s/.*'([^']+)'$/\1/" || true; }
 # 1 si $1 < $2 (versiones con puntos)
 menor(){ [ "$1" != "$2" ] && [ "$(printf '%s\n%s\n' "$1" "$2" | sort -V | head -1)" = "$1" ]; }
 # modulos de 'depends' del manifest
 depends_de(){
-    tr '\n' ' ' < "$1" | grep -oE "'depends'[[:space:]]*:[[:space:]]*\[[^]]*\]" | grep -oE "'[a-z0-9_]+'" | tr -d "'" \
+    tr '\n"' " '" < "$1" | grep -oE "'depends'[[:space:]]*:[[:space:]]*\[[^]]*\]" | grep -oE "'[a-z0-9_]+'" | tr -d "'" \
         | grep -v '^depends$' || true
 }
 
