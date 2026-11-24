@@ -174,9 +174,14 @@ class L10nEsAeatMod347Report(models.Model):
 
         :param: taxes: Taxes to look for in move lines.
         """
+        # tuctuc v2.1.3: antes ("partner_id.not_in_mod347", "=", False) y ("move_id.not_in_mod347", "=", False).
+        # Odoo 13 resuelve eso sacando TODOS los ids de res_partner (726.000) y de account_move (838.000) y
+        # filtrando con IN (lista enorme), y lo repite por cada cliente (group["__domain"]).
+        # Ahora: los asientos excluidos son pocos (48 el 24/11/2026) y se quitan con "not in"; los clientes se
+        # filtran después de agrupar, solo entre los que aparecen (_clientes_validos_347). Mismo resultado.
         return [
-            ("partner_id.not_in_mod347", "=", False),
-            ("move_id.not_in_mod347", "=", False),
+            ("partner_id", "!=", False),
+            ("move_id", "not in", self._asientos_excluidos_347()),
             ("date", ">=", self.date_start),
             ("date", "<=", self.date_end),
             "|",
@@ -184,6 +189,24 @@ class L10nEsAeatMod347Report(models.Model):
             ("tax_line_id", "in", taxes.ids),
             ("parent_state", "=", "posted"),
         ]
+
+    def _asientos_excluidos_347(self):
+        """Ids de los asientos marcados «No incluir en el 347» (con las reglas del usuario)."""
+        return self.env["account.move"].search([("not_in_mod347", "=", True)]).ids
+
+    def _clientes_validos_347(self, partner_ids):
+        """De estos clientes, los que cuentan para el 347.
+
+        Es la misma búsqueda que hace Odoo 13 con ("partner_id.not_in_mod347", "=", False)
+        (odoo/osv/expression.py, many2one: comodel.with_context(active_test=False).search(...), con las reglas
+        del usuario), pero solo entre los clientes que salen en los grupos y no entre los 726.000.
+        """
+        return set(
+            self.env["res.partner"]
+            .with_context(active_test=False)
+            .search([("id", "in", list(partner_ids)), ("not_in_mod347", "=", False)])
+            .ids
+        )
 
     @api.model
     def _get_taxes(self, map_rec):
@@ -226,8 +249,13 @@ class L10nEsAeatMod347Report(models.Model):
         groups = self.env["account.move.line"].read_group(
             domain, ["partner_id", "balance"], ["partner_id"],
         )
+        validos = self._clientes_validos_347(g["partner_id"][0] for g in groups)
         filtered_groups = list(
-            filter(lambda d: abs(d["balance"]) > self.operations_limit, groups)
+            filter(
+                lambda d: d["partner_id"][0] in validos
+                and abs(d["balance"]) > self.operations_limit,
+                groups,
+            )
         )
         for group in filtered_groups:
             partner = partner_obj.browse(group["partner_id"][0])
@@ -272,11 +300,13 @@ class L10nEsAeatMod347Report(models.Model):
             ("journal_id", "in", cash_journals.ids),
             ("date", ">=", self.date_start),
             ("date", "<=", self.date_end),
-            ("partner_id.not_in_mod347", "=", False),
+            ("partner_id", "!=", False),
         ]
         cash_groups = move_line_obj.read_group(
             domain, ["partner_id", "balance"], ["partner_id"]
         )
+        validos = self._clientes_validos_347(g["partner_id"][0] for g in cash_groups)
+        cash_groups = [g for g in cash_groups if g["partner_id"][0] in validos]
         for cash_group in cash_groups:
             partner = partner_obj.browse(cash_group["partner_id"][0])
             partner_record_obj = self.env["l10n.es.aeat.mod347.partner_record"]

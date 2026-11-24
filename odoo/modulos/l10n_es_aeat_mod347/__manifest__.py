@@ -10,7 +10,16 @@
 
 {
     "name": "AEAT modelo 347",
-    "version": "13.0.2.1.2",
+    "version": "13.0.2.1.3",
+    # Copia propia de tuctuc a partir de la 13.0.2.1.2 de la OCA instalada en el servidor (commit 6272a35).
+    # Si se vuelve a copiar encima la versión de la OCA, se pierde este arreglo.
+    "description": """
+Historial de tuctuc:
+
+v2.1.3 (24/11/2026): «Calcular» deja de sacar todos los clientes (726.000) y todos los asientos (838.000)
+para cada cliente del 347: el filtro «No incluir en el 347» se hace con la lista corta de los marcados.
+El 347 de 2024 de PRIME COLLECTIONS (1,68 M apuntes) no acababa en 10 minutos. Mismo resultado.
+""",
     "author": "Tecnativa,PESOL,Odoo Community Association (OCA)",
     "website": "https://github.com/OCA/l10n-spain",
     "category": "Accounting",
