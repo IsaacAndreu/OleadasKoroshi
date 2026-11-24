@@ -1,6 +1,8 @@
 {
     'name': "Package Consume",
-    'version': '1.0',
+    'version': '1.0.1',
+    # Historial (tuctuc):
+    # v1.0.1 (24/11/2026): index=True en stock.move.consume_package_id (busqueda por paquete sin recorrer stock_move).
     'category': 'Operations/Inventory',
     'sequence': 20,
     'summary': """create material moves for product packaging.""",

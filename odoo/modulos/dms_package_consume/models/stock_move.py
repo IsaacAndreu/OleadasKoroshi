@@ -3,7 +3,9 @@ from odoo import api, fields, models, tools, _
 class StockMove(models.Model):
     _inherit = "stock.move"
 
-    consume_package_id = fields.Many2one('stock.quant.package', 'Consume Package')
+    # 1.0.1 (24/11/2026, tuctuc): index=True. Contar los movimientos de un paquete buscaba en stock_move entero
+    # (20 M filas, 6-21 s por paquete). Indice creado a mano con CONCURRENTLY y el nombre de Odoo.
+    consume_package_id = fields.Many2one('stock.quant.package', 'Consume Package', index=True)
 
     def write(self, vals):
         res = super(StockMove, self).write(vals)
