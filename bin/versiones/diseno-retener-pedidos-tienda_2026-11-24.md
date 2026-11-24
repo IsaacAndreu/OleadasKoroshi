@@ -187,3 +187,8 @@ Sí la propongo como **complemento** para los cancelados en S4T (P2).
 - **Medido en Odoo (solo lectura, 35 días)**: pedidos de tienda por noche que piden menos de 20 uds: entre 0 y 25
   (12/11: 25 de 47; 20/11: 14 de 51; 30/10: 17 de 48; la mayoría de noches 0-5). Con lo reservado serán algunos más.
   Mínimo en el parámetro `minimo_uds` (0 = apagado).
+
+## 11. koroshi_retener_tiendas 1.3.0 (24/11), SIN INSTALAR: cancelar encendido
+
+Isaac dice que sí a cancelar: `cancelar_pocas` = 1 de inicio. Los pedidos de tienda con menos de 20 uds reservadas
+se cancelan (sus OUT, como las de la web) en la revisión de las 04:40, también en modo aviso. En S4T siguen PENDING.

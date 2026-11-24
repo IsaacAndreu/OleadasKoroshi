@@ -19,7 +19,7 @@ koroshi_retener_tiendas.hora_noche (14:00) del dia anterior:
 - v1.2.0: menos de koroshi_retener_tiendas.minimo_uds (20) uds RESERVADAS en Odoo (aunque en S4T pida mas): se
   retiene y sale en un correo aparte a koroshi_retener_tiendas.avisar_pocas (Betty, Jose Luis e Isaac). Con
   koroshi_retener_tiendas.cancelar_pocas = 1 sus OUT se cancelan como las de la web (sin nada leido, sin validar, fuera
-  de zonas y de la cola de un operario); de inicio 0.
+  de zonas y de la cola de un operario); de inicio 1 desde la v1.3.0 (tambien en modo aviso).
 - Fuera de eso nunca cancela nada: decide un responsable en KOROSHI > Pedidos de tienda retenidos («Preparar este» o «Ya
   cancelado en Odoo», que solo apunta la decision y deja nota en el pedido).
 - Correo a koroshi_retener_tiendas.avisar a las horas de koroshi_retener_tiendas.horas (04:40 y 05:45 hora local)
@@ -32,6 +32,9 @@ koroshi_operarios (versiones aparte). En modo aviso devuelve una lista vacia.
 Sin campos en tablas compartidas: escribe en su tabla, en sus parametros, en el chatter del pedido al decidir y en
 mail.mail; con cancelar_pocas = 1, en el estado de las OUT que cancela. No toca la PDA ni las reservas.
 
+v1.3.0 (24/11/2026): Isaac dice que si a cancelar: cancelar_pocas = 1 de inicio. Los pedidos de tienda con menos de
+  20 uds reservadas se cancelan (sus OUT, como las de la web) a las 04:40, tambien en modo aviso, y el correo a Betty,
+  Jose Luis e Isaac lo dice. En S4T el pedido sigue PENDING: nada se lo dice todavia.
 v1.2.0 (24/11/2026): lo pide Isaac: un pedido de tienda con menos de 20 uds reservadas en Odoo no se prepara ni va
   a zonas, y se avisa por correo a betty@nath.es, j.luis@nath.es e isaac.andreu@nath.es. Cancelar sus OUT como las de
   la web queda hecho pero apagado (cancelar_pocas = 0) hasta que Isaac diga que si. Medido (35 dias): de 0 a 25
@@ -45,7 +48,7 @@ v1.1.0 (24/11/2026): comprobado en produccion (solo lectura). (1) La API /orders
 v1.0.0 (24/11/2026): primera version, en modo aviso y sin preguntar a S4T (falta confirmar el campo de estado de la
   API, P0 del diseno). Revision a las 04:40 y 05:45, correo y lista con las decisiones.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'Effective Logistics',
     'category': 'Inventory',
     'depends': ['mail', 'sale_stock', 'koroshi_base', 'koroshi_menu'],
