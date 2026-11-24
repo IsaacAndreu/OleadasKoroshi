@@ -51,9 +51,12 @@ ninguna actualización futura los borre.
 | **Consumo de embalaje por paquete** (módulo de consumo de cajas) | Movimientos de stock (20,6 millones de filas) | 6 a 21 s por paquete | Milisegundos |
 | Movimientos creados desde **compras** | Movimientos de stock (20,6 millones) | Recorría la tabla entera (hoy no hay ninguno, pero Odoo lo pregunta) | Inmediato |
 
-*Estado a las 16:50 (hora de aquí): aún no se han creado, porque esperan a que acaben las exportaciones de stock en
-marcha. Se terminan esta tarde, después de las 18:00, con el reinicio. Después se comprobará que la base de datos
-los usa.*
+*Estado a las 19:40 (hora de aquí): **creados y válidos los tres** (25 min, 7:52 y 7:43). Reinicio hecho a las
+18:48:57 hora de aquí: entran la búsqueda por stock y el `index=True`.*
+
+**Búsqueda por stock medida en real después del reinicio** («Stock = 10», sola): **46 a 57 s** (antes 10 a 19 min).
+Es menos de lo que se esperaba por la prueba (20 a 28 s): ~3.400 consultas y 35-42 s de Python. Sin comprobar, se
+sospecha de los 1.510 kits, que se siguen calculando uno a uno.
 
 ## 4. Pendiente: siguientes candidatos encontrados hoy
 
