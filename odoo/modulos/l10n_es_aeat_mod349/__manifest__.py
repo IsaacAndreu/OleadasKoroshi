@@ -9,11 +9,16 @@
 
 {
     "name": "Modelo 349 AEAT",
-    "version": "13.0.1.2.1",
+    "version": "13.0.1.2.2",
     # Copia propia de tuctuc a partir de la 13.0.1.2.0 de la OCA instalada en el servidor (commit be55499).
     # Si se vuelve a copiar encima la versión de la OCA, se pierde este arreglo.
     "description": """
 Historial de tuctuc:
+
+v1.2.2 (24/11/2026): índices en report_id, move_line_id, refund_line_id y refund_id de los detalles
+y registros del 349. Sin ellos, abrir un 349, recalcularlo o buscar la factura de cada rectificativa
+recorría entera la tabla de detalles (2 M filas, 108.183 lecturas completas desde el 02/09/2026).
+Un índice no cambia ningún resultado.
 
 v1.2.1 (24/11/2026): «Calcular» crea los detalles en bloques de 1.000 en vez de uno a uno, une cada
 detalle a su cliente con un solo write por grupo y deja de crecer recordsets con += en bucle. Con

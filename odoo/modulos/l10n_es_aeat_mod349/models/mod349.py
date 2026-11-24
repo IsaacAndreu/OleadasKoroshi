@@ -459,6 +459,7 @@ class Mod349PartnerRecord(models.Model):
         comodel_name="l10n.es.aeat.mod349.report",
         string="AEAT 349 Report ID",
         ondelete="cascade",
+        index=True,
     )
     partner_id = fields.Many2one(
         comodel_name="res.partner", string="Partner", required=True,
@@ -509,6 +510,7 @@ class Mod349PartnerRecordDetail(models.Model):
         required=True,
         string="AEAT 349 Report ID",
         ondelete="cascade",
+        index=True,
     )
     report_type = fields.Selection(
         related="report_id.statement_type", readonly=True, store=True,
@@ -521,7 +523,10 @@ class Mod349PartnerRecordDetail(models.Model):
         index=True,
     )
     move_line_id = fields.Many2one(
-        comodel_name="account.move.line", string="Journal Item", required=True
+        comodel_name="account.move.line",
+        string="Journal Item",
+        required=True,
+        index=True,
     )
     move_id = fields.Many2one(
         comodel_name="account.move",
@@ -559,6 +564,7 @@ class Mod349PartnerRefund(models.Model):
         comodel_name="l10n.es.aeat.mod349.report",
         string="AEAT 349 Report ID",
         ondelete="cascade",
+        index=True,
     )
     partner_id = fields.Many2one(
         comodel_name="res.partner", string="Partner", required=True, index=True,
@@ -624,6 +630,7 @@ class Mod349PartnerRefundDetail(models.Model):
         required=True,
         string="AEAT 349 Report ID",
         ondelete="cascade",
+        index=True,
     )
     report_type = fields.Selection(
         related="report_id.statement_type", readonly=True, store=True,
@@ -632,6 +639,7 @@ class Mod349PartnerRefundDetail(models.Model):
         comodel_name="l10n.es.aeat.mod349.partner_refund",
         string="Partner refund ID",
         ondelete="set null",
+        index=True,
     )
     partner_id = fields.Many2one(
         comodel_name="res.partner",
@@ -640,7 +648,10 @@ class Mod349PartnerRefundDetail(models.Model):
         readonly=True,
     )
     refund_line_id = fields.Many2one(
-        comodel_name="account.move.line", string="Journal Item", required=True
+        comodel_name="account.move.line",
+        string="Journal Item",
+        required=True,
+        index=True,
     )
     move_id = fields.Many2one(
         comodel_name="account.move",
