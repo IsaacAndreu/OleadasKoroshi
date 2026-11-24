@@ -110,7 +110,16 @@ class Mod349(models.Model):
                 total_origin_amount - total_operation_amount
             )
 
+    # TUCTUC 13.0.1.2.1 (24/11/2026): los detalles se crean en bloques de este tamaño en vez de uno a
+    # uno. Con 180.218 líneas (PRIME COLLECTIONS, marzo 2026) el «Calcular» original tardaba horas.
+    BLOQUE_DETALLES = 1000
+
     def _create_349_details(self, move_lines):
+        # Misma decisión que la versión original (línea a línea y en el mismo orden), pero los
+        # valores se acumulan y se crean en bloque: mismos registros, mismo orden de ids.
+        record_vals = []
+        refund_vals = []
+        tipos_por_asiento = {}
         for move_line in move_lines:
             if move_line.move_id.type in ("in_refund", "out_refund"):
                 # Check for refunds if the origin invoice period is different
@@ -121,30 +130,57 @@ class Mod349(models.Model):
                         origin_invoice.date < self.date_start
                         or origin_invoice.date > self.date_end
                     ):
-                        self._create_349_refund_detail(move_line)
+                        refund_vals.append(
+                            self._prepare_349_refund_detail(move_line, tipos_por_asiento)
+                        )
                         continue
-            self._create_349_record_detail(move_line)
+            record_vals.append(
+                self._prepare_349_record_detail(move_line, tipos_por_asiento)
+            )
+        self._crear_en_bloques("l10n.es.aeat.mod349.partner_record_detail", record_vals)
+        self._crear_en_bloques("l10n.es.aeat.mod349.partner_refund_detail", refund_vals)
+
+    def _crear_en_bloques(self, modelo, lista_vals):
+        modelo = self.env[modelo]
+        for i in range(0, len(lista_vals), self.BLOQUE_DETALLES):
+            modelo.create(lista_vals[i : i + self.BLOQUE_DETALLES])
+
+    def _tipos_cuenta_asiento(self, move, tipos_por_asiento):
+        # El original lo calculaba en cada línea; una factura de 90 líneas lo repetía 90 veces.
+        if move.id not in tipos_por_asiento:
+            tipos_por_asiento[move.id] = move.mapped("line_ids.account_id.internal_type")
+        return tipos_por_asiento[move.id]
+
+    def _prepare_349_record_detail(self, move_line, tipos_por_asiento=None):
+        if tipos_por_asiento is None:
+            tipos_por_asiento = {}
+        types = self._tipos_cuenta_asiento(move_line.move_id, tipos_por_asiento)
+        sign = 1 if "payable" in types else -1
+        return {
+            "report_id": self.id,
+            "move_line_id": move_line.id,
+            "amount_untaxed": sign * move_line.balance,
+        }
+
+    def _prepare_349_refund_detail(self, move_line, tipos_por_asiento=None):
+        if tipos_por_asiento is None:
+            tipos_por_asiento = {}
+        types = self._tipos_cuenta_asiento(move_line.move_id, tipos_por_asiento)
+        sign = 1 if "receivable" in types else -1
+        return {
+            "report_id": self.id,
+            "refund_line_id": move_line.id,
+            "amount_untaxed": sign * move_line.balance,
+        }
 
     def _create_349_record_detail(self, move_line):
-        types = move_line.move_id.mapped("line_ids.account_id.internal_type")
-        sign = 1 if "payable" in types else -1
         return self.env["l10n.es.aeat.mod349.partner_record_detail"].create(
-            {
-                "report_id": self.id,
-                "move_line_id": move_line.id,
-                "amount_untaxed": sign * move_line.balance,
-            }
+            self._prepare_349_record_detail(move_line)
         )
 
     def _create_349_refund_detail(self, move_line):
-        types = move_line.move_id.mapped("line_ids.account_id.internal_type")
-        sign = 1 if "receivable" in types else -1
         return self.env["l10n.es.aeat.mod349.partner_refund_detail"].create(
-            {
-                "report_id": self.id,
-                "refund_line_id": move_line.id,
-                "amount_untaxed": sign * move_line.balance,
-            }
+            self._prepare_349_refund_detail(move_line)
         )
 
     def _create_349_invoice_records(self):
@@ -157,10 +193,10 @@ class Mod349(models.Model):
             partner = move_line.partner_id
             op_key = move_line.l10n_es_aeat_349_operation_key
             partner_dict = data.setdefault(partner, {})
-            op_key_dict = partner_dict.setdefault(
-                op_key, {"record_details": detail_obj},
-            )
-            op_key_dict["record_details"] += record_detail
+            # Lista de ids en vez de "recordset += registro" (que copia el conjunto entero en cada
+            # vuelta: cuadrático con miles de líneas por cliente).
+            op_key_dict = partner_dict.setdefault(op_key, {"record_details": []})
+            op_key_dict["record_details"].append(record_detail.id)
         for partner in list(data.keys()):
             for op_key in list(data[partner].keys()):
                 record_created = rec_obj.create(
@@ -172,8 +208,10 @@ class Mod349(models.Model):
                         "country_id": partner.country_id.id,
                     }
                 )
-                for record_detail in data[partner][op_key]["record_details"]:
-                    record_detail.partner_record_id = record_created
+                # Un solo write por grupo en vez de uno por detalle: mismo resultado.
+                detail_obj.browse(data[partner][op_key]["record_details"]).write(
+                    {"partner_record_id": record_created.id}
+                )
         rounding = self.env.user.company_id.currency_id.rounding
         self.partner_record_ids.filtered(
             lambda r: float_is_zero(
@@ -198,10 +236,10 @@ class Mod349(models.Model):
         for refund_detail in self.partner_refund_detail_ids:
             move_line = refund_detail.refund_line_id
             origin_invoice = move_line.move_id.reversed_entry_id
-            groups.setdefault(origin_invoice, refund_detail_obj)
-            groups[origin_invoice] += refund_detail
+            # Lista de ids en vez de "recordset +=" (mismo orden): ver _create_349_invoice_records.
+            groups.setdefault(origin_invoice, []).append(refund_detail.id)
         for origin_invoice in groups:
-            refund_details = groups[origin_invoice]
+            refund_details = refund_detail_obj.browse(groups[origin_invoice])
             refund_detail = first(refund_details)
             move_line = refund_detail.refund_line_id
             partner = move_line.partner_id

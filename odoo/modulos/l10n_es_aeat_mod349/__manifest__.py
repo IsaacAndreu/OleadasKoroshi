@@ -9,7 +9,17 @@
 
 {
     "name": "Modelo 349 AEAT",
-    "version": "13.0.1.2.0",
+    "version": "13.0.1.2.1",
+    # Copia propia de tuctuc a partir de la 13.0.1.2.0 de la OCA instalada en el servidor (commit be55499).
+    # Si se vuelve a copiar encima la versión de la OCA, se pierde este arreglo.
+    "description": """
+Historial de tuctuc:
+
+v1.2.1 (24/11/2026): «Calcular» crea los detalles en bloques de 1.000 en vez de uno a uno, une cada
+detalle a su cliente con un solo write por grupo y deja de crecer recordsets con += en bucle. Con
+180.218 líneas intracomunitarias (PRIME COLLECTIONS, marzo 2026) el cálculo original tardaba horas.
+Mismo resultado: mismas líneas, en el mismo orden, mismos importes y mismos registros por cliente.
+""",
     "author": "Tecnativa, Eficent, Odoo Community Association (OCA)",
     "license": "AGPL-3",
     "category": "Localisation/Accounting",
