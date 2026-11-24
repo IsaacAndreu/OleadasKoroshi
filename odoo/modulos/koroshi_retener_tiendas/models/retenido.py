@@ -29,6 +29,9 @@ PARAM_S4T = P + 's4t'                      # 1 = preguntar el estado a S4T; 0 = 
 PARAM_S4T_LIMITE = P + 's4t_limite'        # maximo de ordenes que se piden al dashboard de S4T (v1.1.0)
 PARAM_S4T_ALMACEN = P + 's4t_almacen'      # almacen_id de NAU-2 en S4T (v1.1.0)
 PARAM_VENTANA = P + 'ventana_horas'        # duplicado = pedidos de la tienda a menos de estas horas (v1.1.0)
+PARAM_MINIMO = P + 'minimo_uds'            # v1.2.0: menos de estas uds reservadas = no se prepara (0 = apagado)
+PARAM_AVISAR_POCAS = P + 'avisar_pocas'    # v1.2.0: correo de los de pocas uds (Betty, Jose Luis e Isaac)
+PARAM_CANCELAR_POCAS = P + 'cancelar_pocas'  # v1.2.0: 1 = cancelar sus OUT como las de la web; 0 = solo avisar
 
 MARGEN_MIN = 60
 TIMEOUT = 30
@@ -51,10 +54,14 @@ class KoroshiPedidoRetenido(models.Model):
     motivo = fields.Selection([(regla.DUPLICADO, 'Varios pedidos de la tienda'),
                                (regla.CANCELADO, 'Cancelado en S4T'),
                                (regla.DUPLICADO_CANCELADO, 'Varios pedidos y cancelado en S4T'),
-                               (regla.UNICO_VIVO, 'Único vivo en S4T (pasa)')], 'Motivo', required=True)
+                               (regla.UNICO_VIVO, 'Único vivo en S4T (pasa)'),
+                               (regla.POCAS, 'Menos del mínimo de uds reservadas')], 'Motivo', required=True)
+    reservadas = fields.Float('Uds reservadas', digits=(16, 0), help='Reservadas en Odoo al revisar (v1.2.0)')
+    aviso_pocas = fields.Boolean('Avisado por pocas uds', readonly=True,
+                                 help='Ya ha salido en el correo de pedidos con pocas uds (no se repite)')
     retener = fields.Boolean('Retenido', help='No entra en zonas ni en el reparto de operarios (en modo real)')
     decision = fields.Selection([('pendiente', 'Sin decidir'), ('preparar', 'Preparar'),
-                                 ('cancelado', 'Cancelado en Odoo a mano')], 'Decisión', default='pendiente',
+                                 ('cancelado', 'Cancelado en Odoo')], 'Decisión', default='pendiente',
                                 required=True)
     decidido_por = fields.Many2one('res.users', 'Decidido por', readonly=True)
     decidido_el = fields.Datetime('Decidido el', readonly=True)
@@ -110,6 +117,9 @@ class KoroshiPedidoRetenido(models.Model):
                 'creado': v.create_date,
                 'uds': sum(v.order_line.mapped('product_uom_qty')),
                 'n_out': len(outs),
+                # v1.2.0: lo reservado en Odoo (lo que se podria preparar), no lo pedido en S4T
+                'reservadas': sum(outs.mapped('move_lines').filtered(
+                    lambda m: m.state not in ('done', 'cancel')).mapped('reserved_availability')),
             })
         return pedidos
 
@@ -176,6 +186,8 @@ class KoroshiPedidoRetenido(models.Model):
         except ValueError:
             ventana = 3.0
         resultado = regla.decidir(pedidos, estados, ok, ventana)
+        minimo = self._entero(PARAM_MINIMO, 20)
+        resultado = regla.aplicar_minimo(resultado, pedidos, minimo)
         Fila = self.sudo()
         existentes = dict((f.sale_id.id, f) for f in Fila.search([('noche', '=', noche)]))
         for p in pedidos:
@@ -183,7 +195,7 @@ class KoroshiPedidoRetenido(models.Model):
                 continue
             retener, motivo, est = resultado[p['id']]
             vals = {'tienda': p['tienda'], 'pedido': p['name'], 'creado': p['creado'], 'uds': p['uds'],
-                    'n_out': p['n_out'], 'motivo': motivo, 'retener': retener}
+                    'n_out': p['n_out'], 'motivo': motivo, 'retener': retener, 'reservadas': p['reservadas']}
             if est or ok:
                 vals['estado_s4t'] = est
             fila = existentes.get(p['id'])
@@ -191,28 +203,102 @@ class KoroshiPedidoRetenido(models.Model):
                 if fila.decision == 'pendiente':
                     fila.write(vals)
                 else:
-                    fila.write({'n_out': p['n_out'], 'estado_s4t': vals.get('estado_s4t', fila.estado_s4t)})
+                    fila.write({'n_out': p['n_out'], 'estado_s4t': vals.get('estado_s4t', fila.estado_s4t),
+                                'reservadas': p['reservadas']})
             else:
                 Fila.create(dict(vals, noche=noche, sale_id=p['id']))
+        # v1.2.0: lo que ya no cumple ninguna regla (p. ej. ya tiene 20 uds reservadas) deja de estar retenido
+        for sale_id, fila in existentes.items():
+            if sale_id not in resultado and fila.decision == 'pendiente' and fila.retener:
+                fila.write({'retener': False})
         filas = Fila.search([('noche', '=', noche)])
+        # v1.2.0: primero los de pocas uds (su correo a Betty, Jose Luis e Isaac y, si esta encendido, cancelar);
+        # el aviso general lleva el resto
+        if avisar:
+            self._pocas(filas, minimo)
+        generales = filas.filtered(lambda f: f.motivo != regla.POCAS)
         texto = regla.texto_aviso([{
             'tienda': f.tienda, 'pedido': f.pedido, 'hora': f.creado and comun.a_local(f.creado).strftime('%H:%M') or '',
             'uds': f.uds, 'estado_s4t': f.estado_s4t or '', 'motivo': f.motivo, 'retener': f.retener,
-            'decision': f.decision} for f in filas], nota, self._modo())
-        pendientes = filas.filtered(lambda f: f.retener and f.decision == 'pendiente')
-        _logger.info('KOROSHI Retener: noche %s, %s pedidos, %s retenidos sin decidir. %s',
-                     noche, len(pedidos), len(pendientes), nota)
+            'decision': f.decision} for f in generales], nota, self._modo())
+        pendientes = generales.filtered(lambda f: f.retener and f.decision == 'pendiente')
+        _logger.info('KOROSHI Retener: noche %s, %s pedidos, %s retenidos sin decidir (sin contar los de pocas '
+                     'uds: %s). %s', noche, len(pedidos), len(pendientes),
+                     len(filas.filtered(lambda f: f.motivo == regla.POCAS and f.retener)), nota)
         if avisar and pendientes:
             self._avisar('%s pedidos de tienda retenidos (%s tiendas)' % (
                 len(pendientes), len(set(pendientes.mapped('tienda')))), texto)
         return filas, texto, noche
 
     @api.model
-    def _avisar(self, asunto, texto):
-        """Correo a los de koroshi_retener_tiendas.avisar. Nunca rompe el cron."""
-        destinatarios = self._param(PARAM_AVISAR)
+    def _entero(self, clave, defecto):
+        try:
+            return int(float(self._param(clave, str(defecto))))
+        except ValueError:
+            return defecto
+
+    @api.model
+    def _pocas(self, filas, minimo):
+        """v1.2.0 (Isaac, 24/11): pedidos de tienda con menos de 'minimo' uds reservadas. Correo a
+        koroshi_retener_tiendas.avisar_pocas con los que aun no habian salido y, con cancelar_pocas = 1, cancela sus
+        OUT como hace el corte de pedidos web: solo las que no tienen nada leido, no estan validadas, no estan en una
+        agrupacion de zonas ni en la cola de un operario; cada una en su savepoint (si una falla, sigue)."""
+        nuevas = filas.filtered(lambda f: f.motivo == regla.POCAS and f.retener and f.decision == 'pendiente'
+                                and not f.aviso_pocas)
+        if not nuevas:
+            return False
+        cancelar = self._param(PARAM_CANCELAR_POCAS, '0') == '1'
+        datos = []
+        for f in nuevas:
+            cancelada = cancelar and self._cancelar_outs(f, minimo) or False
+            datos.append({'tienda': f.tienda, 'pedido': f.pedido, 'uds': f.uds, 'reservadas': f.reservadas,
+                          'cancelada': cancelada})
+        nuevas.write({'aviso_pocas': True})
+        self._avisar('%s pedidos de tienda no se preparan: menos de %s uds reservadas' % (len(datos), minimo),
+                     regla.texto_pocas(datos, minimo, cancelar), self._param(PARAM_AVISAR_POCAS))
+        return True
+
+    def _cancelar_outs(self, fila, minimo):
+        """v1.2.0: cancela las OUT abiertas del pedido de la fila que se pueden cancelar. True si se ha cancelado
+        alguna y no queda ninguna abierta (entonces la fila pasa a «Cancelado en Odoo»)."""
+        outs = fila.sale_id.picking_ids.filtered(
+            lambda p: p.picking_type_code == 'outgoing' and p.state not in ('done', 'cancel'))
+        en_cola = set()
+        if outs and 'koroshi.operario.asignacion' in self.env:
+            en_cola = set(self.env['koroshi.operario.asignacion'].sudo().search(
+                [('picking_id', 'in', outs.ids), ('tipo', '=', 'out'),
+                 ('estado', 'in', ('cola', 'curso', 'oficina'))]).mapped('picking_id').ids)
+        hechas, quedan = 0, 0
+        for p in outs:
+            if (any(p.move_line_ids.mapped('qty_done')) or p.id in en_cola or
+                    (p.batch_id and (p.batch_id.name or '').startswith('Z-'))):
+                quedan += 1
+                continue
+            self.env['base'].flush()
+            try:
+                with self.env.cr.savepoint():
+                    p.action_cancel()
+                    p.message_post(body='Cancelada por KOROSHI Retener (noche %s): el pedido %s tiene %s uds '
+                                        'reservadas, menos del mínimo de %s.' % (
+                                            fila.noche.strftime('%d/%m'), fila.pedido, int(fila.reservadas), minimo))
+                    self.env['base'].flush()
+                hechas += 1
+            except Exception:
+                self.env.cache.invalidate()
+                quedan += 1
+                _logger.exception('KOROSHI Retener: no se ha podido cancelar %s', p.name)
+        if hechas and not quedan:
+            fila.sudo().write({'decision': 'cancelado', 'decidido_el': fields.Datetime.now(),
+                               'decidido_por': self.env.uid})
+            return True
+        return False
+
+    @api.model
+    def _avisar(self, asunto, texto, destinatarios=None):
+        """Correo a los de koroshi_retener_tiendas.avisar (o a 'destinatarios'). Nunca rompe el cron."""
+        destinatarios = destinatarios if destinatarios is not None else self._param(PARAM_AVISAR)
         if not destinatarios:
-            _logger.warning('KOROSHI Retener: sin destinatarios en %s; el aviso solo queda en el log', PARAM_AVISAR)
+            _logger.warning('KOROSHI Retener: sin destinatarios; el aviso «%s» solo queda en el log', asunto)
             return False
         try:
             cuerpo = (texto or '').replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')

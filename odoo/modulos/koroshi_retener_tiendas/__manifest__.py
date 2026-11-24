@@ -16,7 +16,11 @@ koroshi_retener_tiendas.hora_noche (14:00) del dia anterior:
   retienen los cancelados. Con koroshi_retener_tiendas.s4t = 1 se pregunta al dashboard de S4T: GET
   /dashboard/orders/data (type=B2B, almacen_id, date_from, date_to; campos numero_orden y status), que no marca nada
   como visto. Si S4T no contesta, solo se miran los duplicados.
-- Nunca cancela nada: decide un responsable en KOROSHI > Pedidos de tienda retenidos («Preparar este» o «Ya
+- v1.2.0: menos de koroshi_retener_tiendas.minimo_uds (20) uds RESERVADAS en Odoo (aunque en S4T pida mas): se
+  retiene y sale en un correo aparte a koroshi_retener_tiendas.avisar_pocas (Betty, Jose Luis e Isaac). Con
+  koroshi_retener_tiendas.cancelar_pocas = 1 sus OUT se cancelan como las de la web (sin nada leido, sin validar, fuera
+  de zonas y de la cola de un operario); de inicio 0.
+- Fuera de eso nunca cancela nada: decide un responsable en KOROSHI > Pedidos de tienda retenidos («Preparar este» o «Ya
   cancelado en Odoo», que solo apunta la decision y deja nota en el pedido).
 - Correo a koroshi_retener_tiendas.avisar a las horas de koroshi_retener_tiendas.horas (04:40 y 05:45 hora local)
   si hay retenidos sin decidir.
@@ -26,8 +30,12 @@ reparto) o real. pickings_retenidos() da las OUT a dejar fuera; la usaran los en
 koroshi_operarios (versiones aparte). En modo aviso devuelve una lista vacia.
 
 Sin campos en tablas compartidas: escribe en su tabla, en sus parametros, en el chatter del pedido al decidir y en
-mail.mail. No toca la PDA, ni reservas, ni OUT.
+mail.mail; con cancelar_pocas = 1, en el estado de las OUT que cancela. No toca la PDA ni las reservas.
 
+v1.2.0 (24/11/2026): lo pide Isaac: un pedido de tienda con menos de 20 uds reservadas en Odoo no se prepara ni va
+  a zonas, y se avisa por correo a betty@nath.es, j.luis@nath.es e isaac.andreu@nath.es. Cancelar sus OUT como las de
+  la web queda hecho pero apagado (cancelar_pocas = 0) hasta que Isaac diga que si. Medido (35 dias): de 0 a 25
+  pedidos por noche piden menos de 20 uds. Campos nuevos solo en su tabla (reservadas, aviso_pocas).
 v1.1.0 (24/11/2026): comprobado en produccion (solo lectura). (1) La API /orders/b2b no sirve desde una accion de
   servidor y el estado esta en el dashboard de S4T: /dashboard/orders/data con numero_orden y status
   (PENDING/READY/CANCELLED); el 24/11 da 99 CANCELLED. Se pregunta ahi, con filtro de fecha y sin viewed, y s4t = 1
@@ -37,7 +45,7 @@ v1.1.0 (24/11/2026): comprobado en produccion (solo lectura). (1) La API /orders
 v1.0.0 (24/11/2026): primera version, en modo aviso y sin preguntar a S4T (falta confirmar el campo de estado de la
   API, P0 del diseno). Revision a las 04:40 y 05:45, correo y lista con las decisiones.
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'Effective Logistics',
     'category': 'Inventory',
     'depends': ['mail', 'sale_stock', 'koroshi_base', 'koroshi_menu'],

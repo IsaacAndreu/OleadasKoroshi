@@ -38,6 +38,20 @@
             <field name="key">koroshi_retener_tiendas.s4t_almacen</field>
             <field name="value">2</field>
         </record>
+        <!-- v1.2.0 (Isaac, 24/11): menos de 20 uds reservadas = no se prepara; correo a Betty, Jose Luis e Isaac.
+             cancelar_pocas = 0: de inicio solo avisa; con 1 cancela sus OUT como el corte de pedidos web. -->
+        <record id="param_minimo_uds" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.minimo_uds</field>
+            <field name="value">20</field>
+        </record>
+        <record id="param_avisar_pocas" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.avisar_pocas</field>
+            <field name="value">betty@nath.es,j.luis@nath.es,isaac.andreu@nath.es</field>
+        </record>
+        <record id="param_cancelar_pocas" model="ir.config_parameter">
+            <field name="key">koroshi_retener_tiendas.cancelar_pocas</field>
+            <field name="value">0</field>
+        </record>
         <record id="param_ventana_horas" model="ir.config_parameter">
             <field name="key">koroshi_retener_tiendas.ventana_horas</field>
             <field name="value">3</field>

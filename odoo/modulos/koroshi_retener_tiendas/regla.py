@@ -8,7 +8,9 @@
 #   estados_de_items(items, numeros)  estado de cada pedido en la respuesta de la API de S4T
 #   grupos_seguidos(lista, horas)     pedidos de una tienda que entran a menos de 'horas' unos de otros
 #   decidir(pedidos, estados, s4t_ok, ventana_horas)  que pedidos se retienen y por que
+#   aplicar_minimo(res, pedidos, min) v1.2.0: retiene los de menos de 'min' uds reservadas
 #   texto_aviso(...)                  el correo para el responsable
+#   texto_pocas(...)                  v1.2.0: el correo de los de pocas uds (Betty, Jose Luis e Isaac)
 # Diseno: bin/versiones/diseno-retener-pedidos-tienda_2026-11-24.md
 # =============================================================================
 import datetime
@@ -25,6 +27,7 @@ DUPLICADO = 'duplicado'
 CANCELADO = 'cancelado'
 DUPLICADO_CANCELADO = 'duplicado_cancelado'
 UNICO_VIVO = 'unico_vivo'      # de una tienda con varios pedidos, el unico vivo en S4T: no se retiene
+POCAS = 'pocas'                # v1.2.0: menos del minimo de uds reservadas en Odoo (Isaac, 24/11: 20 uds)
 
 
 def tienda_de(nombre):
@@ -175,11 +178,30 @@ def decidir(pedidos, estados, s4t_ok, ventana_horas=0):
     return salida
 
 
+def aplicar_minimo(resultado, pedidos, minimo):
+    """v1.2.0 (Isaac, 24/11): un pedido de tienda con menos de 'minimo' uds reservadas en Odoo no se prepara, aunque
+    en S4T pida mas (lo que cuenta es lo que hay de stock). pedidos: [{'id', 'tienda', 'reservadas', ...}].
+    Los ya retenidos por duplicado o cancelado se quedan con su motivo; los demas (tambien el unico vivo) pasan a
+    retenidos con motivo POCAS. Devuelve un resultado nuevo con el mismo formato que decidir()."""
+    salida = dict(resultado)
+    if not minimo or minimo <= 0:
+        return salida
+    for p in pedidos:
+        if not p.get('tienda') or (p.get('reservadas') or 0) >= minimo:
+            continue
+        actual = salida.get(p['id'])
+        if actual and actual[0]:
+            continue
+        salida[p['id']] = (True, POCAS, actual and actual[2] or '')
+    return salida
+
+
 TEXTO_MOTIVO = {
     DUPLICADO: 'RETENIDO (varios pedidos de la tienda)',
     CANCELADO: 'RETENIDO (cancelado en S4T)',
     DUPLICADO_CANCELADO: 'RETENIDO (cancelado en S4T)',
     UNICO_VIVO: 'pasa a zonas (único vivo en S4T)',
+    POCAS: 'RETENIDO (menos del mínimo de uds reservadas)',
 }
 
 
@@ -208,4 +230,23 @@ def texto_aviso(filas, nota_s4t, modo):
     lineas.append('')
     lineas.append('Decidir en KOROSHI > Pedidos de tienda retenidos: «Preparar este» o «Ya cancelado en Odoo». '
                   'El módulo no cancela nada.')
+    return '\n'.join(lineas)
+
+
+def texto_pocas(filas, minimo, cancelar):
+    """v1.2.0: correo de los pedidos que no se hacen por tener menos de 'minimo' uds reservadas.
+    filas: [{'tienda', 'pedido', 'uds', 'reservadas', 'cancelada'}]."""
+    lineas = ['%s pedidos de tienda NO se preparan hoy: tienen menos de %s uds reservadas en Odoo (por stock).' % (
+        len(filas), minimo)]
+    if cancelar:
+        lineas.append('Sus OUT se han cancelado en Odoo (las que no tenían nada leído), como las de la web.')
+    else:
+        lineas.append('No se ha cancelado nada: se quedan apartados hasta que alguien decida en KOROSHI > Pedidos de '
+                      'tienda retenidos.')
+    lineas.append('')
+    lineas.append('   %-6s %-14s %8s %11s' % ('Tienda', 'Pedido', 'Pedidas', 'Reservadas'))
+    for f in sorted(filas, key=lambda f: (len(f['tienda']), f['tienda'], f['pedido'])):
+        lineas.append('   %-6s %-14s %8s %11s%s' % (f['tienda'], f['pedido'], int(f['uds'] or 0),
+                                                   int(f['reservadas'] or 0),
+                                                   f.get('cancelada') and '   cancelada' or ''))
     return '\n'.join(lineas)

@@ -13,6 +13,7 @@
                 <field name="pedido"/>
                 <field name="creado"/>
                 <field name="uds" sum="Uds"/>
+                <field name="reservadas" sum="Reservadas"/>
                 <field name="n_out"/>
                 <field name="estado_s4t"/>
                 <field name="motivo"/>
@@ -44,6 +45,7 @@
                 <filter name="sin_decidir" string="Retenidos sin decidir"
                         domain="[('retener', '=', True), ('decision', '=', 'pendiente')]"/>
                 <filter name="retenidos" string="Retenidos" domain="[('retener', '=', True)]"/>
+                <filter name="pocas" string="Pocas uds" domain="[('motivo', '=', 'pocas')]"/>
                 <separator/>
                 <filter name="noche" string="Noche" date="noche"/>
                 <group expand="1" string="Agrupar por">

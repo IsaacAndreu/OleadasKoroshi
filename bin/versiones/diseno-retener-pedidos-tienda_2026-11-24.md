@@ -173,3 +173,17 @@ Sí la propongo como **complemento** para los cancelados en S4T (P2).
   tienda a menos de 3 h uno de otro, entrados antes de las 04:40» solo salen **2 noches: 07/10 (50 tiendas, 100
   pedidos) y 24/11 (49 tiendas, 147 pedidos)**, los dos incidentes reales. Ningún falso aviso. Parámetro
   `ventana_horas` = 3.
+
+## 10. koroshi_retener_tiendas 1.2.0 (24/11), SIN INSTALAR: pedidos con menos de 20 uds reservadas
+
+- **Lo pide Isaac:** un pedido de tienda con menos de 20 uds **reservadas en Odoo** no se prepara ni va a zonas,
+  aunque en S4T pida 20 o más (cuenta el stock que hay). Correo aparte a betty@nath.es, j.luis@nath.es e
+  isaac.andreu@nath.es con tienda, pedido, pedidas y reservadas. Sale una vez por pedido (a las 04:40 o a las 05:45).
+- **Cancelar como en la web**: hecho pero **apagado** (`cancelar_pocas` = 0). Con 1, cancela sus OUT igual que el
+  corte de pedidos web: solo las que no tienen nada leído, no están validadas, no están en una agrupación Z- ni en la
+  cola de un operario, cada una en su savepoint; nota en el chatter de la OUT y la fila pasa a «Cancelado en Odoo».
+  Antes de encenderlo, decidir qué ve S4T de un pedido de tienda cancelado en Odoo (hoy no hay nada que se lo diga;
+  ver `correo-s4t-cancelaciones-bidireccional_2026-11-20.md`).
+- **Medido en Odoo (solo lectura, 35 días)**: pedidos de tienda por noche que piden menos de 20 uds: entre 0 y 25
+  (12/11: 25 de 47; 20/11: 14 de 51; 30/10: 17 de 48; la mayoría de noches 0-5). Con lo reservado serán algunos más.
+  Mínimo en el parámetro `minimo_uds` (0 = apagado).

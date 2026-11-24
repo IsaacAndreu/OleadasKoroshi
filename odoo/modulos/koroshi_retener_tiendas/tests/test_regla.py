@@ -82,6 +82,24 @@ class TestRegla(unittest.TestCase):
         self.assertTrue(r[2][0] and r[3][0])
         self.assertNotIn(1, r)
 
+    def test_minimo(self):
+        p = [dict(ped(1, 'a', 'K1'), reservadas=19), dict(ped(2, 'b', 'K2'), reservadas=20),
+             dict(ped(3, 'c', 'K3'), reservadas=5), dict(ped(4, 'd', ''), reservadas=1),
+             dict(ped(5, 'e', 'K5'), reservadas=0)]
+        previo = {3: (True, regla.CANCELADO, 'CANCELLED'), 5: (False, regla.UNICO_VIVO, 'PENDING')}
+        r = regla.aplicar_minimo(previo, p, 20)
+        self.assertEqual(r[1], (True, regla.POCAS, ''))
+        self.assertNotIn(2, r)
+        self.assertEqual(r[3], (True, regla.CANCELADO, 'CANCELLED'))   # se queda con su motivo
+        self.assertNotIn(4, r)                                          # sin tienda
+        self.assertEqual(r[5], (True, regla.POCAS, 'PENDING'))          # unico vivo pero con 0 uds
+        self.assertEqual(regla.aplicar_minimo(previo, p, 0), previo)    # apagado
+        t = regla.texto_pocas([{'tienda': 'K1', 'pedido': 'S-1', 'uds': 20, 'reservadas': 19, 'cancelada': False}],
+                              20, False)
+        self.assertIn('1 pedidos de tienda NO se preparan', t)
+        self.assertIn('No se ha cancelado nada', t)
+        self.assertIn('se han cancelado en Odoo', regla.texto_pocas([], 20, True))
+
     def test_un_pedido_por_tienda(self):
         p = [ped(1, '1', 'K1'), ped(2, '2', 'K2'), ped(3, '3', '')]
         self.assertEqual(regla.decidir(p, {}, False), {})
