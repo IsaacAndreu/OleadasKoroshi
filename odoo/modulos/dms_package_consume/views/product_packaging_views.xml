@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record model="ir.ui.view" id="product_packaging_delivery_form">
+        <field name="name">product.packaging.form.delivery</field>
+        <field name="model">product.packaging</field>
+        <field name="inherit_id" ref="delivery.product_packaging_delivery_form"/>
+        <field name="arch" type="xml">
+            <xpath expr="//group" position="inside">
+                <field name="default_location_src_id"/>
+                <field name="default_location_dest_id"/>
+            </xpath>
+            <xpath expr="//group" position="after">
+                <separator string="Product Consume"/>
+                <field name="product_packaging_consume_ids">
+                    <tree string="Product Packaging Consume" editable="bottom">
+                        <field name="product_id"/>
+                        <field name="quantity"/>
+                        <field name="product_uom_id" groups="uom.group_uom"/>
+                        <field name="company_id" invisible="1"/>
+                    </tree>
+                    <form string="Product Packaging Consume">
+                        <group>
+                            <group>
+                                <field name="product_id"/>
+                                <field name="company_id" invisible="1"/>
+                            </group>
+                            <group>
+                                <label for="quantity"/>
+                                <div class="o_row">
+                                    <field name="quantity"/>
+                                    <field name="product_uom_id" options="{'no_create': True}" string="Unit of Measure" groups="uom.group_uom"/>
+                                </div>
+                            </group>
+                        </group>
+                    </form>
+                </field>
+            </xpath>
+        </field>
+    </record>
+</odoo>
