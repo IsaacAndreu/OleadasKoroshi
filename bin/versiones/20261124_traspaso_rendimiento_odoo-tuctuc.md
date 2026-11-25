@@ -79,6 +79,47 @@ unset PGPASSWORD PGHOST PGUSER PGDATABASE
    `~/tuctuc_indices.tgz`, `~/tuctuc_integration.tgz`, `/tmp/bs`, `/tmp/ix` y `~/crear_indices*.log`. Esto último,
    cuando el psql de los índices haya acabado.
 
+## 25/11: conciliación bancaria de Shopify/Mollie (contabilidad: «solo concilia 13 de 42»)
+
+- **Causa** (`odoo13/addons/account/models/account_reconcile_model.py:836`). «Casar con las facturas existentes»
+  solo valida sola una línea si su número (WT#350966) coincide con el número, la referencia o la referencia de pago
+  de la factura. Si solo coinciden la empresa y el importe, la propone y nada más.
+  - Las devoluciones llevan el número en la referencia («Devolución #350031 (#350031-R1)»), así que se concilian
+    solas.
+  - Las facturas de venta (FW/…) solo lo llevan en el **origen** (`invoice_origin` = WT#350966). La referencia de
+    pago es «RF30 1178 470».
+- **Regla 330 «LIQUIDACION SHOPIFY-MOLLIE B2C»**: contabilidad la cambió a «Sugerir valores de contrapartida» con
+  auto-validar. Así manda el cobro a la 43001000 **sin casar la factura**.
+  - Apuntes 430 abiertos por la regla 330, a las 9:40 UTC del 25/11:
+    - extracto 46154 (17/11): 2;
+    - extracto 46155 (17/11): 1;
+    - extracto 46265 (20/11): 19;
+    - extracto 46266 (23/11): 28.
+    - En total, 50 apuntes y −3.407,21 € (los cuatro saldos: −59,27 + 4,99 − 1.281,99 − 2.070,94).
+  - **Pendiente de la respuesta de Isaac: volver a poner la regla en «Casar con las facturas existentes»**, él o
+    contabilidad.
+- **Cambio preparado, sin instalar**: el origen de la factura cuenta como referencia.
+  - Commit `81988d4`, etiqueta `nucleo_tuctuc/conciliacion-origen/2026-11-25`, paquete
+    `bin/20261125_nucleo_tuctuc_conciliacion_origen.tar.gz`, md5 del archivo `6bd52206…`.
+  - Entra con un reinicio (solo Python; el SQL se construye en el código).
+  - Prueba con rollback: `bin/versiones/20261125_prueba_conciliacion_por_origen_ROLLBACK.py`, sobre el extracto
+    46266.
+    - Con el código de hoy: 12 de 40 solas.
+    - Con el **nuevo: 38 de 40 solas, 0 con otra factura**; las 12 de hoy siguen igual.
+    - Las 2 que quedan (WT#351003 y WT#351014) tienen en el banco **otra ficha de cliente** que la factura
+      (clientes duplicados). Las tiene que arreglar contabilidad a mano.
+- **Índice que falta: `account_move_line.payment_id`** (10,5 M filas, sin índice).
+  - Deshacer una conciliación borra pagos, y la clave foránea obliga a leer toda la tabla por cada pago: la prueba
+    tardó 461 s en deshacer 40 líneas.
+  - Es lo mismo que le pasa a contabilidad con «Revertir conciliación».
+  - Crearlo como los de ayer: `CREATE INDEX CONCURRENTLY account_move_line_payment_id_index ...` e `index=True` en
+    el campo, con copia base al repo.
+- **Orden propuesto para la tarde**:
+  1. el índice de `payment_id`;
+  2. el reinicio, que también activa la búsqueda por stock y los índices de ayer, y reencolar los trabajos;
+  3. deshacer y volver a aplicar las reglas en esos 4 extractos, que con el código nuevo se casan solos: lo hace
+     contabilidad o un script (primero en prueba con rollback y después con el sí de Isaac).
+
 ## Siguientes candidatos (orden que propuse a Isaac)
 
 1. **`sale.integration.export_inventory`**, analizado a las 16:45. Código en `nath/custom_addons/integration`:
