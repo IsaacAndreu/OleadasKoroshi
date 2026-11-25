@@ -42,6 +42,17 @@
                         <span class="o_kp_cajas_resumen"/>
                         <span class="o_kp_sin_caja"/>
                     </div>
+                    <!-- v3.36: «Caja llena» por volumen: lo leído sin caja frente a lo que cabe en la caja -->
+                    <div class="o_kp_cl" style="display: none;">
+                        <div class="o_kp_cl_barra"><div class="o_kp_cl_lleno"/><span class="o_kp_cl_texto"/></div>
+                    </div>
+                    <div class="o_kp_cl_pregunta" style="display: none;">
+                        <div class="o_kp_cl_msg"/>
+                        <div class="o_kp_cl_botones">
+                            <button type="button" class="o_kp_cl_cerrar">Caja llena: cerrar</button>
+                            <button type="button" class="o_kp_cl_cabe">Aún cabe más</button>
+                        </div>
+                    </div>
                 </div>
                 <!-- v3.7: notas de la OUT (avisos de la oficina); v3.9: debajo de la barra -->
                 <div class="o_kp_nota" style="display: none;"/>

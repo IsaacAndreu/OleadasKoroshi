@@ -229,8 +229,17 @@ ronda y validar) piden permiso de Inventario y una tarjeta válida: la misma reg
 de la empresa), de koroshi_base.pda. Antes aceptaban cualquier employee_id. Si no vale, rechazo normal («Pasa otra vez
 tu tarjeta»), no se guarda y queda una línea WARNING en el log; sin tarjeta, como antes. Lo aprobó Isaac el 23/11.
 Las rutas que solo leen (modo, cargar, rechazadas, impresos) no cambian. Sin campos nuevos.
+v3.36.0 (25/11/2026): «Caja llena» por volumen (diseño del 25/11, V1-V3 aprobados por Isaac; caso K1 MAQUINISTA D2: dos
+cajas físicas en una CJ). Barra con el volumen de mis uds leídas sin caja (product.product.volume; sin volumen = la media
+de la OUT) frente a la capacidad de mi último tipo de caja (si no hay, la 600X400X400). Verde; naranja «Casi llena» del
+90 %; al 100 % pitido y «Caja llena: cerrar» (abre Caja) / «Aún cabe más» (no vuelve a preguntar hasta el 115 %); al 115 %
+aviso rojo «¿Son dos cajas?». Nunca bloquea. También en agrupaciones Z- (la caja de la tienda de lo último leído). Cada
+respuesta y la CJ que se cierra después quedan en la tabla nueva koroshi.preparacion.caja_llena (menú «Respuestas "Caja
+llena"») para el Monitor. Parámetros sin crear (valen los de por defecto): caja_llena_activa (1/0),
+caja_llena_capacidades (600X400X400=0.090;MEDIANA=0.060) y caja_llena_umbrales (90,100,115). Volúmenes de cada OUT en
+memoria 10 min: leer no vuelve a leer productos. Sin campos nuevos en tablas compartidas.
 """,
-    'version': '13.0.3.35.0',
+    'version': '13.0.3.36.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -245,6 +254,7 @@ Las rutas que solo leen (modo, cargar, rechazadas, impresos) no cambian. Sin cam
         'data/parametros_v334.xml',
         'views/assets.xml',
         'views/lectura_views.xml',
+        'views/caja_llena_views.xml',   # v3.36
     ],
     'qweb': [
         'static/src/xml/preparacion.xml',

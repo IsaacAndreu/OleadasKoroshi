@@ -257,6 +257,23 @@ class KoroshiPreparacion(http.Controller):
             return {'ok': True, 'color': Pref.poner_color(emp, color)}
         return {'ok': True, 'color': Pref.color_de(emp)}
 
+    @http.route('/koroshi/preparacion/caja_llena', type='json', auth='user')
+    def caja_llena(self, picking_id=False, lote_id=False, out_id=False, employee_id=False, tipo_caja=False,
+                   capacidad=0, m3=0, uds=0, aviso='', respuesta='', **kw):
+        """v3.36: la respuesta a «¿Caja llena?» («Caja llena: cerrar» / «Aún cabe más»). Solo se apunta: no cambia nada
+        de la OUT. En una agrupación, out_id = la tienda de esa caja."""
+        no_vale = self._no_vale(employee_id)   # v3.35 (R16)
+        if no_vale:
+            return {'ok': False, 'msg': no_vale}
+        lote = self._lote(lote_id) if lote_id else None
+        picking = self._picking(out_id if lote_id else picking_id)
+        if not picking:
+            return {'ok': False, 'msg': 'No se encuentra la OUT.'}
+        request.env['koroshi.preparacion.caja_llena'].guardar(
+            picking, self._empleado(employee_id), lote=lote, tipo_caja=tipo_caja, capacidad=capacidad, m3=m3, uds=uds,
+            aviso=aviso, respuesta=respuesta)
+        return {'ok': True}
+
     @http.route('/koroshi/preparacion/mover_caja', type='json', auth='user')
     def mover_caja(self, picking_id=False, linea_id=False, cantidad=1, destino='', employee_id=False, id_lectura=False,
                    **kw):

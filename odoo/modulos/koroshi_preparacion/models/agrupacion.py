@@ -132,13 +132,20 @@ class Agrupacion(models.AbstractModel):
                 siguiente = ml.id
         outs = []
         sin_caja = 0.0
+        sin_caja_m3 = 0.0
         cjs = self._cjs_de_outs(vivas)   # v3.22: la PDA sabe sin red de qué tienda es cada CJ
+        # v3.36: «Caja llena» por tienda (cada tienda, su caja). La media de volumen, la de toda la agrupación
+        vols = L._volumenes(mls.mapped('product_id'), ('lote', lote.id))
         for p in vivas:
-            fuera = sum(L._sin_caja(p).mapped('qty_done'))
+            fuera_mls = L._sin_caja(p)
+            fuera = sum(fuera_mls.mapped('qty_done'))
+            fuera_m3 = sum(ml.qty_done * vols.get(ml.product_id.id, 0.0) for ml in fuera_mls)
             sin_caja += fuera
+            sin_caja_m3 += fuera_m3
             i = info[p.id]
             outs.append({'id': p.id, 'name': i['name'], 'tienda': i['tienda'], 'caja': i['caja'],
                          'destino': self._destino(i), 'sin_caja': round(fuera),
+                         'sin_caja_m3': round(fuera_m3, 4),   # v3.36
                          'pedidas': round(sum(p.move_line_ids.mapped('product_uom_qty'))),
                          'leidas': round(sum(p.move_line_ids.mapped('qty_done'))),
                          'cjs': cjs.get(p.name, [])})
@@ -168,6 +175,7 @@ class Agrupacion(models.AbstractModel):
             'faltantes_companero': [],
             'mias_sin_caja': round(sin_caja),
             'otros_sin_caja': 0,
+            'mias_sin_caja_m3': round(sin_caja_m3, 4),   # v3.36
         }
         if ligero:
             return res   # v3.29: lo fijo, solo en /cargar entero
@@ -189,7 +197,10 @@ class Agrupacion(models.AbstractModel):
             'alarma_min': L.minutos_alarma(),   # v3.22
             'alarma_horario': L.horario_alarma(),   # v3.23
             'refresco_solo_s': L.segundos_refresco(),   # v3.34 (R7)
+            'caja_llena': L.caja_llena_config(),   # v3.36
         })
+        for l in lineas:   # v3.36: m3 por ud (la PDA suma al leer)
+            l['vol'] = round(vols.get(l['producto_id'], 0.0), 5)
         return res
 
     # ------------------------------------------------------------------ leer un producto

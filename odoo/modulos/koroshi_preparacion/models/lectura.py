@@ -46,6 +46,21 @@ PARAM_HORARIO_ALARMA = 'koroshi_preparacion.horario_alarma'   # v3.23: tramos HH
 HORARIO_DEFECTO = '06:00-10:00,10:15-13:00,14:00-17:00'
 PARAM_REFRESCO_SOLO = 'koroshi_preparacion.refresco_solo_s'   # v3.34 (R7): segundos entre refrescos yendo solo; 0 = no
 REFRESCO_SOLO_DEFECTO = '30'   # sin la pausa de 10:00-10:15 ni la comida de 13 a 14
+# v3.36: «Caja llena» por volumen (diseño 25/11). '0' = sin barra ni avisos (como antes)
+PARAM_CAJA_LLENA = 'koroshi_preparacion.caja_llena_activa'
+# capacidad en m3 de cada tipo de caja: «texto del nombre o de las medidas=m3», separados por ';'. El primero es el
+# tipo que cuenta si la persona aún no ha elegido ninguno en esta PDA (V1)
+PARAM_CAJA_CAPACIDADES = 'koroshi_preparacion.caja_llena_capacidades'
+CAPACIDADES_DEFECTO = '600X400X400=0.090;MEDIANA=0.060'
+CAPACIDAD_DEFECTO = 0.090      # un tipo de caja que no sale en el parámetro
+# % de la barra: naranja «Casi llena», pregunta «¿Caja llena?» y aviso rojo «¿Son dos cajas?» (V2)
+PARAM_CAJA_UMBRALES = 'koroshi_preparacion.caja_llena_umbrales'
+UMBRALES_DEFECTO = (90, 100, 115)
+VOL_UD_DEFECTO = 0.0084        # m3 por ud si ningún artículo tiene volumen (caja llena ~0,084 m3 con ~10 uds)
+# m3 por ud de cada OUT / agrupación, guardados en memoria: leer el volumen de 207 artículos costaba ~25 ms en cada
+# lectura (medido el 25/11 en la OUT/27651). Un volumen cambiado en Odoo se ve como mucho a los VOL_CACHE_SEG
+VOL_CACHE_SEG = 600
+_vol_cache = {}                # (bd, clave) -> (momento, {product_id: m3 por ud})
 
 
 class Ocupada(UserError):
@@ -84,6 +99,83 @@ class Lectura(models.Model):
     @api.model
     def _param(self, clave, defecto=''):
         return self.env['ir.config_parameter'].sudo().get_param(clave, defecto) or defecto
+
+    # ------------------------------------------------------------------ v3.36: «Caja llena» por volumen
+    @api.model
+    def caja_llena_config(self):
+        """Lo que la PDA necesita para la barra: si está activa, los tres % y la capacidad por defecto."""
+        try:
+            u = [float(x.strip()) for x in self._param(PARAM_CAJA_UMBRALES, '').split(',') if x.strip()]
+            if len(u) != 3 or not 0 < u[0] <= u[1] <= u[2]:
+                raise ValueError(u)
+        except (TypeError, ValueError):
+            u = list(UMBRALES_DEFECTO)
+        return {'activa': self._param(PARAM_CAJA_LLENA, '1').strip() != '0',
+                'casi': u[0], 'llena': u[1], 'dos': u[2], 'capacidad': CAPACIDAD_DEFECTO}
+
+    @api.model
+    def _capacidades(self):
+        """[(TEXTO, m3)] del parámetro, en su orden. Mal escrito = el de por defecto."""
+        for texto in (self._param(PARAM_CAJA_CAPACIDADES, CAPACIDADES_DEFECTO), CAPACIDADES_DEFECTO):
+            res = []
+            for trozo in texto.split(';'):
+                if '=' not in trozo:
+                    continue
+                clave, valor = trozo.rsplit('=', 1)
+                clave = re.sub(r'\s', '', clave).upper()
+                try:
+                    m3 = float(valor.strip().replace(',', '.'))
+                except ValueError:
+                    continue
+                if clave and m3 > 0:
+                    res.append((clave, m3))
+            if res:
+                return res
+        return []
+
+    @api.model
+    def _volumenes(self, productos, clave=None):
+        """{product_id: m3 por ud}. Sin volumen en Odoo = la media de los que tienen de esa lista (la OUT o la
+        agrupación); si ninguno tiene, VOL_UD_DEFECTO. Con clave (('out', id) o ('lote', id)) se guarda en memoria
+        VOL_CACHE_SEG: las lecturas siguientes de esa OUT no vuelven a leer productos (salvo un artículo nuevo)."""
+        k = (self.env.cr.dbname, clave) if clave else None
+        ahora = time.time()
+        if k:
+            g = _vol_cache.get(k)
+            if g and ahora - g[0] < VOL_CACHE_SEG and set(productos.ids) <= set(g[1]):
+                return g[1]
+        vols = dict((p.id, p.volume or 0.0) for p in productos)
+        con = [v for v in vols.values() if v > 0]
+        media = sum(con) / len(con) if con else VOL_UD_DEFECTO
+        res = dict((pid, v if v > 0 else media) for pid, v in vols.items())
+        if k:
+            for viejo in [x for x, v in list(_vol_cache.items()) if ahora - v[0] > VOL_CACHE_SEG]:
+                _vol_cache.pop(viejo, None)
+            _vol_cache[k] = (ahora, res)
+        return res
+
+    @api.model
+    def _m3(self, reparto, vols, cual=0):
+        """m3 de las uds de _reparto_sin_caja (cual=0: las mías; 1: las de los demás)."""
+        if not reparto:
+            return 0.0
+        mls = self.env['stock.move.line'].browse(list(reparto))
+        return sum(reparto[ml.id][cual] * vols.get(ml.product_id.id, VOL_UD_DEFECTO) for ml in mls)
+
+    @api.model
+    def _caja_llena_cierre(self, picking, employee, codigo, m3):
+        """Caja cerrada: las respuestas a «¿Caja llena?» de esa persona en esa OUT que aún no tenían caja se quedan con
+        la CJ y el volumen con que se ha cerrado (para ajustar los %). Nunca para el cierre de la caja."""
+        try:
+            with self.env.cr.savepoint():
+                filas = self.env['koroshi.preparacion.caja_llena'].sudo().search([
+                    ('picking_id', '=', picking.id), ('employee_id', '=', employee.id if employee else False),
+                    ('caja', '=', False)])
+                for f in filas:
+                    f.write({'caja': codigo, 'm3_cierre': m3, 'fecha_cierre': fields.Datetime.now(),
+                             'pct_cierre': int(round(100 * m3 / f.capacidad)) if f.capacidad else 0})
+        except Exception:
+            _logger.exception('KOROSHI Preparación: no se ha podido apuntar la caja %s en «Caja llena»', codigo)
 
     @api.model
     def segundos_refresco(self):
@@ -474,6 +566,12 @@ class Lectura(models.Model):
         # v3.3: preparar a dos -> cada uno ve lo suyo fuera de caja y lo que le falta al compañero
         reparto = self._reparto_sin_caja(picking, employee) if con_caja else {}
         mias_sin_caja = sum(v[0] for v in reparto.values())
+        # v3.36: «Caja llena»: m3 de mis uds sin caja (lo que irá en mi próxima CJ). Una sola lectura del volumen de
+        # los artículos de la OUT (la media de los que tienen vale para los que no)
+        vols = {}
+        if con_caja and (not ligero or reparto):
+            vols = self._volumenes(picking.move_line_ids.mapped('product_id'), ('out', picking.id))
+        mias_m3 = self._m3(reparto, vols)
         otros_sin_caja = sum(v[1] for v in reparto.values())
         companeros = [e.name for e in equipo if not employee or e != employee]
         # v3.33: en la ronda de faltantes, con todo marcado («No está» / «No existe») no queda ninguna línea: hecho
@@ -498,6 +596,7 @@ class Lectura(models.Model):
             'faltantes_companero': self._faltantes_companero(picking, employee, grupo),
             'mias_sin_caja': round(mias_sin_caja),
             'otros_sin_caja': round(otros_sin_caja),
+            'mias_sin_caja_m3': round(mias_m3, 4),   # v3.36
         }
         if ligero:
             # v3.29: tras cada lectura y en el refresco a dos, solo lo que cambia (líneas, totales y lo de a dos). Lo
@@ -522,7 +621,10 @@ class Lectura(models.Model):
             'alarma_min': self.minutos_alarma(),   # v3.22
             'alarma_horario': self.horario_alarma(),   # v3.23
             'refresco_solo_s': self.segundos_refresco(),   # v3.34 (R7)
+            'caja_llena': self.caja_llena_config(),   # v3.36
         })
+        for l in lineas:   # v3.36: m3 por ud, para que la PDA sume al leer sin esperar a Odoo
+            l['vol'] = round(vols.get(l['producto_id'], 0.0), 5)
         return res
 
     @api.model
@@ -884,6 +986,8 @@ class Lectura(models.Model):
             return {'ok': False, 'msg': _('No tienes nada tuyo fuera de caja. Lo que queda (%s uds) es de tu compañero.')
                     % round(sum(v[1] for v in reparto.values()))}
         apartar = {lid: v[1] for lid, v in reparto.items() if v[1] > 0}
+        # v3.36: el volumen con que se cierra (antes de put_in_pack, que parte las líneas)
+        m3 = self._m3(reparto, self._volumenes(picking.move_line_ids.mapped('product_id'), ('out', picking.id)))
         try:
             with self.env.cr.savepoint():
                 # lo del compañero se aparta un momento (qty_done sin lo suyo) para que put_in_pack no lo meta
@@ -929,17 +1033,30 @@ class Lectura(models.Model):
         if tipo:
             msg = _('Caja %s (%s) cerrada con %s uds.') % (codigo, tipo, round(uds))
         self._apuntar(picking, employee, 'caja', codigo, 'ok', msg, cantidad=uds, id_lectura=id_lectura)
+        self._caja_llena_cierre(picking, employee, codigo, round(m3, 4))   # v3.36
         return {'ok': True, 'msg': msg, 'caja': codigo, 'uds': round(uds)}   # v3.20: la PDA enseña el número
 
     # ------------------------------------------------------------------ v3.24: tipo de caja
     @api.model
     def tipos_caja(self, company=None):
-        """Las cajas de Consumibles para elegir en la PDA: [{id, nombre, medidas}]."""
+        """Las cajas de Consumibles para elegir en la PDA: [{id, nombre, medidas}].
+        v3.36: + capacidad (m3, del parámetro de «Caja llena») y defecto_barra (el tipo del primer texto del parámetro:
+        el que cuenta en la barra si esa persona aún no ha elegido ninguno)."""
         try:
-            return self.env['koroshi.consumable.item'].cajas_pda(company)
+            tipos = self.env['koroshi.consumable.item'].cajas_pda(company)
         except Exception:
             _logger.exception('KOROSHI Preparación: no se han podido leer los tipos de caja')
             return []
+        caps = self._capacidades()
+        primero = caps[0][0] if caps else ''
+        hay_defecto = False
+        for t in tipos:
+            texto = re.sub(r'\s', '', '%s %s' % (t.get('nombre') or '', t.get('medidas') or '')).upper()
+            clave, m3 = next(((k, c) for k, c in caps if k in texto), ('', CAPACIDAD_DEFECTO))
+            t['capacidad'] = m3
+            t['defecto_barra'] = bool(primero) and clave == primero and not hay_defecto
+            hay_defecto = hay_defecto or t['defecto_barra']
+        return tipos
 
     @api.model
     def _tipos_de_paquetes(self, paquetes):

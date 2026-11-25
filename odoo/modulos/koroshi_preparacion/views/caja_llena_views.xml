@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v3.36: respuestas a «¿Caja llena?» de la PDA (por volumen), para ajustar los % con datos reales -->
+    <record id="view_koroshi_preparacion_caja_llena_tree" model="ir.ui.view">
+        <field name="name">koroshi.preparacion.caja_llena.tree</field>
+        <field name="model">koroshi.preparacion.caja_llena</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" decoration-danger="aviso == 'dos'" decoration-muted="not caja">
+                <field name="create_date" string="Fecha"/>
+                <field name="employee_id"/>
+                <field name="picking_id"/>
+                <field name="batch_id" optional="hide"/>
+                <field name="tipo_caja_id"/>
+                <field name="aviso"/>
+                <field name="respuesta"/>
+                <field name="pct"/>
+                <field name="m3"/>
+                <field name="uds" optional="hide"/>
+                <field name="capacidad" optional="hide"/>
+                <field name="caja"/>
+                <field name="pct_cierre"/>
+                <field name="m3_cierre"/>
+                <field name="fecha_cierre" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_preparacion_caja_llena_search" model="ir.ui.view">
+        <field name="name">koroshi.preparacion.caja_llena.search</field>
+        <field name="model">koroshi.preparacion.caja_llena</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="employee_id"/>
+                <field name="caja"/>
+                <filter name="hoy" string="Hoy" domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="cabe" string="Aún cabe más" domain="[('respuesta', '=', 'cabe')]"/>
+                <filter name="dos" string="¿Dos cajas?" domain="[('aviso', '=', 'dos')]"/>
+                <separator/>
+                <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                <filter name="g_tipo" string="Tipo de caja" context="{'group_by': 'tipo_caja_id'}"/>
+                <filter name="g_respuesta" string="Respuesta" context="{'group_by': 'respuesta'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_preparacion_caja_llena" model="ir.actions.act_window">
+        <field name="name">Respuestas «Caja llena»</field>
+        <field name="res_model">koroshi.preparacion.caja_llena</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Aún nadie ha respondido a «¿Caja llena?».</p>
+            <p>La PDA pregunta cuando lo leído sin caja llega al 100 % del volumen de la caja (y otra vez al 115 %).
+               Aquí queda cada respuesta y la CJ con que se cerró después.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_koroshi_preparacion_caja_llena" name="Respuestas «Caja llena»"
+              parent="koroshi_operarios.menu_koroshi_operarios_root"
+              action="action_koroshi_preparacion_caja_llena" sequence="92"
+              groups="koroshi_operarios.grupo_productividad"/>
+</odoo>

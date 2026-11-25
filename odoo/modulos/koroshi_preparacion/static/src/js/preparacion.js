@@ -96,6 +96,8 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_volver': '_onVolver',
         'click .o_kp_caja': '_onCaja',
         'click .o_kp_tipo_caja': '_onTipoCaja',          // v3.24
+        'click .o_kp_cl_cerrar': '_onCajaLlenaCerrar',   // v3.36: «Caja llena» por volumen
+        'click .o_kp_cl_cabe': '_onCajaLlenaCabe',
         'click .o_kp_cancelar_caja': '_salirDeCaja',
         'click .o_kp_sin_caja_btn': '_onSinCaja',        // v3.32
         'click .o_kp_ronda_no_esta': '_onRondaNoEsta',   // v3.33
@@ -172,6 +174,9 @@ var Pantalla = AbstractAction.extend({
         this.alarmaHorario = ALARMA_HORARIO_DEFECTO;   // v3.23
         this.ultimaActividad = Date.now();
         this.alarmaOn = false;
+        this.clNivel = {};             // v3.36: «Caja llena»: hasta dónde se ha preguntado en cada caja (1 = 100 %, 2 = 115 %)
+        this.clPregunta = null;        // v3.36: la pregunta que se ve ({clave, nivel, m3, pct, ...})
+        this.clOutId = null;           // v3.36: agrupación: la tienda de lo último leído (su caja es la de la barra)
     },
 
     willStart: function () {
@@ -412,8 +417,14 @@ var Pantalla = AbstractAction.extend({
         if (!e.out || e.out.con_caja !== false) {   // v3.14: las INT no van en caja
             e.sin_caja += n;
             e.mias_sin_caja = (e.mias_sin_caja || 0) + n;
+            var m3 = (l.vol || 0) * n;   // v3.36: «Caja llena» (m3 por ud de la línea, del estado entero)
+            e.mias_sin_caja_m3 = Math.max(0, (e.mias_sin_caja_m3 || 0) + m3);
             var o = l.out_id && _.findWhere(e.outs || [], {id: l.out_id});   // v3.15: por tienda
-            if (o) { o.sin_caja += n; o.leidas += n; }
+            if (o) {
+                o.sin_caja += n;
+                o.leidas += n;
+                o.sin_caja_m3 = Math.max(0, (o.sin_caja_m3 || 0) + m3);
+            }
         }
         this._recalcular(e);
     },
@@ -499,7 +510,10 @@ var Pantalla = AbstractAction.extend({
             outId = o.id;
             uds = o.sin_caja;
             o.sin_caja = 0;
+            e.mias_sin_caja_m3 = Math.max(0, (e.mias_sin_caja_m3 || 0) - (o.sin_caja_m3 || 0));   // v3.36
+            o.sin_caja_m3 = 0;
         } else {
+            e.mias_sin_caja_m3 = 0;   // v3.36: la caja se lleva todo lo mío
             uds = e.a_dos ? (e.mias_sin_caja || 0) : e.sin_caja;
         }
         if (!uds) { return 0; }
@@ -871,6 +885,8 @@ var Pantalla = AbstractAction.extend({
                             ' de ' + l.pedidas, 'ok', !!destino);
                 this._sonar(l.completa ? 'linea' : 'ok');   // v3.13: otro sonido si la línea queda completa
                 this._actividad();   // v3.22
+                this.clOutId = l.out_id || null;   // v3.36
+                this._comprobarCajaLlena();   // v3.36: ¿caja llena por volumen? (solo avisa)
                 if (l.completa) { this._avisoAquiMismo(l); }
                 if (this.estado.todo_leido) {
                     this._aviso('Todo leído. ' + (this.estado.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'),
@@ -1046,6 +1062,118 @@ var Pantalla = AbstractAction.extend({
         this._guardarCola();
         this.$('.o_kp_caja').prop('disabled', true).text('Cerrando caja…');   // v3.34 (R8)
         this._enviar();
+        return this._foco();
+    },
+
+    // ------------------------------------------------------------ v3.36: «Caja llena» por volumen
+    // Barra = m3 de mis uds leídas sin caja / capacidad del tipo de caja de esta persona (el último que eligió en esta
+    // PDA; si no, el primero del parámetro: la 600X400X400). En una agrupación, la caja de la tienda de lo último leído.
+    // Al 100 % pregunta («Caja llena: cerrar» / «Aún cabe más»); al 115 %, aviso rojo. Nunca bloquea: se sigue leyendo.
+    _volCaja: function () {
+        var e = this.estado;
+        var cfg = e && e.caja_llena;
+        if (!cfg || !cfg.activa || !e.out || e.out.con_caja === false) { return null; }
+        var m3 = e.mias_sin_caja_m3 || 0;
+        var uds = e.a_dos ? (e.mias_sin_caja || 0) : (e.sin_caja || 0);
+        var clave = 'o' + e.out.id;
+        var outId = false;
+        if (this._esLote()) {
+            var id = this.clOutId;
+            if (!id) {
+                var vista = _.findWhere(e.lineas || [], {id: this._idVisto()});
+                id = vista ? vista.out_id : false;
+            }
+            var o = id && _.findWhere(e.outs || [], {id: id});
+            if (!o) { return null; }
+            m3 = o.sin_caja_m3 || 0;
+            uds = o.sin_caja || 0;
+            outId = o.id;
+            clave = 't' + o.id;
+        }
+        var tipos = e.tipos_caja || [];
+        var tid = this.tipoCajaId;
+        if (!tid) {
+            try { tid = parseInt(window.localStorage.getItem(this._claveTipoCaja()) || '0', 10); } catch (x) { tid = 0; }
+        }
+        var tipo = _.findWhere(tipos, {id: tid}) || _.findWhere(tipos, {defecto_barra: true}) || null;
+        var cap = (tipo && tipo.capacidad) || cfg.capacidad || 0.09;
+        return {m3: Math.round(m3 * 10000) / 10000, cap: cap, pct: Math.round(100 * m3 / cap), uds: uds,
+                clave: clave, outId: outId, tipoId: tipo ? tipo.id : false, tipo: tipo ? tipo.nombre : '', cfg: cfg};
+    },
+
+    _pintarCajaLlena: function () {
+        var v = this._volCaja();
+        var $c = this.$('.o_kp_cl');
+        if (!v) {
+            $c.hide();
+            return this._ocultarPreguntaCaja();
+        }
+        var cfg = v.cfg;
+        if (v.pct < cfg.casi) {   // caja cerrada (o deshecho): se vuelve a preguntar en la siguiente
+            this.clNivel[v.clave] = 0;
+            if (this.clPregunta && this.clPregunta.clave === v.clave) { this._ocultarPreguntaCaja(); }
+        }
+        if (v.m3 <= 0) { return $c.hide(); }
+        var txt = 'Caja ' + v.pct + ' %' + (v.tipo ? ' · ' + v.tipo : '');
+        if (v.pct >= cfg.dos) {
+            txt += ' · ¿Son dos cajas?';
+        } else if (v.pct >= cfg.llena) {
+            txt += ' · Llena';
+        } else if (v.pct >= cfg.casi) {
+            txt += ' · Casi llena';
+        }
+        $c.toggleClass('o_kp_cl_casi', v.pct >= cfg.casi && v.pct < cfg.dos)
+            .toggleClass('o_kp_cl_rojo', v.pct >= cfg.dos).show();
+        this.$('.o_kp_cl_lleno').css('width', Math.min(100, v.pct) + '%');
+        this.$('.o_kp_cl_texto').text(txt);
+    },
+
+    // tras una lectura que cuenta: si la caja ha llegado al 100 % (o al 115 %) y aún no se ha preguntado, pregunta
+    _comprobarCajaLlena: function () {
+        var v = this._volCaja();
+        if (!v) { return; }
+        var cfg = v.cfg;
+        var nivel = v.pct >= cfg.dos ? 2 : (v.pct >= cfg.llena ? 1 : 0);
+        if (nivel <= (this.clNivel[v.clave] || 0)) { return; }
+        this.clNivel[v.clave] = nivel;
+        this.clPregunta = _.extend({nivel: nivel}, v);
+        var o = v.outId && _.findWhere(this.estado.outs || [], {id: v.outId});
+        var tienda = o ? (o.destino || o.name) + ': ' : '';
+        this.$('.o_kp_cl_msg').text(tienda + (nivel === 2
+            ? '¿Son dos cajas? Esto no cabe en una (' + v.pct + ' %). Lee la CJ de la primera.'
+            : 'Caja llena (' + v.pct + ' %). ¿La cierras?'));
+        this.$('.o_kp_cl_pregunta').toggleClass('o_kp_cl_rojo', nivel === 2).show();
+        this._sonar('llena');
+    },
+
+    _ocultarPreguntaCaja: function () {
+        this.clPregunta = null;
+        this.$('.o_kp_cl_pregunta').hide();
+    },
+
+    // la respuesta se apunta en Odoo (koroshi.preparacion.caja_llena) sin esperar: si falla, no pasa nada en la PDA
+    _guardarCajaLlena: function (respuesta) {
+        var p = this.clPregunta;
+        this._ocultarPreguntaCaja();
+        if (!p || !this.estado || !this.estado.out) { return p; }
+        var params = _.extend(this._obj(this.estado.out.id), {
+            out_id: p.outId || false, employee_id: this.operario ? this.operario.id : false, tipo_caja: p.tipoId,
+            capacidad: p.cap, m3: p.m3, uds: p.uds, aviso: p.nivel === 2 ? 'dos' : 'llena', respuesta: respuesta});
+        this._rpc({route: '/koroshi/preparacion/caja_llena', params: params})
+            .guardedCatch(function (e) { if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); } });
+        return p;
+    },
+
+    _onCajaLlenaCerrar: function () {
+        this._guardarCajaLlena('cerrar');
+        return this._onCaja();   // lo de siempre: leer la CJ de la caja
+    },
+
+    _onCajaLlenaCabe: function () {
+        var p = this._guardarCajaLlena('cabe');
+        var dos = p && p.cfg ? p.cfg.dos : 115;
+        this._aviso(p && p.nivel === 2 ? 'Vale: sigue leyendo.' : 'Vale: sigue leyendo. Avisa otra vez al ' + dos + ' %.',
+                    'info');
         return this._foco();
     },
 
@@ -2062,6 +2190,8 @@ var Pantalla = AbstractAction.extend({
         this._aviso((l.nombre || l.producto) + ' · ' + l.leidas + ' de ' + l.pedidas + ' (+' + n + ' a mano)', 'ok');
         this._pitido(true);
         this._actividad();   // v3.22
+        this.clOutId = l.out_id || null;   // v3.36
+        this._comprobarCajaLlena();
         if (e.todo_leido) {
             this._aviso('Todo leído. ' + (e.sin_caja ? 'Cierra la caja y valida.' : 'Pulsa Validar.'), 'ok');
         }
@@ -2452,6 +2582,7 @@ var Pantalla = AbstractAction.extend({
         if (out.con_caja === false) { txtCaja = ''; }   // v3.14: INT, sin caja
         this.$('.o_kp_sin_caja').text(txtCaja).toggleClass('o_kp_hay', !!e.sin_caja).toggle(!!txtCaja);
         this.$('.o_kp_cajas_resumen').text(e.cajas.length ? e.cajas.length + (e.cajas.length === 1 ? ' caja' : ' cajas') : '');
+        this._pintarCajaLlena();   // v3.36
         this.$('.o_kp_progreso').show();
         // la línea en grande: la que toca o la elegida con las flechas (v3.0.1)
         var idVisto = this._idVisto();
@@ -2763,6 +2894,9 @@ var Pantalla = AbstractAction.extend({
             linea: {vibrar: [60, 50, 60], notas: [[880, 0, 0.09], [1320, 0.11, 0.14]]},
             caja: {vibrar: [60, 40, 60, 40, 60], notas: [[660, 0, 0.1], [880, 0.12, 0.1], [1320, 0.24, 0.2]]},
             error: {vibrar: [120, 80, 120], tipo: 'square', notas: [[220, 0, 0.4]]},
+            // v3.36: «Caja llena»: dos veces agudo-grave, después del pip de la lectura
+            llena: {vibrar: [200, 100, 200], notas: [[1320, 0.15, 0.15], [880, 0.32, 0.15], [1320, 0.49, 0.15],
+                                                     [880, 0.66, 0.2]]},
         };
         var s = SONIDOS[tipo] || SONIDOS.ok;
         this._vibrar(s.vibrar);

@@ -833,3 +833,27 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 .o_koroshi_preparacion .o_kp_cabecera .o_kp_pausa_btn,
 .o_koroshi_preparacion .o_kp_cabecera .o_kp_menu_btn { flex-shrink: 0; }
 .o_koroshi_preparacion .o_kp_pausa_btn.o_kp_confirmar_pausa { font-size: 14px; padding: 0 6px; }
+
+/* ---------------------------------------------------------------- v3.36: «Caja llena» por volumen */
+.o_koroshi_preparacion .o_kp_cl { padding: 4px 12px 0; }
+.o_koroshi_preparacion .o_kp_cl_barra {
+    position: relative; height: 20px; background: #e5e7eb; border-radius: 6px; overflow: hidden;
+}
+.o_koroshi_preparacion .o_kp_cl_lleno { height: 100%; width: 0; background: #16a34a; }
+.o_koroshi_preparacion .o_kp_cl.o_kp_cl_casi .o_kp_cl_lleno { background: #f59e0b; }
+.o_koroshi_preparacion .o_kp_cl.o_kp_cl_rojo .o_kp_cl_lleno { background: #dc2626; }
+.o_koroshi_preparacion .o_kp_cl_texto {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 14px; font-weight: bold; color: #111827; text-shadow: 0 0 3px #fff, 0 0 3px #fff;
+}
+.o_koroshi_preparacion .o_kp_cl_pregunta {
+    margin: 6px 12px 0; padding: 8px; border: 3px solid #f59e0b; background: #fff7ed; border-radius: 8px;
+}
+.o_koroshi_preparacion .o_kp_cl_pregunta.o_kp_cl_rojo { border-color: #dc2626; background: #fef2f2; }
+.o_koroshi_preparacion .o_kp_cl_msg { font-size: 17px; font-weight: bold; margin-bottom: 6px; color: #111827; }
+.o_koroshi_preparacion .o_kp_cl_botones { display: flex; gap: 8px; }
+.o_koroshi_preparacion .o_kp_cl_botones button {
+    flex: 1 1 0; min-height: 48px; font-size: 16px; font-weight: bold; border-radius: 8px; border: 0;
+}
+.o_koroshi_preparacion .o_kp_cl_cerrar { background: #1f2937; color: #fff; }
+.o_koroshi_preparacion .o_kp_cl_cabe { background: #e5e7eb; color: #111827; }
