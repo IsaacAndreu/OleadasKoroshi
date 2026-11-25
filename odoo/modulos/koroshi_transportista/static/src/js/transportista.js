@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.1.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.1.1 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.1.1: el campo va en un formulario (Intro/«Ir» de Android) con botón «✓ Leer»; foco al campo tras cada lectura.
  * 1. Tarjeta (la compartida: koroshi_base.comun.tarjeta). GLS / XPO se puede elegir antes o al final.
  * 2. Se leen las CJ de la tienda. La primera fija la tienda. Una CJ que no va se rechaza con el porqué y hay que
  *    pulsar «Apartada» (la pantalla no sigue hasta entonces).
@@ -23,6 +24,7 @@ var Transportista = AbstractAction.extend({
     contentTemplate: 'koroshi_transportista.Pantalla',
     events: {
         'keydown .o_ktr_codigo': '_onKeydown',
+        'submit .o_ktr_form': '_onEnviar',
         'input .o_ktr_codigo': '_onEscribe',
         'click .o_ktr_teclado': '_onTeclado',
         'click .o_ktr_tr': '_onTransportista',
@@ -133,6 +135,20 @@ var Transportista = AbstractAction.extend({
             this._leer(codigo, 'campo');
         }
     },
+    // v1.1.1: Intro/«Ir» del teclado de pantalla (Android no siempre manda la tecla 13) o el botón «✓ Leer»
+    _onEnviar: function (ev) {
+        ev.preventDefault();
+        comun.cancelarLector(this);
+        var campo = this.$('.o_ktr_codigo')[0];
+        var codigo = ((campo && campo.value) || '').trim();
+        if (campo) { campo.value = ''; }
+        if (this.teclado) { this._ponerTeclado(false); }
+        if (!codigo) {
+            this._pitido(false);
+            return this._aviso('mal', 'Escribe la caja (o sus 4 últimas cifras) y pulsa «✓ Leer».');
+        }
+        this._leer(codigo, 'campo');
+    },
     _onEscribe: function (ev) {
         var self = this;
         if (this.teclado) { return comun.cancelarLector(this); }
@@ -144,6 +160,7 @@ var Transportista = AbstractAction.extend({
         var $c = this.$('.o_ktr_codigo');
         $c.attr('inputmode', si ? null : 'none');
         this.$('.o_ktr_teclado').toggleClass('o_ktr_teclado_on', si).text(si ? '⌨ Ocultar' : '⌨ Escribir');
+        this.$('.o_ktr_form').toggleClass('o_ktr_escribiendo', si);
         $c.blur();
         $c.focus();
     },
@@ -214,6 +231,7 @@ var Transportista = AbstractAction.extend({
             if (r.sinConexion) { return; }
             if (!r.ok) {
                 self._pitido(false);
+                self._foco();
                 return self._aviso('mal', r.msg || 'Error');
             }
             if (r.tipo === 'persona') {
@@ -221,7 +239,8 @@ var Transportista = AbstractAction.extend({
                 self.persona = r.persona;
                 self._guardarPersona();
                 self._aviso('ok', 'Hola, ' + r.persona.nombre + '.');
-                return self._pintar();
+                self._pintar();
+                return self._foco();
             }
             self.estado = r;
             self.leidas = r.leidas || [];
@@ -238,6 +257,7 @@ var Transportista = AbstractAction.extend({
                     r.n_esperadas + '.');
             }
             self._pintar();
+            self._foco();     // v1.1.1: que la siguiente lectura caiga en el campo
         });
     },
 

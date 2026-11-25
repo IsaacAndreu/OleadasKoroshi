@@ -2,12 +2,14 @@
 <templates xml:space="preserve">
     <t t-name="koroshi_transportista.Pantalla">
         <div class="o_koroshi_transportista">
-            <header class="o_ktr_cab">
+            <!-- v1.1.1: un formulario: el Intro/«Ir» del teclado de Android lo envía aunque no llegue como tecla 13 -->
+            <form class="o_ktr_cab o_ktr_form" action="#" autocomplete="off">
                 <div class="o_ktr_titulo">Transportista</div>
-                <input type="text" class="o_ktr_codigo" autocomplete="off" inputmode="none"
+                <input type="text" class="o_ktr_codigo" autocomplete="off" inputmode="none" enterkeyhint="go"
                        placeholder="Leer la caja (CJ), sus 4 últimas cifras o tu tarjeta"/>
+                <button type="submit" class="o_ktr_leer">✓ Leer</button>
                 <button type="button" class="o_ktr_teclado">⌨ Escribir</button>
-            </header>
+            </form>
             <div class="o_ktr_fila">
                 <div class="o_ktr_quien"/>
                 <div class="o_ktr_elegir">

@@ -25,8 +25,11 @@ v1.0.0 (25/11/2026): primera versión. Lógica en logica.py con tests sin Odoo (
 v1.1.0 (25/11/2026): si la etiqueta de una caja no se lee, se escriben las últimas 4-9 cifras de la CJ (Isaac, 25/11).
   Primero entre las cajas que espera la tienda de la pantalla; si no, entre las OUT pendientes de etiqueta; varias =
   pide más cifras. Una tarjeta con ese número sigue siendo tarjeta.
+v1.1.1 (25/11/2026): en la PDA las 4 cifras + Intro no hacían nada (Isaac): el Intro del teclado de Android no llega
+  como tecla 13. El campo va en un formulario (Intro/«Ir» lo envía) y con «⌨ Escribir» sale el botón «✓ Leer». Tras
+  cada lectura el foco vuelve al campo (la 2.ª CJ escaneada a veces no hacía nada).
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.1.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

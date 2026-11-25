@@ -1,4 +1,4 @@
-/* KOROSHI Transportista v1.0.0. Todo dentro de .o_koroshi_transportista (mismo aspecto que Juntar cajas). Sin aria-hidden. */
+/* KOROSHI Transportista v1.1.1 (botón «✓ Leer» al escribir). Todo dentro de .o_koroshi_transportista (mismo aspecto que Juntar cajas). Sin aria-hidden. */
 .o_koroshi_transportista { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
 .o_koroshi_transportista * { box-sizing: border-box; }
 .o_koroshi_transportista .o_ktr_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
@@ -7,6 +7,9 @@
 .o_koroshi_transportista .o_ktr_codigo:focus { border-color: #0b4f9c; outline: none; }
 .o_koroshi_transportista .o_ktr_teclado { padding: 10px 12px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
 .o_koroshi_transportista .o_ktr_teclado_on { background: #0b4f9c; color: #fff; }
+.o_koroshi_transportista .o_ktr_cab { margin: 0; }
+.o_koroshi_transportista .o_ktr_leer { display: none; padding: 10px 16px; font-size: 17px; font-weight: bold; border: 1px solid #1e7b34; background: #1e7b34; color: #fff; border-radius: 8px; }
+.o_koroshi_transportista .o_ktr_form.o_ktr_escribiendo .o_ktr_leer { display: inline-block; }
 .o_koroshi_transportista .o_ktr_fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 16px 0; }
 .o_koroshi_transportista .o_ktr_quien { font-size: 15px; }
 .o_koroshi_transportista .o_ktr_elegir { display: flex; gap: 8px; }
