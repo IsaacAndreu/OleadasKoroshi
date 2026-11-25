@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Pantalla de la PDA -->
+    <record id="action_koroshi_juntar_cajas_pantalla" model="ir.actions.client">
+        <field name="name">Juntar cajas</field>
+        <field name="tag">koroshi_juntar_cajas</field>
+    </record>
+
+    <!-- Oficina: solo mirar (se crean desde la PDA) -->
+    <record id="view_koroshi_juntar_registro_tree" model="ir.ui.view">
+        <field name="name">koroshi.juntar.registro.tree</field>
+        <field name="model">koroshi.juntar.registro</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false" decoration-danger="aviso">
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="pedido"/>
+                <field name="tienda"/>
+                <field name="cj_pequena"/>
+                <field name="cj_destino"/>
+                <field name="uds"/>
+                <field name="bultos_antes"/>
+                <field name="bultos_despues"/>
+                <field name="aviso" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_juntar_registro_form" model="ir.ui.view">
+        <field name="name">koroshi.juntar.registro.form</field>
+        <field name="model">koroshi.juntar.registro</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <h1><field name="cj_pequena"/> → <field name="cj_destino"/></h1>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                            <field name="pedido"/>
+                            <field name="tienda"/>
+                        </group>
+                        <group>
+                            <field name="uds"/>
+                            <field name="bultos_antes"/>
+                            <field name="bultos_despues"/>
+                            <field name="misma_out"/>
+                            <field name="aviso"/>
+                        </group>
+                    </group>
+                    <group string="Para deshacer en la oficina">
+                        <field name="lineas_ids"/>
+                        <field name="quants_ids"/>
+                        <field name="token"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_juntar_registro_search" model="ir.ui.view">
+        <field name="name">koroshi.juntar.registro.search</field>
+        <field name="model">koroshi.juntar.registro</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="pedido"/>
+                <field name="cj_pequena"/>
+                <field name="cj_destino"/>
+                <field name="employee_id"/>
+                <filter name="con_aviso" string="Con aviso" domain="[('aviso', '!=', False)]"/>
+                <separator/>
+                <filter name="por_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                <filter name="por_pedido" string="Pedido" context="{'group_by': 'pedido'}"/>
+                <filter name="por_dia" string="Día" context="{'group_by': 'fecha:day'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_juntar_registro" model="ir.actions.act_window">
+        <field name="name">Cajas juntadas</field>
+        <field name="res_model">koroshi.juntar.registro</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+</odoo>

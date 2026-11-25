@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Botón «Juntar cajas» en el área Expediciones del Inicio PDA. noupdate: si la oficina le cambia el nombre, el
+         orden o el color, actualizar el módulo no lo pisa. -->
+    <data noupdate="1">
+        <record id="actividad_pda_juntar_cajas" model="koroshi.actividad">
+            <field name="name">Juntar cajas</field>
+            <field name="sequence">133</field>
+            <field name="color">#6b3fa0</field>
+            <field name="nota">Caja pequeña dentro de otra</field>
+            <field name="area">expediciones</field>
+            <field name="abre">koroshi_juntar_cajas.action_koroshi_juntar_cajas_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+    </data>
+</odoo>

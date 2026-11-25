@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- La PDA entra por el área Expediciones (data/actividad.xml). En la oficina, solo mirar. -->
+    <menuitem id="menu_koroshi_juntar_cajas_oficina" name="Cajas juntadas"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" action="action_koroshi_juntar_registro"
+              sequence="98"/>
+</odoo>
