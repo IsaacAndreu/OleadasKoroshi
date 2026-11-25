@@ -51,8 +51,9 @@ PARAM_CAJA_LLENA = 'koroshi_preparacion.caja_llena_activa'
 # capacidad en m3 de cada tipo de caja: «texto del nombre o de las medidas=m3», separados por ';'. El primero es el
 # tipo que cuenta si la persona aún no ha elegido ninguno en esta PDA (V1)
 PARAM_CAJA_CAPACIDADES = 'koroshi_preparacion.caja_llena_capacidades'
-CAPACIDADES_DEFECTO = '600X400X400=0.090;MEDIANA=0.060'
-CAPACIDAD_DEFECTO = 0.090      # un tipo de caja que no sale en el parámetro
+# v3.36.1: p90 de las cajas cerradas en 7 días (Monitor 25/11): 600X400X400 0,102 y MEDIANA 0,067
+CAPACIDADES_DEFECTO = '600X400X400=0.100;MEDIANA=0.075'
+CAPACIDAD_DEFECTO = 0.100      # un tipo de caja que no sale en el parámetro
 # % de la barra: naranja «Casi llena», pregunta «¿Caja llena?» y aviso rojo «¿Son dos cajas?» (V2)
 PARAM_CAJA_UMBRALES = 'koroshi_preparacion.caja_llena_umbrales'
 UMBRALES_DEFECTO = (90, 100, 115)

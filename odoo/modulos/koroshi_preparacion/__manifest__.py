@@ -238,8 +238,12 @@ respuesta y la CJ que se cierra después quedan en la tabla nueva koroshi.prepar
 llena"») para el Monitor. Parámetros sin crear (valen los de por defecto): caja_llena_activa (1/0),
 caja_llena_capacidades (600X400X400=0.090;MEDIANA=0.060) y caja_llena_umbrales (90,100,115). Volúmenes de cada OUT en
 memoria 10 min: leer no vuelve a leer productos. Sin campos nuevos en tablas compartidas.
+v3.36.1 (25/11/2026): capacidades por defecto de «Caja llena» a 600X400X400=0.100 y MEDIANA=0.075 (antes 0.090 y
+0.060), lo pidió Isaac. Con las cajas cerradas en 7 días (Monitor: 600X400X400 p50 0,082, p90 0,102, p98 0,117; MEDIANA
+p90 0,067, p98 0,088) la pregunta del 100 % sale hacia el p90 y el aviso del 115 % hacia el p98, no en 1 de cada 4 cajas.
+El parámetro caja_llena_capacidades, si se crea, sigue mandando.
 """,
-    'version': '13.0.3.36.0',
+    'version': '13.0.3.36.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
