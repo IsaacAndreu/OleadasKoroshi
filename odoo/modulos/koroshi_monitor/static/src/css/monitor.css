@@ -186,3 +186,7 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.42.0: seccion «Imprimir» */
 .km-imprimir { display: flex; flex-wrap: wrap; gap: 8px; }
 .km-imprimir .km-imp .badge { margin-left: 4px; }
+
+/* v1.45.0: Etiquetas CJ sin leer */
+.km-cj-ayuda { margin: 0 0 8px; font-size: 13px; opacity: .8; }
+.km-cj-ok { margin: 0; color: var(--km-ok); font-weight: 600; }

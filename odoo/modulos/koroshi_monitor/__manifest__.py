@@ -220,8 +220,15 @@ hora, candado por clave y la cabecera del dia una vez por dia, no una por tipo. 
 «leidas de N u pedidas» y la de Tiendas «cogidas de N u reservadas» (con la explicacion al pasar el raton): eran dos
 criterios distintos (7.056 pedidas frente a 6.980 reservadas el 23/11) y no se decia. Mismas cifras que antes; solo
 lee. Sin campos ni vistas nuevas.
+v1.45.0 (25/11/2026): ETIQUETAS CJ SIN LEER (Isaac: «Lo de les etiquetes saltades per al cap de zona al monitor m'agradaria
+que ho pogués veure»). Seccion nueva, solo jefes, debajo de «Imprimir»: etiqueta de zona impresa para una OUT (zebra.label
+'ETQ ZONA <OUT>') que no existe como caja en Odoo, si la OUT ya esta validada y tiene otra etiqueta suya leida. Caso K1
+25/11: las 23 uds en la CJ665013811 y la CJ665013810, pegada en la segunda caja, sin leer. Primero las que tienen la caja
+leida mas llena. Sale sola al aparecer la CJ en Odoo («Revisar caja») o con «La he tirado» (tabla propia
+koroshi.monitor.cj.descartada: CJ, OUT, quien y cuando; nada en tablas compartidas). Etiquetas de ayer y hoy. Solo lee
+las cajas. Cuentas en controllers/cj_calc.py (tests/test_cj_calc.py).
 """,
-    'version': '13.0.1.44.0',
+    'version': '13.0.1.45.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

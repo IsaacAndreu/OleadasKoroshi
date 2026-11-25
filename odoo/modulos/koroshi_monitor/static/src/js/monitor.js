@@ -184,6 +184,7 @@ var Monitor = AbstractAction.extend({
         'click .km-mapa': '_abrirMapa',
         'click .km-etq-zona': '_etiquetasZona',     // v1.40.0
         'click .km-imp': '_imprimir',               // v1.42.0
+        'click .km-cj-tirada': '_cjTirada',         // v1.45.0
         'click .km-limpiar-filtros': '_limpiarFiltros',
         'dblclick th.km-sort': '_onSort',
         'click details > summary': '_onToggle',
@@ -317,6 +318,22 @@ var Monitor = AbstractAction.extend({
         var $b = $(ev.currentTarget);
         return this._rpc({model: 'koroshi.monitor.imprimir', method: 'imprimir', args: [$b.data('clave'), $b.data('ref') || 0]})
             .then(function (accion) { return self.do_action(accion); });
+    },
+
+    // v1.45.0: «La he tirado»: quita la CJ de «Etiquetas CJ sin leer» (se guarda quién y cuándo; no toca las cajas)
+    _cjTirada: function (ev) {
+        ev.preventDefault();
+        var self = this;
+        var $b = $(ev.currentTarget);
+        var cj = $b.data('cj');
+        if (!window.confirm('¿Quitar la ' + cj + ' de la lista? Hazlo solo si la etiqueta se tiró (no está en ninguna caja).')) { return; }
+        $b.prop('disabled', true);
+        return this._rpc({route: '/koroshi_monitor/cj_descartar', params: {cj: cj, out_id: $b.data('out') || false}}).then(function (res) {
+            if (res && res.error) { window.alert(res.error); $b.prop('disabled', false); return; }
+            self._cjQuitadas = self._cjQuitadas || {};
+            self._cjQuitadas[cj] = true;
+            $b.closest('tr').remove();
+        }).guardedCatch(function () { $b.prop('disabled', false); });
     },
 
     _abrirMapa: function (ev) {
@@ -490,6 +507,26 @@ var Monitor = AbstractAction.extend({
                 h += '<button class="btn btn-primary km-imp" data-clave="' + e(b.clave) + '" data-ref="' + (b.ref || 0) + '"' +
                     (b.n ? '' : ' disabled') + ' title="' + e(b.titulo) + '">🖨 ' + e(b.nombre) + ' <span class="badge">' + b.n + '</span></button> ';
             });
+            h += '</div>';
+        }
+
+        // v1.45.0: Etiquetas CJ sin leer (solo jefes): etiqueta de zona impresa para una OUT ya validada que no se leyó
+        if (r.cj_saltadas) {
+            var quitadas = this._cjQuitadas || {};
+            var cjs = r.cj_saltadas.filter(function (x) { return !quitadas[x.cj]; });
+            h += '<h2>Etiquetas CJ sin leer (' + cjs.length + ')</h2><div class="km-card km-scroll">';
+            if (!cjs.length) {
+                h += '<p class="km-cj-ok">Todas las etiquetas de zona de ayer y hoy de las OUT validadas están leídas.</p>';
+            } else {
+                h += '<p class="km-cj-ayuda">Etiqueta impresa para la OUT que no se ha leído en Odoo. Revisa el palet de esa tienda: si está pegada en una caja, pasa las prendas con «Revisar caja» (sale sola de la lista). Si la tiraste, pulsa «La he tirado». Primero las que tienen la caja leída más llena.</p>' +
+                    '<table><thead><tr><th>Zona</th><th>CJ sin leer</th><th>Tienda</th><th>Pedido</th><th>OUT</th><th>Validada</th><th>Cajas leídas (uds)</th><th></th></tr></thead><tbody>';
+                cjs.forEach(function (x) {
+                    h += '<tr><td>' + (x.zona ? zt(x.zona) : '') + '</td><td><b>' + e(x.cj) + '</b></td><td>' + e(x.tienda) + '</td><td>' + e(x.pedido) + '</td><td>' + e((x.out || '').replace('EFFEC/', '')) +
+                        '</td><td>' + e(x.hora) + '</td><td>' + x.leidas.map(function (c) { return e(c[0]) + ' (' + c[1] + ')'; }).join(', ') +
+                        '</td><td><button class="btn btn-sm btn-outline-secondary km-cj-tirada" data-cj="' + e(x.cj) + '" data-out="' + (x.out_id || 0) + '">La he tirado</button></td></tr>';
+                });
+                h += '</tbody></table>';
+            }
             h += '</div>';
         }
 

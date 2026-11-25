@@ -566,6 +566,13 @@ class KoroshiMonitor(http.Controller):
         except Exception:
             _logger.exception('KOROSHI MONITOR: no se ha podido calcular la seccion Imprimir')
             res['imprimir'] = []
+        if jefe:
+            # v1.45.0: «Etiquetas CJ sin leer» (solo jefes); si falla, el Monitor sale igual sin ella
+            try:
+                res['cj_saltadas'] = self._cj_saltadas(request.env)
+            except Exception:
+                _logger.exception('KOROSHI MONITOR: no se han podido calcular las etiquetas CJ sin leer')
+                res['cj_saltadas'] = None
         if not jefe:
             # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
             res.pop('personas', None)
@@ -573,6 +580,56 @@ class KoroshiMonitor(http.Controller):
             res['operarios'] = [{k: v for k, v in o.items() if k not in ('uh', 'min')}
                                 for o in res.get('operarios') or []]
         return res
+
+    def _cj_saltadas(self, env):
+        """v1.45.0: etiquetas de zona de ayer y hoy (hora del almacén) que no se han leído en OUT ya validadas
+        (las cuentas, en cj_calc.py). Solo lee."""
+        from . import cj_calc
+        if 'zebra.label' not in env.registry:
+            return None
+        hoy = comun.hoy_local()
+        inicio = comun.inicio_dia_utc(hoy - datetime.timedelta(days=1))
+        etiquetas = env['zebra.label'].sudo().search_read(
+            [('note', '=like', cj_calc.NOTA + '%'), ('create_date', '>=', inicio)], ['name', 'note'])
+        if not etiquetas:
+            return []
+        nombres = [e['name'] for e in etiquetas]
+        paquetes = env['stock.quant.package'].sudo().search_read([('name', 'in', nombres)], ['name'])
+        leidas = set([x['name'] for x in paquetes])
+        uds_caja = {}
+        if paquetes:
+            por_id = dict([(x['id'], x['name']) for x in paquetes])
+            for g in env['stock.move.line'].sudo().read_group(
+                    [('result_package_id', 'in', list(por_id))], ['result_package_id', 'qty_done'],
+                    ['result_package_id']):
+                if g['result_package_id']:
+                    uds_caja[por_id.get(g['result_package_id'][0])] = int(g['qty_done'] or 0)
+        nombres_out = list(set([e['note'][len(cj_calc.NOTA):].strip() for e in etiquetas]))
+        outs = {}
+        for p in env['stock.picking'].sudo().search([('name', 'in', nombres_out), ('company_id', '=', COMPANY_ID)]):
+            local = comun.a_local(p.date_done)
+            outs[p.name] = {
+                'id': p.id, 'estado': p.state,
+                'tienda': (p.partner_id.name or '').split(', ')[-1],
+                'pedido': p.origin or '',
+                'zona': p.batch_id and p.batch_id.name.split('-')[-1] or '',
+                'hora': local and local.strftime('%d/%m %H:%M') or '',
+            }
+        descartadas = set(env['koroshi.monitor.cj.descartada'].sudo().search([('name', 'in', nombres)]).mapped('name'))
+        return cj_calc.saltadas([(e['name'], e['note']) for e in etiquetas], leidas, outs, descartadas, uds_caja)
+
+    @http.route('/koroshi_monitor/cj_descartar', type='json', auth='user')
+    def cj_descartar(self, cj=None, out_id=None, **kw):
+        """v1.45.0: «La he tirado»: quita una CJ de la lista. Solo jefes. No toca la etiqueta ni las cajas."""
+        _comprobar_jefe()
+        cj = (cj or '').strip().upper()
+        if not comun.es_matricula(cj):
+            return {'error': 'No es una matrícula CJ: %s' % cj}
+        Desc = request.env['koroshi.monitor.cj.descartada'].sudo()
+        if not Desc.search_count([('name', '=', cj)]):
+            Desc.create({'name': cj, 'picking_id': out_id or False, 'usuario_id': request.env.user.id})
+        # La pantalla la quita al momento; la cache (CACHE_SEG) la deja de dar en la siguiente vuelta.
+        return {'ok': True}
 
     def _personas_op(self, env, dia, picking_ids):
         """v1.32.0: «Personas y horas» con los operarios de verdad (koroshi_operarios), no estimado por las cajas: las
