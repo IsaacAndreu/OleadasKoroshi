@@ -22,8 +22,11 @@ Cada etiqueta queda en koroshi.transportista.registro (KOROSHI Operarios > Etiqu
 chatter de cada OUT. No añade campos a tablas de Odoo.
 
 v1.0.0 (25/11/2026): primera versión. Lógica en logica.py con tests sin Odoo (cuadre, motivos, reparto GLS de la 1834).
+v1.1.0 (25/11/2026): si la etiqueta de una caja no se lee, se escriben las últimas 4-9 cifras de la CJ (Isaac, 25/11).
+  Primero entre las cajas que espera la tienda de la pantalla; si no, entre las OUT pendientes de etiqueta; varias =
+  pide más cifras. Una tarjeta con ese número sigue siendo tarjeta.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

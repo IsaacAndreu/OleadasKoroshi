@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.0.0 - rutas de la pantalla de la PDA.
-# /leer: tarjeta -> la persona; CJ -> el estado de la tienda con las CJ leídas (solo lee).
+# KOROSHI Transportista v1.1.0 - rutas de la pantalla de la PDA.
+# /leer: tarjeta -> la persona; CJ (o sus últimas 4-9 cifras, v1.1.0) -> el estado de la tienda con las CJ leídas (solo lee).
 # /etiquetar: GLS o XPO de verdad (solo si cuadra), y el PDF a la cola del portátil. Tarjeta obligatoria. Token.
 # /reimprimir: vuelve a mandar a la cola el PDF de una expedición hecha.
 # Permiso, tarjeta y lector: koroshi_base.pda, como Juntar cajas.
@@ -11,6 +11,8 @@ from odoo.exceptions import UserError
 from odoo.http import request
 
 from odoo.addons.koroshi_base import comun, pda
+
+from .. import logica
 
 
 class KoroshiTransportista(http.Controller):
@@ -32,20 +34,25 @@ class KoroshiTransportista(http.Controller):
         def hacer():
             texto = (codigo or '').strip()
             leidas_ = list(leidas or [])
-            if comun.es_matricula(texto):
-                cj = texto.upper()
+            def caja(cj, escrita=''):
+                if escrita and cj in leidas_:
+                    return {'ok': False, 'msg': '%s (escrita %s) ya está leída.' % (cj, escrita)}
                 if cj not in leidas_:
                     leidas_.append(cj)
                 r = self._modelo().estado(leidas_, partner_id)
-                r.update({'tipo': 'caja', 'cj': cj})
+                r.update({'tipo': 'caja', 'cj': cj, 'escrita': escrita})
                 return r
+            if comun.es_matricula(texto):
+                return caja(texto.upper())
             if texto:
                 emp = request.env['hr.employee'].sudo().search([('barcode', '=', texto)], limit=1)
                 if emp:
                     if not pda.es_empleado_valido(request.env, emp):
                         return {'ok': False, 'msg': pda.TARJETA_NO_VALE}
                     return {'ok': True, 'tipo': 'persona', 'persona': {'id': emp.id, 'nombre': emp.name}}
-                return {'ok': False, 'msg': '%s no es una caja (CJ) ni una tarjeta.' % texto}
+                if logica.son_cifras(texto):          # v1.1.0: las últimas cifras de una CJ que no se lee
+                    return caja(self._modelo().cj_por_cifras(texto, partner_id), escrita=texto)
+                return {'ok': False, 'msg': '%s no es una caja (CJ), ni sus últimas cifras, ni una tarjeta.' % texto}
             r = self._modelo().estado(leidas_, partner_id)
             r['tipo'] = 'estado'
             return r

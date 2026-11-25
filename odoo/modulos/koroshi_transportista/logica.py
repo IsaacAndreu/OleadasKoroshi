@@ -34,6 +34,22 @@ def transportista_de(tipo_entrega):
     return ''
 
 
+RE_CIFRAS = re.compile(r'^\d{4,9}$')   # v1.1.0: las últimas cifras de la CJ, escritas a mano (etiqueta que no se lee)
+
+
+def son_cifras(texto):
+    """True si lo escrito son de 4 a 9 cifras (el final de una CJ escrito a mano)."""
+    return bool(RE_CIFRAS.match((texto or '').strip()))
+
+
+def elegir_por_cifras(cifras, candidatas):
+    """v1.1.0: la CJ de candidatas que acaba en esas cifras. Devuelve (cj, coinciden): cj si hay una sola; si no, ''
+    y la lista de las que coinciden (vacía = ninguna, varias = hay que escribir más cifras)."""
+    cifras = (cifras or '').strip()
+    coinciden = sorted(set(c for c in candidatas if c and c.endswith(cifras)))
+    return (coinciden[0] if len(coinciden) == 1 else ''), coinciden
+
+
 def cuadre(leidas, esperadas):
     """leidas: [CJ escaneadas, en orden]; esperadas: {CJ: [OUT]} de las OUT pendientes de etiqueta de la tienda.
     Devuelve {'bien': [CJ leídas que tocan], 'sobran': [CJ leídas que no tocan], 'faltan': [CJ esperadas sin leer],

@@ -25,6 +25,30 @@ class TestTienda(unittest.TestCase):
         self.assertEqual(logica.transportista_de('fixed'), '')
 
 
+class TestCifras(unittest.TestCase):
+    """v1.1.0: escribir las últimas cifras de la CJ cuando la etiqueta no se puede leer (Isaac, 25/11)."""
+    CAND = ['CJ665013925', 'CJ665013838', 'CJ665003925']
+
+    def test_son_cifras(self):
+        self.assertTrue(logica.son_cifras('3925'))
+        self.assertTrue(logica.son_cifras(' 665013925 '))
+        self.assertFalse(logica.son_cifras('925'))
+        self.assertFalse(logica.son_cifras('CJ665013925'))
+        self.assertFalse(logica.son_cifras('39a5'))
+
+    def test_una(self):
+        self.assertEqual(logica.elegir_por_cifras('3838', self.CAND), ('CJ665013838', ['CJ665013838']))
+
+    def test_varias_piden_mas_cifras(self):
+        cj, coinciden = logica.elegir_por_cifras('3925', self.CAND)
+        self.assertEqual(cj, '')
+        self.assertEqual(coinciden, ['CJ665003925', 'CJ665013925'])
+        self.assertEqual(logica.elegir_por_cifras('13925', self.CAND)[0], 'CJ665013925')
+
+    def test_ninguna(self):
+        self.assertEqual(logica.elegir_por_cifras('9999', self.CAND), ('', []))
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

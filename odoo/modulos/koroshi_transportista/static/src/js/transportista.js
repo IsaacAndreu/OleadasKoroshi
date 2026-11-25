@@ -1,6 +1,6 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.0.0 - pantalla de la PDA (área Expediciones).
+/* KOROSHI Transportista v1.1.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
  * 1. Tarjeta (la compartida: koroshi_base.comun.tarjeta). GLS / XPO se puede elegir antes o al final.
  * 2. Se leen las CJ de la tienda. La primera fija la tienda. Una CJ que no va se rechaza con el porqué y hay que
  *    pulsar «Apartada» (la pantalla no sigue hasta entonces).
@@ -234,7 +234,8 @@ var Transportista = AbstractAction.extend({
                 self._pitido(true);
                 self._aviso(r.cuadra ? 'ok' : 'info', r.cuadra ?
                     'Están todas: ' + r.n_leidas + ' de ' + r.n_esperadas + '. Ya puedes imprimir.' :
-                    r.cj + ' leída. Leídas ' + r.n_leidas + ' de ' + r.n_esperadas + '.');
+                    r.cj + (r.escrita ? ' (escrita ' + r.escrita + ')' : '') + ' leída. Leídas ' + r.n_leidas + ' de ' +
+                    r.n_esperadas + '.');
             }
             self._pintar();
         });
@@ -347,7 +348,8 @@ var Transportista = AbstractAction.extend({
     _htmlInicio: function () {
         return '<div class="o_ktr_card o_ktr_ayuda"><h3>Etiqueta del transportista</h3><ol>' +
             '<li>Pasa tu <b>tarjeta</b>. Si ya lo sabes, elige arriba <b>GLS</b> o <b>XPO</b>.</li>' +
-            '<li>Lee <b>todas las cajas (CJ)</b> de la tienda que tienes delante.</li>' +
+            '<li>Lee <b>todas las cajas (CJ)</b> de la tienda que tienes delante. Si una etiqueta no se lee, pulsa ' +
+            '<b>⌨ Escribir</b> y escribe sus <b>4 últimas cifras</b>.</li>' +
             '<li>Cuando salga «Leídas N de N», pulsa <b>Imprimir etiquetas</b>.</li></ol>' +
             '<div class="o_ktr_nota">Si una caja no va, la pantalla dice por qué. Hasta que no cuadren todas, no se ' +
             'puede imprimir.</div></div>';

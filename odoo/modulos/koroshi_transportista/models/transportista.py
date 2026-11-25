@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.0.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.1.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -177,6 +177,43 @@ class KoroshiTransportistaRegistro(models.Model):
             raise UserError(_('%s no es de una tienda (%s): esta pantalla es para tiendas.') % (
                 cj, partners.display_name))
         return partners
+
+    @api.model
+    def cj_por_cifras(self, cifras, partner_id=False):
+        """v1.1.0: la CJ que acaba en esas cifras, escritas a mano porque la etiqueta no se lee (Isaac, 25/11).
+        Primero entre las cajas que espera la tienda de la pantalla; si no, entre las de cualquier OUT pendiente de
+        etiqueta; si no, la única caja con ese final (para que la pantalla diga por qué no va). Varias = más cifras.
+        Las líneas se filtran en Python: un dominio con punto (picking_id.state) haría IN con miles de OUT."""
+        cifras = (cifras or '').strip()
+        paquetes = self.env['stock.quant.package'].sudo().search([('name', '=like', 'CJ%' + cifras)], limit=500)
+        if not paquetes:
+            raise UserError(_('Ninguna caja (CJ) acaba en %s.') % cifras)
+        partner = self.env['res.partner'].sudo().browse(int(partner_id)).exists() if partner_id else None
+        if partner:
+            cj, coinciden = logica.elegir_por_cifras(cifras, list(self._esperadas(self._pendientes(partner))))
+            if cj:
+                return cj
+            if len(coinciden) > 1:
+                raise UserError(_('Hay %d cajas de esta tienda que acaban en %s (%s): escribe más cifras.') % (
+                    len(coinciden), cifras, ', '.join(coinciden)))
+        desde = self._desde()
+        lineas = self.env['stock.move.line'].sudo().search(
+            [('result_package_id', 'in', paquetes.ids), ('qty_done', '>', 0), ('state', '=', 'done')])
+        pendientes = lineas.filtered(
+            lambda ml: ml.picking_id.picking_type_code == 'outgoing' and ml.picking_id.company_id.id == COMPANY_ID
+            and not ml.picking_id.carrier_tracking_ref and ml.picking_id.date_done
+            and ml.picking_id.date_done >= desde)
+        cj, coinciden = logica.elegir_por_cifras(cifras, pendientes.mapped('result_package_id.name'))
+        if cj:
+            return cj
+        if len(coinciden) > 1:
+            raise UserError(_('Hay %d cajas pendientes de etiqueta que acaban en %s (%s): escribe más cifras.') % (
+                len(coinciden), cifras, ', '.join(coinciden[:6])))
+        cj, coinciden = logica.elegir_por_cifras(cifras, paquetes.mapped('name'))
+        if cj:
+            return cj
+        raise UserError(_('Hay %d cajas que acaban en %s y ninguna está pendiente de etiqueta: escribe más cifras.') % (
+            len(coinciden), cifras))
 
     @api.model
     def estado(self, leidas, partner_id=False):
