@@ -1,4 +1,6 @@
-# Traspaso: rendimiento de odoo.tuctuc.com (24/11/2026, actualizado a las 16:50 hora de aquí)
+# Traspaso: rendimiento de odoo.tuctuc.com (24/11/2026, actualizado a las 19:40 hora de aquí)
+
+> **Lo último está al final: «Tarde (18:40-19:40)».** El reinicio, la cola y los índices ya están hechos.
 
 Para seguir en otra sesión de Claude. **Isaac lo hará esta tarde a partir de las 18:00 (17:00 UTC), cuando ya no
 trabaja nadie en tuctuc.** Esta sesión lo ha dejado aquí: **no ha reiniciado** y no ha tocado nada más en el
@@ -186,3 +188,77 @@ unset PGPASSWORD PGHOST PGUSER PGDATABASE
   se ha empaquetado con etiqueta y `git archive`.
 - Hasta el 24/11, la historia de git de este ordenador y la de GitHub eran distintas (reescrita el 14/11 en la fase
   6). La `main` vieja de GitHub está en la rama `historial-github-13-11`.
+
+## Tarde (18:40-19:40 hora de aquí, 17:40-18:40 UTC)
+
+Trabajado desde el panel del navegador de la app (SSH web de Google y odoo.tuctuc.com con la sesión de Isaac). La
+terminal SSH web solo acepta teclas una a una: Ctrl+C no llega y «Descargar archivo» no deja el archivo en el PC.
+
+### Hecho
+
+1. **Índices**: los tres creados (25:00, 7:52 y 7:43) y `indisvalid = t`. Falta el `EXPLAIN` (no urgente).
+2. **Reinicio** 17:48:57 UTC con protección (no reiniciaba si había trabajos que no fueran exportaciones). `active`.
+   En el log sale `Some modules are not loaded ... ['query_deluxe']`: **sin comprobar si ya salía antes**.
+3. **Cola**: el reinicio la dejó **parada**. Último trabajo hecho 17:48:08; a las 18:00, 38 pendientes y 5 en
+   «started» (4 exportaciones cortadas + 1723467) = las 5 plazas de `root:5`. Reencolados los 4 (Acción › Requeue
+   Jobs) y la cola arrancó al momento. Después, con el sí de Isaac, el **1723467**: «sale.order(914454,)
+   [ECI-#352746] confirmed successfully» a las 19:02:47 hora de aquí. **Queda comprobado: cada «started» colgado ocupa
+   una plaza. Después de cada reinicio, reencolar enseguida.**
+4. **Búsqueda «Stock = 10»** medida en el log (werkzeug): 46 s sola por RPC y 57 s desde la pantalla (~3.400
+   consultas, 35-42 s de Python). Antes 10-19 min, pero no los 20-28 s de la prueba. Carga del servidor baja (14
+   núcleos, carga 1,3). Sospecha sin comprobar: los 1.510 kits de `_buscar_stock_por_quants` (stock/models/product.py:394).
+
+### Exportación de stock (`export_inventory`): analizada, sin tocar
+
+- Las 3 integraciones son Shopify. Crons: 262 TUCTUC-Prod cada **2 h**, 252 Code22men cada **3 h**, 212 Locker Gear
+  cada **4 h** (no cada 30 min como decía arriba).
+- Código leído en el servidor (`~/tuctuc_integration.tgz`, desempaquetado en `/tmp/intl`): `product_product.py:236`
+  (bloques de 1.000, todos los productos), `sale_integration.py:2184` (`free_qty` por producto) y
+  `shopify_api.py:510` (`fetch_one(VARIANT)` + `apply(INVENT_LEVEL)` por producto).
+- **Medido con rollback** (`/tmp/intl/medir.py`, `odoo shell`): 1.000 productos de TUCTUC-Prod, **una sola** llamada
+  a `_compute_quantities_dict`, 5,3 s. **El cálculo ya va por bloques**; el ~99 % del tiempo es Shopify.
+- Productos con `stock_quant.write_date` reciente: 2 h = 320, 24 h = 5.588. TUCTUC-Prod manda ~11.000 cada pasada.
+- Propuesta (sin hacer, Isaac lo ve como mejora de fondo, no urgente): mandar solo lo que cambia (tabla propia con
+  lo último enviado, apuntar solo si Shopify responde OK, pasada completa cada noche e interruptor; riesgo 4/10) y
+  una llamada por producto en vez de dos.
+
+### Abrir un artículo: 2-10 s
+
+- Casi todo SQL. Muestreo en directo: `stock_quant` con `location_id in (...)` enorme, `stock_location` 0,5 s y dos
+  agregados de `stock_move` 0,5 s.
+- **259.778 ubicaciones internas activas** (+499.658 archivadas; se crean cada día, la última hoy). Cada cálculo de
+  cantidades las mete todas en el IN. Antes de tocar nada: saber quién crea tantas ubicaciones y para qué.
+- `stock_quant`: 6,8 M de filas (844 MB). Sin `pg_stat_statements`; `log_min_duration_statement = -1`.
+
+### Ranking del log de hoy (peticiones > 3 s, desde las 06:25 UTC)
+
+| Qué | Veces | Total | Peor |
+|---|---|---|---|
+| Botones (`call_button`) | 239 | 7,1 h | 2 h 47 min |
+| TPV `pos.order/create_from_ui` | 130 | 30 min | 55 s |
+| Abrir cliente `res.partner/read` | 160 | 37 min | 2 min 40 s |
+| 349 `unlink` | 2 | 3,2 h | 1 h 37 min |
+| Apuntes `account.move.line/web_read_group` | 100 | 22 min | 70 s |
+| Conciliación (líneas de extracto) | 43 | 15 min | 2 min 5 s |
+| Compras `get_model_lines` | 12 | 32 min | 8 min |
+| Acciones de servidor `/web/action/run` | 46 | 73 min | 34 min |
+
+- **Botones**: 6,8 de las 7,1 h son cuatro «Calcular» del 349 (tres con el código viejo, acaban a las 11:52 UTC; uno
+  con la 1.2.2 a las 13:12 UTC, 644 s). Ya arreglado. El resto (30-80 s) son de `expediciones@`, que borra
+  `stock.move.line` y `stock.move` **uno a uno, 0,8-1 s cada uno** (albarán 2051436 a las 11:09 UTC). No es un índice
+  que falte (todas las FK grandes a `stock_move` lo tienen): es Python. Falta saber qué botón es.
+- `style_management/models/product_template.py:170` escribe un marcador de depuración en `name_get`: 21.604 líneas
+  hoy en el log. Solo ruido.
+- **TPV** (lo más urgente para ventas): 130 de 133 tiquets > 2 s, 66 > 10 s, 12 > 30 s. Casi todo es espera en la base
+  de datos (p. ej. 14:45 UTC: 130 consultas y 28 s de SQL). Parece bloqueo, **sin comprobar**.
+- **Abrir cliente**: 171 de 308 > 2 s, 62 > 10 s, 17 > 30 s.
+
+### Siguiente
+
+1. **Mañana en horas de tienda**: lanzar el vigilante (`/tmp/intl/vigila.sh`: cada segundo, consultas activas de más
+   de 2 s con `wait_event` y `pg_blocking_pids`) unas horas y mirar qué bloquea al TPV y a abrir clientes. Esta tarde
+   se lanzó 30 min, pero casi sin actividad.
+2. Quién crea las ubicaciones internas (abrir artículos, lector de códigos de barras).
+3. Exportación de stock: solo lo que cambia (cuando haya tiempo).
+4. Limpiar en el servidor `/tmp/intl` (código copiado, `medir.py`, `vigila.sh`, `espera.txt`) y lo del apartado
+   «Qué falta hoy», punto 4.
