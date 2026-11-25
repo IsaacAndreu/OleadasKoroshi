@@ -44,6 +44,9 @@ CACHE_SEG = 20
 # v1.44.0 (revision general 23/11, R22): candado por clave (antes uno solo para todo y durante todo el calculo: Tiendas
 # esperaba a que acabara Z-2311-). La misma agrupacion sigue calculandose una sola vez a la vez.
 _cache = CachePorClave(CACHE_SEG)
+# v1.46.0: etiquetas CJ sin leer y cajas llenas (1 min) y capacidad por tipo de caja (10 min), con su cache.
+_cache_cj = CachePorClave(60)
+_cache_capacidad = CachePorClave(600)
 # v1.44.0 (R22): «Siguiente tienda» relee todas las OUT de tienda abiertas de PRIO_DIAS_ABIERTAS dias: antes en cada
 # calculo de cada agrupacion (cada 20 s por pantalla); ahora una vez cada PRIO_CACHE_SEG para todas las pantallas
 PRIO_CACHE_SEG = 120
@@ -567,12 +570,21 @@ class KoroshiMonitor(http.Controller):
             _logger.exception('KOROSHI MONITOR: no se ha podido calcular la seccion Imprimir')
             res['imprimir'] = []
         if jefe:
-            # v1.45.0: «Etiquetas CJ sin leer» (solo jefes); si falla, el Monitor sale igual sin ella
+            # v1.45.0: «Etiquetas CJ sin leer»; v1.46.0: «¿Dos cajas en una CJ?» y capacidad por tipo de caja.
+            # Solo jefes y con su propia cache; si falla, el Monitor sale igual sin ellas.
             try:
-                res['cj_saltadas'] = self._cj_saltadas(request.env)
+                cj = _cache_cj.obtener((request.env.cr.dbname,), lambda: self._cajas_cj(request.env))
+                res['cj_saltadas'] = cj and cj['saltadas']
+                res['cj_dos_cajas'] = cj and cj['dos_cajas']
             except Exception:
                 _logger.exception('KOROSHI MONITOR: no se han podido calcular las etiquetas CJ sin leer')
                 res['cj_saltadas'] = None
+            try:
+                res['cj_capacidad'] = _cache_capacidad.obtener((request.env.cr.dbname,),
+                                                               lambda: self._capacidad_cajas(request.env))
+            except Exception:
+                _logger.exception('KOROSHI MONITOR: no se ha podido calcular la capacidad de las cajas')
+                res['cj_capacidad'] = None
         if not jefe:
             # v1.37.0: sin «Personas y horas» ni la u/h y los minutos de cada operario
             res.pop('personas', None)
@@ -581,29 +593,66 @@ class KoroshiMonitor(http.Controller):
                                 for o in res.get('operarios') or []]
         return res
 
-    def _cj_saltadas(self, env):
-        """v1.45.0: etiquetas de zona de ayer y hoy (hora del almacén) que no se han leído en OUT ya validadas
-        (las cuentas, en cj_calc.py). Solo lee."""
+    def _vol_cajas(self, env, desde, solo_hechas=False):
+        """v1.46.0: cajas CJ creadas desde `desde` (UTC): ({cj: m3}, {cj: tipo de caja}, {cj: uds}, {cj: datos de
+        su OUT}). m3 = volumen del articulo x uds hechas (articulos sin volumen: la media). solo_hechas: solo lo
+        validado (para la capacidad, cajas cerradas). Solo lee."""
         from . import cj_calc
+        paquetes = env['stock.quant.package'].sudo().search_read(
+            [('name', '=like', 'CJ%'), ('create_date', '>=', desde)], ['name', 'packaging_id'])
+        if not paquetes:
+            return {}, {}, {}, {}
+        nombre = dict([(x['id'], x['name']) for x in paquetes])
+        tipo = dict([(x['name'], x['packaging_id'] and x['packaging_id'][1] or '') for x in paquetes])
+        dominio = [('result_package_id', 'in', list(nombre)), ('qty_done', '>', 0)]
+        if solo_hechas:
+            dominio.append(('state', '=', 'done'))
+        lineas = env['stock.move.line'].sudo().search_read(
+            dominio, ['result_package_id', 'product_id', 'qty_done', 'picking_id'])
+        prods = list(set([l['product_id'][0] for l in lineas if l['product_id']]))
+        vol_prod = dict([(x['id'], x['volume']) for x in env['product.product'].sudo().with_context(
+            active_test=False).search_read([('id', 'in', prods)], ['volume'])])
+        vol, _media = cj_calc.volumenes([(nombre[l['result_package_id'][0]], l['product_id'] and l['product_id'][0],
+                                          l['qty_done']) for l in lineas], vol_prod)
+        uds = {}
+        out_de = {}
+        for l in lineas:
+            cj = nombre[l['result_package_id'][0]]
+            uds[cj] = uds.get(cj, 0) + int(l['qty_done'] or 0)
+            if l['picking_id']:
+                out_de.setdefault(cj, {})
+                out_de[cj][l['picking_id'][0]] = out_de[cj].get(l['picking_id'][0], 0) + l['qty_done']
+        info = {}
+        if not solo_hechas and out_de:
+            # la OUT que mas uds lleva en la caja (como «Juntar cajas»)
+            principal = dict([(cj, max(d.items(), key=lambda x: x[1])[0]) for cj, d in out_de.items()])
+            datos = {}
+            for pk in env['stock.picking'].sudo().browse(list(set(principal.values()))):
+                local = comun.a_local(pk.date_done)
+                datos[pk.id] = {'tienda': (pk.partner_id.name or '').split(', ')[-1], 'pedido': pk.origin or '',
+                                'zona': pk.batch_id and pk.batch_id.name.split('-')[-1] or '',
+                                'hora': local and local.strftime('%d/%m %H:%M') or 'sin validar'}
+            info = dict([(cj, datos.get(pid, {})) for cj, pid in principal.items()])
+        return vol, tipo, uds, info
+
+    def _cajas_cj(self, env):
+        """v1.45.0: etiquetas de zona de ayer y hoy (hora del almacén) que no se han leído en OUT ya validadas;
+        v1.46.0: y cajas de ayer y hoy por encima del umbral de su tipo (parametro koroshi_monitor.cj_umbral_m3).
+        Las cuentas, en cj_calc.py. Solo lee."""
+        from . import cj_calc
+        inicio = comun.inicio_dia_utc(comun.hoy_local() - datetime.timedelta(days=1))
+        vol, tipo, uds, info = self._vol_cajas(env, inicio)
+        tabla = cj_calc.umbrales(env['ir.config_parameter'].sudo().get_param('koroshi_monitor.cj_umbral_m3'))
+        dos = cj_calc.dos_cajas(vol, tipo, tabla, info)
+        llenas = set([x['cj'] for x in dos])
         if 'zebra.label' not in env.registry:
-            return None
-        hoy = comun.hoy_local()
-        inicio = comun.inicio_dia_utc(hoy - datetime.timedelta(days=1))
+            return {'saltadas': None, 'dos_cajas': dos}
         etiquetas = env['zebra.label'].sudo().search_read(
             [('note', '=like', cj_calc.NOTA + '%'), ('create_date', '>=', inicio)], ['name', 'note'])
         if not etiquetas:
-            return []
+            return {'saltadas': [], 'dos_cajas': dos}
         nombres = [e['name'] for e in etiquetas]
-        paquetes = env['stock.quant.package'].sudo().search_read([('name', 'in', nombres)], ['name'])
-        leidas = set([x['name'] for x in paquetes])
-        uds_caja = {}
-        if paquetes:
-            por_id = dict([(x['id'], x['name']) for x in paquetes])
-            for g in env['stock.move.line'].sudo().read_group(
-                    [('result_package_id', 'in', list(por_id))], ['result_package_id', 'qty_done'],
-                    ['result_package_id']):
-                if g['result_package_id']:
-                    uds_caja[por_id.get(g['result_package_id'][0])] = int(g['qty_done'] or 0)
+        leidas = set(env['stock.quant.package'].sudo().search([('name', 'in', nombres)]).mapped('name'))
         nombres_out = list(set([e['note'][len(cj_calc.NOTA):].strip() for e in etiquetas]))
         outs = {}
         for p in env['stock.picking'].sudo().search([('name', 'in', nombres_out), ('company_id', '=', COMPANY_ID)]):
@@ -616,7 +665,21 @@ class KoroshiMonitor(http.Controller):
                 'hora': local and local.strftime('%d/%m %H:%M') or '',
             }
         descartadas = set(env['koroshi.monitor.cj.descartada'].sudo().search([('name', 'in', nombres)]).mapped('name'))
-        return cj_calc.saltadas([(e['name'], e['note']) for e in etiquetas], leidas, outs, descartadas, uds_caja)
+        saltadas = cj_calc.saltadas([(e['name'], e['note']) for e in etiquetas], leidas, outs, descartadas, uds,
+                                    vol, llenas)
+        return {'saltadas': saltadas, 'dos_cajas': dos}
+
+    def _capacidad_cajas(self, env):
+        """v1.46.0: capacidad real por tipo de caja: p50/p90/p98/max del volumen de las cajas cerradas de los
+        ultimos 7 dias (para la barra de llenado de Lecturas). Solo lee."""
+        from . import cj_calc
+        inicio = comun.inicio_dia_utc(comun.hoy_local() - datetime.timedelta(days=7))
+        vol, tipo, _uds, _info = self._vol_cajas(env, inicio, solo_hechas=True)
+        tabla = cj_calc.umbrales(env['ir.config_parameter'].sudo().get_param('koroshi_monitor.cj_umbral_m3'))
+        res = cj_calc.capacidad(vol, tipo)
+        for r in res:
+            r['umbral'] = cj_calc.umbral_de(r['tipo'], tabla)
+        return res
 
     @http.route('/koroshi_monitor/cj_descartar', type='json', auth='user')
     def cj_descartar(self, cj=None, out_id=None, **kw):

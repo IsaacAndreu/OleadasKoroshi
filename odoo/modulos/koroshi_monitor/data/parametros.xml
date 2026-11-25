@@ -25,5 +25,13 @@
             <field name="key">koroshi_monitor.gls_cc</field>
             <field name="value">spain@koroshi.tv, sonia@koroshi.tv, betty@nath.es</field>
         </record>
+        <!-- v1.46.0 (25/11): umbral de «¿Dos cajas en una CJ?» en m3 por tipo de caja (packaging_id del paquete),
+             separados por punto y coma; '*' = cualquier otro tipo. Datos 24-25/11: CAJA 600X400X400 p98 0,107 y
+             max 0,131 (la K1 sin partir, 0,149); CAJA KOROSHI MEDIANA p98 0,090. Registro nuevo: se crea al
+             actualizar; despues se cambia a mano en los parametros del sistema y no se pisa. -->
+        <record id="param_cj_umbral_m3" model="ir.config_parameter">
+            <field name="key">koroshi_monitor.cj_umbral_m3</field>
+            <field name="value">CAJA 600X400X400=0.11; CAJA KOROSHI MEDIANA=0.10; *=0.11</field>
+        </record>
     </data>
 </odoo>

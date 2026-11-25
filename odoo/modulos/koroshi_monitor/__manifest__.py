@@ -227,8 +227,15 @@ que ho pogués veure»). Seccion nueva, solo jefes, debajo de «Imprimir»: etiq
 leida mas llena. Sale sola al aparecer la CJ en Odoo («Revisar caja») o con «La he tirado» (tabla propia
 koroshi.monitor.cj.descartada: CJ, OUT, quien y cuando; nada en tablas compartidas). Etiquetas de ayer y hoy. Solo lee
 las cajas. Cuentas en controllers/cj_calc.py (tests/test_cj_calc.py).
+v1.46.0 (25/11/2026): VOLUMEN DE LAS CAJAS (aprobado por Isaac: «Lo resto m'agrada»). Para jefes, debajo de «Etiquetas
+CJ sin leer»: «¿Dos cajas en una CJ?», cajas de ayer y hoy con mas volumen (volumen del articulo x uds hechas; sin
+volumen, la media) que el umbral de su tipo de caja, parametro nuevo koroshi_monitor.cj_umbral_m3 (600X400X400 0,11 y
+MEDIANA 0,10). La K1 del 25/11 sumaba 0,149 m3 en una sola CJ. En «Etiquetas CJ sin leer» salen primero, en naranja y
+con ⚠, las de OUT con una caja leida por encima del umbral (K45: la 803 con 0,131 y la 804 sin leer), y se ven los m3.
+Y «Capacidad real por tipo de caja (7 dias)»: p50/p90/p98/max de las cajas cerradas, para la barra de llenado de
+Lecturas. Cache propia (1 y 10 min). Solo lee.
 """,
-    'version': '13.0.1.45.0',
+    'version': '13.0.1.46.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

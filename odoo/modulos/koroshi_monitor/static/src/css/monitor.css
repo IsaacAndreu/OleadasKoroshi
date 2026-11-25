@@ -190,3 +190,6 @@ body.km-tv .o_action_manager { height: 100vh; }
 /* v1.45.0: Etiquetas CJ sin leer */
 .km-cj-ayuda { margin: 0 0 8px; font-size: 13px; opacity: .8; }
 .km-cj-ok { margin: 0; color: var(--km-ok); font-weight: 600; }
+
+/* v1.46.0: CJ sin leer cuya caja leida pasa el umbral (probablemente dos cajas) */
+tr.km-cj-llena td { background: #FFF6E5; }

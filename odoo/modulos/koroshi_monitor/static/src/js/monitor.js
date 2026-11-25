@@ -519,15 +519,43 @@ var Monitor = AbstractAction.extend({
                 h += '<p class="km-cj-ok">Todas las etiquetas de zona de ayer y hoy de las OUT validadas están leídas.</p>';
             } else {
                 h += '<p class="km-cj-ayuda">Etiqueta impresa para la OUT que no se ha leído en Odoo. Revisa el palet de esa tienda: si está pegada en una caja, pasa las prendas con «Revisar caja» (sale sola de la lista). Si la tiraste, pulsa «La he tirado». Primero las que tienen la caja leída más llena.</p>' +
-                    '<table><thead><tr><th>Zona</th><th>CJ sin leer</th><th>Tienda</th><th>Pedido</th><th>OUT</th><th>Validada</th><th>Cajas leídas (uds)</th><th></th></tr></thead><tbody>';
+                    '<table><thead><tr><th>Zona</th><th>CJ sin leer</th><th>Tienda</th><th>Pedido</th><th>OUT</th><th>Validada</th><th>Cajas leídas (uds · m³)</th><th></th></tr></thead><tbody>';
                 cjs.forEach(function (x) {
-                    h += '<tr><td>' + (x.zona ? zt(x.zona) : '') + '</td><td><b>' + e(x.cj) + '</b></td><td>' + e(x.tienda) + '</td><td>' + e(x.pedido) + '</td><td>' + e((x.out || '').replace('EFFEC/', '')) +
-                        '</td><td>' + e(x.hora) + '</td><td>' + x.leidas.map(function (c) { return e(c[0]) + ' (' + c[1] + ')'; }).join(', ') +
+                    // v1.46.0: ⚠ = esa caja leída pasa el umbral de su tipo: lo más probable es que sean dos cajas
+                    h += '<tr' + (x.llena ? ' class="km-cj-llena"' : '') + '><td>' + (x.zona ? zt(x.zona) : '') + '</td><td><b>' + e(x.cj) + '</b></td><td>' + e(x.tienda) + '</td><td>' + e(x.pedido) + '</td><td>' + e((x.out || '').replace('EFFEC/', '')) +
+                        '</td><td>' + e(x.hora) + '</td><td>' + x.leidas.map(function (c) { return (c[3] ? '⚠ ' : '') + e(c[0]) + ' (' + c[1] + ' · ' + Number(c[2] || 0).toFixed(3) + ')'; }).join(', ') +
                         '</td><td><button class="btn btn-sm btn-outline-secondary km-cj-tirada" data-cj="' + e(x.cj) + '" data-out="' + (x.out_id || 0) + '">La he tirado</button></td></tr>';
                 });
                 h += '</tbody></table>';
             }
             h += '</div>';
+        }
+
+        // v1.46.0: ¿Dos cajas en una CJ? (solo jefes): cajas de ayer y hoy por encima del umbral de su tipo
+        if (r.cj_dos_cajas) {
+            h += '<h2>¿Dos cajas en una CJ? (' + r.cj_dos_cajas.length + ')</h2><div class="km-card km-scroll">';
+            if (!r.cj_dos_cajas.length) {
+                h += '<p class="km-cj-ok">Ninguna caja de ayer y hoy pasa el volumen de su tipo.</p>';
+            } else {
+                h += '<p class="km-cj-ayuda">Cajas con más volumen del que cabe en su tipo de caja (umbral en el parámetro koroshi_monitor.cj_umbral_m3). Mira en el palet si en realidad son dos cajas: si la segunda lleva otra etiqueta, pasa las prendas con «Revisar caja».</p>' +
+                    '<table><thead><tr><th>Zona</th><th>CJ</th><th>Tienda</th><th>Pedido</th><th>Tipo de caja</th><th class="r">m³</th><th class="r">Umbral</th><th>Validada</th></tr></thead><tbody>';
+                r.cj_dos_cajas.forEach(function (x) {
+                    h += '<tr><td>' + (x.zona ? zt(x.zona) : '') + '</td><td><b>' + e(x.cj) + '</b></td><td>' + e(x.tienda) + '</td><td>' + e(x.pedido) + '</td><td>' + e(x.tipo || '—') +
+                        '</td><td class="r"><b>' + Number(x.m3).toFixed(3) + '</b></td><td class="r">' + Number(x.umbral).toFixed(3) + '</td><td>' + e(x.hora) + '</td></tr>';
+                });
+                h += '</tbody></table>';
+            }
+            h += '</div>';
+        }
+
+        // v1.46.0: capacidad real por tipo de caja (cajas cerradas de los últimos 7 días), para la barra de Lecturas
+        if ((r.cj_capacidad || []).length) {
+            h += '<h2>Capacidad real por tipo de caja (7 días)</h2><div class="km-card km-scroll"><table><thead><tr><th>Tipo de caja</th><th class="r">Cajas</th><th class="r">p50 m³</th><th class="r">p90 m³</th><th class="r">p98 m³</th><th class="r">Máx m³</th><th class="r">Umbral</th></tr></thead><tbody>';
+            r.cj_capacidad.forEach(function (x) {
+                h += '<tr><td>' + e(x.tipo) + '</td><td class="r">' + x.n + '</td><td class="r">' + Number(x.p50).toFixed(3) + '</td><td class="r">' + Number(x.p90).toFixed(3) +
+                    '</td><td class="r">' + Number(x.p98).toFixed(3) + '</td><td class="r">' + Number(x.max).toFixed(3) + '</td><td class="r">' + Number(x.umbral).toFixed(3) + '</td></tr>';
+            });
+            h += '</tbody></table></div>';
         }
 
         // Avance por zona
