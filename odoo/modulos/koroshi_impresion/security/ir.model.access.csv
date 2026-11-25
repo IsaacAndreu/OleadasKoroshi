@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_koroshi_impresora_user,koroshi.impresora lectura,model_koroshi_impresora,stock.group_stock_user,1,0,0,0
+access_koroshi_impresora_manager,koroshi.impresora responsable,model_koroshi_impresora,stock.group_stock_manager,1,1,1,1
+access_koroshi_impresion_trabajo_user,koroshi.impresion.trabajo usuario,model_koroshi_impresion_trabajo,stock.group_stock_user,1,1,0,0
+access_koroshi_impresion_trabajo_manager,koroshi.impresion.trabajo responsable,model_koroshi_impresion_trabajo,stock.group_stock_manager,1,1,1,1

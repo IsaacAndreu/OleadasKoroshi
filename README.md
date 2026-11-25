@@ -36,6 +36,7 @@ los manifest: no se edita a mano, se vuelve a pasar después de sacar versiones.
 | `koroshi_faltantes` | 1.10.0 | Pieza que no esta: buscar otra ubicacion con stock libre, cambiar la reserva y llevar la que falta a FALTANTE; revision diaria | base, operarios |
 | `koroshi_informe` | 1.4.0 | Correo diario, semanal y mensual de productividad del almacén KOROSHI para la responsable | base, operarios, kpi, preparacion, menu, monitor |
 | `koroshi_kpi` | 1.9.0 | KPI diarios del almacen KOROSHI: uds, profundidad por SKU, peso, volumen, metros y segundos por prenda | base |
+| `koroshi_impresion` | 1.0.0 | Cola de impresión para las impresoras USB de los PC del almacén: una pantalla apunta el PDF (etiqueta GLS/XPO o informe) y el agente del PC (`bin/agente_impresion`) lo imprime. | base |
 | `koroshi_menu` | 2.7.0 | Aplicación KOROSHI propia (Hoy, Faltantes, Personas, Almacén, KPI, Configuración) e icono de Monitor picking | base, kpi, operarios, preparacion, zonas, warehouse_map, monitor, consumibles, faltantes, contenedores, actividades |
 | `koroshi_monitor` | 1.43.0 | Pantalla en directo de como van las agrupaciones de picking por zonas (Z-ddmm-D1..D5, ZX) | base, warehouse_map |
 | `koroshi_operarios` | 2.24.0 | Cola de pedidos por operario en la PDA: tarjeta una vez, el siguiente pedido se abre solo; tiempo y uds por persona | base |

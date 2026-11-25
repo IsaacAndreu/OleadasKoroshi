@@ -1,0 +1,147 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Impresoras -->
+    <record id="view_koroshi_impresora_tree" model="ir.ui.view">
+        <field name="name">koroshi.impresora.tree</field>
+        <field name="model">koroshi.impresora</field>
+        <field name="arch" type="xml">
+            <tree decoration-muted="not activa" decoration-danger="activa and not conectada">
+                <field name="name"/>
+                <field name="codigo"/>
+                <field name="puesto"/>
+                <field name="activa"/>
+                <field name="conectada"/>
+                <field name="ultimo_contacto"/>
+                <field name="n_pendientes"/>
+                <field name="n_errores"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_impresora_form" model="ir.ui.view">
+        <field name="name">koroshi.impresora.form</field>
+        <field name="model">koroshi.impresora</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="name"/>
+                            <field name="codigo"/>
+                            <field name="puesto"/>
+                            <field name="activa"/>
+                        </group>
+                        <group>
+                            <field name="conectada"/>
+                            <field name="ultimo_contacto"/>
+                            <field name="n_pendientes"/>
+                            <field name="n_errores"/>
+                        </group>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_impresora" model="ir.actions.act_window">
+        <field name="name">Impresoras</field>
+        <field name="res_model">koroshi.impresora</field>
+        <field name="view_mode">tree,form</field>
+        <field name="context">{'active_test': False}</field>
+    </record>
+
+    <!-- Cola -->
+    <record id="view_koroshi_impresion_trabajo_tree" model="ir.ui.view">
+        <field name="name">koroshi.impresion.trabajo.tree</field>
+        <field name="model">koroshi.impresion.trabajo</field>
+        <field name="arch" type="xml">
+            <tree create="false" decoration-danger="estado == 'error'" decoration-info="estado in ('pendiente', 'imprimiendo')"
+                  decoration-muted="estado == 'impreso'">
+                <field name="create_date" string="Pedido"/>
+                <field name="impresora_id"/>
+                <field name="descripcion"/>
+                <field name="origen" optional="hide"/>
+                <field name="usuario_id" optional="show"/>
+                <field name="operario" optional="show"/>
+                <field name="copias" optional="hide"/>
+                <field name="estado"/>
+                <field name="intentos" optional="hide"/>
+                <field name="fecha_impreso" optional="show"/>
+                <field name="error_texto" optional="show"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_impresion_trabajo_form" model="ir.ui.view">
+        <field name="name">koroshi.impresion.trabajo.form</field>
+        <field name="model">koroshi.impresion.trabajo</field>
+        <field name="arch" type="xml">
+            <form create="false">
+                <header>
+                    <button name="accion_reintentar" type="object" string="Reintentar" class="btn-primary"
+                            attrs="{'invisible': [('estado', '!=', 'error')]}"/>
+                    <field name="estado" widget="statusbar"/>
+                </header>
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="impresora_id" readonly="1"/>
+                            <field name="descripcion" readonly="1"/>
+                            <field name="origen" readonly="1"/>
+                            <field name="copias" readonly="1"/>
+                            <field name="adjunto_id" readonly="1"/>
+                            <field name="informe" readonly="1"/>
+                            <field name="modelo" readonly="1"/>
+                            <field name="ids_registros" readonly="1"/>
+                        </group>
+                        <group>
+                            <field name="create_date" string="Pedido"/>
+                            <field name="usuario_id"/>
+                            <field name="operario" readonly="1"/>
+                            <field name="fecha_inicio"/>
+                            <field name="fecha_impreso"/>
+                            <field name="intentos" readonly="1"/>
+                        </group>
+                    </group>
+                    <field name="error_texto" readonly="1"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_koroshi_impresion_trabajo_search" model="ir.ui.view">
+        <field name="name">koroshi.impresion.trabajo.search</field>
+        <field name="model">koroshi.impresion.trabajo</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="descripcion"/>
+                <field name="impresora_id"/>
+                <field name="usuario_id"/>
+                <filter name="por_imprimir" string="Por imprimir" domain="[('estado', 'in', ('pendiente', 'imprimiendo'))]"/>
+                <filter name="con_error" string="Con error" domain="[('estado', '=', 'error')]"/>
+                <filter name="impresos" string="Impresos" domain="[('estado', '=', 'impreso')]"/>
+                <separator/>
+                <filter name="hoy" string="Hoy" domain="[('create_date', '>=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_impresora" string="Impresora" context="{'group_by': 'impresora_id'}"/>
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_impresion_trabajo" model="ir.actions.act_window">
+        <field name="name">Cola de impresión</field>
+        <field name="res_model">koroshi.impresion.trabajo</field>
+        <field name="view_mode">tree,form</field>
+        <field name="search_view_id" ref="view_koroshi_impresion_trabajo_search"/>
+    </record>
+
+    <!-- Inventario > Configuración -->
+    <menuitem id="menu_koroshi_impresion_root" name="Impresión (PC del almacén)" parent="stock.menu_stock_config_settings"
+              sequence="90" groups="stock.group_stock_user"/>
+    <menuitem id="menu_koroshi_impresion_cola" name="Cola de impresión" parent="menu_koroshi_impresion_root"
+              action="action_koroshi_impresion_trabajo" sequence="10"/>
+    <menuitem id="menu_koroshi_impresion_impresoras" name="Impresoras" parent="menu_koroshi_impresion_root"
+              action="action_koroshi_impresora" sequence="20" groups="stock.group_stock_manager"/>
+</odoo>
