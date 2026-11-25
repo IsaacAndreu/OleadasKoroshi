@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="koroshi_transportista.Pantalla">
+        <div class="o_koroshi_transportista">
+            <header class="o_ktr_cab">
+                <div class="o_ktr_titulo">Transportista</div>
+                <input type="text" class="o_ktr_codigo" autocomplete="off" inputmode="none"
+                       placeholder="Leer la caja (CJ) o tu tarjeta"/>
+                <button type="button" class="o_ktr_teclado">⌨ Escribir</button>
+            </header>
+            <div class="o_ktr_fila">
+                <div class="o_ktr_quien"/>
+                <div class="o_ktr_elegir">
+                    <button type="button" class="o_ktr_tr" data-tr="gls">GLS</button>
+                    <button type="button" class="o_ktr_tr" data-tr="xpo">XPO</button>
+                </div>
+            </div>
+            <div class="o_ktr_aviso"/>
+            <div class="o_ktr_cuerpo"/>
+        </div>
+    </t>
+</templates>

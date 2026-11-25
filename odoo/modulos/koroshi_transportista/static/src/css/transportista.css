@@ -1,0 +1,42 @@
+/* KOROSHI Transportista v1.0.0. Todo dentro de .o_koroshi_transportista (mismo aspecto que Juntar cajas). Sin aria-hidden. */
+.o_koroshi_transportista { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
+.o_koroshi_transportista * { box-sizing: border-box; }
+.o_koroshi_transportista .o_ktr_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
+.o_koroshi_transportista .o_ktr_titulo { font-size: 22px; font-weight: bold; }
+.o_koroshi_transportista .o_ktr_codigo { flex: 1; min-width: 200px; font-size: 18px; padding: 10px; border: 2px solid #c4cbd3; border-radius: 8px; }
+.o_koroshi_transportista .o_ktr_codigo:focus { border-color: #0b4f9c; outline: none; }
+.o_koroshi_transportista .o_ktr_teclado { padding: 10px 12px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_koroshi_transportista .o_ktr_teclado_on { background: #0b4f9c; color: #fff; }
+.o_koroshi_transportista .o_ktr_fila { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; margin: 10px 16px 0; }
+.o_koroshi_transportista .o_ktr_quien { font-size: 15px; }
+.o_koroshi_transportista .o_ktr_elegir { display: flex; gap: 8px; }
+.o_koroshi_transportista .o_ktr_tr { padding: 8px 18px; font-size: 17px; font-weight: bold; border: 2px solid #0b4f9c; color: #0b4f9c; background: #fff; border-radius: 8px; }
+.o_koroshi_transportista .o_ktr_tr_on { background: #0b4f9c; color: #fff; }
+.o_koroshi_transportista .o_ktr_tr_grande { flex: 1; padding: 18px; font-size: 24px; }
+.o_koroshi_transportista .o_ktr_aviso { margin: 12px 16px 0; padding: 12px 14px; border-radius: 8px; font-weight: bold; display: none; white-space: pre-line; }
+.o_koroshi_transportista .o_ktr_aviso.o_ktr_ok { display: block; background: #dff3e3; color: #14572a; }
+.o_koroshi_transportista .o_ktr_aviso.o_ktr_mal { display: block; background: #fbe0e1; color: #8c1014; }
+.o_koroshi_transportista .o_ktr_aviso.o_ktr_info { display: block; background: #fff1d6; color: #7a4a00; }
+.o_koroshi_transportista .o_ktr_card { margin: 10px 16px 0; background: #fff; border: 1px solid #c4cbd3; border-radius: 10px; padding: 12px 14px; }
+.o_koroshi_transportista .o_ktr_card_mal { border: 2px solid #b91c1c; }
+.o_koroshi_transportista .o_ktr_card_conf { border: 2px solid #0b4f9c; }
+.o_koroshi_transportista .o_ktr_card h3 { margin: 0 0 6px; font-size: 20px; }
+.o_koroshi_transportista .o_ktr_ayuda ol { margin: 0; padding-left: 22px; }
+.o_koroshi_transportista .o_ktr_nota { font-size: 14px; color: #4b5563; margin-top: 4px; }
+.o_koroshi_transportista .o_ktr_tienda { font-size: 20px; font-weight: bold; }
+.o_koroshi_transportista .o_ktr_cuenta { font-size: 26px; font-weight: bold; margin: 4px 0; }
+.o_koroshi_transportista .o_ktr_verde_t { color: #1e7b34; font-weight: bold; }
+.o_koroshi_transportista .o_ktr_rojo { color: #b91c1c; font-weight: bold; }
+.o_koroshi_transportista .o_ktr_naranja { color: #a15c00; font-weight: bold; }
+.o_koroshi_transportista .o_ktr_gris { color: #6b7280; font-size: 14px; }
+.o_koroshi_transportista .o_ktr_rech { margin: 6px 0; }
+.o_koroshi_transportista .o_ktr_rech button { margin-left: 6px; padding: 4px 10px; border: 1px solid #c4cbd3; background: #fff; border-radius: 6px; font-size: 15px; }
+.o_koroshi_transportista .o_ktr_lista { margin: 4px 0 6px; padding-left: 20px; font-size: 15px; }
+.o_koroshi_transportista .o_ktr_lista li { margin-bottom: 3px; }
+.o_koroshi_transportista .o_ktr_si { color: #1e7b34; }
+.o_koroshi_transportista .o_ktr_no { color: #b91c1c; }
+.o_koroshi_transportista .o_ktr_botones { display: flex; flex-wrap: wrap; gap: 10px; margin: 14px 16px 0; }
+.o_koroshi_transportista .o_ktr_card .o_ktr_botones { margin: 10px 0 0; }
+.o_koroshi_transportista .o_ktr_botones button { flex: 1; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; border: 1px solid #c4cbd3; background: #fff; }
+.o_koroshi_transportista .o_ktr_botones .o_ktr_imprimir, .o_koroshi_transportista .o_ktr_botones .o_ktr_confirmar { background: #1e7b34; color: #fff; border-color: #1e7b34; }
+.o_koroshi_transportista .o_ktr_botones .o_ktr_imprimir:disabled, .o_koroshi_transportista .o_ktr_botones .o_ktr_confirmar:disabled { background: #9ca3af; border-color: #9ca3af; }

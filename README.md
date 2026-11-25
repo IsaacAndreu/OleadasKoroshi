@@ -51,6 +51,7 @@ los manifest: no se edita a mano, se vuelve a pasar después de sacar versiones.
 | `koroshi_s4t_sync` | 1.0.0 | Deja sincronizar con S4T los pedidos con backorders canceladas (el resto de OUT hechas) | — |
 | `koroshi_s4t_traspasos` | 1.4.0 | Descarga de S4T las devoluciones e-commerce y las correcciones de traspasos y las guarda en Odoo | base |
 | `koroshi_sesiones` | 1.0.0 | Las sesiones con usuario no se borran nunca (Odoo 13 las borraba a los 7 dias sin usarse) | — |
+| `koroshi_transportista` | 1.0.0 | PDA (Expediciones): leer todas las CJ de la tienda, cuadrarlas con Odoo y sacar la etiqueta GLS/XPO, que sale en la Zebra del portátil (cola de koroshi_impresion). | base, operarios, actividades, impresion, xpo_bultos |
 | `koroshi_ubicaciones` | 1.0.0 | Un botón crea los contenedores KO_/TT_ o los huecos de un lineal y abre sus etiquetas 4x6. Otro vuelve a imprimirlas. | base, menu |
 | `koroshi_warehouse_map` | 0.1.20261116.46 | Mapa editable y mapa operativo de picking para NAU-2 | base |
 | `koroshi_xpo_bultos` | 1.3.0 | XPO: cajas distintas y 15 kg / 0,09 m3 por bulto en cada expedicion | base |

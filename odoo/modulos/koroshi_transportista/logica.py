@@ -1,0 +1,101 @@
+# -*- coding: utf-8 -*-
+"""
+KOROSHI Transportista - lógica sin Odoo (tests/test_logica.py).
+Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md.
+
+Cuadrar: las CJ escaneadas tienen que ser EXACTAMENTE las cajas distintas de las OUT validadas sin etiqueta de la
+tienda (la misma cuenta que mandan XPO, koroshi_xpo_bultos.bultos_de, y GLS, acción 1834 v5). Si sobra una, error con
+el porqué; si falta una, se dice cuál. Solo con todo cuadrado se puede etiquetar (decisión de Isaac, 25/11).
+"""
+import re
+
+GLS = 'gls'
+XPO = 'xpo'
+TRANSPORTISTAS = (GLS, XPO)
+NOMBRES = {GLS: 'GLS', XPO: 'XPO'}
+DIAS_PENDIENTES = 10            # OUT validadas sin etiqueta de hasta 10 días atrás (P3: OUT de días distintos juntas)
+
+RE_TIENDA = re.compile(r',\s*(K\d+\b.*)$')     # «DIGITAL E-GLOBAL XPERIENCE, SL, K24 - VALLADOLID» -> «K24 - VALLADOLID»
+
+
+def tienda_de(nombre_cliente):
+    """La tienda (K## - nombre) del nombre del cliente de la OUT, o '' si no es de tienda (web, Zalando...)."""
+    m = RE_TIENDA.search(nombre_cliente or '')
+    return m.group(1).strip() if m else ''
+
+
+def transportista_de(tipo_entrega):
+    """delivery_type de Odoo -> gls / xpo / ''."""
+    t = (tipo_entrega or '').lower()
+    if t.startswith('gls'):
+        return GLS
+    if t.startswith('xpo'):
+        return XPO
+    return ''
+
+
+def cuadre(leidas, esperadas):
+    """leidas: [CJ escaneadas, en orden]; esperadas: {CJ: [OUT]} de las OUT pendientes de etiqueta de la tienda.
+    Devuelve {'bien': [CJ leídas que tocan], 'sobran': [CJ leídas que no tocan], 'faltan': [CJ esperadas sin leer],
+    'ok': todo cuadra, 'esperadas': n, 'leidas': n}."""
+    vistas = []
+    for cj in leidas:
+        if cj not in vistas:
+            vistas.append(cj)
+    bien = [cj for cj in vistas if cj in esperadas]
+    sobran = [cj for cj in vistas if cj not in esperadas]
+    faltan = sorted(cj for cj in esperadas if cj not in vistas)
+    return {'bien': bien, 'sobran': sobran, 'faltan': faltan, 'esperadas': len(esperadas), 'leidas': len(bien),
+            'ok': bool(esperadas) and not sobran and not faltan}
+
+
+def motivo_sobra(d):
+    """Por qué una CJ escaneada no cuenta para la expedición. d: lo que se sabe de ella en Odoo:
+    existe, juntada_en, outs ([{'nombre', 'tienda', 'estado', 'tracking', 'dias', 'en_cierre'}]), tienda (la de la
+    pantalla)."""
+    if not d.get('existe'):
+        return 'no existe en Odoo'
+    if d.get('juntada_en'):
+        return 'está juntada dentro de %s (Juntar cajas): ya no es un bulto' % d['juntada_en']
+    outs = d.get('outs') or []
+    if not outs:
+        return 'está vacía: no tiene prendas en ninguna OUT'
+    otras = sorted(set(o['tienda'] or 'sin tienda' for o in outs if o['tienda'] != d.get('tienda')))
+    if otras:
+        return 'es de otra tienda: %s' % ', '.join(otras)
+    sin_validar = [o['nombre'] for o in outs if o['estado'] != 'done']
+    if sin_validar:
+        return 'su OUT no está validada: %s' % ', '.join(sin_validar)
+    con_etiqueta = ['%s (%s)' % (o['nombre'], o['tracking']) for o in outs if o.get('tracking')]
+    if con_etiqueta:
+        return 'ya tiene etiqueta: %s' % ', '.join(con_etiqueta)
+    en_cierre = [o['nombre'] for o in outs if o.get('en_cierre')]
+    if en_cierre:
+        return 'va en un camión XPO ya cerrado: %s' % ', '.join(en_cierre)
+    viejas = [o['nombre'] for o in outs if (o.get('dias') or 0) > DIAS_PENDIENTES]
+    if viejas:
+        return 'su OUT es de hace más de %d días: %s (hacerlo desde el portátil)' % (DIAS_PENDIENTES, ', '.join(viejas))
+    return 'no está en ninguna OUT pendiente de etiqueta de esta tienda'
+
+
+def reparto_gls(outs):
+    """Acción 1834 v5 (GLS), para UNA tienda. outs: [{'id', 'bultos' (number_of_packages), 'cajas' (ids de cajas)}].
+    GLS cuenta los bultos OUT por OUT: las OUT sin bultos (juntadas) o cuyas cajas ya van en otra OUT que se manda
+    (cajas compartidas) no se mandan; reciben el mismo tracking. Devuelve {'enviar': [ids], 'juntadas': [ids],
+    'compartidas': [ids], 'bultos_gls': n, 'cajas': n} (bultos_gls != cajas = GLS contará de más: aviso)."""
+    con_bultos = [o for o in outs if (o.get('bultos') or 0) > 0]
+    enviar = con_bultos if con_bultos else list(outs)
+    juntadas = [o['id'] for o in outs if o not in enviar]
+    vistas = set()
+    compartidas = []
+    for o in sorted([o for o in enviar if o.get('cajas')], key=lambda x: (-len(x['cajas']), x['id'])):
+        cajas = set(o['cajas'])
+        if cajas - vistas:
+            vistas |= cajas
+        else:
+            compartidas.append(o['id'])
+    quedan = [o for o in enviar if o['id'] not in compartidas]
+    bultos_gls = sum(len(o['cajas']) if o.get('cajas') else 1 for o in quedan)
+    reales = len(vistas) + len([o for o in quedan if not o.get('cajas')])
+    return {'enviar': [o['id'] for o in quedan], 'juntadas': juntadas + compartidas, 'compartidas': compartidas,
+            'bultos_gls': bultos_gls, 'cajas': reales}

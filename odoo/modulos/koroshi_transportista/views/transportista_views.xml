@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="KOROSHI Transportista assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/koroshi_transportista/static/src/css/transportista.css"/>
+            <script type="text/javascript" src="/koroshi_transportista/static/src/js/transportista.js"/>
+        </xpath>
+    </template>
+
+    <!-- Pantalla de la PDA -->
+    <record id="action_koroshi_transportista_pantalla" model="ir.actions.client">
+        <field name="name">Transportista</field>
+        <field name="tag">koroshi_transportista</field>
+    </record>
+
+    <!-- Oficina: solo mirar -->
+    <record id="view_koroshi_transportista_registro_tree" model="ir.ui.view">
+        <field name="name">koroshi.transportista.registro.tree</field>
+        <field name="model">koroshi.transportista.registro</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false" decoration-danger="aviso">
+                <field name="fecha"/>
+                <field name="tipo"/>
+                <field name="employee_id"/>
+                <field name="tienda"/>
+                <field name="transportista"/>
+                <field name="tracking"/>
+                <field name="bultos"/>
+                <field name="impresos"/>
+                <field name="resultado" optional="show"/>
+                <field name="aviso" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_transportista_registro_form" model="ir.ui.view">
+        <field name="name">koroshi.transportista.registro.form</field>
+        <field name="model">koroshi.transportista.registro</field>
+        <field name="arch" type="xml">
+            <form create="false" edit="false" delete="false">
+                <sheet>
+                    <group>
+                        <group>
+                            <field name="fecha"/>
+                            <field name="tipo"/>
+                            <field name="employee_id"/>
+                            <field name="user_id"/>
+                            <field name="tienda"/>
+                            <field name="partner_id"/>
+                        </group>
+                        <group>
+                            <field name="transportista"/>
+                            <field name="tracking"/>
+                            <field name="bultos"/>
+                            <field name="impresos"/>
+                            <field name="aviso"/>
+                        </group>
+                    </group>
+                    <field name="resultado"/>
+                    <field name="cajas"/>
+                    <field name="picking_ids"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_koroshi_transportista_registro" model="ir.actions.act_window">
+        <field name="name">Etiquetas de transportista (PDA)</field>
+        <field name="res_model">koroshi.transportista.registro</field>
+        <field name="view_mode">tree,form</field>
+    </record>
+
+    <menuitem id="menu_koroshi_transportista_oficina" name="Etiquetas de transportista (PDA)"
+              parent="koroshi_operarios.menu_koroshi_operarios_root" action="action_koroshi_transportista_registro"
+              sequence="99"/>
+</odoo>

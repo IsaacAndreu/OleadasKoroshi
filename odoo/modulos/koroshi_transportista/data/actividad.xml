@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Botón «Transportista» en el área Expediciones del Inicio PDA. noupdate: si la oficina le cambia el nombre, el
+         orden o el color, actualizar el módulo no lo pisa (es un record: se crea al instalar). -->
+    <data noupdate="1">
+        <record id="actividad_pda_transportista" model="koroshi.actividad">
+            <field name="name">Transportista</field>
+            <field name="sequence">132</field>
+            <field name="color">#0b4f9c</field>
+            <field name="nota">Leer las cajas e imprimir GLS / XPO</field>
+            <field name="area">expediciones</field>
+            <field name="abre">koroshi_transportista.action_koroshi_transportista_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
+    </data>
+</odoo>
