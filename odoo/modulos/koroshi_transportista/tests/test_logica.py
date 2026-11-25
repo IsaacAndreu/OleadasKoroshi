@@ -67,6 +67,23 @@ class TestSumiYK41(unittest.TestCase):
         self.assertEqual((r['bultos_gls'], r['cajas']), (8, 7))   # a GLS se le manda 7 (models/gls.py)
 
 
+class TestDejarFuera(unittest.TestCase):
+    """v1.3.0: K46 25/11: la OUT 27256 (CJ665013084, del 24/11) no está y bloqueaba la tienda."""
+
+    def test_solo_otro_dia(self):
+        import datetime
+        hoy = datetime.date(2026, 11, 25)
+        self.assertTrue(logica.puede_dejar_fuera(datetime.date(2026, 11, 24), hoy))
+        self.assertFalse(logica.puede_dejar_fuera(hoy, hoy))
+        self.assertFalse(logica.puede_dejar_fuera(None, hoy))
+
+    def test_motivo(self):
+        d = {'existe': True, 'tienda': 'K46 - IRUN', 'outs': [
+            {'nombre': 'EFFEC/OUT/27256', 'tienda': 'K46 - IRUN', 'estado': 'done', 'tracking': '', 'dias': 1,
+             'en_cierre': False, 'fuera': True}]}
+        self.assertIn('dejada fuera', logica.motivo_sobra(d))
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

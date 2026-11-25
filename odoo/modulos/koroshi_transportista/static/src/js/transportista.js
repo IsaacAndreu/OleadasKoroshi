@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.2.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.3.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.3.0: «Dejar fuera» una OUT de otro día.
  * v1.2.0: marca SUMI en las OUT de suministros.
  * v1.1.1: el campo va en un formulario (Intro/«Ir» de Android) con botón «✓ Leer»; foco al campo tras cada lectura.
  * 1. Tarjeta (la compartida: koroshi_base.comun.tarjeta). GLS / XPO se puede elegir antes o al final.
@@ -35,6 +36,8 @@ var Transportista = AbstractAction.extend({
         'click .o_ktr_apartada': '_onApartada',
         'click .o_ktr_otra': '_onOtra',
         'click .o_ktr_reimprimir': '_onReimprimir',
+        'click .o_ktr_fuera': '_onFuera',
+        'click .o_ktr_meter': '_onMeter',
     },
 
     init: function () {
@@ -52,6 +55,7 @@ var Transportista = AbstractAction.extend({
         this.estado = null;          // respuesta de /leer
         this.leidas = [];            // CJ que cuentan
         this.rechazadas = [];        // [{cj, motivo}] hasta pulsar «Apartada»
+        this.fuera = [];             // v1.3.0: ids de OUT de otros días dejadas fuera de esta etiqueta
         this.confirmando = false;
         this.hecho = null;
         this.token = _token();
@@ -228,6 +232,7 @@ var Transportista = AbstractAction.extend({
         this._aviso('info', 'Leyendo ' + codigo + '…');
         return this._llamar('/koroshi/transportista/leer', {
             codigo: codigo, leidas: this.leidas, partner_id: this.estado ? this.estado.partner_id : false,
+            fuera: this.fuera,
         }).then(function (r) {
             if (r.sinConexion) { return; }
             if (!r.ok) {
@@ -296,7 +301,7 @@ var Transportista = AbstractAction.extend({
         this.$('.o_ktr_confirmar').prop('disabled', true).text('Registrando en ' + NOMBRE[this.transportista] + '…');
         return this._llamar('/koroshi/transportista/etiquetar', {
             leidas: this.leidas, partner_id: this.estado.partner_id, transportista: this.transportista,
-            employee_id: this.persona.id, token: this.token,
+            employee_id: this.persona.id, token: this.token, fuera: this.fuera,
         }).then(function (r) {
             if (r.sinConexion) { return; }
             self.confirmando = false;
@@ -321,6 +326,41 @@ var Transportista = AbstractAction.extend({
         this._aviso('', '');
         this._pintar();
         this._foco();
+    },
+    // v1.3.0: dejar fuera / volver a meter una OUT de otro día (su caja no está o no tiene que salir hoy)
+    _onFuera: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (this.ocupado || !id || this.fuera.indexOf(id) >= 0) { return; }
+        this.fuera.push(id);
+        this._refrescar('OUT dejada fuera: no va en esta etiqueta y se queda sin etiqueta.');
+    },
+    _onMeter: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        if (this.ocupado) { return; }
+        this.fuera = _.without(this.fuera, id);
+        this._refrescar('OUT otra vez dentro: hay que leer sus cajas.');
+    },
+    _refrescar: function (texto) {
+        var self = this;
+        if (!this.estado) { return; }
+        this.confirmando = false;
+        return this._llamar('/koroshi/transportista/leer', {
+            codigo: '', leidas: this.leidas, partner_id: this.estado.partner_id, fuera: this.fuera,
+        }).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (!r.ok) {
+                self._pitido(false);
+                return self._aviso('mal', r.msg || 'Error');
+            }
+            self.estado = r;
+            self.leidas = r.leidas || [];
+            (r.sobran || []).forEach(function (m) {
+                if (!_.findWhere(self.rechazadas, {cj: m.cj})) { self.rechazadas.push(m); }
+            });
+            self._aviso(r.cuadra ? 'ok' : 'info', texto + ' Leídas ' + r.n_leidas + ' de ' + r.n_esperadas + '.');
+            self._pintar();
+            self._foco();
+        });
     },
     _onOtra: function () {
         this._vaciar();
@@ -417,11 +457,18 @@ var Transportista = AbstractAction.extend({
         var outs = (r.outs || []).map(function (o) {
             return '<li>' + (o.sumi ? '<span class="o_ktr_sumi">SUMI</span> ' : '') + _e(o.nombre) + ' · ' +
                 _e(o.origen) + ' · ' + o.bultos + ' caja' + (o.bultos === 1 ? '' : 's') +
-                (o.de_otro_dia ? ' · <span class="o_ktr_naranja">del ' + _e(o.dia) + '</span>' : '') + '</li>';
+                (o.de_otro_dia ? ' · <span class="o_ktr_naranja">del ' + _e(o.dia) + '</span>' +
+                    ' <button type="button" class="o_ktr_fuera" data-id="' + o.id + '">Dejar fuera</button>' : '') +
+                '</li>';
+        });
+        var fuera = (r.fuera || []).map(function (o) {
+            return '<li>' + _e(o.nombre) + ' · ' + _e(o.origen) + ' · ' + _e(o.cajas) +
+                ' <button type="button" class="o_ktr_meter" data-id="' + o.id + '">Volver a meter</button></li>';
         });
         return '<div class="o_ktr_card"><div class="o_ktr_nota">Cajas que espera Odoo:</div><ul class="o_ktr_lista">' +
             filas.join('') + '</ul><div class="o_ktr_nota">OUT que van:</div><ul class="o_ktr_lista">' +
-            outs.join('') + '</ul></div>';
+            outs.join('') + '</ul>' + (fuera.length ? '<div class="o_ktr_nota o_ktr_naranja">Dejadas fuera (se quedan ' +
+            'sin etiqueta):</div><ul class="o_ktr_lista">' + fuera.join('') + '</ul>' : '') + '</div>';
     },
 
     _htmlEtiquetadas: function () {
@@ -445,12 +492,15 @@ var Transportista = AbstractAction.extend({
                 '<div class="o_ktr_botones"><button type="button" class="o_ktr_cancelar">Cancelar</button></div></div>';
         }
         var nSumi = _.filter(r.outs || [], function (o) { return o.sumi; }).length;
+        var nFuera = (r.fuera || []).length;
         var aviso = r.propuesto && r.propuesto !== this.transportista ?
             '<div class="o_ktr_naranja">⚠ Esta tienda iba normalmente con ' + NOMBRE[r.propuesto] + '.</div>' : '';
         return '<div class="o_ktr_card o_ktr_card_conf"><h3>' + NOMBRE[this.transportista] + ' · ' + _e(r.tienda) +
             '</h3><div class="o_ktr_cuenta">' + r.n_esperadas + ' bultos · ' + (r.outs || []).length + ' OUT</div>' +
             (nSumi ? '<div class="o_ktr_nota">Incluye ' + nSumi + ' OUT de <span class="o_ktr_sumi">SUMI</span> ' +
                 '(suministros de la tienda).</div>' : '') +
+            (nFuera ? '<div class="o_ktr_naranja">Se quedan FUERA: ' + _e(_.pluck(r.fuera, 'nombre').join(', ')) +
+                '</div>' : '') +
             aviso + '<div class="o_ktr_nota">Se registra la expedición en ' + NOMBRE[this.transportista] +
             ' (no se puede deshacer) y la etiqueta sale en la impresora del portátil.</div>' +
             '<div class="o_ktr_botones"><button type="button" class="o_ktr_confirmar">Sí, imprimir</button>' +

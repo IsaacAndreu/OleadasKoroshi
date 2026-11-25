@@ -31,8 +31,11 @@ v1.1.1 (25/11/2026): en la PDA las 4 cifras + Intro no hacían nada (Isaac): el 
 v1.2.0 (25/11/2026): GLS en envío agrupado contaba dos veces una caja juntada en dos OUT (K41: 7 cajas, 8
   etiquetas). Ahora la pantalla manda a GLS las cajas distintas (models/gls.py, contexto koroshi_gls_bultos; la
   acción 1834 del portátil sigue igual). Marca SUMI en las OUT de suministros (Isaac, 25/11).
+v1.3.0 (25/11/2026): «Dejar fuera» una OUT validada OTRO día (K46: la CJ665013084 del 24/11 no estaba y bloqueaba
+  la tienda). Sale de lo que se espera, no va en la etiqueta, se queda sin etiqueta y lleva una nota. «Volver a
+  meter» la devuelve. Las OUT de hoy no se pueden dejar fuera (Isaac, 25/11).
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

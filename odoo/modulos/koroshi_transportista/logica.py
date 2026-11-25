@@ -37,6 +37,11 @@ def transportista_de(tipo_entrega):
 RE_CIFRAS = re.compile(r'^\d{4,9}$')   # v1.1.0: las últimas cifras de la CJ, escritas a mano (etiqueta que no se lee)
 
 
+def puede_dejar_fuera(fecha_validada, hoy):
+    """v1.3.0: solo se puede dejar fuera de la etiqueta una OUT validada otro día (no la de hoy)."""
+    return bool(fecha_validada and fecha_validada < hoy)
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')
@@ -84,6 +89,9 @@ def motivo_sobra(d):
     otras = sorted(set(o['tienda'] or 'sin tienda' for o in outs if o['tienda'] != d.get('tienda')))
     if otras:
         return 'es de otra tienda: %s' % ', '.join(otras)
+    dejadas = [o['nombre'] for o in outs if o.get('fuera')]      # v1.3.0
+    if dejadas:
+        return 'su OUT está dejada fuera de esta etiqueta: %s (apártala)' % ', '.join(dejadas)
     sin_validar = [o['nombre'] for o in outs if o['estado'] != 'done']
     if sin_validar:
         return 'su OUT no está validada: %s' % ', '.join(sin_validar)

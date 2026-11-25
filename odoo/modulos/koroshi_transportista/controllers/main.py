@@ -30,7 +30,7 @@ class KoroshiTransportista(http.Controller):
             return {'ok': False, 'msg': e.args[0] if e.args else str(e)}
 
     @http.route('/koroshi/transportista/leer', type='json', auth='user')
-    def leer(self, codigo='', leidas=None, partner_id=False, **kw):
+    def leer(self, codigo='', leidas=None, partner_id=False, fuera=None, **kw):
         def hacer():
             texto = (codigo or '').strip()
             leidas_ = list(leidas or [])
@@ -39,7 +39,7 @@ class KoroshiTransportista(http.Controller):
                     return {'ok': False, 'msg': '%s (escrita %s) ya está leída.' % (cj, escrita)}
                 if cj not in leidas_:
                     leidas_.append(cj)
-                r = self._modelo().estado(leidas_, partner_id)
+                r = self._modelo().estado(leidas_, partner_id, fuera)
                 r.update({'tipo': 'caja', 'cj': cj, 'escrita': escrita})
                 return r
             if comun.es_matricula(texto):
@@ -53,17 +53,18 @@ class KoroshiTransportista(http.Controller):
                 if logica.son_cifras(texto):          # v1.1.0: las últimas cifras de una CJ que no se lee
                     return caja(self._modelo().cj_por_cifras(texto, partner_id), escrita=texto)
                 return {'ok': False, 'msg': '%s no es una caja (CJ), ni sus últimas cifras, ni una tarjeta.' % texto}
-            r = self._modelo().estado(leidas_, partner_id)
+            r = self._modelo().estado(leidas_, partner_id, fuera)
             r['tipo'] = 'estado'
             return r
         return self._envolver(hacer)
 
     @http.route('/koroshi/transportista/etiquetar', type='json', auth='user')
-    def etiquetar(self, leidas=None, partner_id=False, transportista='', employee_id=False, token='', **kw):
+    def etiquetar(self, leidas=None, partner_id=False, transportista='', employee_id=False, token='', fuera=None,
+                  **kw):
         def hacer():
             emp = pda.empleado_valido(request.env, employee_id)
             return self._modelo().etiquetar(list(leidas or []), partner_id, transportista, employee=emp,
-                                            token=token or '')
+                                            token=token or '', fuera=fuera)
         return self._envolver(hacer)
 
     @http.route('/koroshi/transportista/reimprimir', type='json', auth='user')

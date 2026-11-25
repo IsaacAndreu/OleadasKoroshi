@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.2.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.3.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -83,8 +83,9 @@ class KoroshiTransportistaRegistro(models.Model):
         return fields.Datetime.now() - datetime.timedelta(days=logica.DIAS_PENDIENTES)
 
     @api.model
-    def _pendientes(self, partner):
-        """OUT de la tienda validadas, sin etiqueta, de los últimos 10 días y fuera de un camión cerrado."""
+    def _pendientes(self, partner, fuera=None):
+        """OUT de la tienda validadas, sin etiqueta, de los últimos 10 días y fuera de un camión cerrado.
+        v1.3.0: fuera = ids de OUT de otros días que el operario deja fuera de esta etiqueta (las de hoy, no)."""
         dominio = [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
                    ('partner_id', '=', partner.id), ('state', '=', 'done'), ('carrier_tracking_ref', '=', False),
                    ('date_done', '>=', self._desde())]
@@ -92,7 +93,13 @@ class KoroshiTransportistaRegistro(models.Model):
         if CAMPO_BARRAS_GLS in Picking._fields:
             dominio.append((CAMPO_BARRAS_GLS, '=', False))
         outs = Picking.search(dominio, order='date_done, id')
-        return outs - self._en_cierre(outs)
+        outs = outs - self._en_cierre(outs)
+        if fuera:
+            ids = set(int(x) for x in fuera)
+            hoy = fields.Datetime.now().date()
+            outs = outs.filtered(lambda p: not (p.id in ids and logica.puede_dejar_fuera(
+                p.date_done and p.date_done.date(), hoy)))
+        return outs
 
     @api.model
     def _cajas_de(self, picking):
@@ -111,7 +118,7 @@ class KoroshiTransportistaRegistro(models.Model):
         return res
 
     @api.model
-    def _datos_caja(self, cj, tienda):
+    def _datos_caja(self, cj, tienda, fuera=None):
         """Lo que hace falta para decir por qué una CJ no cuenta (logica.motivo_sobra)."""
         paquete = self._paquete(cj)
         d = {'existe': bool(paquete), 'juntada_en': '', 'outs': [], 'tienda': tienda}
@@ -128,7 +135,7 @@ class KoroshiTransportistaRegistro(models.Model):
             d['outs'].append({'nombre': p.name, 'tienda': logica.tienda_de(p.partner_id.display_name),
                               'estado': p.state, 'tracking': p.carrier_tracking_ref or '',
                               'dias': (ahora - p.date_done).days if p.date_done else 0,
-                              'en_cierre': p in cerradas})
+                              'en_cierre': p in cerradas, 'fuera': p.id in set(fuera or [])})
         return d
 
     @api.model
@@ -216,7 +223,7 @@ class KoroshiTransportistaRegistro(models.Model):
             len(coinciden), cifras))
 
     @api.model
-    def estado(self, leidas, partner_id=False):
+    def estado(self, leidas, partner_id=False, fuera=None):
         """Lo que enseña la pantalla. leidas: CJ escaneadas. La tienda: partner_id o la de la primera CJ."""
         leidas = [c.strip().upper() for c in (leidas or []) if (c or '').strip()]
         Partner = self.env['res.partner'].sudo()
@@ -226,12 +233,14 @@ class KoroshiTransportistaRegistro(models.Model):
                 raise UserError(_('Lee una caja (CJ).'))
             partner = self._partner_de_cj(leidas[0])
         tienda = logica.tienda_de(partner.display_name)
-        outs = self._pendientes(partner)
+        outs = self._pendientes(partner, fuera)
+        dejadas = self._pendientes(partner) - outs          # v1.3.0
         esperadas = self._esperadas(outs)
         c = logica.cuadre(leidas, esperadas)
-        sobran = [{'cj': cj, 'motivo': logica.motivo_sobra(self._datos_caja(cj, tienda))} for cj in c['sobran']]
+        sobran = [{'cj': cj, 'motivo': logica.motivo_sobra(self._datos_caja(cj, tienda, dejadas.ids))}
+                  for cj in c['sobran']]
         hoy = fields.Datetime.now().date()
-        lista_outs = [{'nombre': p.name, 'origen': p.origin or '', 'bultos': len(self._cajas_de(p)),
+        lista_outs = [{'id': p.id, 'nombre': p.name, 'origen': p.origin or '', 'bultos': len(self._cajas_de(p)),
                        'sumi': logica.es_sumi(p.origin),
                        'dia': fields.Date.to_string(p.date_done.date()) if p.date_done else '',
                        'de_otro_dia': bool(p.date_done and p.date_done.date() < hoy)} for p in outs]
@@ -251,6 +260,8 @@ class KoroshiTransportistaRegistro(models.Model):
             'n_esperadas': c['esperadas'], 'cuadra': c['ok'], 'avisos': avisos,
             'propuesto': self._propuesto(partner, outs), 'etiquetadas': self._etiquetadas(partner),
             'impresora': self._impresora_info(),
+            'fuera': [{'id': p.id, 'nombre': p.name, 'origen': p.origin or '',
+                       'cajas': ', '.join(self._cajas_de(p).mapped('name'))} for p in dejadas],
         }
 
     # ------------------------------------------------------------------ impresora
@@ -294,19 +305,19 @@ class KoroshiTransportistaRegistro(models.Model):
             raise UserError(_('Otra persona está etiquetando esta tienda ahora mismo. Espera un momento.'))
 
     @api.model
-    def etiquetar(self, leidas, partner_id, transportista, employee=None, token=''):
+    def etiquetar(self, leidas, partner_id, transportista, employee=None, token='', fuera=None):
         if transportista not in logica.TRANSPORTISTAS:
             raise UserError(_('Elige GLS o XPO.'))
         if token:
             ya = self.sudo().search([('token', '=', token)], limit=1)
             if ya:
                 return {'ok': True, 'repetido': True, 'tracking': ya.tracking, 'resultado': ya.resultado}
-        est = self.estado(leidas, partner_id)
+        est = self.estado(leidas, partner_id, fuera)
         if not est['cuadra']:
             raise UserError(_('No cuadra: no se ha hecho nada. Leídas %d de %d.') % (est['n_leidas'],
                                                                                     est['n_esperadas']))
         partner = self.env['res.partner'].sudo().browse(est['partner_id'])
-        outs = self._pendientes(partner)
+        outs = self._pendientes(partner, fuera)
         if not outs:
             raise UserError(_('Esta tienda no tiene OUT pendientes de etiqueta.'))
         self._bloquear(outs)
@@ -323,6 +334,13 @@ class KoroshiTransportistaRegistro(models.Model):
         # pase después (si algo falla más abajo, la ruta deshace solo lo posterior a este commit)
         self.env.cr.commit()
         texto = r['texto']
+        if est['fuera']:                                    # v1.3.0
+            nombres = ', '.join(f['nombre'] for f in est['fuera'])
+            texto += _(' Dejadas fuera (sin etiqueta): %s.') % nombres
+            for f in self.env['stock.picking'].sudo().browse([f['id'] for f in est['fuera']]):
+                f.message_post(body=_('Transportista (PDA, %s): esta OUT se ha dejado FUERA de la etiqueta %s de la '
+                                      'tienda (su caja no estaba). Sigue sin etiqueta.') % (
+                    operario or '-', r.get('tracking') or ''))
         reg = self.sudo().create({
             'employee_id': employee.id if employee else False, 'tipo': 'etiquetar', 'transportista': transportista,
             'partner_id': partner.id, 'tienda': est['tienda'], 'tracking': r.get('tracking') or '',
