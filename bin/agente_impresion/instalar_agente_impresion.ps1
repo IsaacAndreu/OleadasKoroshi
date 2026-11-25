@@ -1,5 +1,5 @@
 ﻿# =============================================================================
-# KOROSHI - instalar el agente de impresion en un PC del almacen (v1.0.1, 25/11/2026)
+# KOROSHI - instalar el agente de impresion en un PC del almacen (v1.0.2, 25/11/2026)
 #
 # Un solo fichero: se manda por Teams, se guarda en el PC y se ejecuta con
 #   clic derecho > «Ejecutar con PowerShell».
@@ -58,7 +58,7 @@ function Buscar-Python {
 }
 
 try {
-    Write-Host 'KOROSHI - instalar el agente de impresion (v1.0.1)' -ForegroundColor White
+    Write-Host 'KOROSHI - instalar el agente de impresion (v1.0.2)' -ForegroundColor White
 
     # ---------------------------------------------------------------- 1. carpeta
     Paso '1. Carpeta'
@@ -111,6 +111,8 @@ KOROSHI - agente de impresión v1.0.1 (25/11/2026)
 v1.0.1: ajuste «fit» por defecto (config [impresora] ajuste). La etiqueta XPO es un PDF apaisado de 148x105 mm
   y con «noscale» salía mal en la Zebra 4x6; con «fit» Sumatra la gira y la ajusta (probado por Isaac en la GK420t).
   La de GLS ya es 100x150 mm y sale igual.
+v1.0.2: por defecto «fit,landscape». La GK420t tiene el papel 4x6 en apaisado (como lo imprime Chrome) y Sumatra
+  no lo lee del controlador: sin «landscape» encogía la etiqueta. Probado por Isaac el 25/11: sale perfecta.
 
 Corre en el PC que tiene la impresora (el portátil de Expediciones) y escucha la cola de Odoo (módulo
 koroshi_impresion): cada pocos segundos pregunta si hay trabajos para SU impresora, baja el PDF, lo imprime con
@@ -144,13 +146,14 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = '1.0.1'
+VERSION = '1.0.2'
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RUTA_CONFIG = os.path.join(AQUI, 'config.ini')
 CREDENCIAL = 'koroshi-impresion-odoo'        # nombre de la credencial genérica de Windows
 MODELO = 'koroshi.impresion.trabajo'
 METODOS_PERMITIDOS = frozenset({'agente_siguientes', 'agente_pdf', 'agente_hecho'})
 ESPERAS_ERROR = (5, 10, 30, 60)              # segundos entre reintentos si Odoo no contesta
+AJUSTE_DEFECTO = 'fit,landscape'      # v1.0.2: como imprime Chrome en la Zebra 4x6 (papel USER, apaisado)
 ERRORES_RED = (urllib.error.URLError, ConnectionError, TimeoutError, socket.timeout)
 
 log = logging.getLogger('agente_impresion')
@@ -176,7 +179,7 @@ def leer_config(ruta=RUTA_CONFIG):
         'codigo': (i.get('codigo') or '').strip(),
         'nombre_windows': (i.get('nombre_windows') or '').strip(),
         'sumatra': (i.get('sumatra') or '').strip(),
-        'ajuste': (i.get('ajuste') or 'fit').strip(),
+        'ajuste': (i.get('ajuste') or AJUSTE_DEFECTO).replace(' ', ''),
         'segundos': float(a.get('segundos') or 3),
         'carpeta_log': (a.get('carpeta_log') or os.path.join(AQUI, 'log')).strip(),
     }
@@ -265,14 +268,15 @@ def impresoras_windows():
     return [l.strip() for l in salida.stdout.splitlines() if l.strip()]
 
 
-AJUSTES_VALIDOS = ('fit', 'shrink', 'noscale')
+AJUSTES_VALIDOS = ('fit', 'shrink', 'noscale', 'landscape', 'portrait')
 
 
-def imprimir_pdf(sumatra, ruta_pdf, impresora='', copias=1, timeout=180, ajuste='fit'):
+def imprimir_pdf(sumatra, ruta_pdf, impresora='', copias=1, timeout=180, ajuste=AJUSTE_DEFECTO):
     """Imprime con SumatraPDF sin abrir ventanas. fit (por defecto): gira y ajusta la página al papel (la XPO es
     apaisada, 148x105 mm); noscale: a su tamaño, sin girar."""
-    if ajuste not in AJUSTES_VALIDOS:
-        raise ValueError('ajuste no válido: %s (%s)' % (ajuste, ', '.join(AJUSTES_VALIDOS)))
+    malos = [a for a in ajuste.split(',') if a not in AJUSTES_VALIDOS]
+    if malos or not ajuste:
+        raise ValueError('ajuste no válido: %s (vale: %s)' % (ajuste, ', '.join(AJUSTES_VALIDOS)))
     ajustes = '%s,%dx' % (ajuste, max(1, int(copias)))
     orden = [sumatra]
     orden += ['-print-to', impresora] if impresora else ['-print-to-default']
@@ -382,7 +386,7 @@ if __name__ == '__main__':
         print(e)
         sys.exit(2)
 '@
-    Bien "$agente (v1.0.1)"
+    Bien "$agente (v1.0.2)"
 
     # ---------------------------------------------------------------- 5. config.ini
     Paso '5. Configuracion'
@@ -391,7 +395,7 @@ if __name__ == '__main__':
     if (Test-Path $cfgRuta) {
         foreach ($l in Get-Content $cfgRuta) { if ($l -match '^\s*(\w+)\s*=\s*(.*)$') { $antes[$Matches[1]] = $Matches[2].Trim() } }
     }
-    $ajuste = $(if ($antes.ajuste) { $antes.ajuste } else { 'fit' })
+    $ajuste = $(if ($antes.ajuste) { $antes.ajuste } else { 'fit,landscape' })
     $codigo = Preguntar 'Codigo de esta impresora en Odoo (Inventario > Configuracion > Impresion > Impresoras)' $(if ($antes.codigo) { $antes.codigo } else { 'EXP1' })
     $usuario = ''
     while (-not $usuario) { $usuario = Preguntar 'Login de Odoo de Almacen Nath (el correo con que entra)' $antes.usuario }

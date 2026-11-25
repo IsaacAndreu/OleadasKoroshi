@@ -71,7 +71,7 @@ class TestAgente(unittest.TestCase):
         OdooFalso.trabajos, OdooFalso.hechos, OdooFalso.llamadas = [], [], []
 
     def cfg(self, sumatra):
-        return {'codigo': 'EXP1', 'nombre_windows': 'ZDesigner ZD420', 'sumatra': sumatra, 'ajuste': 'fit'}
+        return {'codigo': 'EXP1', 'nombre_windows': 'ZDesigner ZD420', 'sumatra': sumatra, 'ajuste': 'fit,landscape'}
 
     def test_imprime_y_marca(self):
         odoo = ag.Odoo(self.url, 'bd', 'u', 'buena')
@@ -80,7 +80,7 @@ class TestAgente(unittest.TestCase):
         self.assertEqual(OdooFalso.hechos, [(1, True, '')])
         orden = open(os.path.join(self.tmp, 'ultima.txt')).read()
         self.assertIn('-print-to "ZDesigner ZD420"', orden)
-        self.assertIn('fit,2x', orden)          # v1.0.1: la XPO es apaisada
+        self.assertIn('fit,landscape,2x', orden)          # v1.0.1: la XPO es apaisada
 
     def test_error_de_impresora_va_a_odoo(self):
         odoo = ag.Odoo(self.url, 'bd', 'u', 'buena')
@@ -135,7 +135,7 @@ class TestAgente(unittest.TestCase):
         open(ruta, 'w', encoding='utf-8').write(texto.replace('PONER_AQUI_EL_LOGIN', 'almacen@x')
                                                 .replace(r'C:\KoroshiImpresion\SumatraPDF.exe', self.bien))
         cfg = ag.leer_config(ruta)
-        self.assertEqual((cfg['codigo'], cfg['bd'], cfg['segundos'], cfg['ajuste']), ('EXP1', 'NATH_PRODUCTION', 3.0, 'fit'))
+        self.assertEqual((cfg['codigo'], cfg['bd'], cfg['segundos'], cfg['ajuste']), ('EXP1', 'NATH_PRODUCTION', 3.0, 'fit,landscape'))
         with self.assertRaises(ag.ErrorConfig):
             ag.leer_config(os.path.join(self.tmp, 'no_existe.ini'))
 
