@@ -3,9 +3,21 @@
 Escucha la cola de Odoo (`koroshi_impresion`) e imprime en la Zebra del portátil lo que se pida desde la PDA.
 Diseño: `bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md`. Versión 1.0.0 (25/11/2026).
 
-**Antes**: `koroshi_impresion` 1.0.0 instalado en Odoo (crea la impresora `EXP1`).
+**Antes**: `koroshi_impresion` 1.0.0 instalado en Odoo (crea la impresora `EXP1`). Para otro PC, crear antes su
+impresora en Odoo (Inventario > Configuración > Impresión > Impresoras, p. ej. código `EXP2`).
 
-## Instalar en el portátil (una vez, ~15 min)
+## Forma rápida: un solo fichero (25/11/2026)
+
+`instalar_agente_impresion.ps1` lo hace todo (pasos 1 a 8 de abajo). Se manda por Teams, se guarda en el PC y:
+**clic derecho > «Ejecutar con PowerShell»**. Pregunta el código de la impresora, el login de Almacén Nath, la Zebra
+(de una lista) y la contraseña (no se ve ni se guarda en ningún fichero). Si no hay Python lo baja de python.org
+(3.12.7, para ese usuario, sin administrador) y SumatraPDF de sumatrapdfreader.org (3.5.2). Se puede repetir para
+cambiar algo o actualizar el agente.
+
+No se edita a mano: se genera con `python bin/agente_impresion/hacer_instalador.py` (mete `agente_impresion.py` dentro
+de `instalador_plantilla.ps1`). Cada cambio del agente = volver a generarlo.
+
+## Instalar a mano (una vez, ~15 min)
 
 1. **Python 3** (python.org, Windows installer 64-bit). En la primera pantalla marcar **«Add python.exe to PATH»**.
    No hace falta instalar nada con pip.
