@@ -1,5 +1,5 @@
 ﻿# =============================================================================
-# KOROSHI - instalar el agente de impresion en un PC del almacen (v1.0.0, 25/11/2026)
+# KOROSHI - instalar el agente de impresion en un PC del almacen (v1.0.1, 25/11/2026)
 #
 # Un solo fichero: se manda por Teams, se guarda en el PC y se ejecuta con
 #   clic derecho > «Ejecutar con PowerShell».
@@ -58,7 +58,7 @@ function Buscar-Python {
 }
 
 try {
-    Write-Host 'KOROSHI - instalar el agente de impresion (v1.0.0)' -ForegroundColor White
+    Write-Host 'KOROSHI - instalar el agente de impresion (v1.0.1)' -ForegroundColor White
 
     # ---------------------------------------------------------------- 1. carpeta
     Paso '1. Carpeta'
@@ -107,7 +107,10 @@ try {
     Escribir-Utf8 $agente @'
 # -*- coding: utf-8 -*-
 """
-KOROSHI - agente de impresión v1.0.0 (25/11/2026)
+KOROSHI - agente de impresión v1.0.1 (25/11/2026)
+v1.0.1: ajuste «fit» por defecto (config [impresora] ajuste). La etiqueta XPO es un PDF apaisado de 148x105 mm
+  y con «noscale» salía mal en la Zebra 4x6; con «fit» Sumatra la gira y la ajusta (probado por Isaac en la GK420t).
+  La de GLS ya es 100x150 mm y sale igual.
 
 Corre en el PC que tiene la impresora (el portátil de Expediciones) y escucha la cola de Odoo (módulo
 koroshi_impresion): cada pocos segundos pregunta si hay trabajos para SU impresora, baja el PDF, lo imprime con
@@ -141,7 +144,7 @@ import time
 import urllib.error
 import urllib.request
 
-VERSION = '1.0.0'
+VERSION = '1.0.1'
 AQUI = os.path.dirname(os.path.abspath(__file__))
 RUTA_CONFIG = os.path.join(AQUI, 'config.ini')
 CREDENCIAL = 'koroshi-impresion-odoo'        # nombre de la credencial genérica de Windows
@@ -173,6 +176,7 @@ def leer_config(ruta=RUTA_CONFIG):
         'codigo': (i.get('codigo') or '').strip(),
         'nombre_windows': (i.get('nombre_windows') or '').strip(),
         'sumatra': (i.get('sumatra') or '').strip(),
+        'ajuste': (i.get('ajuste') or 'fit').strip(),
         'segundos': float(a.get('segundos') or 3),
         'carpeta_log': (a.get('carpeta_log') or os.path.join(AQUI, 'log')).strip(),
     }
@@ -261,9 +265,15 @@ def impresoras_windows():
     return [l.strip() for l in salida.stdout.splitlines() if l.strip()]
 
 
-def imprimir_pdf(sumatra, ruta_pdf, impresora='', copias=1, timeout=180):
-    """Imprime con SumatraPDF sin abrir ventanas. noscale: la etiqueta 4x6 sale a su tamaño."""
-    ajustes = 'noscale,%dx' % max(1, int(copias))
+AJUSTES_VALIDOS = ('fit', 'shrink', 'noscale')
+
+
+def imprimir_pdf(sumatra, ruta_pdf, impresora='', copias=1, timeout=180, ajuste='fit'):
+    """Imprime con SumatraPDF sin abrir ventanas. fit (por defecto): gira y ajusta la página al papel (la XPO es
+    apaisada, 148x105 mm); noscale: a su tamaño, sin girar."""
+    if ajuste not in AJUSTES_VALIDOS:
+        raise ValueError('ajuste no válido: %s (%s)' % (ajuste, ', '.join(AJUSTES_VALIDOS)))
+    ajustes = '%s,%dx' % (ajuste, max(1, int(copias)))
     orden = [sumatra]
     orden += ['-print-to', impresora] if impresora else ['-print-to-default']
     orden += ['-print-settings', ajustes, '-silent', ruta_pdf]
@@ -283,7 +293,7 @@ def hacer_trabajo(odoo, cfg, t):
         fd, ruta = tempfile.mkstemp(prefix='koroshi_%d_' % tid, suffix='.pdf')
         with os.fdopen(fd, 'wb') as f:
             f.write(datos)
-        imprimir_pdf(cfg['sumatra'], ruta, cfg['nombre_windows'], t.get('copias') or 1)
+        imprimir_pdf(cfg['sumatra'], ruta, cfg['nombre_windows'], t.get('copias') or 1, ajuste=cfg['ajuste'])
         odoo.llamar('agente_hecho', tid, True, '')
         log.info('Impreso %s: %s', tid, t.get('descripcion'))
     except ERRORES_RED:
@@ -345,7 +355,7 @@ def main(argv):
         return 0
     if '--probar' in argv:
         ruta = argv[argv.index('--probar') + 1]
-        imprimir_pdf(cfg['sumatra'], ruta, cfg['nombre_windows'])
+        imprimir_pdf(cfg['sumatra'], ruta, cfg['nombre_windows'], ajuste=cfg['ajuste'])
         print('Mandado a «%s»' % (cfg['nombre_windows'] or 'la predeterminada'))
         return 0
     if '--comprobar' in argv:
@@ -372,7 +382,7 @@ if __name__ == '__main__':
         print(e)
         sys.exit(2)
 '@
-    Bien "$agente (v1.0.0)"
+    Bien "$agente (v1.0.1)"
 
     # ---------------------------------------------------------------- 5. config.ini
     Paso '5. Configuracion'
@@ -381,6 +391,7 @@ if __name__ == '__main__':
     if (Test-Path $cfgRuta) {
         foreach ($l in Get-Content $cfgRuta) { if ($l -match '^\s*(\w+)\s*=\s*(.*)$') { $antes[$Matches[1]] = $Matches[2].Trim() } }
     }
+    $ajuste = $(if ($antes.ajuste) { $antes.ajuste } else { 'fit' })
     $codigo = Preguntar 'Codigo de esta impresora en Odoo (Inventario > Configuracion > Impresion > Impresoras)' $(if ($antes.codigo) { $antes.codigo } else { 'EXP1' })
     $usuario = ''
     while (-not $usuario) { $usuario = Preguntar 'Login de Odoo de Almacen Nath (el correo con que entra)' $antes.usuario }
@@ -411,6 +422,7 @@ usuario = $usuario
 codigo = $codigo
 nombre_windows = $nombreWindows
 sumatra = $sumatra
+ajuste = $ajuste
 
 [agente]
 segundos = 3

@@ -116,6 +116,7 @@ try {
     if (Test-Path $cfgRuta) {
         foreach ($l in Get-Content $cfgRuta) { if ($l -match '^\s*(\w+)\s*=\s*(.*)$') { $antes[$Matches[1]] = $Matches[2].Trim() } }
     }
+    $ajuste = $(if ($antes.ajuste) { $antes.ajuste } else { 'fit' })
     $codigo = Preguntar 'Codigo de esta impresora en Odoo (Inventario > Configuracion > Impresion > Impresoras)' $(if ($antes.codigo) { $antes.codigo } else { 'EXP1' })
     $usuario = ''
     while (-not $usuario) { $usuario = Preguntar 'Login de Odoo de Almacen Nath (el correo con que entra)' $antes.usuario }
@@ -146,6 +147,7 @@ usuario = $usuario
 codigo = $codigo
 nombre_windows = $nombreWindows
 sumatra = $sumatra
+ajuste = $ajuste
 
 [agente]
 segundos = 3
