@@ -98,7 +98,14 @@ unset PGPASSWORD PGHOST PGUSER PGDATABASE
     - En total, 50 apuntes y −3.407,21 € (los cuatro saldos: −59,27 + 4,99 − 1.281,99 − 2.070,94).
   - **Pendiente de la respuesta de Isaac: volver a poner la regla en «Casar con las facturas existentes»**, él o
     contabilidad.
-- **Cambio preparado, sin instalar**: el origen de la factura cuenta como referencia.
+- **INSTALADO el 25/11 a las 13:30 UTC**, con el sí de Isaac:
+  - copiado y reiniciado; copia de seguridad en `copias_modulos/conciliacion_origen_2026-11-25_132845`;
+  - en ese momento no había ningún trabajo de cola en marcha;
+  - **la regla 330 pasa a `invoice_matching`**: antes era `writeoff_suggestion`, con auto_reconcile,
+    match_partner, misma moneda e importe 100 %, sin cambios en lo demás. Para volver atrás:
+    `write({'rule_type': 'writeoff_suggestion'})`.
+  - Falta la prueba de contabilidad en pantalla.
+- Cambio: el origen de la factura cuenta como referencia.
   - Commit `81988d4`, etiqueta `nucleo_tuctuc/conciliacion-origen/2026-11-25`, paquete
     `bin/20261125_nucleo_tuctuc_conciliacion_origen.tar.gz`, md5 del archivo `6bd52206…`.
   - Entra con un reinicio (solo Python; el SQL se construye en el código).
