@@ -468,6 +468,18 @@ class AccountReconcileModel(models.Model):
                 AND
                     regexp_split_to_array(substring(REGEXP_REPLACE(move.ref, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'),'\s+')
                     && regexp_split_to_array(substring(REGEXP_REPLACE(st_line.name, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'), '\s+')
+            )
+            OR
+            -- TUCTUC 25/11/2026: tambien el origen de la factura (el pedido de la tienda, p. ej. WT#350966). Las
+            -- facturas de venta de Shopify/Mollie solo llevan ese numero en el origen; sin esto la regla solo las
+            -- proponia por empresa y no las validaba solas (ver _apply_rules, auto_reconcile).
+            (
+                move.invoice_origin IS NOT NULL
+                AND
+                substring(REGEXP_REPLACE(move.invoice_origin, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*') != ''
+                AND
+                    regexp_split_to_array(substring(REGEXP_REPLACE(move.invoice_origin, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'),'\s+')
+                    && regexp_split_to_array(substring(REGEXP_REPLACE(st_line.name, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'), '\s+')
             )                                   AS communication_flag
         '''
 
@@ -599,6 +611,16 @@ class AccountReconcileModel(models.Model):
                                 move.invoice_payment_ref IS NOT NULL
                                 AND
                                 regexp_replace(move.invoice_payment_ref, '\s+', '', 'g') = regexp_replace(st_line.name, '\s+', '', 'g')
+                            )
+                            OR
+                            -- TUCTUC 25/11/2026: origen de la factura (igual que en _get_select_communication_flag)
+                            (
+                                move.invoice_origin IS NOT NULL
+                                AND
+                                substring(REGEXP_REPLACE(move.invoice_origin, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*') != ''
+                                AND
+                                    regexp_split_to_array(substring(REGEXP_REPLACE(move.invoice_origin, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'),'\s+')
+                                    && regexp_split_to_array(substring(REGEXP_REPLACE(st_line.name, '[^0-9|^\s]', '', 'g'), '\S(?:.*\S)*'), '\s+')
                             )
                         )
                     )
