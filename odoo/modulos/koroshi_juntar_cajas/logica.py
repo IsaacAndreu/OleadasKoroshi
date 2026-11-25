@@ -58,17 +58,82 @@ def error_pareja(d):
     return None
 
 
-def avisos(d):
+def avisos(d, partir=False):
     """Avisos que no paran la junta (se enseñan en rojo antes de «Juntar»). d: como error_pareja, más
-    etiqueta (alguna OUT del pedido tiene etiqueta del transportista) y transportista ('XPO', 'GLS' o '')."""
+    etiqueta (alguna OUT del pedido tiene etiqueta del transportista), transportista ('XPO', 'GLS' o '') y
+    ready (v1.1.0: el pedido ya está READY en S4T). partir=True: avisos de «Revisar caja» (sin el de la caja grande)."""
     res = []
     if d.get('etiqueta'):
-        res.append('El pedido ya tiene etiqueta de %s: hay que rehacerla con un bulto menos.'
+        res.append('El pedido ya tiene etiqueta de %s: hay que rehacerla con los bultos nuevos.'
                    % (d.get('transportista') or 'transportista'))
-    if (d.get('uds_o') or 0) > (d.get('uds_d') or 0):
+    if d.get('ready'):
+        res.append('El pedido ya está READY en S4T con las cajas de antes: hay que volver a mandarlo (acción 1960).')
+    if not partir and (d.get('uds_o') or 0) > (d.get('uds_d') or 0):
         res.append('La caja «pequeña» %s (%d uds) es más grande que la destino %s (%d uds).'
                    % (d.get('cj_o'), d.get('uds_o') or 0, d.get('cj_d'), d.get('uds_d') or 0))
     return res
+
+
+# ------------------------------------------------------------------ v1.1.0: «Revisar caja» (partir una CJ)
+def error_partir(d):
+    """Motivo por el que NO se pueden pasar las prendas leídas de la CJ origen a la CJ nueva, o None. d (dict):
+    cj_o, cj_n             CJ origen (la que tiene las prendas en Odoo) y CJ nueva (la pegada en la otra caja)
+    n_paquetes_o           paquetes con el nombre de la CJ origen (tiene que haber uno)
+    n_paquetes_n           paquetes con el nombre de la CJ nueva (0 = se crea; 1 = vale si está vacía o es del
+                           mismo pedido y tienda)
+    uds_o                  uds dentro de la CJ origen
+    leidas                 uds leídas que se pasan
+    pedidos_o, pedidos_n   pedidos de las líneas de cada CJ (listas; la nueva puede estar vacía)
+    tiendas_o, tiendas_n   ids de la tienda de las líneas de cada CJ
+    stock_n_suelto         la CJ nueva tiene stock sin líneas de pedido (es un contenedor del almacén)
+    shipped, en_cierre, zalando: como en error_pareja"""
+    cj_o, cj_n = d.get('cj_o'), d.get('cj_n')
+    if cj_o == cj_n:
+        return 'La CJ nueva %s es la misma caja.' % cj_n
+    if d.get('n_paquetes_o') != 1:
+        return '%s no es una caja cerrada.' % cj_o
+    if not d.get('uds_o'):
+        return '%s está vacía.' % cj_o
+    if not d.get('leidas'):
+        return 'No has leído ninguna prenda.'
+    if d.get('leidas') >= d.get('uds_o'):
+        return ('Has leído las %d uds de %s: no queda nada en ella. Lee solo las prendas de la caja que hay que '
+                'separar.' % (d.get('uds_o'), cj_o))
+    if (d.get('n_paquetes_n') or 0) > 1:
+        return '%s está repetida en Odoo: avisa a la oficina.' % cj_n
+    ped_o = set(d.get('pedidos_o') or [])
+    if len(ped_o) != 1:
+        return '%s tiene prendas de varios pedidos: avisa a la oficina.' % cj_o
+    if d.get('pedidos_n') and set(d.get('pedidos_n')) != ped_o:
+        return '%s ya tiene prendas de otro pedido (%s).' % (cj_n, ', '.join(sorted(d.get('pedidos_n'))))
+    if d.get('tiendas_n') and set(d.get('tiendas_n')) != set(d.get('tiendas_o') or []):
+        return '%s ya tiene prendas de otra tienda.' % cj_n
+    if d.get('stock_n_suelto'):
+        return '%s tiene stock del almacén: no es una caja de pedido.' % cj_n
+    if d.get('zalando'):
+        return 'Es un pedido de Zalando: no se toca.'
+    if d.get('shipped'):
+        return 'El pedido ya está SHIPPED en S4T: la mercancía ya ha salido.'
+    if d.get('en_cierre'):
+        return 'El pedido ya va en un camión cerrado: ya ha salido.'
+    return None
+
+
+def elegir_lineas(lineas, n):
+    """Líneas ENTERAS cuyas uds suman exactamente n (v1.1.0: nunca se parte una línea, así no se toca el stock de
+    los huecos ni las reservas). lineas: [(id, uds)] de un mismo artículo en la caja. Devuelve la lista de ids o
+    None si no hay ninguna combinación exacta (p. ej. una sola línea de 3 uds y se han leído 2)."""
+    n = int(round(n or 0))
+    if n <= 0:
+        return []
+    orden = sorted((int(round(q)), i) for i, q in lineas if q and q > 0)
+    mejor = {0: []}           # mejor[s] = ids de líneas que suman s
+    for q, i in orden:
+        for s in sorted(mejor, reverse=True):
+            t = s + q
+            if t <= n and t not in mejor:
+                mejor[t] = mejor[s] + [i]
+    return mejor.get(n)
 
 
 def bultos_por_out(reparto, outs_con_caja, outs_hechas, actuales):

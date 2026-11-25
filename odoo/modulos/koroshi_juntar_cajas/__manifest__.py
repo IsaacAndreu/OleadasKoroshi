@@ -26,8 +26,15 @@ Odoo.
 
 v1.0.0 (25/11/2026): primera versión. Lógica en logica.py con tests sin Odoo. Necesita koroshi_base 1.2.1 (comun.js y
 pda.py) y koroshi_actividades con áreas (1.6.0 o más).
+v1.1.0 (25/11/2026): «Revisar caja» en Expediciones (diseño bin/versiones/diseno-revisar-caja-expediciones_2026-11-25.md,
+visto bueno de Isaac el 25/11): leer una CJ, ver lo que hay dentro, leer las prendas y pasar lo leído a otra CJ (la
+pegada en la caja; si no existe en Odoo se crea), o «Todo bien». Solo líneas enteras: si hay que partir una línea de
+varias uds, no deja y avisa. Caso del 25/11: K1 con dos cajas de D2 bajo la CJ665013811. Además, en las dos pantallas:
+las líneas validadas cambian de caja sin tocar el stock de los huecos ni las reservas (el write de Odoo deshacía y
+rehacía la línea en el hueco); el stock se mueve solo entre las dos cajas, en Clientes, y se comprueba. Aviso en rojo
+y nota si el pedido ya está READY en S4T (hay que volver a mandarlo con la acción 1960). Registro con «Qué».
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

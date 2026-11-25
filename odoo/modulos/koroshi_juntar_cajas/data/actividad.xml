@@ -12,5 +12,15 @@
             <field name="abre">koroshi_juntar_cajas.action_koroshi_juntar_cajas_pantalla</field>
             <field name="en_portatil" eval="False"/>
         </record>
+        <!-- v1.1.0: se crea al actualizar (noupdate solo impide pisar registros que ya existen) -->
+        <record id="actividad_pda_revisar_caja" model="koroshi.actividad">
+            <field name="name">Revisar caja</field>
+            <field name="sequence">134</field>
+            <field name="color">#6b3fa0</field>
+            <field name="nota">Ver qué hay y pasar prendas a otra CJ</field>
+            <field name="area">expediciones</field>
+            <field name="abre">koroshi_juntar_cajas.action_koroshi_revisar_caja_pantalla</field>
+            <field name="en_portatil" eval="False"/>
+        </record>
     </data>
 </odoo>

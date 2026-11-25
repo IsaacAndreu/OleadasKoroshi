@@ -78,6 +78,69 @@ class TestAvisos(unittest.TestCase):
         self.assertIn('más grande', a[0])
 
 
+class TestReady(unittest.TestCase):
+
+    def test_ready_avisa(self):
+        a = logica.avisos(pareja(ready=True))
+        self.assertTrue(any('READY' in x for x in a))
+
+
+def partir(**cambios):
+    d = {
+        'cj_o': 'CJ665013811', 'cj_n': 'CJ665013810',
+        'n_paquetes_o': 1, 'n_paquetes_n': 0, 'uds_o': 23, 'leidas': 10,
+        'pedidos_o': ['S-6665004772'], 'pedidos_n': [], 'tiendas_o': [7], 'tiendas_n': [],
+        'stock_n_suelto': False, 'shipped': False, 'en_cierre': False, 'zalando': False,
+    }
+    d.update(cambios)
+    return d
+
+
+class TestPartir(unittest.TestCase):
+
+    def test_bueno_con_cj_nueva_que_no_existe(self):
+        self.assertIsNone(logica.error_partir(partir()))
+
+    def test_cj_nueva_vacia_o_del_mismo_pedido(self):
+        self.assertIsNone(logica.error_partir(partir(n_paquetes_n=1)))
+        self.assertIsNone(logica.error_partir(partir(n_paquetes_n=1, pedidos_n=['S-6665004772'], tiendas_n=[7])))
+
+    def test_errores(self):
+        self.assertIn('misma caja', logica.error_partir(partir(cj_n='CJ665013811')))
+        self.assertIn('ninguna prenda', logica.error_partir(partir(leidas=0)))
+        self.assertIn('no queda nada', logica.error_partir(partir(leidas=23)))
+        self.assertIn('otro pedido', logica.error_partir(partir(n_paquetes_n=1, pedidos_n=['S-1'])))
+        self.assertIn('otra tienda', logica.error_partir(partir(n_paquetes_n=1, pedidos_n=['S-6665004772'],
+                                                                tiendas_n=[9])))
+        self.assertIn('stock del almacén', logica.error_partir(partir(n_paquetes_n=1, stock_n_suelto=True)))
+        self.assertIn('repetida', logica.error_partir(partir(n_paquetes_n=2)))
+        self.assertIn('varios pedidos', logica.error_partir(partir(pedidos_o=['S-1', 'S-2'])))
+        self.assertIn('Zalando', logica.error_partir(partir(zalando=True)))
+        self.assertIn('SHIPPED', logica.error_partir(partir(shipped=True)))
+        self.assertIn('camión cerrado', logica.error_partir(partir(en_cierre=True)))
+
+    def test_avisos_partir_sin_caja_grande(self):
+        self.assertEqual(logica.avisos(partir(), partir=True), [])
+        self.assertEqual(len(logica.avisos(partir(etiqueta=True, ready=True), partir=True)), 2)
+
+
+class TestElegirLineas(unittest.TestCase):
+
+    def test_lineas_de_una_ud(self):
+        self.assertEqual(sorted(logica.elegir_lineas([(1, 1), (2, 1), (3, 1)], 2)), [1, 2])
+
+    def test_exacta_con_varias_uds(self):
+        self.assertEqual(sorted(logica.elegir_lineas([(1, 3), (2, 2), (3, 1)], 4)), [1, 3])
+        self.assertEqual(logica.elegir_lineas([(1, 3)], 3), [1])
+
+    def test_no_se_parte_una_linea(self):
+        self.assertIsNone(logica.elegir_lineas([(1, 3)], 2))
+        self.assertIsNone(logica.elegir_lineas([(1, 1)], 2))
+
+    def test_cero(self):
+        self.assertEqual(logica.elegir_lineas([(1, 1)], 0), [])
+
+
 class TestBultos(unittest.TestCase):
 
     def test_dueno_y_cambios(self):

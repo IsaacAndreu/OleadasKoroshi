@@ -1,4 +1,4 @@
-/* KOROSHI Juntar cajas v1.0.0. Todo dentro de .o_koroshi_juntar_cajas (mismo aspecto que Prenda en el suelo). Sin aria-hidden. */
+/* KOROSHI Juntar cajas v1.0.0 (v1.1.0: también «Revisar caja»). Todo dentro de .o_koroshi_juntar_cajas (mismo aspecto que Prenda en el suelo). Sin aria-hidden. */
 .o_koroshi_juntar_cajas { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
 .o_koroshi_juntar_cajas * { box-sizing: border-box; }
 .o_koroshi_juntar_cajas .o_kjc_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
@@ -31,3 +31,7 @@
 .o_koroshi_juntar_cajas .o_kjc_botones button { flex: 1; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; border: 1px solid #c4cbd3; background: #fff; }
 .o_koroshi_juntar_cajas .o_kjc_botones .o_kjc_juntar { background: #1e7b34; color: #fff; border-color: #1e7b34; }
 .o_koroshi_juntar_cajas .o_kjc_botones .o_kjc_juntar:disabled { background: #9ca3af; border-color: #9ca3af; }
+.o_koroshi_juntar_cajas .o_kjc_botones { flex-wrap: wrap; }
+.o_koroshi_juntar_cajas .o_kjc_botones .o_kjc_verde { background: #1e7b34; color: #fff; border-color: #1e7b34; }
+.o_koroshi_juntar_cajas .o_kjc_botones .o_kjc_verde:disabled { background: #9ca3af; border-color: #9ca3af; }
+.o_koroshi_juntar_cajas .o_kjc_botones .o_kjc_a_otra { background: #6b3fa0; color: #fff; border-color: #6b3fa0; }

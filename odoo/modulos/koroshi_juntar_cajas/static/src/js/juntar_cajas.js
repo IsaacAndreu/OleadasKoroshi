@@ -421,5 +421,302 @@ var JuntarCajas = AbstractAction.extend({
 });
 
 core.action_registry.add('koroshi_juntar_cajas', JuntarCajas);
+
+/* v1.1.0: «Revisar caja» (área Expediciones). Misma tarjeta, lector y aspecto que «Juntar cajas».
+ * 1. Leer la CJ: lo que hay dentro según Odoo, por artículo.
+ * 2. Leer las prendas de la caja que se revisa: verde si están en esa CJ («1 de 3»), rojo si no (no cuentan).
+ * 3. «Todo bien» (solo se apunta) o «Pasar lo leído a otra CJ» -> leer la CJ pegada en esa caja -> previa -> «Pasar».
+ * Solo líneas enteras: nunca se toca el stock de los huecos (ver models/juntar.py, _mover_lineas). */
+var RevisarCaja = JuntarCajas.extend({
+    contentTemplate: 'koroshi_juntar_cajas.Revisar',
+    events: {   // sin los botones de «Juntar» (Juntar, + Otra caja pequeña, ✕)
+        'keydown .o_kjc_codigo': '_onKeydown',
+        'input .o_kjc_codigo': '_onEscribe',
+        'click .o_kjc_teclado': '_onTeclado',
+        'click .o_kjc_otra': '_onOtra',
+        'click .o_kjc_deshacer': '_onDeshacer',
+        'click .o_kjc_bien': '_onBien',
+        'click .o_kjc_a_otra': '_onAOtra',
+        'click .o_kjc_pasar': '_onPasar',
+        'click .o_kjc_volver': '_onVolver',
+    },
+
+    _vaciar: function () {
+        this.paso = 'caja';        // 'caja' | 'prendas' | 'nueva'
+        this.caja = null;          // respuesta de /revisar_caja/caja
+        this.leidas = {};          // product_id -> uds leídas
+        this.historial = [];       // product_id de cada lectura buena (para deshacer)
+        this.nueva = '';
+        this.previa = null;
+        this.hecho = null;
+        this.token = _token();
+    },
+
+    _totalLeidas: function () {
+        return _.reduce(_.values(this.leidas), function (a, b) { return a + b; }, 0);
+    },
+
+    _leidasLista: function () {
+        return _.map(this.leidas, function (n, pid) { return {product_id: parseInt(pid, 10), uds: n}; });
+    },
+
+    _leer: function (codigo, fuente) {
+        codigo = (codigo || '').trim();
+        if (!codigo) { return; }
+        var t = Date.now();
+        if (codigo === this.ultima.codigo && t - this.ultima.t < REPETIDA_MS && fuente !== this.ultima.fuente) {
+            return;
+        }
+        this.ultima = {codigo: codigo, t: t, fuente: fuente};
+        if (this.ocupado) {
+            this._pitido(false);
+            return this._aviso('mal', 'Espera un momento: ' + codigo + ' NO se ha leído.');
+        }
+        this._actividad();
+        if (this.hecho) { this._vaciar(); }
+        var cj = comun.esMatricula(codigo);
+        if (this.paso === 'caja' || (cj && this.paso === 'prendas' && !this._totalLeidas())) {
+            return this._leerCaja(codigo);
+        }
+        if (cj) {   // con prendas leídas, una CJ es la CJ nueva
+            return this._leerNueva(codigo.toUpperCase());
+        }
+        return this._leerPrenda(codigo);
+    },
+
+    _leerCaja: function (codigo) {
+        var self = this;
+        this._aviso('info', 'Leyendo ' + codigo + '…');
+        return this._llamar('/koroshi/revisar_caja/caja', {codigo: codigo}).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (!r.ok) { self._pitido(false); return self._aviso('mal', r.msg || 'Error'); }
+            self._pitido(true);
+            if (r.tipo === 'persona') {
+                self.persona = r.persona;
+                self._guardarPersona();
+                self._aviso('ok', 'Hola, ' + r.persona.nombre + '.');
+                return self._pintar();
+            }
+            self._vaciar();
+            self.caja = r;
+            self.paso = 'prendas';
+            self._aviso(r.bloqueo ? 'mal' : 'ok', r.bloqueo ? 'Pedido ' + r.bloqueo + ': solo se puede mirar.' :
+                r.cj + ': ' + _uds(r.uds) + '. Lee las prendas de la caja que revisas.');
+            self._pintar();
+        });
+    },
+
+    _leerPrenda: function (codigo) {
+        var self = this;
+        if (this.paso === 'nueva') {   // otra prenda: se vuelve a leer prendas
+            this.paso = 'prendas';
+            this.nueva = '';
+            this.previa = null;
+        }
+        return this._llamar('/koroshi/revisar_caja/prenda', {cj: this.caja.cj, codigo: codigo}).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (!r.ok) { self._pitido(false); return self._aviso('mal', r.msg || 'Error'); }
+            if (r.tipo === 'persona') {
+                self._pitido(true);
+                self.persona = r.persona;
+                self._guardarPersona();
+                self._aviso('ok', 'Hola, ' + r.persona.nombre + '.');
+                return self._pintar();
+            }
+            var p = _.findWhere(self.caja.productos, {product_id: r.product_id});
+            var ya = self.leidas[r.product_id] || 0;
+            if (!p || ya >= p.uds) {
+                self._pitido(false);
+                return self._aviso('mal', 'Ya has leído las ' + (p ? p.uds : 0) + ' de ' + r.nombre + ' que hay en ' +
+                    self.caja.cj + '. Esta NO cuenta.');
+            }
+            self._pitido(true);
+            self.leidas[r.product_id] = ya + 1;
+            self.historial.push(r.product_id);
+            self._aviso('ok', r.nombre + ': ' + (ya + 1) + ' de ' + p.uds + '.');
+            self._pintar();
+        });
+    },
+
+    _leerNueva: function (cj) {
+        var self = this;
+        this.paso = 'nueva';
+        this.nueva = cj;
+        this.previa = null;
+        this._aviso('info', 'Mirando ' + cj + '…');
+        return this._llamar('/koroshi/revisar_caja/previa', {
+            cj: this.caja.cj, nueva: cj, leidas: this._leidasLista(),
+        }).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (r.msg && !r.errores) {
+                self._pitido(false);
+                self.nueva = '';
+                self._pintar();
+                return self._aviso('mal', r.msg);
+            }
+            self.previa = r;
+            self.token = _token();
+            self._pitido(r.ok);
+            self._aviso(r.ok ? (r.avisos && r.avisos.length ? 'info' : 'ok') : 'mal',
+                r.ok ? 'Revisa y pulsa «Pasar».' : 'No se puede pasar. No se ha cambiado nada.');
+            self._pintar();
+            window.scrollTo(0, 0);
+        });
+    },
+
+    // ------------------------------------------------------------------ botones
+    _onDeshacer: function () {
+        var pid = this.historial.pop();
+        if (!pid) { return; }
+        this.leidas[pid] -= 1;
+        if (!this.leidas[pid]) { delete this.leidas[pid]; }
+        this.paso = 'prendas';
+        this.nueva = '';
+        this.previa = null;
+        this._aviso('info', 'Quitada la última lectura.');
+        this._pintar();
+        this._foco();
+    },
+
+    _onAOtra: function () {
+        this.paso = 'nueva';
+        this._aviso('info', 'Lee la CJ pegada en la caja que has revisado.');
+        this._pintar();
+        this._foco();
+    },
+
+    _onVolver: function () {
+        this.paso = 'prendas';
+        this.nueva = '';
+        this.previa = null;
+        this._aviso('', '');
+        this._pintar();
+        this._foco();
+    },
+
+    _onBien: function () {
+        var self = this;
+        if (this.ocupado || !this.caja) { return; }
+        if (!this.persona) { this._pitido(false); return this._aviso('mal', 'Pasa antes tu tarjeta de operario.'); }
+        return this._llamar('/koroshi/revisar_caja/bien', {
+            cj: this.caja.cj, leidas_uds: this._totalLeidas(), employee_id: this.persona.id,
+        }).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (!r.ok) { self._pitido(false); return self._aviso('mal', r.msg || 'Error'); }
+            self._pitido(true);
+            self._vaciar();
+            self._aviso('ok', 'Apuntado: ' + r.cj + ' revisada (' + r.leidas + ' de ' + r.uds + ' uds leídas).');
+            self._pintar();
+            self._foco();
+        });
+    },
+
+    _onPasar: function () {
+        var self = this;
+        if (this.ocupado || !this.previa || !this.previa.ok) { return; }
+        if (!this.persona) { this._pitido(false); return this._aviso('mal', 'Pasa antes tu tarjeta de operario.'); }
+        this.$('.o_kjc_pasar').prop('disabled', true).text('Pasando…');
+        return this._llamar('/koroshi/revisar_caja/partir', {
+            cj: this.caja.cj, nueva: this.nueva, leidas: this._leidasLista(),
+            employee_id: this.persona.id, token: this.token,
+        }).then(function (r) {
+            if (r.sinConexion) { return; }
+            if (!r.ok) { self._pitido(false); self._aviso('mal', r.msg || 'Error'); return self._pintar(); }
+            self._pitido(true);
+            self.hecho = r;
+            self._aviso('ok', 'Hecho: ' + r.cj + ' ' + _uds(r.quedan) + ' · ' + r.nueva + ' ' + _uds(r.pasan) +
+                '. Bultos ' + r.bultos_antes + ' → ' + r.bultos_despues + '.' +
+                (r.etiqueta ? '\nOJO: hay que hacer la etiqueta del transportista del bulto nuevo.' : ''));
+            self._pintar();
+            self._foco();
+        });
+    },
+
+    // ------------------------------------------------------------------ pintar
+    _pintar: function () {
+        this.$('.o_kjc_quien').html(this.persona ? '<b>' + _e(this.persona.nombre) + '</b>' :
+            '<span class="o_kjc_rojo">Sin tarjeta: pásala antes de cambiar nada</span>');
+        var h;
+        if (this.hecho) {
+            h = this._htmlHechoRevisar(this.hecho);
+        } else if (!this.caja) {
+            h = this._htmlAyudaRevisar();
+        } else {
+            h = this._htmlCaja() + (this.paso === 'nueva' ? this._htmlNueva() : '');
+        }
+        this.$('.o_kjc_cuerpo').html(h + this._htmlBotonesRevisar());
+    },
+
+    _htmlAyudaRevisar: function () {
+        return '<div class="o_kjc_card o_kjc_ayuda"><h3>Revisar una caja</h3>' +
+            '<ol><li>Pasa tu <b>tarjeta</b>.</li>' +
+            '<li>Lee la <b>CJ</b> que tiene las prendas en Odoo: verás lo que hay dentro.</li>' +
+            '<li>Lee las <b>prendas</b> de la caja que revisas. Verde: están en esa CJ. Rojo: no cuentan.</li>' +
+            '<li><b>Todo bien</b>, o <b>Pasar lo leído a otra CJ</b> y lee la CJ pegada en esa caja.</li></ol>' +
+            '<div class="o_kjc_nota">Las prendas pasan de caja sin tocar el stock de los huecos.</div></div>';
+    },
+
+    _htmlCaja: function () {
+        var self = this;
+        var c = this.caja;
+        var filas = c.productos.map(function (p) {
+            var n = self.leidas[p.product_id] || 0;
+            return '<li' + (n ? ' class="o_kjc_peq"' : '') + '>' + _e(p.nombre) + ': ' +
+                (n ? '<b>' + n + ' de ' + p.uds + '</b>' : _uds(p.uds)) + '</li>';
+        });
+        return '<div class="o_kjc_card"><div class="o_kjc_pedido">' + _e(c.tienda) + ' · ' + _e(c.pedido) +
+            '</div><div class="o_kjc_caja"><b>' + _e(c.cj) + '</b>: ' + _uds(c.uds) + ' (' + _e(c.zonas) + ')' +
+            '</div><div class="o_kjc_bultos">Leídas: ' + this._totalLeidas() + ' de ' + c.uds + '</div>' +
+            '<ul class="o_kjc_lista">' + filas.join('') + '</ul></div>';
+    },
+
+    _htmlNueva: function () {
+        var h = '<div class="o_kjc_card">';
+        if (!this.nueva) {
+            return h + '<div class="o_kjc_paso">Lee la CJ pegada en la caja revisada</div></div>';
+        }
+        h += '<div class="o_kjc_caja">' + _e(this.caja.cj) + ' → <b>' + _e(this.nueva) + '</b></div>';
+        var r = this.previa;
+        if (r && r.ok) {
+            h += '<div class="o_kjc_caja">Pasan ' + _uds(r.pasan) + '; en ' + _e(this.caja.cj) + ' quedan ' +
+                _uds(r.quedan) + '.' + (r.nueva_existe ? '' : ' (' + _e(this.nueva) + ' es nueva en Odoo)') +
+                '</div><div class="o_kjc_bultos">Bultos del pedido: ' + r.bultos_antes + ' → ' + r.bultos_despues +
+                '</div>';
+        }
+        ((r && r.errores) || []).forEach(function (e) { h += '<div class="o_kjc_rojo">✖ ' + _e(e) + '</div>'; });
+        ((r && r.avisos) || []).forEach(function (a) { h += '<div class="o_kjc_rojo">⚠ ' + _e(a) + '</div>'; });
+        return h + '</div>';
+    },
+
+    _htmlHechoRevisar: function (r) {
+        return '<div class="o_kjc_card"><h3>✔ Pasadas</h3><div class="o_kjc_pedido">' + _e(r.tienda || '') + ' · ' +
+            _e(r.pedido) + '</div><div class="o_kjc_caja">' + _e(r.cj) + ': ' + _uds(r.quedan) + ' · ' +
+            _e(r.nueva) + ': ' + _uds(r.pasan) + '</div><div class="o_kjc_bultos">Bultos: ' + r.bultos_antes +
+            ' → ' + r.bultos_despues + '</div>' +
+            (r.etiqueta ? '<div class="o_kjc_rojo">⚠ El pedido ya tenía etiqueta del transportista: avisa a la ' +
+                'oficina para hacer la del bulto nuevo.</div>' : '') +
+            '<div class="o_kjc_nota">Lee otra caja para seguir.</div></div>';
+    },
+
+    _htmlBotonesRevisar: function () {
+        if (this.hecho || !this.caja) { return ''; }
+        var h = '<div class="o_kjc_botones">';
+        var hay = this._totalLeidas() > 0;
+        if (this.paso === 'nueva' && this.previa && this.previa.ok) {
+            h += '<button type="button" class="o_kjc_verde o_kjc_pasar">Pasar</button>';
+        }
+        if (this.paso === 'nueva') {
+            h += '<button type="button" class="o_kjc_volver">Seguir leyendo</button>';
+        } else if (!this.caja.bloqueo) {
+            if (hay) { h += '<button type="button" class="o_kjc_a_otra">Pasar lo leído a otra CJ</button>'; }
+            h += '<button type="button" class="o_kjc_bien">Todo bien</button>';
+        }
+        if (hay) { h += '<button type="button" class="o_kjc_deshacer">Deshacer</button>'; }
+        h += '<button type="button" class="o_kjc_otra">Otra caja</button></div>';
+        return h;
+    },
+});
+
+core.action_registry.add('koroshi_revisar_caja', RevisarCaja);
 return JuntarCajas;
 });
