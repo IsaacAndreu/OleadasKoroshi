@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.4.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.5.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -179,6 +179,19 @@ class KoroshiTransportistaRegistro(models.Model):
         return logica.transportista_de(ultima.carrier_id.delivery_type)
 
     @api.model
+    def _historial(self, partner):
+        """v1.5.0: [(gls|xpo, bultos)] de las expediciones de la tienda de los últimos días (una por nº de expedición)."""
+        desde = fields.Datetime.now() - datetime.timedelta(days=logica.DIAS_HISTORIAL)
+        outs = self.env['stock.picking'].sudo().search(
+            [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'), ('partner_id', '=', partner.id),
+             ('carrier_tracking_ref', '!=', False), ('carrier_id', '!=', False), ('date_done', '>=', desde)])
+        exp = {}
+        for p in outs:
+            e = exp.setdefault(p.carrier_tracking_ref, [logica.transportista_de(p.carrier_id.delivery_type), 0])
+            e[1] += p.number_of_packages or 0
+        return [tuple(v) for v in exp.values()]
+
+    @api.model
     def _etiquetadas(self, partner):
         """Las últimas expediciones de la tienda (para «Reimprimir»): [{tracking, transportista, outs, fecha}]."""
         outs = self.env['stock.picking'].sudo().search(
@@ -280,6 +293,7 @@ class KoroshiTransportistaRegistro(models.Model):
         if sin_validar:
             avisos.append(_('Hay %d OUT de esta tienda sin validar (%s): se quedan fuera de esta etiqueta.') % (
                 len(sin_validar), ', '.join(sin_validar[:5].mapped('name'))))
+        historial = self._historial(partner)            # v1.5.0
         vacias = self._cj_vacias(outs, esperadas)        # v1.4.0
         if vacias:
             avisos.append(_('Ojo: %s se imprimió con las cajas de esta tienda y en Odoo está vacía. Si hay una caja '
@@ -293,6 +307,8 @@ class KoroshiTransportistaRegistro(models.Model):
             'leidas': c['bien'], 'sobran': sobran, 'faltan': c['faltan'], 'n_leidas': c['leidas'],
             'n_esperadas': c['esperadas'], 'cuadra': c['ok'], 'avisos': avisos,
             'propuesto': self._propuesto(partner, outs), 'etiquetadas': self._etiquetadas(partner),
+            'aviso_tr': {t: logica.avisos_transportista(t, c['esperadas'], historial) for t in logica.TRANSPORTISTAS},
+            'habitual': logica.habitual(c['esperadas'], historial)[0],
             'impresora': self._impresora_info(),
             'fuera': [{'id': p.id, 'nombre': p.name, 'origen': p.origin or '',
                        'cajas': ', '.join(self._cajas_de(p).mapped('name'))} for p in dejadas],

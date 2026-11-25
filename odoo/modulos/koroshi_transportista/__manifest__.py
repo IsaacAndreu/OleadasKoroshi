@@ -37,8 +37,11 @@ v1.3.0 (25/11/2026): «Dejar fuera» una OUT validada OTRO día (K46: la CJ66501
 v1.4.0 (25/11/2026): aviso de CJ impresas para la tienda que en Odoo están vacías (las de zona de sus OUT y los
   huecos de la misma tanda que sus cajas). K24: la CJ665013675 se pegó en una caja de la SUMI y nunca se leyó:
   11 cajas físicas y 10 en la etiqueta XPO. Solo avisa (Isaac, 25/11).
+v1.5.0 (25/11/2026): aviso en rojo (no prohíbe) si se elige el transportista que no toca: GLS con más de 5 bultos,
+  o el contrario del habitual de la tienda (3 de cada 4 de sus expediciones parecidas de 30 días). El botón dice
+  «Sí, con GLS igualmente». GLS/XPO ya no se marca solo (K68 salió por XPO sin querer) (Isaac, 25/11).
 """,
-    'version': '13.0.1.4.0',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

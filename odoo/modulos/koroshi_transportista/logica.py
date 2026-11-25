@@ -59,6 +59,43 @@ def huecos_tanda(usadas):
     return sorted(res)
 
 
+GLS_MAX_BULTOS = 5        # v1.5.0 (Isaac 25/11): GLS normalmente hasta 5 bultos; las grandes, XPO
+DIAS_HISTORIAL = 30
+MIN_HISTORIAL = 3         # expediciones parecidas para fiarse del historial
+PARTE_HABITUAL = 0.75     # «casi siempre» = 3 de cada 4
+
+
+def habitual(bultos, historial):
+    """v1.5.0: el transportista habitual de la tienda para una expedición de «bultos». historial: [(gls|xpo, bultos)]
+    de las expediciones de la tienda de los últimos DIAS_HISTORIAL días. Primero las del mismo tamaño (hasta
+    GLS_MAX_BULTOS o más); si hay pocas, todas. Devuelve (gls|xpo|'', veces, total): '' si no hay uno claro."""
+    pequena = bultos <= GLS_MAX_BULTOS
+    parecidas = [t for t, b in historial if t and (b <= GLS_MAX_BULTOS) == pequena]
+    if len(parecidas) < MIN_HISTORIAL:
+        parecidas = [t for t, b in historial if t]
+    if len(parecidas) < MIN_HISTORIAL:
+        return '', 0, len(parecidas)
+    for t in TRANSPORTISTAS:
+        veces = parecidas.count(t)
+        if veces >= PARTE_HABITUAL * len(parecidas):
+            return t, veces, len(parecidas)
+    return '', 0, len(parecidas)
+
+
+def avisos_transportista(elegido, bultos, historial):
+    """v1.5.0: avisos (no prohíben) si se elige el transportista que no toca: GLS con más de GLS_MAX_BULTOS bultos, o
+    el contrario del habitual de la tienda. Lista de textos."""
+    res = []
+    if elegido == GLS and bultos > GLS_MAX_BULTOS:
+        res.append('GLS normalmente lleva hasta %d bultos y esta expedición tiene %d: las grandes suelen ir por XPO.'
+                   % (GLS_MAX_BULTOS, bultos))
+    t, veces, total = habitual(bultos, historial)
+    if t and t != elegido:
+        res.append('Esta tienda sale casi siempre por %s (%d de sus últimas %d expediciones parecidas, %d días).'
+                   % (NOMBRES[t], veces, total, DIAS_HISTORIAL))
+    return res
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')

@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.3.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.5.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.5.0: aviso de transportista (bultos e historial); GLS/XPO ya no se marca solo.
  * v1.3.0: «Dejar fuera» una OUT de otro día.
  * v1.2.0: marca SUMI en las OUT de suministros.
  * v1.1.1: el campo va en un formulario (Intro/«Ir» de Android) con botón «✓ Leer»; foco al campo tras cada lectura.
@@ -283,7 +284,7 @@ var Transportista = AbstractAction.extend({
             this._pitido(false);
             return this._aviso('mal', 'Pasa antes tu tarjeta de operario.');
         }
-        if (!this.transportista && this.estado.propuesto) { this.transportista = this.estado.propuesto; }
+        // v1.5.0: ya no se marca solo (K68 25/11 salió por XPO sin querer): se elige siempre GLS o XPO
         this.confirmando = true;
         this._aviso('info', this.transportista ? 'Comprueba y confirma.' : 'Elige GLS o XPO.');
         this._pintar();
@@ -486,15 +487,19 @@ var Transportista = AbstractAction.extend({
     _htmlConfirmar: function () {
         var r = this.estado;
         if (!this.transportista) {
-            return '<div class="o_ktr_card o_ktr_card_conf"><h3>¿GLS o XPO?</h3><div class="o_ktr_botones">' +
+            return '<div class="o_ktr_card o_ktr_card_conf"><h3>¿GLS o XPO?</h3>' +
+                (r.habitual ? '<div class="o_ktr_nota">Lo habitual en esta tienda para ' + r.n_esperadas +
+                    ' bultos: <b>' + NOMBRE[r.habitual] + '</b>.</div>' : '') + '<div class="o_ktr_botones">' +
                 '<button type="button" class="o_ktr_tr o_ktr_tr_grande" data-tr="gls">GLS</button>' +
                 '<button type="button" class="o_ktr_tr o_ktr_tr_grande" data-tr="xpo">XPO</button></div>' +
                 '<div class="o_ktr_botones"><button type="button" class="o_ktr_cancelar">Cancelar</button></div></div>';
         }
         var nSumi = _.filter(r.outs || [], function (o) { return o.sumi; }).length;
         var nFuera = (r.fuera || []).length;
-        var aviso = r.propuesto && r.propuesto !== this.transportista ?
-            '<div class="o_ktr_naranja">⚠ Esta tienda iba normalmente con ' + NOMBRE[r.propuesto] + '.</div>' : '';
+        // v1.5.0: aviso en rojo si se sale de lo habitual (bultos o historial). No prohíbe: confirma «igualmente».
+        var avisosTr = (r.aviso_tr && r.aviso_tr[this.transportista]) || [];
+        var aviso = avisosTr.length ? '<div class="o_ktr_aviso_tr">⚠ ' + avisosTr.map(_e).join('<br/>⚠ ') +
+            '<br/>¿Seguro que va por ' + NOMBRE[this.transportista] + '?</div>' : '';
         return '<div class="o_ktr_card o_ktr_card_conf"><h3>' + NOMBRE[this.transportista] + ' · ' + _e(r.tienda) +
             '</h3><div class="o_ktr_cuenta">' + r.n_esperadas + ' bultos · ' + (r.outs || []).length + ' OUT</div>' +
             (nSumi ? '<div class="o_ktr_nota">Incluye ' + nSumi + ' OUT de <span class="o_ktr_sumi">SUMI</span> ' +
@@ -503,7 +508,8 @@ var Transportista = AbstractAction.extend({
                 '</div>' : '') +
             aviso + '<div class="o_ktr_nota">Se registra la expedición en ' + NOMBRE[this.transportista] +
             ' (no se puede deshacer) y la etiqueta sale en la impresora del portátil.</div>' +
-            '<div class="o_ktr_botones"><button type="button" class="o_ktr_confirmar">Sí, imprimir</button>' +
+            '<div class="o_ktr_botones"><button type="button" class="o_ktr_confirmar">' +
+            (avisosTr.length ? 'Sí, con ' + NOMBRE[this.transportista] + ' igualmente' : 'Sí, imprimir') + '</button>' +
             '<button type="button" class="o_ktr_cancelar">Cancelar</button></div></div>';
     },
 

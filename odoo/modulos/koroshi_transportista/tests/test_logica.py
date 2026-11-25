@@ -98,6 +98,31 @@ class TestHuecos(unittest.TestCase):
         self.assertEqual(logica.huecos_tanda({'a': [665010000]}), [])
 
 
+class TestAvisoTransportista(unittest.TestCase):
+    """v1.5.0 (Isaac 25/11): GLS hasta 5 bultos; avisar si se sale de lo habitual de la tienda (no prohibir)."""
+
+    def test_gls_grande(self):
+        self.assertTrue(logica.avisos_transportista('gls', 8, []))
+        self.assertEqual(logica.avisos_transportista('gls', 5, []), [])
+        self.assertEqual(logica.avisos_transportista('xpo', 8, []), [])
+
+    def test_historial(self):
+        h = [('xpo', 9), ('xpo', 7), ('xpo', 12), ('gls', 3)]
+        self.assertEqual(logica.habitual(10, h), ('xpo', 3, 3))
+        self.assertEqual(len(logica.avisos_transportista('gls', 10, h)), 2)      # grande y contra lo habitual
+        self.assertEqual(logica.avisos_transportista('xpo', 10, h), [])
+
+    def test_mezclado_no_avisa(self):
+        h = [('gls', 3), ('xpo', 4), ('gls', 2), ('xpo', 5)]
+        self.assertEqual(logica.habitual(3, h)[0], '')
+        self.assertEqual(logica.avisos_transportista('xpo', 3, h), [])
+
+    def test_pocas_parecidas_usa_todas(self):
+        h = [('gls', 2), ('gls', 3), ('gls', 4), ('xpo', 9)]
+        self.assertEqual(logica.habitual(8, h)[0], 'gls')                     # 1 grande: mira las 4
+        self.assertEqual(len(logica.avisos_transportista('xpo', 3, h)), 1)
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 
