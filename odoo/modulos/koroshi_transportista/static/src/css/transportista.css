@@ -43,3 +43,4 @@
 .o_koroshi_transportista .o_ktr_botones button { flex: 1; padding: 14px; font-size: 18px; font-weight: bold; border-radius: 8px; border: 1px solid #c4cbd3; background: #fff; }
 .o_koroshi_transportista .o_ktr_botones .o_ktr_imprimir, .o_koroshi_transportista .o_ktr_botones .o_ktr_confirmar { background: #1e7b34; color: #fff; border-color: #1e7b34; }
 .o_koroshi_transportista .o_ktr_botones .o_ktr_imprimir:disabled, .o_koroshi_transportista .o_ktr_botones .o_ktr_confirmar:disabled { background: #9ca3af; border-color: #9ca3af; }
+.o_koroshi_transportista .o_ktr_sumi { display: inline-block; padding: 1px 7px; border-radius: 5px; background: #6d28d9; color: #fff; font-weight: bold; font-size: 13px; }

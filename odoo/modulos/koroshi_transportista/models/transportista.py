@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.1.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.2.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -232,6 +232,7 @@ class KoroshiTransportistaRegistro(models.Model):
         sobran = [{'cj': cj, 'motivo': logica.motivo_sobra(self._datos_caja(cj, tienda))} for cj in c['sobran']]
         hoy = fields.Datetime.now().date()
         lista_outs = [{'nombre': p.name, 'origen': p.origin or '', 'bultos': len(self._cajas_de(p)),
+                       'sumi': logica.es_sumi(p.origin),
                        'dia': fields.Date.to_string(p.date_done.date()) if p.date_done else '',
                        'de_otro_dia': bool(p.date_done and p.date_done.date() < hoy)} for p in outs]
         sin_validar = self.env['stock.picking'].sudo().search(
@@ -393,8 +394,12 @@ class KoroshiTransportistaRegistro(models.Model):
         enviar = Picking.browse(rep['enviar'])
         juntadas = Picking.browse(rep['juntadas'])
         outs.write({'carrier_id': carrier.id})
+        # v1.2.0: en el envío agrupado GLS cuenta las cajas OUT por OUT (una caja compartida, dos veces): se le
+        # mandan las cajas distintas (models/gls.py). Una sola OUT: sus cajas, como siempre.
+        corregido = len(enviar) > 1 and rep['bultos_gls'] != rep['cajas']
         try:
-            res = carrier.gls_asm_send_shipping(enviar)
+            res = carrier.with_context(koroshi_gls_bultos=rep['cajas'] if len(enviar) > 1 else 0) \
+                .gls_asm_send_shipping(enviar)
         except Exception as e:  # noqa: BLE001 - el error de GLS se enseña en la PDA tal cual
             msg = self._error_texto(e)
             _logger.warning('Transportista: error de GLS en %s: %s', enviar.mapped('name'), msg)
@@ -424,7 +429,12 @@ class KoroshiTransportistaRegistro(models.Model):
                 p.message_post(body=_('GLS: esta OUT no tiene bultos propios (juntada). Va en la expedición %s.')
                                % tracking)
         texto = _('GLS %s registrada.') % tracking
-        aviso = rep['bultos_gls'] != rep['cajas']
+        if corregido:
+            for p in enviar:
+                p.message_post(body=_('GLS: se han mandado %d bultos (cajas distintas). Sin corregir, GLS habría '
+                                      'contado %d (una caja en dos OUT por Juntar cajas).') % (
+                    rep['cajas'], rep['bultos_gls']))
+        aviso = rep['bultos_gls'] != rep['cajas'] and not corregido
         if aviso:
             texto += _(' OJO: GLS contará %d bultos y hay %d cajas (cajas cruzadas entre OUT). Avisar a la '
                        'oficina.') % (rep['bultos_gls'], rep['cajas'])

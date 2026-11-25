@@ -37,6 +37,11 @@ def transportista_de(tipo_entrega):
 RE_CIFRAS = re.compile(r'^\d{4,9}$')   # v1.1.0: las últimas cifras de la CJ, escritas a mano (etiqueta que no se lee)
 
 
+def es_sumi(origen):
+    """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
+    return (origen or '').strip().upper().startswith('SUMINISTROS')
+
+
 def son_cifras(texto):
     """True si lo escrito son de 4 a 9 cifras (el final de una CJ escrito a mano)."""
     return bool(RE_CIFRAS.match((texto or '').strip()))

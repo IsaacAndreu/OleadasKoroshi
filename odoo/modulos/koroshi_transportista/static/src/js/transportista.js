@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.1.1 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.2.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.2.0: marca SUMI en las OUT de suministros.
  * v1.1.1: el campo va en un formulario (Intro/«Ir» de Android) con botón «✓ Leer»; foco al campo tras cada lectura.
  * 1. Tarjeta (la compartida: koroshi_base.comun.tarjeta). GLS / XPO se puede elegir antes o al final.
  * 2. Se leen las CJ de la tienda. La primera fija la tienda. Una CJ que no va se rechaza con el porqué y hay que
@@ -414,7 +415,8 @@ var Transportista = AbstractAction.extend({
                 ' <span class="o_ktr_gris">' + _e(c.outs.join(', ')) + '</span></li>';
         });
         var outs = (r.outs || []).map(function (o) {
-            return '<li>' + _e(o.nombre) + ' · ' + _e(o.origen) + ' · ' + o.bultos + ' caja' + (o.bultos === 1 ? '' : 's') +
+            return '<li>' + (o.sumi ? '<span class="o_ktr_sumi">SUMI</span> ' : '') + _e(o.nombre) + ' · ' +
+                _e(o.origen) + ' · ' + o.bultos + ' caja' + (o.bultos === 1 ? '' : 's') +
                 (o.de_otro_dia ? ' · <span class="o_ktr_naranja">del ' + _e(o.dia) + '</span>' : '') + '</li>';
         });
         return '<div class="o_ktr_card"><div class="o_ktr_nota">Cajas que espera Odoo:</div><ul class="o_ktr_lista">' +
@@ -442,10 +444,13 @@ var Transportista = AbstractAction.extend({
                 '<button type="button" class="o_ktr_tr o_ktr_tr_grande" data-tr="xpo">XPO</button></div>' +
                 '<div class="o_ktr_botones"><button type="button" class="o_ktr_cancelar">Cancelar</button></div></div>';
         }
+        var nSumi = _.filter(r.outs || [], function (o) { return o.sumi; }).length;
         var aviso = r.propuesto && r.propuesto !== this.transportista ?
             '<div class="o_ktr_naranja">⚠ Esta tienda iba normalmente con ' + NOMBRE[r.propuesto] + '.</div>' : '';
         return '<div class="o_ktr_card o_ktr_card_conf"><h3>' + NOMBRE[this.transportista] + ' · ' + _e(r.tienda) +
             '</h3><div class="o_ktr_cuenta">' + r.n_esperadas + ' bultos · ' + (r.outs || []).length + ' OUT</div>' +
+            (nSumi ? '<div class="o_ktr_nota">Incluye ' + nSumi + ' OUT de <span class="o_ktr_sumi">SUMI</span> ' +
+                '(suministros de la tienda).</div>' : '') +
             aviso + '<div class="o_ktr_nota">Se registra la expedición en ' + NOMBRE[this.transportista] +
             ' (no se puede deshacer) y la etiqueta sale en la impresora del portátil.</div>' +
             '<div class="o_ktr_botones"><button type="button" class="o_ktr_confirmar">Sí, imprimir</button>' +

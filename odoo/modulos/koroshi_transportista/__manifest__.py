@@ -28,8 +28,11 @@ v1.1.0 (25/11/2026): si la etiqueta de una caja no se lee, se escriben las últi
 v1.1.1 (25/11/2026): en la PDA las 4 cifras + Intro no hacían nada (Isaac): el Intro del teclado de Android no llega
   como tecla 13. El campo va en un formulario (Intro/«Ir» lo envía) y con «⌨ Escribir» sale el botón «✓ Leer». Tras
   cada lectura el foco vuelve al campo (la 2.ª CJ escaneada a veces no hacía nada).
+v1.2.0 (25/11/2026): GLS en envío agrupado contaba dos veces una caja juntada en dos OUT (K41: 7 cajas, 8
+  etiquetas). Ahora la pantalla manda a GLS las cajas distintas (models/gls.py, contexto koroshi_gls_bultos; la
+  acción 1834 del portátil sigue igual). Marca SUMI en las OUT de suministros (Isaac, 25/11).
 """,
-    'version': '13.0.1.1.1',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

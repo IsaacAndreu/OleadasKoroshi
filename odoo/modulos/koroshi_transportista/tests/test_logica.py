@@ -49,6 +49,24 @@ class TestCifras(unittest.TestCase):
         self.assertEqual(logica.elegir_por_cifras('9999', self.CAND), ('', []))
 
 
+class TestSumiYK41(unittest.TestCase):
+    """v1.2.0: SUMI en la pantalla; K41 25/11: una caja juntada en dos OUT -> GLS contaba 8 con 7 cajas."""
+
+    def test_sumi(self):
+        self.assertTrue(logica.es_sumi('SUMINISTROS KOROSHI 24/11 K41'))
+        self.assertFalse(logica.es_sumi('S-6665004768'))
+        self.assertFalse(logica.es_sumi(None))
+
+    def test_k41_cajas_distintas(self):
+        outs = [{'id': 27666, 'bultos': 1, 'cajas': [13979]},
+                {'id': 27810, 'bultos': 2, 'cajas': [13735, 13736]},
+                {'id': 27838, 'bultos': 2, 'cajas': [13799, 13800]},
+                {'id': 27839, 'bultos': 2, 'cajas': [13800, 13879, 13880]}]
+        r = logica.reparto_gls(outs)
+        self.assertEqual(sorted(r['enviar']), [27666, 27810, 27838, 27839])
+        self.assertEqual((r['bultos_gls'], r['cajas']), (8, 7))   # a GLS se le manda 7 (models/gls.py)
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 
