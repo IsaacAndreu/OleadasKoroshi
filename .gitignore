@@ -29,3 +29,11 @@ bin/builds/
 *.apk
 *.idsig
 bin/versiones/*imagenes*/
+
+# Programa de redistribución (23/11/2026): configuración local (dirección, bd, usuario) y copias SQLite de Odoo
+redistribucion/programa/config.local.toml
+redistribucion/programa/copias/
+redistribucion/**/*.sqlite
+redistribucion/**/*.sqlite-journal
+# Mapa v3 (24/11/2026): datos generados desde la copia de Odoo («python programa.py generar-mapa»), ~10 MB
+redistribucion/prototipo-mapa_2026-11-24_v3/*.json

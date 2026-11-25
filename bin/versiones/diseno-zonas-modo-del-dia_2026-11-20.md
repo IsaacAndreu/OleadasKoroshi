@@ -142,6 +142,32 @@ Riesgos:
 - Orden de versiones: operarios 2.23.0 primero (ya con la regla T, que no hace nada hasta que existan), zonas 1.7.0
   después de pasar a real. Las dos con el sí de Isaac.
 
+## 4c. El mínimo de las T con los pedidos reales (20/11)
+
+Leído en Odoo (solo lectura): pedidos de tienda (PED. TIENDAS, compañía 8) del 20/10 al 20/11, **1.167 pedidos en 23
+días** (~50 al día, uno por tienda). Uds por pedido: mediana 66, p25 30, p75 108, p90 151. Reparto:
+
+| Uds del pedido | < 5 | 5-14 | 15-29 | 30-59 | 60-119 | 120-299 | ≥ 300 |
+|---|---|---|---|---|---|---|---|
+| Pedidos | 24 | 77 | 182 | 242 | 418 | 214 | 10 |
+
+- **Días de zonas**: los pedidos de menos de 15 uds son pocos: 101 en 23 días (0 a 20 al día; 20/11: 10 pedidos, 91 uds
+  por fecha de pedido). Salen 1 o 2 T al día; el mínimo casi no importa.
+- **Días de tradicional** (todos los pedidos en T, por número de pedido, cerrando la T al llegar al mínimo o a 8 OUT):
+
+| Mínimo | T al día | Uds por T (mediana) | p10 – p90 | T de un solo pedido |
+|---|---|---|---|---|
+| 30 uds | 45 | 81 | 38 – 166 | 83 % |
+| 40 uds | 42 | 87 | 48 – 171 | 78 % |
+| **60 uds** | **38** | **99** | **66 – 182** | **68 %** |
+| 80 uds | 35 | 115 | 85 – 202 | 57 % |
+| 100 uds | 28 | 139 | 105 – 218 | 43 % |
+
+**Propuesta: 60 uds u 8 OUT.** Una T típica es de ~100 uds (~10 cajas de ~10 uds, ~1 h 25 min para una persona a
+52 s por lectura). Por debajo casi todo va suelto (como ahora); por encima las T pasan de 2 h. El p90 (180-200 uds) son
+pedidos grandes que van solos y no se pueden partir en tradicional. Falta un dato de almacén: **cuántas cajas caben en un
+carro** (si son menos de ~10, poner también un máximo de uds por T al juntar).
+
 ## 5. Preguntas para Isaac
 
 1. ¿El mínimo de una agrupación tradicional: 60 uds u 8 OUT (lo que llegue antes), u otros números?

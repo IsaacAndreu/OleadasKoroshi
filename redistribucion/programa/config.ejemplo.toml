@@ -1,0 +1,12 @@
+# Copiar a config.local.toml (fuera de git) y rellenar.
+# La contraseña NO va aquí: «python programa.py guardar-clave» la guarda en el almacén de Windows.
+
+[odoo]
+url = ""                # https://… del Odoo de producción
+bd = ""                 # nombre de la base de datos
+usuario = ""            # el inicio de sesión de Departament IT
+
+[lectura]
+pausa = 0.5             # segundos entre peticiones (mínimo 0,3 aunque aquí ponga menos)
+pagina = 2000           # filas por página (máximo 5.000)
+timeout = 120           # segundos que se espera a cada respuesta

@@ -4,26 +4,170 @@
     {
       "name": "versiones",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8765", "--bind", "127.0.0.1", "--directory", "C:/dev/OleadasKoroshi/bin/versiones"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8765",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/dev/OleadasKoroshi/bin/versiones"
+      ],
       "port": 8765
     },
     {
       "name": "operarios-mock",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8768", "--bind", "127.0.0.1", "--directory", "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/e5ed614d-fdc9-481d-9f52-fb91c7dac5ca/scratchpad/opmock"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8768",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/e5ed614d-fdc9-481d-9f52-fb91c7dac5ca/scratchpad/opmock"
+      ],
       "port": 8768
     },
     {
       "name": "operarios-mock-v23",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8770", "--bind", "127.0.0.1", "--directory", "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/9b3c5d4a-460f-4737-8181-ded44f0323d9/scratchpad"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8770",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/9b3c5d4a-460f-4737-8181-ded44f0323d9/scratchpad"
+      ],
       "port": 8770
+    },
+    {
+      "name": "contenedores-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8771",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/6857d684-ee06-4cc0-b1d6-67d72f111c3a/scratchpad/prueba_contenedores"
+      ],
+      "port": 8771
     },
     {
       "name": "faltantes-modulo",
       "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "8769", "--bind", "127.0.0.1", "--directory", "C:/dev/OleadasKoroshi/odoo/modulos"],
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8769",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/dev/OleadasKoroshi/odoo/modulos"
+      ],
       "port": 8769
+    },
+    {
+      "name": "tablero-formatos-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8772",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/4028051f-d1d3-4a6d-b776-152c6863a4e4/scratchpad/prueba_formatos"
+      ],
+      "port": 8772
+    },
+    {
+      "name": "devoluciones-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8773",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/90fc6203-e15b-44e1-9c74-f8c746a1803b/scratchpad/prueba_devoluciones"
+      ],
+      "port": 8773
+    },
+    {
+      "name": "prenda-suelo-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8775",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/94532cc0-9da3-48af-b8f3-48500defa6ad/scratchpad/prueba_prenda"
+      ],
+      "port": 8775
+    },
+    {
+      "name": "inicio-pda-mock",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8774",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/Users/tuctuc/AppData/Local/Temp/claude/f8c017ab9002a24a/0be22afc-ae96-4252-bb6a-695073cc5ec7/scratchpad/prueba_inicio"
+      ],
+      "port": 8774
+    },
+    {
+      "name": "mapa-nau2-prototipo-v1",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8776",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/dev/OleadasKoroshi/redistribucion/prototipo-mapa_2026-11-23_v1"
+      ],
+      "port": 8776
+    },
+    {
+      "name": "mapa-nau2-prototipo-v2",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8777",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/dev/OleadasKoroshi/redistribucion/prototipo-mapa_2026-11-23_v2"
+      ],
+      "port": 8777
+    },
+    {
+      "name": "mapa-nau2-v3",
+      "runtimeExecutable": "python",
+      "runtimeArgs": [
+        "-m",
+        "http.server",
+        "8778",
+        "--bind",
+        "127.0.0.1",
+        "--directory",
+        "C:/dev/OleadasKoroshi/redistribucion/prototipo-mapa_2026-11-24_v3"
+      ],
+      "port": 8778
     }
   ]
 }
