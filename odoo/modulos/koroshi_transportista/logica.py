@@ -42,6 +42,23 @@ def puede_dejar_fuera(fecha_validada, hoy):
     return bool(fecha_validada and fecha_validada < hoy)
 
 
+MAX_TANDA = 30     # v1.4.0: huecos solo dentro de una tanda corta de etiquetas
+
+
+def huecos_tanda(usadas):
+    """v1.4.0 (K24 25/11: la CJ665013675 se pegó en una caja y nunca se leyó en Odoo). usadas: {fecha de impresión:
+    [números de secuencia de las CJ de la tienda impresas a esa hora]}. Devuelve los números que faltan entre la
+    menor y la mayor de cada tanda (máximo MAX_TANDA de distancia): etiquetas impresas con estas cajas que no son
+    cajas de la tienda. Quien llama mira si están vacías en Odoo."""
+    res = set()
+    for nums in usadas.values():
+        nums = sorted(set(n for n in nums if n))
+        if len(nums) < 2 or nums[-1] - nums[0] > MAX_TANDA:
+            continue
+        res.update(n for n in range(nums[0] + 1, nums[-1]) if n not in nums)
+    return sorted(res)
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')

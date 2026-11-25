@@ -84,6 +84,20 @@ class TestDejarFuera(unittest.TestCase):
         self.assertIn('dejada fuera', logica.motivo_sobra(d))
 
 
+class TestHuecos(unittest.TestCase):
+    """v1.4.0: K24 25/11, SUMI: 13674 y 13676 de la tanda del 24/11 10:38 -> la 13675 sin leer."""
+
+    def test_k24(self):
+        usadas = {'2026-11-24 10:38:22': [665013674, 665013676],
+                  '2026-11-25 09:27:44': [665013998, 665013999, 665014000]}
+        self.assertEqual(logica.huecos_tanda(usadas), [665013675])
+
+    def test_sin_hueco_o_tanda_larga(self):
+        self.assertEqual(logica.huecos_tanda({'a': [665013998, 665013999]}), [])
+        self.assertEqual(logica.huecos_tanda({'a': [665010000, 665010100]}), [])
+        self.assertEqual(logica.huecos_tanda({'a': [665010000]}), [])
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

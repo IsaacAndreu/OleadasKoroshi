@@ -34,8 +34,11 @@ v1.2.0 (25/11/2026): GLS en envío agrupado contaba dos veces una caja juntada e
 v1.3.0 (25/11/2026): «Dejar fuera» una OUT validada OTRO día (K46: la CJ665013084 del 24/11 no estaba y bloqueaba
   la tienda). Sale de lo que se espera, no va en la etiqueta, se queda sin etiqueta y lleva una nota. «Volver a
   meter» la devuelve. Las OUT de hoy no se pueden dejar fuera (Isaac, 25/11).
+v1.4.0 (25/11/2026): aviso de CJ impresas para la tienda que en Odoo están vacías (las de zona de sus OUT y los
+  huecos de la misma tanda que sus cajas). K24: la CJ665013675 se pegó en una caja de la SUMI y nunca se leyó:
+  11 cajas físicas y 10 en la etiqueta XPO. Solo avisa (Isaac, 25/11).
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

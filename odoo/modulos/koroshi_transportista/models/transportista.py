@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.3.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.4.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -139,6 +139,35 @@ class KoroshiTransportistaRegistro(models.Model):
         return d
 
     @api.model
+    def _cj_vacias(self, outs, esperadas):
+        """v1.4.0: CJ impresas para esta tienda que en Odoo están vacías: las de zona reservadas para sus OUT y las de
+        la misma tanda que sus cajas (huecos). Si hay una caja física con una de ellas, falta leerla en Odoo (K24
+        25/11). Solo avisa; no bloquea. Si no está zebra.label, nada."""
+        if 'zebra.label' not in self.env or not outs:
+            return []
+        Label = self.env['zebra.label'].sudo()
+        candidatas = set(Label.search([('note', 'in', ['ETQ ZONA ' + p.name for p in outs])]).mapped('name'))
+        usadas = {}
+        for l in Label.search([('name', 'in', list(esperadas))]):
+            if l.print_date:
+                usadas.setdefault(fields.Datetime.to_string(l.print_date), []).append(l.sequence_number)
+        huecos = logica.huecos_tanda(usadas)
+        if huecos:
+            for l in Label.search([('sequence_number', 'in', huecos)]):
+                if not l.note:                                   # una de zona de otra OUT no es de esta tienda
+                    candidatas.add(l.name)
+        candidatas -= set(esperadas)
+        if candidatas and 'koroshi.juntar.registro' in self.env:     # juntada dentro de otra: vacía a propósito
+            candidatas -= set(self.env['koroshi.juntar.registro'].sudo().search(
+                [('cj_pequena', 'in', list(candidatas))]).mapped('cj_pequena'))
+        if not candidatas:
+            return []
+        paquetes = self.env['stock.quant.package'].sudo().search([('name', 'in', list(candidatas))])
+        con_algo = set(self.env['stock.move.line'].sudo().search(
+            [('result_package_id', 'in', paquetes.ids), ('state', '!=', 'cancel')]).mapped('result_package_id.name'))
+        return sorted(c for c in candidatas if c not in con_algo)
+
+    @api.model
     def _propuesto(self, partner, outs):
         """GLS o XPO: el que ya tengan las OUT o, si no, el de la última etiqueta de esta tienda."""
         tipos = set(logica.transportista_de(t) for t in outs.mapped('carrier_id.delivery_type')) - {''}
@@ -251,6 +280,11 @@ class KoroshiTransportistaRegistro(models.Model):
         if sin_validar:
             avisos.append(_('Hay %d OUT de esta tienda sin validar (%s): se quedan fuera de esta etiqueta.') % (
                 len(sin_validar), ', '.join(sin_validar[:5].mapped('name'))))
+        vacias = self._cj_vacias(outs, esperadas)        # v1.4.0
+        if vacias:
+            avisos.append(_('Ojo: %s se imprimió con las cajas de esta tienda y en Odoo está vacía. Si hay una caja '
+                            'con esa etiqueta, falta meterla en Odoo: no saldría en la etiqueta del transportista.')
+                          % ', '.join(vacias))
         if any(o['de_otro_dia'] for o in lista_outs):
             avisos.append(_('Hay OUT de otros días sin etiqueta: van en la misma expedición (marcadas).'))
         return {
