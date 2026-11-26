@@ -4,6 +4,7 @@
 # /leer: tarjeta -> la persona; CJ (o sus últimas 4-9 cifras, v1.1.0) -> el estado de la tienda con las CJ leídas (solo lee).
 # /etiquetar: GLS o XPO de verdad (solo si cuadra), y el PDF a la cola del portátil. Tarjeta obligatoria. Token.
 # /reimprimir: vuelve a mandar a la cola el PDF de una expedición hecha.
+# /expediciones (v1.7.0): las expediciones de hoy de todas las tiendas, para la lista fija de reimprimir.
 # Permiso, tarjeta y lector: koroshi_base.pda, como Juntar cajas.
 # =============================================================================
 from odoo import http
@@ -66,6 +67,11 @@ class KoroshiTransportista(http.Controller):
             return self._modelo().etiquetar(list(leidas or []), partner_id, transportista, employee=emp,
                                             token=token or '', fuera=fuera)
         return self._envolver(hacer)
+
+    @http.route('/koroshi/transportista/expediciones', type='json', auth='user')
+    def expediciones(self, **kw):
+        """v1.7.0: las expediciones de hoy (todas las tiendas) para reimprimir. Solo lee."""
+        return self._envolver(lambda: self._modelo().expediciones_hoy())
 
     @http.route('/koroshi/transportista/reimprimir', type='json', auth='user')
     def reimprimir(self, partner_id=False, tracking='', employee_id=False, **kw):

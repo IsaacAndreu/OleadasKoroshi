@@ -146,6 +146,31 @@ class TestDevolucion(unittest.TestCase):
         self.assertIn('EFFEC/DEV/000145', m)
 
 
+class TestExpedicionesHoy(unittest.TestCase):
+    """v1.7.0: lista de las expediciones de hoy con su K## para reimprimir."""
+
+    def test_agrupar(self):
+        filas = [
+            {'tracking': '1384704407', 'transportista': 'GLS', 'tienda': 'K68 - LA MAQUINISTA', 'partner_id': 7,
+             'out': 'EFFEC/OUT/1', 'bultos': 2, 'hora': '10:15'},
+            {'tracking': '1384704407', 'transportista': 'GLS', 'tienda': 'K68 - LA MAQUINISTA', 'partner_id': 7,
+             'out': 'EFFEC/OUT/2', 'bultos': 1, 'hora': '10:14'},
+            {'tracking': '1384704407', 'transportista': 'GLS', 'tienda': 'K68 - LA MAQUINISTA', 'partner_id': 7,
+             'out': 'EFFEC/OUT/2', 'bultos': 1, 'hora': '10:16'},          # 2.º PDF de la misma OUT
+            {'tracking': '121771383', 'transportista': 'XPO', 'tienda': 'K46 - IRUN', 'partner_id': 9,
+             'out': 'EFFEC/OUT/3', 'bultos': 10, 'hora': '12:40'},
+            {'tracking': '', 'out': 'EFFEC/OUT/4'},
+        ]
+        r = logica.agrupar_expediciones(filas)
+        self.assertEqual([e['tracking'] for e in r], ['121771383', '1384704407'])     # la más nueva arriba
+        self.assertEqual((r[1]['codigo'], r[1]['bultos'], r[1]['hora'], len(r[1]['outs'])), ('K68', 3, '10:14', 2))
+        self.assertEqual(r[0]['codigo'], 'K46')
+
+    def test_codigo(self):
+        self.assertEqual(logica.codigo_tienda('K65 - BARICENTRO'), 'K65')
+        self.assertEqual(logica.codigo_tienda(''), '')
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

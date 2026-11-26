@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.5.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.7.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.7.0: lista fija abajo con las expediciones de hoy (K##) y «Reimprimir», sin leer ninguna caja.
  * v1.5.0: aviso de transportista (bultos e historial); GLS/XPO ya no se marca solo.
  * v1.3.0: «Dejar fuera» una OUT de otro día.
  * v1.2.0: marca SUMI en las OUT de suministros.
@@ -39,6 +40,7 @@ var Transportista = AbstractAction.extend({
         'click .o_ktr_reimprimir': '_onReimprimir',
         'click .o_ktr_fuera': '_onFuera',
         'click .o_ktr_meter': '_onMeter',
+        'click .o_ktr_recargar': '_cargarExpediciones',
     },
 
     init: function () {
@@ -49,6 +51,7 @@ var Transportista = AbstractAction.extend({
         this.persona = null;
         this.actividadEn = Date.now();
         this.transportista = '';     // 'gls' | 'xpo' | '' (se pregunta al final)
+        this.expediciones = null;    // v1.7.0: las de hoy (todas las tiendas), para reimprimir
         this._vaciar();
     },
 
@@ -71,6 +74,7 @@ var Transportista = AbstractAction.extend({
             self.timer = setInterval(self._vigilar.bind(self), 10000);
             self._pintar();
             self._foco();
+            self._cargarExpediciones();
         });
     },
 
@@ -78,6 +82,18 @@ var Transportista = AbstractAction.extend({
         this._super.apply(this, arguments);
         if (this._tomarGuardada()) { this._pintar(); }
         this._foco();
+        this._cargarExpediciones();
+    },
+
+    // v1.7.0: lista de las expediciones de hoy (solo lee; no usa _llamar para no bloquear la pantalla)
+    _cargarExpediciones: function () {
+        var self = this;
+        return this._rpc({route: '/koroshi/transportista/expediciones', params: {}}, {shadow: true}).then(function (r) {
+            if (r && r.ok) {
+                self.expediciones = r.expediciones || [];
+                self.$('.o_ktr_expediciones').html(self._htmlExpediciones());
+            }
+        }, function () {});
     },
 
     destroy: function () {
@@ -314,6 +330,7 @@ var Transportista = AbstractAction.extend({
             }
             self._pitido(true);
             self.hecho = r;
+            self._cargarExpediciones();
             self._aviso(r.aviso_envio || r.aviso_impresion ? 'info' : 'ok', r.impresos ?
                 'Hecho: ' + r.transportista + ' ' + r.tracking + '. Imprimiendo en ' + (r.impresora || 'Expediciones') + '.' :
                 'Hecho: ' + r.transportista + ' ' + r.tracking + '.');
@@ -372,13 +389,15 @@ var Transportista = AbstractAction.extend({
     _onReimprimir: function (ev) {
         var self = this;
         var tracking = String($(ev.currentTarget).data('tracking'));
-        if (this.ocupado || !this.estado) { return; }
+        // v1.7.0: la lista de abajo lleva la tienda en el botón: se reimprime sin leer ninguna caja
+        var partner = parseInt($(ev.currentTarget).data('partner'), 10) || (this.estado && this.estado.partner_id);
+        if (this.ocupado || !partner) { return; }
         if (!this.persona) {
             this._pitido(false);
             return this._aviso('mal', 'Pasa antes tu tarjeta de operario.');
         }
         return this._llamar('/koroshi/transportista/reimprimir', {
-            partner_id: this.estado.partner_id, tracking: tracking, employee_id: this.persona.id,
+            partner_id: partner, tracking: tracking, employee_id: this.persona.id,
         }).then(function (r) {
             if (r.sinConexion) { return; }
             self._pitido(!!r.ok);
@@ -405,6 +424,22 @@ var Transportista = AbstractAction.extend({
                 this._htmlBotones() + this._htmlCajas() + this._htmlEtiquetadas();
         }
         this.$('.o_ktr_cuerpo').html(h);
+        this.$('.o_ktr_expediciones').html(this._htmlExpediciones());
+    },
+
+    _htmlExpediciones: function () {
+        var l = this.expediciones;
+        if (l === null) { return ''; }
+        var h = '<div class="o_ktr_card"><div class="o_ktr_nota"><b>Expediciones de hoy</b> (' + l.length + ')' +
+            ' <button type="button" class="o_ktr_recargar">↻</button></div>';
+        if (!l.length) { return h + '<div class="o_ktr_gris">Todavía ninguna.</div></div>'; }
+        l.forEach(function (e) {
+            h += '<div class="o_ktr_rech o_ktr_exp"><b class="o_ktr_k">' + _e(e.codigo || e.tienda) + '</b> ' +
+                _e(e.hora) + ' · ' + _e(e.transportista) + ' ' + _e(e.tracking) + ' · ' + e.bultos + ' bulto' +
+                (e.bultos === 1 ? '' : 's') + ' <button type="button" class="o_ktr_reimprimir" data-tracking="' +
+                _e(e.tracking) + '" data-partner="' + _e(e.partner_id) + '">Reimprimir</button></div>';
+        });
+        return h + '</div>';
     },
 
     _htmlInicio: function () {

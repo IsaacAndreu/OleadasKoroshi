@@ -103,6 +103,32 @@ def devoluciones_vivas(devs):
     return sorted(set(n or '?' for n, estado in devs if estado != 'cancel'))
 
 
+def codigo_tienda(tienda):
+    """v1.7.0: «K65 - BARICENTRO» -> «K65» ('' si no es de tienda)."""
+    return (tienda or '').split(' ', 1)[0] if (tienda or '').upper().startswith('K') else ''
+
+
+def agrupar_expediciones(filas):
+    """v1.7.0 (Isaac 26/11: «la impresora se queda sin nada o atascada y hay que volver a darle»): una línea por
+    expedición para la lista de reimprimir. filas: una por OUT con etiqueta hoy, {'tracking', 'transportista' (GLS/XPO),
+    'tienda', 'partner_id', 'out', 'bultos', 'hora' ('HH:MM' de su PDF)}. Devuelve [{'tracking', 'transportista',
+    'tienda', 'codigo' (K##), 'partner_id', 'outs': [nombres], 'bultos', 'hora' (la primera)}], la más nueva arriba."""
+    res = {}
+    for f in filas:
+        if not f.get('tracking'):
+            continue
+        e = res.setdefault(f['tracking'], {
+            'tracking': f['tracking'], 'transportista': f.get('transportista') or '', 'tienda': f.get('tienda') or '',
+            'codigo': codigo_tienda(f.get('tienda')), 'partner_id': f.get('partner_id') or False, 'outs': [],
+            'bultos': 0, 'hora': f.get('hora') or ''})
+        if f.get('out') and f['out'] not in e['outs']:
+            e['outs'].append(f['out'])
+            e['bultos'] += f.get('bultos') or 0
+        if f.get('hora') and (not e['hora'] or f['hora'] < e['hora']):
+            e['hora'] = f['hora']
+    return sorted(res.values(), key=lambda e: (e['hora'], e['tracking']), reverse=True)
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')

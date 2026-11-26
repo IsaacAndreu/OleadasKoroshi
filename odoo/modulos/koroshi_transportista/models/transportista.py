@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.6.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.7.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -24,6 +24,7 @@ import logging
 from odoo import _, api, fields, models
 from odoo.exceptions import UserError
 
+from odoo.addons.koroshi_base import comun
 from odoo.addons.koroshi_base.comun import COMPANY_ID
 
 from .. import logica
@@ -225,6 +226,34 @@ class KoroshiTransportistaRegistro(models.Model):
                 'outs': [], 'fecha': fields.Date.to_string(p.date_done.date()) if p.date_done else ''})
             e['outs'].append(p.name)
         return list(res.values())[:3]
+
+    @api.model
+    def expediciones_hoy(self):
+        """v1.7.0: las expediciones con etiqueta de hoy (PDF de GLS o XPO creado hoy, desde la PDA o el portátil), de
+        todas las tiendas, para la lista fija de «Reimprimir» (Isaac 26/11: la impresora se atasca o se queda sin
+        papel). Solo lee."""
+        inicio, fin = comun.rango_dia_utc(comun.hoy_local())
+        adjuntos = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', 'stock.picking'), ('mimetype', '=', 'application/pdf'),
+             ('create_date', '>=', inicio), ('create_date', '<', fin),
+             '|', ('name', '=like', PREFIJOS_ETIQUETA[0] + '%'), ('name', '=like', PREFIJOS_ETIQUETA[1] + '%')],
+            order='id')
+        pickings = self.env['stock.picking'].sudo().browse(sorted(set(adjuntos.mapped('res_id')))).exists().filtered(
+            lambda p: p.company_id.id == COMPANY_ID and p.picking_type_code == 'outgoing' and p.carrier_tracking_ref)
+        por_out = {p.id: p for p in pickings}
+        filas = []
+        for a in adjuntos:
+            p = por_out.get(a.res_id)
+            if not p:
+                continue
+            loc = comun.a_local(a.create_date)
+            filas.append({'tracking': p.carrier_tracking_ref, 'partner_id': p.partner_id.id,
+                          'transportista': logica.NOMBRES.get(logica.transportista_de(p.carrier_id.delivery_type),
+                                                              p.carrier_id.name or ''),
+                          'tienda': logica.tienda_de(p.partner_id.display_name) or p.partner_id.display_name or '',
+                          'out': p.name, 'bultos': p.number_of_packages or 0,
+                          'hora': loc.strftime('%H:%M') if loc else ''})
+        return {'ok': True, 'expediciones': logica.agrupar_expediciones(filas)}
 
     @api.model
     def _partner_de_cj(self, cj):

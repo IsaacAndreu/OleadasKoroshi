@@ -43,8 +43,11 @@ v1.5.0 (25/11/2026): aviso en rojo (no prohíbe) si se elige el transportista qu
 v1.6.0 (26/11/2026): las OUT con alguna devolución no cancelada (borrador, en espera, preparada o hecha) ya no
   salen en la pantalla ni en la etiqueta: aviso «OUT con devolución (DEV/xxxx): no sale» y, si se lee una de sus
   CJ, el motivo. Triplicados del 24/11: unas 17 OUT así (K65: OUT 27486 con EFFEC/DEV/000145) (Isaac, 26/11).
+v1.7.0 (26/11/2026): lista fija abajo con las expediciones de hoy (PDF de GLS/XPO creados hoy, desde la PDA o el
+  portátil, de todas las tiendas) con su K##, hora, tracking y bultos, y botón «Reimprimir» sin leer ninguna caja.
+  La impresora a veces se queda sin papel o se atasca y hay que volver a darle (Isaac, 26/11).
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

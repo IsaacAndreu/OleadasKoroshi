@@ -19,6 +19,8 @@
             </div>
             <div class="o_ktr_aviso"/>
             <div class="o_ktr_cuerpo"/>
+            <!-- v1.7.0: lista fija de las expediciones de hoy para reimprimir -->
+            <div class="o_ktr_expediciones"/>
         </div>
     </t>
 </templates>
