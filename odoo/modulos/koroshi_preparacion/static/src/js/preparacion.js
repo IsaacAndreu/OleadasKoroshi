@@ -134,6 +134,7 @@ var Pantalla = AbstractAction.extend({
         'click .o_kp_l_editar': '_onEditarCaja',         // v3.21: ✎ en una línea ya en caja
         'click .o_kp_pausa_btn': '_onPausaBtn',          // v3.30: pausa arriba (⏸ / ▶)
         'click .o_kp_seguir': '_onSeguir',               // v3.30: volver de la pausa sin salir
+        'click .o_kp_soltar': '_onSoltar',               // v3.37: dejar el pedido desde la pausa
         'click .o_kp_menu_color': '_onMenuColor',        // v3.21: color de la franja de la ubicación
         'click .o_kp_color_op': '_onElegirColor',
         'click .o_kp_color_cerrar': '_cerrarHoja',
@@ -2399,6 +2400,45 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kp_codigo').blur();
     },
 
+    // v3.37 (26/11): desde la pausa, dejar el pedido para que lo haga otro (dos toques). Odoo no se lo vuelve a dar hoy
+    // a esta persona; lo leído se queda y el responsable lo ve en el Tablero. La PDA queda libre, como la pausa.
+    _onSoltar: function () {
+        var self = this;
+        var $b = this.$('.o_kp_soltar');
+        if (!this.enPausa || this.soltando || !this.operario) { return; }
+        if (this.sinRed) { return this.$('.o_kp_pausa_texto').text('Sin conexión: espera a que vuelva.'); }
+        if (!$b.hasClass('o_kp_confirmar_soltar')) {
+            $b.addClass('o_kp_confirmar_soltar').text('¿Seguro? Pulsa otra vez para dejarlo');
+            clearTimeout(this.timerSoltar);
+            this.timerSoltar = setTimeout(function () {
+                $b.removeClass('o_kp_confirmar_soltar').text('Dejar este pedido (que lo haga otro)');
+            }, 4000);
+            return;
+        }
+        clearTimeout(this.timerSoltar);
+        var nombre = this.operario.nombre;
+        this.soltando = true;
+        $b.prop('disabled', true).removeClass('o_kp_confirmar_soltar').text('Dejando…');
+        var fin = function () {
+            self.soltando = false;
+            $b.prop('disabled', false).text('Dejar este pedido (que lo haga otro)');
+        };
+        return this._rpc({route: '/koroshi/operarios/soltar', params: {employee_id: this.operario.id}}).then(function (r) {
+            fin();
+            if (!r || !r.ok) {
+                return self.$('.o_kp_pausa_texto').text((r && r.msg) || 'No se ha podido dejar. Vuelve a probar.');
+            }
+            self._quitarPausa();
+            window.koroshiPausaHecha = {nombre: nombre, msg: r.msg, dejado: true};   // Lecturas quita el operario
+            self.trigger_up('history_back');
+        }).guardedCatch(function (e) {
+            fin();
+            if (e && e.event && e.event.preventDefault) { e.event.preventDefault(); }
+            self.$('.o_kp_pausa_texto').text(self._esSinConexion(e) ? 'Sin conexión: espera a que vuelva.' :
+                                             'No se ha podido dejar. Vuelve a probar.');
+        });
+    },
+
     _quitarPausa: function () {
         this.enPausa = null;
         this.modo = 'leer';
@@ -3029,7 +3069,8 @@ Operarios.include({
             this._olvidarOperario();
         }
         var res = this._super.apply(this, arguments);
-        if (p) { this._aviso('⏸ Pausa, ' + p.nombre + '. ' + p.msg + '.', 'info'); }
+        if (p) { this._aviso(p.dejado ? p.nombre + ': ' + p.msg + '.' : '⏸ Pausa, ' + p.nombre + '. ' + p.msg + '.',
+                             'info'); }
         return res;
     },
 

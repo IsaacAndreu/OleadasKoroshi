@@ -23,6 +23,10 @@
 .o_kta_hd { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; font-size: 15px; }
 .o_kta_n { margin-left: auto; background: #e5e7eb; border-radius: 10px; padding: 0 8px; font-size: 12px; }
 .o_kta_vacio { color: var(--kta-suave); font-size: 12px; padding: 6px 0; }
+/* v2.25: pedidos dejados hoy */
+.o_kta_dej { background: #fef2f2; border: 1px solid #fca5a5; border-left: 4px solid #b91c1c; border-radius: 6px;
+    padding: 6px 10px; margin-bottom: 8px; }
+.o_kta_dej_l { padding: 2px 0; }
 
 /* filas de Picking */
 .o_kta_fila { background: #fff; border: 1px solid var(--kta-borde); border-radius: 6px; padding: 6px 8px; margin-bottom: 6px; }

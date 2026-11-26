@@ -815,6 +815,13 @@ body.o_kp_pantalla_pda .o_main_navbar { display: none; }
 }
 .o_koroshi_preparacion .o_kp_seguir:disabled { opacity: .6; }
 .o_koroshi_preparacion .o_kp_pausa_nota { font-size: 16px; color: #d1d5db; }
+/* v3.37: dejar el pedido desde la pausa */
+.o_koroshi_preparacion .o_kp_soltar {
+    width: 100%; max-width: 360px; min-height: 56px; border: 2px solid #f87171; border-radius: 8px;
+    background: transparent; color: #fecaca; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 18px;
+}
+.o_koroshi_preparacion .o_kp_soltar.o_kp_confirmar_soltar { background: #dc2626; border-color: #dc2626; color: #fff; }
+.o_koroshi_preparacion .o_kp_soltar:disabled { opacity: .6; }
 
 /* v3.30: Faltante: segunda ubicación en grande si la primera tiene pocas */
 .o_koroshi_preparacion .o_kp_f_alternativas li.o_kp_f_segunda {

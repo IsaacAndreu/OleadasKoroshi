@@ -97,7 +97,8 @@ var TableroAreas = AbstractAction.extend({
             '<span class="o_kta_mut">Actualizado ' + esc(d.hora || '') + '</span>' +
             '<button type="button" class="btn btn-sm btn-primary o_kta_actualizar">Actualizar</button></div>' +
             '<div class="o_kta_expl">Arrastra a una persona a una zona de Picking: la hará después de lo que tiene ' +
-            'entre manos. Las demás áreas solo se miran.</div><div class="o_kta_cols">';
+            'entre manos. Las demás áreas solo se miran.</div>' + this._dejados(d.dejados || []) +
+            '<div class="o_kta_cols">';
         h += this._picking(d, porArea.picking || []);
         var self = this;
         _.each(d.areas, function (a) {
@@ -107,6 +108,19 @@ var TableroAreas = AbstractAction.extend({
         h += this._columna('Sin área', porArea[''] || [], 'o_kta_sin',
                            'Han trabajado hoy y ahora no están en ningún área');
         $donde.html(h + '</div></div>');
+    },
+
+    // v2.25: pedidos que alguien ha dejado hoy (para que el responsable decida qué hacer con ellos)
+    _dejados: function (lista) {
+        if (!lista.length) { return ''; }
+        var h = '<div class="o_kta_dej"><b>Pedidos dejados hoy</b> <span class="o_kta_mut">(lo leído se queda; ' +
+                'el siguiente que lo lea sigue donde estaba)</span>';
+        _.each(lista, function (x) {
+            h += '<div class="o_kta_dej_l">' + esc(x.hora) + ' · <b>' + esc(x.quien) + '</b> dejó <b>' +
+                 esc(x.pedido) + '</b>' + (x.tienda ? ' (' + esc(x.tienda) + ')' : '') +
+                 (x.prog ? ' · ' + esc(x.prog) : '') + ' · <span class="o_kta_mut">' + esc(x.estado) + '</span></div>';
+        });
+        return h + '</div>';
     },
 
     _persona: function (p, conDetalle) {

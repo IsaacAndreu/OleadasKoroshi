@@ -211,10 +211,28 @@ class KoroshiOperarioAsignacionAreas(models.Model):
                 [i for i in set(p['lote'] for p in personas if p['lote'] and p['area'] == 'picking') if i not in vistas]).exists():
             filas.append(self._fila_lote(b, False, False, None, 0))
 
+        # v2.25: aviso al responsable de los pedidos que alguien ha dejado hoy («Dejar este pedido» o desde Lecturas)
+        dejados = []
+        try:
+            desde, hasta = comun.rango_dia_utc(hoy)
+            estados = dict(self._fields['estado'].selection)
+            for a in Asig.search([('motivo_id.destino', '=', 'libre'), ('company_id', '=', company.id),
+                                  ('fecha_salto', '>=', fields.Datetime.to_string(desde)),
+                                  ('fecha_salto', '<', fields.Datetime.to_string(hasta))],
+                                 order='fecha_salto desc', limit=20):
+                dejados.append({
+                    'hora': comun.a_local(a.fecha_salto).strftime('%H:%M'), 'quien': a.employee_id.name or '',
+                    'pedido': (a.name or '').replace('EFFEC/', ''), 'tienda': a.tienda or '',
+                    'prog': a.prog_texto or '', 'estado': estados.get(a.estado, ''),
+                })
+        except Exception:   # solo informativo: nunca rompe el tablero
+            _logger.exception('KOROSHI OPERARIOS tablero áreas: dejados')
+
         return {
             'areas': [{'codigo': c, 'nombre': n} for c, n in AREAS],
             'personas': personas,
             'filas': filas,
+            'dejados': dejados,
             'hora': comun.ahora_local().strftime('%H:%M'),
         }
 

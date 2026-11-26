@@ -242,8 +242,12 @@ v3.36.1 (25/11/2026): capacidades por defecto de «Caja llena» a 600X400X400=0.
 0.060), lo pidió Isaac. Con las cajas cerradas en 7 días (Monitor: 600X400X400 p50 0,082, p90 0,102, p98 0,117; MEDIANA
 p90 0,067, p98 0,088) la pregunta del 100 % sale hacia el p90 y el aviso del 115 % hacia el p98, no en 1 de cada 4 cajas.
 El parámetro caja_llena_capacidades, si se crea, sigue mandando.
+v3.37.0 (26/11/2026): en la pausa de Lecturas, botón «Dejar este pedido (que lo haga otro)» (dos toques). Llama a
+/koroshi/operarios/soltar (koroshi_operarios 2.25.0, instalarla antes): el pedido queda libre para otro, lo leído se
+queda y la PDA queda libre como en la pausa. Antes la pausa solo dejaba seguir con el mismo pedido. Isaac eligió que lo
+pueda hacer la operaria, con aviso al responsable en el Tablero. Sin campos nuevos.
 """,
-    'version': '13.0.3.36.1',
+    'version': '13.0.3.37.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

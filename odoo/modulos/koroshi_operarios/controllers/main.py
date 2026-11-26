@@ -265,6 +265,20 @@ class KoroshiOperarios(http.Controller):
         res.update({'que': 'saltada', 'destino': destino, 'msg_salto': texto})
         return res
 
+    @http.route('/koroshi/operarios/soltar', type='json', auth='user')
+    def soltar(self, employee_id=False, **kw):
+        """v2.25: dejar el pedido (el que hace o el de la pausa) para que lo haga otro. Lo usa la pausa de Lecturas."""
+        _comprobar_grupo()
+        Asig = request.env['koroshi.operario.asignacion'].sudo()
+        try:
+            emp = self._empleado(employee_id)
+            asig, destino = Asig.soltar(emp)
+        except UserError as e:
+            return _error(e)
+        texto = ('%s queda en expediciones: ya lo había dejado otro hoy' % asig.name if destino == 'oficina'
+                 else '%s la hará otro: no te vuelve a salir hoy' % asig.name)
+        return {'ok': True, 'que': 'soltada', 'destino': destino, 'msg': texto}
+
     @http.route('/koroshi/operarios/dejar', type='json', auth='user')
     def dejar(self, employee_id=False, **kw):
         _comprobar_grupo()   # v2.13

@@ -484,6 +484,25 @@ class KoroshiOperarioAsignacion(models.Model):
         return self.sudo().search(dom).mapped('employee_id')
 
     @api.model
+    def soltar(self, employee):
+        """v2.25 (26/11, una operaria se quedó atada a un pedido de About You: la pausa la devolvía siempre a él).
+        Desde la pausa de Lecturas, la persona deja el pedido que hace o el que tiene en pausa: queda libre para otro,
+        como «Dejar este pedido» de la PDA (si otro ya lo dejó hoy, a expediciones). Lo leído no se toca. El
+        responsable lo ve en el Tablero («Pedidos dejados hoy»)."""
+        Asig = self.sudo()
+        actual = Asig.search([('employee_id', '=', employee.id), ('estado', '=', 'curso')],
+                             order='write_date desc', limit=1)
+        if not actual:
+            actual = Asig.search([('employee_id', '=', employee.id), ('estado', '=', 'cola'),
+                                  ('motivo_id.destino', '=', 'pausa')], order='fecha_salto desc', limit=1)
+        if not actual:
+            raise UserError(_('No tienes ningún pedido empezado ni en pausa'))
+        motivo = self.env['koroshi.operario.motivo'].sudo().search([('destino', '=', 'libre')], limit=1)
+        if not motivo:
+            raise UserError(_('Falta el motivo «Dejar este pedido» en Odoo: avisa al responsable'))
+        return self.saltar(employee, motivo, _('Dejado desde Lecturas'), actual=actual)
+
+    @api.model
     def en_pausa(self):
         """v2.11: quién está ahora en pausa (comer, café): su OUT sigue en cola con el motivo «pausa» de hoy y no ha
         empezado nada desde entonces. [(asignación, hora de la pausa)]"""
@@ -700,10 +719,12 @@ class KoroshiOperarioAsignacion(models.Model):
         return True
 
     @api.model
-    def saltar(self, employee, motivo, nota=''):
-        """La OUT que esta haciendo se salta. Devuelve (asignacion saltada, destino)."""
-        actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')],
-                                    order='write_date desc', limit=1)
+    def saltar(self, employee, motivo, nota='', actual=None):
+        """La OUT que esta haciendo se salta. Devuelve (asignacion saltada, destino). v2.25: con actual, esa (la de
+        la pausa, desde soltar)."""
+        if not actual:
+            actual = self.sudo().search([('employee_id', '=', employee.id), ('estado', '=', 'curso')],
+                                        order='write_date desc', limit=1)
         if not actual:
             raise UserError(_('No tienes ningun pedido empezado'))
         if motivo.pide_nota and not (nota or '').strip():

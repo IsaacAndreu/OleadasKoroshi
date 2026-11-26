@@ -180,8 +180,14 @@ bin/versiones/diseno-pda-entrada-unica_2026-11-20_v2.md, fase 3): para el tiempo
 Inicio, no la pantalla de inicio de Odoo con todas las apps (Isaac: en la PDA no se ve contabilidad ni informes). Solo
 en el navegador que ha abierto el Inicio (marca en sessionStorage); en los demás, Salir sigue como en la 2.7. La salida
 por inactividad no cambia. Operarios no depende de Actividades. Solo JS de la pantalla; nada en el servidor.
+v2.25.0 (26/11/2026): soltar un pedido desde la pausa de Lecturas (una operaria se quedó atada a un pedido de About You:
+la pausa lo deja suyo y el primero, y cada vez que pasaba la tarjeta volvía a él). Ruta nueva /koroshi/operarios/soltar
+y asignacion.soltar(): deja el pedido que hace o el que tiene en pausa como «Dejar este pedido» (libre para otro, a ella
+no le vuelve a salir hoy; si otro ya lo dejó hoy, a expediciones). Lo leído no se toca. Isaac eligió que lo pueda
+hacer la operaria, con aviso: el Tablero por áreas enseña «Pedidos dejados hoy» (quién, qué pedido, cuánto llevaba y
+cómo está ahora). saltar() admite la asignación (actual). Sin campos nuevos. Instalar antes que preparación 3.37.0.
 """,
-    'version': '13.0.2.24.0',
+    'version': '13.0.2.25.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

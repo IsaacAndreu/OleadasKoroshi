@@ -18,6 +18,7 @@
                 <div class="o_kp_pausa_texto"/>
                 <button type="button" class="o_kp_seguir">▶ Seguir</button>
                 <div class="o_kp_pausa_nota">Tu tiempo está parado. La OUT sigue siendo tuya.</div>
+                <button type="button" class="o_kp_soltar">Dejar este pedido (que lo haga otro)</button>
             </div>
             <div class="o_kp_app">
                 <!-- cabecera: volver, OUT, tienda, operario -->
