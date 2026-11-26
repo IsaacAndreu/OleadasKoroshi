@@ -112,8 +112,15 @@ actualizar). «Manipulación devoluciones» (portátil) pasa a Recepciones como 
 (migrations/13.0.1.8.3; sus tramos pasan a contar en Recepciones). Sin koroshi_devoluciones el área solo cuenta el
 tiempo. Sin campos nuevos. El cron de cierre se llama ahora «cierre por turno y ¿Sigues?» (desde la 1.7.0 ya no
 es «pausa 13:00 y cierre 17:00»).
+v1.8.4 (26/11/2026): URGENTE, en la PDA no se podía entrar por «Inicio PDA» (Isaac 26/11: lee la tarjeta, no puede pulsar
+Intro y no entra). La 1.8.3 dejaba el foco siempre en el campo del lector y con inputmode="none" (sin
+teclado): si el lector no manda Intro, la tarjeta quedaba escrita en el campo sin forma de entrar, y con el foco en un
+campo Odoo tampoco da la lectura (barcode_scanned). Ahora, como Lecturas: en la PDA (táctil) el foco ya no se fuerza
+(el lector entra por barcode_scanned, con o sin Intro) y al tocar el campo sale el teclado; botón «Entrar» al lado del
+campo; y lo que llega a ritmo de lector (menos de 60 ms entre letras, 4 o más) entra solo a los 300 ms sin Intro. En
+el PC el campo sigue con el foco. Solo JS, XML y CSS del Inicio.
 """,
-    'version': '13.0.1.8.3',
+    'version': '13.0.1.8.4',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

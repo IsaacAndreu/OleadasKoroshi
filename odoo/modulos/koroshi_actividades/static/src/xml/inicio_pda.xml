@@ -23,9 +23,14 @@
             </section>
             <!-- v1.8.3: el campo del lector está siempre (también con alguien dentro: pasar otra tarjeta cambia de
                  persona) y con el foco, como en Lecturas. Sin foco, el lector de la PDA escribía en ninguna parte. -->
+            <!-- v1.8.4: sin inputmode="none" (al tocar el campo sale el teclado, como en Lecturas) y botón «Entrar»:
+                 con la 1.8.3 la tarjeta quedaba escrita y no había Intro (26/11). -->
             <div class="o_ki_leer">
-                <input type="text" class="o_ki_codigo" inputmode="none" autocomplete="off"
-                       placeholder="O escribe tu código y pulsa Intro"/>
+                <div class="o_ki_fila_codigo">
+                    <input type="text" class="o_ki_codigo" autocomplete="off"
+                           placeholder="O escribe tu código y pulsa Entrar"/>
+                    <button type="button" class="o_ki_entrar">Entrar</button>
+                </div>
                 <div class="o_ki_estado_lector"><span class="o_ki_luz" role="presentation"/>
                     <span class="o_ki_estado_txt">Toca la pantalla</span></div>
             </div>

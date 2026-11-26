@@ -29,6 +29,12 @@ var PITIDO_SIGUES_MS = 60000;
 var CLAVE_FIJO = 'koroshi_actividades_fijo';    // persona de la pantalla de Actividades (inversa)
 var CLAVE_INICIO = 'koroshi_inicio_pda';        // sessionStorage: este navegador usa el Inicio (botón «◀ Áreas»)
 var PERSONA_MS = 60 * 60000;    // se cambia con /koroshi/operarios/minutos_tarjeta
+// v1.8.4: en la PDA (pantalla táctil) no se fuerza el foco en el campo, como Lecturas: sin foco, el lector llega a
+// Odoo como lectura (barcode_scanned) aunque no mande Intro al final. Con el foco en el campo eso no pasa.
+var TACTIL = ('ontouchstart' in window) || (navigator.maxTouchPoints || 0) > 0;
+var LECTOR_MS_TECLA = 60;       // más rápido que esto entre letras = lector (una persona no teclea así)
+var LECTOR_PAUSA_MS = 300;      // sin letras nuevas en este tiempo, lo leído por el lector entra solo
+var LECTOR_MIN = 4;
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
 
@@ -70,14 +76,16 @@ var InicioPda = AbstractAction.extend({
         'keydown .o_ki_codigo': '_onKeydown',
         'focusin .o_ki_codigo': '_estadoLector',
         'focusout .o_ki_codigo': '_onFocoFuera',
-        'click .o_ki_estado_lector': '_foco',
+        'input .o_ki_codigo': '_onInput',
+        'click .o_ki_entrar': '_onEntrarCodigo',
+        'click .o_ki_estado_lector': '_onTocarCampo',
         'click .o_ki_area': '_onArea',
         'click .o_ki_act': '_onActividad',
         'click .o_ki_cerrar_panel': '_onCerrarPanel',
         'click .o_ki_pausa': '_onPausa',
         'click .o_ki_salir': '_onSalir',
         'click .o_ki_enlace': '_onEnlace',
-        'click .o_ki_lector': '_foco',
+        'click .o_ki_lector': '_onTocarCampo',
         'click .o_ki_aviso': '_onAviso',
         'pointerdown': '_marcar',
     },
@@ -122,6 +130,7 @@ var InicioPda = AbstractAction.extend({
         clearInterval(this.timer);
         clearInterval(this.timerRefresco);
         clearTimeout(this.timerAviso);
+        clearTimeout(this.timerCampo);
         if (this.audio) { try { this.audio.close(); } catch (e) { /* nada */ } }
         this._super.apply(this, arguments);
     },
@@ -240,10 +249,40 @@ var InicioPda = AbstractAction.extend({
         // v1.8.3: Intro o tabulador al final (según cómo esté configurado el lector)
         if (ev.key === 'Enter' || ev.keyCode === 13 || ev.key === 'Tab' || ev.keyCode === 9) {
             ev.preventDefault();
-            var v = $(ev.currentTarget).val();
-            $(ev.currentTarget).val('');
-            this._leer(v);
+            this._leerCampo();
         }
+    },
+    _leerCampo: function () {
+        var $c = this.$('.o_ki_codigo');
+        var v = $c.val();
+        $c.val('');
+        clearTimeout(this.timerCampo);
+        this.tecleo = null;
+        this._leer(v);
+    },
+    _onEntrarCodigo: function () {
+        this._leerCampo();    // v1.8.4: botón «Entrar» (sin Intro en el teclado o en el lector)
+    },
+    _onInput: function (ev) {
+        // v1.8.4: si las letras llegan a ritmo de lector, al parar LECTOR_PAUSA_MS entra solo, sin Intro
+        var self = this, ahora = Date.now(), v = $(ev.currentTarget).val() || '';
+        if (!v) { this.tecleo = null; return; }
+        if (!this.tecleo || v.length <= 1) {
+            this.tecleo = {inicio: ahora, ultima: ahora, n: v.length};
+        } else {
+            this.tecleo.ultima = ahora;
+            this.tecleo.n = v.length;
+        }
+        clearTimeout(this.timerCampo);
+        this.timerCampo = setTimeout(function () {
+            var t = self.tecleo, actual = (self.$('.o_ki_codigo').val() || '').trim();
+            if (!t || actual.length < LECTOR_MIN || t.n < 2) { return; }
+            if ((t.ultima - t.inicio) / (t.n - 1) <= LECTOR_MS_TECLA) { self._leerCampo(); }
+        }, LECTOR_PAUSA_MS);
+    },
+    _onTocarCampo: function () {
+        this.$('.o_ki_codigo').focus();    // tocar «Toca aquí» = escribir (en la PDA sale el teclado)
+        this._estadoLector();
     },
     _leer: function (codigo) {
         var self = this;
@@ -373,10 +412,10 @@ var InicioPda = AbstractAction.extend({
         }
     },
     _foco: function () {
-        // v1.8.3: siempre con el foco en el campo del lector, haya o no alguien dentro (como Lecturas en bloqueo).
-        // inputmode="none": en la PDA no saca el teclado.
+        // v1.8.3: con el foco en el campo del lector. v1.8.4: solo en el PC; en la PDA (táctil) no, como Lecturas: el
+        // lector llega por barcode_scanned y el teclado solo sale si se toca el campo.
         var $c = this.$('.o_ki_codigo');
-        if ($c.length && this.el && $.contains(document, this.el) && document.activeElement !== $c[0]) {
+        if (!TACTIL && $c.length && this.el && $.contains(document, this.el) && document.activeElement !== $c[0]) {
             $c.focus();
         }
         this._estadoLector();
@@ -387,9 +426,11 @@ var InicioPda = AbstractAction.extend({
         setTimeout(function () { self._foco(); }, 80);
     },
     _estadoLector: function () {
-        var listo = !!this.el && document.activeElement === this.$('.o_ki_codigo')[0];
+        var enCampo = !!this.el && document.activeElement === this.$('.o_ki_codigo')[0];
+        var listo = enCampo || TACTIL;    // en la PDA el lector funciona sin foco (barcode_scanned)
         this.$('.o_ki_estado_lector').toggleClass('o_ki_listo', listo);
-        this.$('.o_ki_estado_txt').text(listo ? 'Lector preparado' : 'Toca aquí para leer');
+        this.$('.o_ki_estado_txt').text(enCampo ? 'Lector preparado' :
+            (TACTIL ? 'Lector preparado · toca aquí para escribir' : 'Toca aquí para leer'));
     },
     _minutosDesde: function (utc) {
         var d = _fecha(utc);
