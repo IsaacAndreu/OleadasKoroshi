@@ -116,8 +116,14 @@ v1.7.0 (26/11/2026): Isaac: (1) el modelo se autocompleta al escribir (a los 3 c
   propone las uds del PL. Con KO, el nº a mano y el palé son opcionales; la caja física es el KO. Avisa si el mismo
   KO lleva otro modelo. El nº a mano y «+1 caja» siguen como modo rápido. No toca stock (opción A: la IN queda
   pendiente). Sin campos nuevos en tablas compartidas; koroshi.recepcion.lectura.contenedor_id ya existía.
+v1.7.1 (26/11/2026): prueba de Isaac en la PDA (11:24): escribió «2711JA22» en el campo de «Contar cajas» y no pasó
+  nada visible (el aviso sale arriba, fuera de la pantalla, y el título decía «Pon el modelo abajo (3)»). Ahora ese
+  campo admite el modelo: un número corto (108, 108A) es el nº de caja y hace «+1» si hay modelo (si no, aviso en
+  rojo «Primero el modelo»); KO_/PAL/EAN se leen; otro texto es el modelo, con autocompletar (si queda uno se pone;
+  si hay varios, salen para tocar). El aviso sale también dentro del bloque. El modelo activo se ve grande arriba con
+  «Cambiar». Solo pantalla (JS y CSS); sin cambios en la BD.
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.7.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

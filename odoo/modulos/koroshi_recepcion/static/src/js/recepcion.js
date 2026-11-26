@@ -1,6 +1,9 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.7.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.7.1 (26/11/2026) - PDA o tablet.
+ * 1.7.1 (prueba de Isaac 11:24): el campo de «Contar cajas» admite el modelo (con autocompletar): un número = nº de
+ *    caja + «+1» (si no hay modelo, aviso «Primero el modelo»); otro texto = modelo. Nunca se queda sin aviso: el
+ *    mensaje sale también dentro del bloque. Modelo activo grande arriba con «Cambiar».
  * 1.7.0 (Isaac): el modelo se autocompleta al escribir (primero los de las IN y del PL; si queda uno, se pone solo).
  *    Vuelve el KO_ por caja: «🏷 Etiquetas KO» crea N y las manda a la Zebra; se lee el KO de la caja, el modelo y
  *    las uds (con nº y PL, propone las del PL) y se guarda. El nº a mano y «+1 caja» quedan como modo rápido.
@@ -58,6 +61,7 @@ var Pantalla = AbstractAction.extend({
         'input .o_kr_cant': '_onCantInput',
         'keydown .o_kr_buscar_in': '_onBuscarInKey',
         'keydown .o_kr_ncaja1': '_onCaja1Key',
+        'input .o_kr_ncaja1': '_onCaja1Input',
         'change .o_kr_in input[type=checkbox]': '_onMarcaIn',
         'change .o_kr_ncaja, .o_kr_pedido': '_onCambiaCaja',
     },
@@ -535,6 +539,16 @@ var Pantalla = AbstractAction.extend({
         this.resModelos = null;
         this.textoBuscado = '';
         this.cantidad = '';
+        this.sug1 = null;
+        if (this.desdeMasUno) {          // 1.7.1: elegido en «Contar cajas»: se sigue allí
+            this.desdeMasUno = false;
+            this.msg1 = {tipo: 'ok', txt: 'Modelo ' + this.modelo + '. Ahora «+1 caja» o escribe el nº de caja e Intro.'};
+            this._aviso('ok', this.msg1.txt);
+            this._pintar();
+            this.$('.o_kr_ncaja1').focus();
+            return;
+        }
+        this.msg1 = null;
         this._aviso('ok', 'Modelo ' + this.modelo + ': escribe las uds de la caja.');
         this._pintar();
         this._siguienteCampo();
@@ -588,20 +602,22 @@ var Pantalla = AbstractAction.extend({
                 self.$('.o_kr_sugerencias').html(self._htmlSugerencias());
             });
     },
-    _htmlSugerencias: function () {
-        if (!this.resModelos) { return ''; }
-        if (!this.resModelos.length) {
-            return '<p class="o_kr_gris">Ningún modelo con «' + _e(this.textoBuscado) + '».</p>';
+    _htmlSugerencias: function (s) {
+        // s (1.7.1): {modelos, mas, texto}; sin s, las del buscador de abajo
+        s = s || {modelos: this.resModelos, mas: this.resultadosMas, texto: this.textoBuscado};
+        if (!s.modelos) { return ''; }
+        if (!s.modelos.length) {
+            return '<p class="o_kr_gris">Ningún modelo con «' + _e(s.texto) + '».</p>';
         }
         var h = '<div class="o_kr_resultados">';
-        _.each(this.resModelos, function (m) {
+        _.each(s.modelos, function (m) {
             var propio = m.en_in || m.en_pl;
             h += '<button type="button" data-accion="elegir_modelo" data-valor="' + _e(m.modelo) + '"' +
                 (propio ? ' class="o_kr_de_in"' : '') + '><b>' + _e(m.modelo) + '</b> ' + _e(m.nombre) +
                 (propio ? (m.en_in ? '' : ' <span class="o_kr_gris">(del PL)</span>')
                     : ' <span class="o_kr_gris">(no está en las IN)</span>') + '</button>';
         });
-        if (this.resultadosMas) { h += '<p class="o_kr_gris">Hay más: escribe un trozo más largo.</p>'; }
+        if (s.mas) { h += '<p class="o_kr_gris">Hay más: escribe un trozo más largo.</p>'; }
         return h + '</div>';
     },
     // 1.7.0: «🏷 Etiquetas KO»: crea N KO_ de esta recepción y los manda a la Zebra de Expediciones
@@ -633,7 +649,10 @@ var Pantalla = AbstractAction.extend({
         this.cantidad = v.replace(/[^0-9]/g, '');
         this._a_guardar();
     },
-    _a_elegir_modelo: function (m) { this._ponerModelo(m); },
+    _a_elegir_modelo: function (m, $b) {
+        if ($b && $b.closest('.o_kr_sug1').length) { this.desdeMasUno = true; }    // 1.7.1: elegido arriba
+        this._ponerModelo(m);
+    },
     _a_otro_modelo: function () { this.modelo = ''; this.resModelos = null; this._pintar(); this.$('.o_kr_buscar').focus(); },
     // 1.4.1: «+1 caja» / «−1»
     _a_mas_uno: function () {
@@ -641,7 +660,10 @@ var Pantalla = AbstractAction.extend({
         if (!this._necesitaPersona()) { return; }
         if (Date.now() < this.masUnoHasta) { return; }          // doble toque: 2 s entre «+1»
         this.masUnoHasta = Date.now() + 2000;
-        if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Primero pon el modelo (escríbelo y Intro, o lee una prenda).'); }
+        if (!this.modelo) {
+            this._pitido(false);
+            return this._aviso1('mal', 'Primero el modelo: escríbelo aquí (2711JA22) e Intro, o lee una prenda.');
+        }
         var nCaja = (this.$('.o_kr_ncaja1').val() || '').trim();     // 1.6.0: nº de caja, opcional
         return this._llamar('/koroshi/recepcion/mas_uno', {
             recepcion_id: this.rec.id, palet_id: this.palet ? this.palet.id : false, modelo: this.modelo,
@@ -653,14 +675,15 @@ var Pantalla = AbstractAction.extend({
             var txt = '+1 ' + (r.pl ? r.pl : (r.caja ? 'caja ' + r.caja + ' de ' : 'caja de ') + (r.modelo || 'sin modelo')) +
                 ' · ' + ((self.rec.por_modelo || {})[r.modelo] || 0) + ' de este modelo; ' + self.rec.cajas_leidas + ' / ' +
                 (self.rec.total || '?') + ' en total.' + (self.palet ? '' : ' (sin palé)');
+            self.msg1 = null;
             self._pintar();
             self.$('.o_kr_ncaja1').focus();
             if (r.avisos && r.avisos.length) {
                 self._pitido(false);
-                self._aviso('mal', 'Contada, pero OJO: ' + r.avisos.join('; ') + '. ' + txt);
+                self._aviso1('mal', 'Contada, pero OJO: ' + r.avisos.join('; ') + '. ' + txt);
             } else {
                 self._pitido(true);
-                self._aviso('ok', txt);
+                self._aviso1('ok', txt);
             }
         });
     },
@@ -681,24 +704,99 @@ var Pantalla = AbstractAction.extend({
         var r = this.rec;
         var n = this.modelo ? ((r.por_modelo || {})[this.modelo] || 0) : 0;
         var faltan = this.modelo ? (r.faltan || {})[this.modelo] : '';
+        var m1 = this.msg1;
+        // 1.7.1: el modelo activo grande con «Cambiar»; el mismo campo admite el modelo o el nº de caja
         return '<div class="o_kr_caja ' + (this.modelo ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">' +
-            'Contar cajas (modelo activo)</div>' +
-            '<div class="o_kr_grande">' + (this.modelo ? _e(this.modelo) + ': ' + n + ' cajas' : 'Pon el modelo abajo (3)') +
-            '</div>' + (faltan ? '<div>Faltan (nº): ' + _e(faltan) + '</div>' : '') +
+            'Contar cajas</div>' +
+            (this.modelo
+                ? '<div class="o_kr_fila"><div class="o_kr_grande">Modelo ' + _e(this.modelo) + ' · ' + n + ' cajas</div>' +
+                  '<button type="button" data-accion="cambiar_modelo1">Cambiar</button></div>'
+                : '<div class="o_kr_grande">Sin modelo: escríbelo aquí abajo e Intro</div>') +
+            (faltan ? '<div>Faltan (nº): ' + _e(faltan) + '</div>' : '') +
+            (m1 ? '<div class="o_kr_aviso1 o_kr_' + m1.tipo + '" style="padding:4px;font-weight:bold">' + _e(m1.txt) +
+                '</div>' : '') +
             '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_ncaja1" autocomplete="off" ' +
-            'placeholder="nº de caja (si quieres) e Intro" style="max-width:220px"/>' +
+            'placeholder="' + (this.modelo ? 'nº de caja (si quieres) e Intro' : 'modelo (2711JA22) e Intro') +
+            '" style="max-width:260px"/>' +
             '<button type="button" class="o_kr_primario o_kr_mas_uno" ' +
             'style="font-size:28px;min-width:180px;min-height:70px" data-accion="mas_uno">+1 caja</button>' +
-            '<button type="button" data-accion="menos_uno">−1</button></div></div>';
+            '<button type="button" data-accion="menos_uno">−1</button></div>' +
+            '<div class="o_kr_sug1">' + this._htmlSugerencias(this.sug1) + '</div></div>';
     },
-    // 1.6.0: Intro en el nº de caja del «+1» = «+1 caja» (un EAN leído ahí es una prenda: su modelo)
+    // 1.6.0: Intro en el nº de caja del «+1» = «+1 caja» (un EAN leído ahí es una prenda: su modelo).
+    // 1.7.1: un número corto = nº de caja (+1, con modelo); KO_/PAL = se lee; otro texto = el modelo
+    _esNumCaja: function (v) { return /^\d{1,5}[A-Za-z]?$/.test(v); },
+    _aviso1: function (tipo, txt) {
+        this.msg1 = {tipo: tipo, txt: txt};
+        this._aviso(tipo, txt);
+        var $b = this.$('.o_kr_aviso1');
+        if ($b.length) {
+            $b.removeClass('o_kr_ok o_kr_mal o_kr_info').addClass('o_kr_' + tipo).text(txt);
+        } else if (this.$('.o_kr_ncaja1').length) {
+            this.$('.o_kr_ncaja1').closest('.o_kr_fila').before(
+                $('<div class="o_kr_aviso1" style="padding:4px;font-weight:bold"/>').addClass('o_kr_' + tipo).text(txt));
+        }
+    },
     _onCaja1Key: function (ev) {
+        var self = this;
         if (ev.which !== 13) { return; }
         ev.preventDefault();
         var v = (ev.currentTarget.value || '').trim();
         if (/^\d{8,}$/.test(v)) { ev.currentTarget.value = ''; return this._leer(v, 'campo'); }
+        if (/^(KO_|TT_|PAL)/i.test(v)) { ev.currentTarget.value = ''; return this._leer(v, 'campo'); }
+        if (v && !this._esNumCaja(v)) {             // un modelo (o un trozo)
+            clearTimeout(this.auto1Timer);
+            this.auto1Texto = null;
+            this.desdeMasUno = true;
+            return this._llamar('/koroshi/recepcion/buscar', {recepcion_id: this.rec.id, texto: v, modelos: true})
+                .then(function (r) {
+                    if (!r) { self.desdeMasUno = false; return; }
+                    if (r.modelos.length === 1) { return self._ponerModelo(r.modelos[0].modelo); }
+                    self.sug1 = {modelos: r.modelos, mas: r.mas, texto: v};
+                    self._pitido(false);
+                    self._aviso1('mal', r.modelos.length ? 'Hay ' + r.modelos.length + (r.mas ? ' o más' : '') +
+                        ' modelos con «' + v + '»: toca el bueno.' : 'No encuentro ningún modelo con «' + v + '».');
+                    self.$('.o_kr_sug1').html(self._htmlSugerencias(self.sug1));
+                });
+        }
+        if (!this.modelo) {
+            this._pitido(false);
+            return this._aviso1('mal', v ? 'Primero el modelo: «' + v + '» es un nº de caja. Escribe el modelo ' +
+                '(2711JA22) e Intro, o lee una prenda.' : 'Primero el modelo: escríbelo aquí (2711JA22) e Intro.');
+        }
         this.masUnoHasta = 0;
         this._a_mas_uno();
+    },
+    // 1.7.1: autocompletar también aquí (sin modelo activo y si no es un nº de caja)
+    _onCaja1Input: function (ev) {
+        var self = this;
+        var v = (ev.currentTarget.value || '').trim();
+        clearTimeout(this.auto1Timer);
+        if (this.modelo || v.length < 3 || this._esNumCaja(v) || /^\d{8,}$/.test(v) || /^(KO_|TT_|PAL)/i.test(v)) {
+            if (this.sug1) { this.sug1 = null; this.$('.o_kr_sug1').html(''); }
+            return;
+        }
+        this.auto1Timer = setTimeout(function () {
+            self.auto1Texto = v;
+            self._llamar('/koroshi/recepcion/buscar', {recepcion_id: self.rec.id, texto: v, modelos: true}, true)
+                .then(function (r) {
+                    if (!r || self.auto1Texto !== v || self.modelo) { return; }
+                    if ((self.$('.o_kr_ncaja1').val() || '').trim() !== v) { return; }
+                    if (r.modelos.length === 1 && !r.mas) {
+                        self.desdeMasUno = true;
+                        return self._ponerModelo(r.modelos[0].modelo);
+                    }
+                    self.sug1 = {modelos: r.modelos, mas: r.mas, texto: v};
+                    self.$('.o_kr_sug1').html(self._htmlSugerencias(self.sug1));
+                });
+        }, 300);
+    },
+    _a_cambiar_modelo1: function () {
+        this.modelo = '';
+        this.sug1 = null;
+        this.msg1 = {tipo: 'info', txt: 'Escribe el modelo (2711JA22) e Intro, o lee una prenda.'};
+        this._pintar();
+        this.$('.o_kr_ncaja1').focus();
     },
     // 1.6.0: al marcar IN, la matrícula sale de sus contenedores (carrier_tracking_ref) si no se ha escrito otra
     _onMarcaIn: function () {

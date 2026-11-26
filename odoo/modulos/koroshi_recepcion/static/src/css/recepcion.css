@@ -8,6 +8,10 @@
 .o_koroshi_recepcion .o_kr_aviso.o_kr_ok { background: #d4edda; color: #155724; }
 .o_koroshi_recepcion .o_kr_aviso.o_kr_mal { background: #f8d7da; color: #721c24; }
 .o_koroshi_recepcion .o_kr_aviso.o_kr_info { background: #e2e8f0; color: #1a202c; }
+/* 1.7.1: aviso dentro del bloque «Contar cajas» (el de arriba puede quedar fuera de la pantalla en la PDA) */
+.o_koroshi_recepcion .o_kr_aviso1.o_kr_ok { background: #d4edda; color: #155724; }
+.o_koroshi_recepcion .o_kr_aviso1.o_kr_mal { background: #f8d7da; color: #721c24; }
+.o_koroshi_recepcion .o_kr_aviso1.o_kr_info { background: #e2e8f0; color: #1a202c; }
 .o_koroshi_recepcion button { font-size: 17px; padding: 10px 14px; border-radius: 8px; border: 1px solid #999;
                               background: #f4f4f4; margin: 3px; min-height: 48px; }
 .o_koroshi_recepcion button.o_kr_primario { background: #2b6cb0; color: #fff; border-color: #2b6cb0; font-weight: 700; }
