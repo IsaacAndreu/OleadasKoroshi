@@ -464,6 +464,9 @@ copiado** (ver 7.3).
 | P19 | El bucket público `nath-stock-feed-q7m4x2` tiene **un solo fichero, `code22_lockergear_stock.csv` (296 KB), que se regenera cada día a las 07:00**. Es el feed de stock de Code22/Lockergear para alguien de fuera. **No se ha encontrado quién lo escribe**: no está en el `crontab` de ninguna VM ni en los módulos de `custom_addons`. Probablemente un cron o acción de servidor de Odoo (en la base) o el servidor de Ionos. **Hay que saberlo antes de migrar**: quien lo lee usa la URL de Google Storage, y al dejar GCP hay que mantener ese bucket o darles una URL nueva. |
 | P20 | La cuenta de facturación antigua era NATH; ahora es Prime Collections. |
 
+**P10 cerrada (26/11):** Isaac ha hablado con S4T y transportistas: no hay listas blancas que dependan de nuestra IP
+(nos conectamos nosotros a ellos). No hace falta avisarles.
+
 ### 7.2 El fin de semana del corte (respuesta a la duda de P13)
 
 La duda: si se saca una copia un día y se tarda 2-3 días, ¿hay que recuperar después lo que se ha hecho en el
