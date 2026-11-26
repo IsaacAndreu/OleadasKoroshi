@@ -134,6 +134,20 @@ def pedido_ajeno(pedido, origenes):
     return bool(p) and p not in {clave_pedido(o) for o in origenes if o}
 
 
+def normalizar_modelo(texto):
+    """1.2.0: el modelo de la etiqueta (REFERENCE): « 2711ja22 » -> «2711JA22». Si se escribe la referencia entera
+    («2711JA22-000062-S»), se queda el modelo. Vacío -> ValueError."""
+    t = ''.join((texto or '').split()).upper()
+    if not t:
+        raise ValueError('Falta el modelo (el REFERENCE de la etiqueta, p. ej. 2711JA22).')
+    return modelo_de(t)
+
+
+def modelo_de(ref):
+    """«2711JA43-000062-S» -> «2711JA43» (el modelo, sin color ni talla); una referencia sin guiones, entera."""
+    return (partes_referencia(ref)[0] or '').upper()
+
+
 def clave_caja(caja):
     """Para ordenar nº de caja: los números por su valor, después lo demás."""
     c = caja or ''

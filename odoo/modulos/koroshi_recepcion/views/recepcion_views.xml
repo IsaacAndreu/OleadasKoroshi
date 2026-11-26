@@ -5,7 +5,7 @@
         <field name="name">koroshi.recepcion.tree</field>
         <field name="model">koroshi.recepcion</field>
         <field name="arch" type="xml">
-            <tree decoration-muted="state in ('validada', 'cancelada')" decoration-info="state == 'leyendo'">
+            <tree decoration-muted="state in ('validada', 'cerrada', 'cancelada')" decoration-info="state == 'leyendo'">
                 <field name="name"/>
                 <field name="matricula"/>
                 <field name="referencia"/>
@@ -30,8 +30,11 @@
                     <button name="action_comparar" type="object" string="Comparar con las IN"/>
                     <button name="action_exportar" type="object" string="Exportar (Excel)"
                             groups="stock.group_stock_manager"/>
+                    <button name="action_cerrar" type="object" string="Cerrar (sin tocar stock)"
+                            attrs="{'invisible': [('state', 'not in', ('pendiente', 'leyendo'))]}"
+                            confirm="Termina de apuntar cajas. No toca el stock: las IN quedan pendientes hasta leer las prendas. ¿Seguro?"/>
                     <button name="action_reabrir" type="object" string="Reabrir" groups="stock.group_stock_manager"
-                            attrs="{'invisible': [('state', '!=', 'validada')]}"
+                            attrs="{'invisible': [('state', 'not in', ('validada', 'cerrada'))]}"
                             confirm="Vuelve a «Leyendo» para recibir las cajas que faltaban (sus IN pendientes). ¿Seguro?"/>
                     <button name="action_validar_parcial" type="object" string="Validar lo leído hasta ahora"
                             groups="stock.group_stock_manager" attrs="{'invisible': [('state', '!=', 'leyendo')]}"
@@ -42,7 +45,7 @@
                     <button name="action_cancelar" type="object" string="Cancelar"
                             attrs="{'invisible': [('state', 'in', ('validada', 'cancelada'))]}"
                             confirm="¿Cancelar esta recepción? (solo si no tiene nada pasado a stock)"/>
-                    <field name="state" widget="statusbar" statusbar_visible="pendiente,leyendo,validada"/>
+                    <field name="state" widget="statusbar" statusbar_visible="pendiente,leyendo,cerrada,validada"/>
                 </header>
                 <sheet>
                     <div class="oe_title">
@@ -89,6 +92,7 @@
                                     <field name="caja_txt"/>
                                     <field name="pedido"/>
                                     <field name="pedido_ajeno"/>
+                                    <field name="modelo"/>
                                     <field name="producto_id"/>
                                     <field name="cantidad" sum="Uds"/>
                                     <field name="employee_id"/>
@@ -216,6 +220,7 @@
                   decoration-warning="estado in ('sobra', 'no_venia')" decoration-success="estado == 'ok'">
                 <field name="recepcion_id"/>
                 <field name="modelo"/>
+                <field name="cajas" sum="Cajas"/>
                 <field name="color"/>
                 <field name="talla"/>
                 <field name="ean"/>

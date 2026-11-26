@@ -53,8 +53,18 @@ v1.1.0 (26/11/2026): urgente (Isaac): la recepción ya no usa el contenedor de c
   no es de este contenedor. El KO_ se pondrá al ordenar y ubicar (fase 2). Las lecturas de la 1.0.x con KO_ siguen
   validándose a su KO_. Campos nuevos solo en koroshi.recepcion.lectura (caja, caja_txt, pedido, pedido_ajeno);
   contenedor_id deja de ser obligatorio.
+v1.2.0 (26/11/2026): opción A de Isaac (sustituye a la 1.1.0, que no llegó a instalarse): «es quedarà en pendiente fins
+  que es fiquen a llegir les prendes». Por cada caja que llega solo se apunta nº de caja (a mano), modelo (REFERENCE
+  de la etiqueta: buscador de modelos o leer el EAN de una prenda y quedarse con su modelo), uds totales de la caja y
+  palé/cara; el pedido de la etiqueta, opcional. NO toca stock ni las IN: no crea líneas hechas ni valida («Validar»
+  lo rechaza si hay cajas por modelo). «Terminar (cerrar)» deja la recepción cerrada y las IN pendientes y libres para
+  leer las prendas al ubicar; «Reabrir» vale también para las cerradas. Comparación, pantalla y Excel por modelo: cajas
+  y uds llegadas frente a las uds de las IN de ese modelo (suma de sus SKU) y dónde está cada caja (palé / caja); más
+  huecos en la numeración y cajas con pedido de otro contenedor. Avisos al guardar: pedido ajeno, caja ya en otro
+  palé, modelo que no viene en las IN, la misma caja y modelo dos veces. Campos nuevos solo en tablas propias
+  (lectura.modelo_leido, comparacion.cajas; producto_id de la lectura deja de ser obligatorio; estado «cerrada»).
 """,
-    'version': '13.0.1.1.0',
+    'version': '13.0.1.2.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

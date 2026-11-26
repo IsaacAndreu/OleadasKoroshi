@@ -1,6 +1,9 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.1.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.2.0 (26/11/2026) - PDA o tablet.
+ * 1.2.0 (opción A de Isaac): por caja solo se apunta nº de caja + modelo (REFERENCE de la etiqueta: buscador de modelos
+ *    o leer el EAN de una prenda) + uds totales de la caja + palé (+ pedido, opcional). No toca stock: «Cerrar» deja
+ *    la IN pendiente hasta leer las prendas al ubicar. Comparación por modelo.
  * 1.1.0: sin contenedor de control KO_. La caja es su nº escrito a mano (rotulador) y, si se quiere, el nº de pedido
  *    de su etiqueta (ORDER NUMBER): si no es de ninguna IN del contenedor, avisa. Recepcionar solo crea palés.
  * 0. Pasar la tarjeta (la misma de Lecturas, Contenedores y Faltante: memoria de la PDA).
@@ -49,6 +52,8 @@ var Pantalla = AbstractAction.extend({
         this.palet = null;          // {id, nombre}
         this.caja = '';             // 1.1.0: nº de caja escrito a mano (texto)
         this.pedido = '';           // nº de pedido de la etiqueta (opcional)
+        this.modelo = '';           // 1.2.0: modelo de la caja (2711JA22)
+        this.resModelos = null;     // buscador de modelos
         this.prod = null;           // {id, nombre, modelo, talla}
         this.cantidad = '';
         this.token = _token();
@@ -203,7 +208,7 @@ var Pantalla = AbstractAction.extend({
             self._pitido(true);
             if (r.tipo === 'palet') { self.palet = r.palet; self._aviso('ok', 'Palé ' + r.palet.nombre); }
             if (r.tipo === 'caja') { self._ponerCaja(r.caja); }
-            if (r.tipo === 'producto') { self._ponerProd(r.producto); }
+            if (r.tipo === 'producto') { self._ponerModelo(r.producto.base); }
             self._pintar();
         });
     },
@@ -450,14 +455,41 @@ var Pantalla = AbstractAction.extend({
     _a_buscar: function () {
         var self = this;
         var texto = this.$('.o_kr_buscar').val();
-        return this._llamar('/koroshi/recepcion/buscar', {recepcion_id: this.rec.id, texto: texto}).then(function (r) {
-            if (!r) { return; }
-            self.resultados = r.productos;
-            self.resultadosMas = r.mas;
-            self.textoBuscado = texto;
-            if (!r.productos.length) { self._aviso('mal', 'No encuentro prendas con «' + texto + '».'); }
-            self._pintar();
-        });
+        return this._llamar('/koroshi/recepcion/buscar', {recepcion_id: this.rec.id, texto: texto, modelos: true})
+            .then(function (r) {
+                if (!r) { return; }
+                self.resModelos = r.modelos;
+                self.resultadosMas = r.mas;
+                self.textoBuscado = texto;
+                if (!r.modelos.length) { self._aviso('mal', 'No encuentro modelos con «' + texto + '».'); }
+                if (r.modelos.length === 1) { return self._ponerModelo(r.modelos[0].modelo); }
+                self._pintar();
+            });
+    },
+    _ponerModelo: function (modelo) {
+        this.modelo = String(modelo || '');
+        this.resModelos = null;
+        this.textoBuscado = '';
+        this.cantidad = '';
+        this._aviso('ok', 'Modelo ' + this.modelo + ': escribe las uds de la caja.');
+        this._pintar();
+    },
+    _a_elegir_modelo: function (m) { this._ponerModelo(m); },
+    _a_otro_modelo: function () { this.modelo = ''; this.resModelos = null; this._pintar(); },
+    _a_cerrar: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        if (!window.confirm('¿Terminar de apuntar cajas? No toca el stock: la IN queda pendiente hasta leer las ' +
+                'prendas al ubicar.')) { return; }
+        return this._llamar('/koroshi/recepcion/cerrar', {recepcion_id: this.rec.id, employee_id: this.persona.id})
+            .then(function (r) {
+                if (!r) { return; }
+                self.rec = r.recepcion;
+                self.vista = 'ficha';
+                self._aviso('ok', 'Cerrado: ' + r.recepcion.cajas_leidas + ' cajas, ' + _n(r.recepcion.uds_leidas) +
+                    ' uds. La IN sigue pendiente.');
+                self._pintar();
+            });
     },
     _onBuscarKey: function (ev) {
         if (ev.which === 13) { ev.preventDefault(); this._a_buscar(); }
@@ -480,20 +512,22 @@ var Pantalla = AbstractAction.extend({
         if (this.$('.o_kr_ncaja').length) { this._onCambiaCaja(); }
         if (!this.palet) { this._pitido(false); return this._aviso('mal', 'Falta el palé: tócalo arriba.'); }
         if (!this.caja) { this._pitido(false); return this._aviso('mal', 'Falta el nº de caja (el escrito a mano).'); }
-        if (!this.prod) { this._pitido(false); return this._aviso('mal', 'Falta la prenda: léela o búscala.'); }
-        if (!parseInt(this.cantidad, 10)) { this._pitido(false); return this._aviso('mal', 'Escribe la cantidad.'); }
+        if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Falta el modelo: búscalo o lee una prenda.'); }
+        if (!parseInt(this.cantidad, 10)) { this._pitido(false); return this._aviso('mal', 'Escribe las uds de la caja.'); }
         return this._llamar('/koroshi/recepcion/guardar', {
             recepcion_id: this.rec.id, caja: this.caja, pedido: this.pedido, palet_id: this.palet.id,
-            producto_id: this.prod.id,
+            modelo: this.modelo, producto_id: false,
             cantidad: parseInt(this.cantidad, 10), employee_id: this.persona.id, token: this.token,
         }).then(function (r) {
             if (!r) { return; }
             self.token = _token();          // la siguiente lectura es otra
             self.rec = r.recepcion;
             self.ultimas = r.ultimas;
-            self.prod = null;               // la caja, el pedido y el palé se quedan: una caja puede tener varias tallas
+            // 1.2.0: una línea por caja; el modelo, el pedido y el palé se quedan para la siguiente caja
+            self.caja = '';
             self.cantidad = '';
             self._pintar();
+            self.$('.o_kr_ncaja').focus();
             if (r.avisos && r.avisos.length) {
                 self._pitido(false);
                 self._aviso('mal', 'Guardado, pero OJO: ' + r.avisos.join('; ') + '. (' + r.msg + ')');
@@ -679,12 +713,14 @@ var Pantalla = AbstractAction.extend({
         if (r.state === 'pendiente' || r.state === 'leyendo') {
             h += '<button type="button" data-accion="editar_ins">Cambiar IN</button>';
         }
+        if (r.state === 'leyendo') {
+            h += '<button type="button" data-accion="cerrar">Terminar (cerrar)</button>';
+        }
         if (r.responsable) {
-            h += '<button type="button" data-accion="exportar">Exportar (Excel)</button>';
-            if (r.state === 'leyendo') { h += '<button type="button" data-accion="comparar">Comparar y validar</button>'; }
-            if (r.state === 'validada') {
-                h += '<button type="button" data-accion="comparar">Comparar</button>' +
-                    '<button type="button" class="o_kr_primario" data-accion="reabrir">Reabrir (llegan cajas)</button>';
+            h += '<button type="button" data-accion="exportar">Exportar (Excel)</button>' +
+                '<button type="button" data-accion="comparar">Comparar con las IN</button>';
+            if (r.state === 'validada' || r.state === 'cerrada') {
+                h += '<button type="button" class="o_kr_primario" data-accion="reabrir">Reabrir (llegan cajas)</button>';
             }
         }
         h += '</div>';
@@ -729,29 +765,29 @@ var Pantalla = AbstractAction.extend({
             (this.caja ? '<button type="button" data-accion="otra_caja">Otra caja</button>' : '') + '</div>' +
             '<div class="o_kr_caja' + (this.palet ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">Palé</div>' +
             '<div class="o_kr_grande">' + (this.palet ? _e(this.palet.nombre) : 'Toca un palé') + '</div></div></div>';
-        h += '<div class="o_kr_caja' + (this.prod ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">3. Prenda</div>';
-        if (this.prod) {
-            h += '<div class="o_kr_grande">' + _e(this.prod.modelo) + ' · ' + _e(this.prod.talla) + '</div><div>' +
-                _e(this.prod.nombre) + '</div>';
+        h += '<div class="o_kr_caja' + (this.modelo ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">' +
+            '3. Modelo (REFERENCE de la etiqueta)</div>';
+        if (this.modelo) {
+            h += '<div class="o_kr_grande">' + _e(this.modelo) + '</div>' +
+                '<button type="button" data-accion="otro_modelo">Otro modelo</button>';
         } else {
-            h += '<div>Lee el código de barras o búscala:</div><div class="o_kr_fila">' +
-                '<input type="text" class="o_kr_campo o_kr_buscar" placeholder="últimos 4 números del EAN o un trozo ' +
-                'del modelo" value="' + _e(this.textoBuscado || '') + '"/>' +
+            h += '<div>Lee el código de barras de una prenda o busca el modelo:</div><div class="o_kr_fila">' +
+                '<input type="text" class="o_kr_campo o_kr_buscar" placeholder="2711JA22 o un trozo" value="' +
+                _e(this.textoBuscado || '') + '"/>' +
                 '<button type="button" data-accion="buscar">Buscar</button></div>';
-            if (this.resultados && this.resultados.length) {
+            if (this.resModelos && this.resModelos.length) {
                 h += '<div class="o_kr_resultados">';
-                _.each(this.resultados, function (p) {
-                    h += '<button type="button" data-accion="elegir" data-valor="' + p.id + '"' +
-                        (p.en_in ? ' class="o_kr_de_in"' : '') + '><b>' + _e(p.modelo) + ' · ' + _e(p.talla) +
-                        '</b> ' + _e(p.nombre) + (p.ean ? ' <span class="o_kr_gris">…' + _e(p.ean.slice(-4)) + '</span>'
-                        : '') + (p.en_in ? '' : ' <span class="o_kr_gris">(no está en las IN)</span>') + '</button>';
+                _.each(this.resModelos, function (m) {
+                    h += '<button type="button" data-accion="elegir_modelo" data-valor="' + _e(m.modelo) + '"' +
+                        (m.en_in ? ' class="o_kr_de_in"' : '') + '><b>' + _e(m.modelo) + '</b> ' + _e(m.nombre) +
+                        (m.en_in ? '' : ' <span class="o_kr_gris">(no está en las IN)</span>') + '</button>';
                 });
                 if (this.resultadosMas) { h += '<p class="o_kr_gris">Hay más: escribe un trozo más largo.</p>'; }
                 h += '</div>';
             }
         }
         h += '</div>';
-        h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Cantidad</div><div class="o_kr_cantidad">' +
+        h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Uds de la caja (total)</div><div class="o_kr_cantidad">' +
             _e(this.cantidad || '0') + '</div></div><div class="o_kr_teclado">';
         _.each(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'borrar', '0'], function (t) {
             h += '<button type="button" class="o_kr_tecla" data-tecla="' + t + '">' + (t === 'borrar' ? '⌫' : t) +
@@ -765,7 +801,7 @@ var Pantalla = AbstractAction.extend({
     _htmlUltimas: function () {
         if (!this.ultimas || !this.ultimas.length) { return ''; }
         var h = '<div class="o_kr_etq" style="margin-top:10px">Últimas lecturas</div><table><tr><th>Hora</th>' +
-            '<th>Palé</th><th>Caja</th><th>Pedido</th><th>Prenda</th><th class="o_kr_n">Uds</th><th>Quién</th>' +
+            '<th>Palé</th><th>Caja</th><th>Pedido</th><th>Modelo / prenda</th><th class="o_kr_n">Uds</th><th>Quién</th>' +
             '<th></th></tr>';
         _.each(this.ultimas, function (l) {
             h += '<tr><td>' + _e(l.hora) + '</td><td>' + _e(l.palet) + '</td><td>' + _e(l.caja) + '</td><td' +
@@ -787,11 +823,10 @@ var Pantalla = AbstractAction.extend({
             '<button type="button" data-accion="problemas">' + (this.soloProblemas ? 'Ver todos los modelos'
             : 'Ver solo los que no cuadran') + '</button><button type="button" data-accion="exportar">Exportar (Excel)' +
             '</button></div>';
-        h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Teórico (IN)</div><div class="o_kr_grande">' +
+        h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Uds de las IN</div><div class="o_kr_grande">' +
             _n(c.total.teorico) + '</div></div><div class="o_kr_caja ' + (c.total.leido === c.total.teorico ? 'o_kr_hecho'
-            : 'o_kr_falta') + '"><div class="o_kr_etq">Leído</div><div class="o_kr_grande">' + _n(c.total.leido) +
-            '</div></div><div class="o_kr_caja"><div class="o_kr_etq">Leído sin pasar a stock</div><div class="o_kr_grande">' +
-            _n(c.sin_validar) + '</div></div></div>';
+            : 'o_kr_falta') + '"><div class="o_kr_etq">Uds llegadas (cajas)</div><div class="o_kr_grande">' +
+            _n(c.total.leido) + '</div></div></div>';
         var cj = c.cajas || {leidas: 0, esperadas: 0, huecos: [], n_huecos: 0, ajenas: []};
         h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Cajas leídas</div>' +
             '<div class="o_kr_grande">' + cj.leidas + (cj.esperadas ? ' / ' + cj.esperadas : '') + '</div></div>' +
@@ -804,31 +839,22 @@ var Pantalla = AbstractAction.extend({
             (cj.ajenas.length ? '<div>' + _e(_.map(cj.ajenas, function (a) {
                 return 'caja ' + a.caja + ' (pedido ' + a.pedido + ')';
             }).join(', ')) + '</div>' : '') + '</div></div>';
-        h += '<table><tr><th>Modelo / talla</th><th class="o_kr_n">Teórico</th><th class="o_kr_n">Leído</th>' +
-            '<th class="o_kr_n">Diferencia</th><th>Dónde (palé / caja: uds)</th></tr>';
+        h += '<table><tr><th>Modelo</th><th class="o_kr_n">Cajas</th><th class="o_kr_n">Uds IN</th>' +
+            '<th class="o_kr_n">Llegadas</th><th class="o_kr_n">Diferencia</th><th>Dónde (palé / caja: uds)</th></tr>';
         var algo = false;
         _.each(c.modelos, function (m) {
             if (self.soloProblemas && !m.problema) { return; }
             algo = true;
-            h += '<tr class="o_kr_modelo" data-accion="modelo" data-valor="' + _e(m.modelo) + '"><td>' +
-                (self.abiertos[m.modelo] ? '▾ ' : '▸ ') + _e(m.modelo) + '</td><td class="o_kr_n">' + _n(m.teorico) +
-                '</td><td class="o_kr_n">' + _n(m.leido) + '</td><td class="o_kr_n">' + _n(m.diferencia) +
-                '</td><td></td></tr>';
-            if (self.abiertos[m.modelo]) {
-                _.each(m.filas, function (f) {
-                    h += '<tr class="o_kr_' + f.estado + '"><td>' + _e(f.talla || f.producto) + '</td><td class="o_kr_n">' +
-                        _n(f.teorico) + '</td><td class="o_kr_n">' + _n(f.leido) + '</td><td class="o_kr_n">' +
-                        _n(f.diferencia) + (f.estado === 'no_venia' ? ' (no venía)' : '') + '</td><td>' + _e(f.donde) +
-                        '</td></tr>';
-                });
-            }
+            h += '<tr class="o_kr_' + m.estado + '"><td>' + _e(m.modelo) + '</td><td class="o_kr_n">' + m.cajas +
+                '</td><td class="o_kr_n">' + _n(m.teorico) + '</td><td class="o_kr_n">' + _n(m.leido) +
+                '</td><td class="o_kr_n">' + _n(m.diferencia) + (m.estado === 'no_venia' ? ' (no venía)' : '') +
+                '</td><td>' + _e(m.donde) + '</td></tr>';
         });
-        if (!algo) { h += '<tr><td colspan="5">Todo cuadra.</td></tr>'; }
+        if (!algo) { h += '<tr><td colspan="6">Todo cuadra.</td></tr>'; }
         h += '</table>';
         if (this.rec.state === 'leyendo') {
-            h += '<div class="o_kr_fila"><button type="button" data-accion="validar" data-valor="1">' +
-                'Validar lo leído hasta ahora</button><button type="button" class="o_kr_primario" ' +
-                'data-accion="validar" data-valor="0">Validar el contenedor</button></div>';
+            h += '<div class="o_kr_fila"><button type="button" class="o_kr_primario" data-accion="cerrar">' +
+                'Terminar (cerrar; la IN queda pendiente)</button></div>';
         }
         return h;
     },

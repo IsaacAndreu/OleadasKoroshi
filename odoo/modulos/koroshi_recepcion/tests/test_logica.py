@@ -128,6 +128,18 @@ class TestCajasProveedor(unittest.TestCase):
         self.assertTrue(r['huecos_mas'])
         self.assertEqual(len(r['huecos']), L.MAX_HUECOS)
 
+    def test_modelo(self):
+        self.assertEqual(L.normalizar_modelo(' 2711ja22 '), '2711JA22')
+        self.assertEqual(L.normalizar_modelo('2711JA22-000062-S'), '2711JA22')
+        self.assertEqual(L.modelo_de('2711JA43-000062-XL'), '2711JA43')
+        with self.assertRaises(ValueError):
+            L.normalizar_modelo('  ')
+        # comparación por modelo (1.2.0): teórico de las IN (suma de sus SKU) contra uds llegadas en cajas
+        res = L.comparar({'2711JA22': 36, '2711JA04': 18}, {'2711JA22': 36, '2711JA99': 5})
+        self.assertEqual(res['2711JA22'], (36, 36, 0, 'ok'))
+        self.assertEqual(res['2711JA04'], (18, 0, -18, 'falta'))
+        self.assertEqual(res['2711JA99'][3], 'no_venia')
+
     def test_repartir_al_palet(self):
         # el destino de la línea hecha es el palé (sin KO_): dos cajas en el mismo palé = una línea
         lineas, _ = L.repartir([('m1', 'a', 10)], [('l1', 'a', 'PAL-01 A', 4), ('l2', 'a', 'PAL-01 A', 3)])

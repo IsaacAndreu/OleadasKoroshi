@@ -18,6 +18,12 @@
 # del contenedor) + artículo + cantidad, en el palé y cara activos. Al validar, el destino de las líneas hechas es el
 # palé (PAL-NN A/B). El KO_ se pondrá después, al ordenar y ubicar (fase 2). Las lecturas de la 1.0.x con KO_ siguen
 # validándose a su KO_.
+#
+# 1.2.0 (26/11/2026, opción A de Isaac: «es quedarà en pendiente fins que es fiquen a llegir les prendes»): al llegar,
+# por cada caja solo se apunta nº de caja + modelo (REFERENCE de la etiqueta) + uds totales de la caja + palé/cara
+# (+ pedido, opcional). NO toca stock ni las IN: no crea líneas hechas ni valida; la IN queda pendiente y la recepción
+# se «Cierra» (libera sus IN). La comparación es por modelo: cajas y uds llegadas contra las uds de las IN de ese
+# modelo (suma de sus SKU). Las prendas se leen después, al ubicar.
 # =============================================================================
 import logging
 
@@ -36,7 +42,7 @@ DESTINO_IN = 'EFFEC/RECEP_KO'                    # destino de las IN de KOROSHI 
 NAVE = 'EFFEC/Stock/NAVE2'                       # donde nacen los KO_ (como en koroshi_ubicaciones)
 NOMBRE_PADRE_PALETS = 'RECEPCION'                # EFFEC/Stock/NAVE2/RECEPCION: dentro, los PAL-NN A/B
 ESTADOS = [('pendiente', 'Pendiente de recepcionar'), ('leyendo', 'Leyendo'), ('validada', 'Validada'),
-           ('cancelada', 'Cancelada')]
+           ('cerrada', 'Cerrada (cajas apuntadas; la IN sigue pendiente)'), ('cancelada', 'Cancelada')]
 
 
 def es_contenedor(loc):
@@ -358,6 +364,37 @@ class KoroshiRecepcion(models.Model):
             raise UserError('%s no es un palé de recepción (PAL-01 A…).' % (loc and loc.display_name or '?'))
         return loc
 
+    def modelos_de_las_in(self):
+        return {L.modelo_de(p.default_code or p.name) for p in self._teorico()}
+
+    def guardar_caja(self, caja, pedido, palet, modelo, cantidad, employee=None, token=None):
+        """1.2.0 (opción A): una caja que llega: su nº escrito a mano, el modelo de la etiqueta, las uds totales de la
+        caja y el palé (y el pedido de la etiqueta, opcional). No toca stock. Mismo token = la misma lectura."""
+        self.ensure_one()
+        Lectura = self.env['koroshi.recepcion.lectura'].sudo()
+        if token:
+            ya = Lectura.search([('token', '=', token)], limit=1)
+            if ya:
+                return ya
+        if self.state != 'leyendo':
+            raise UserError('La recepción %s no está abierta para leer (%s).' % (
+                self.name, dict(ESTADOS)[self.state].lower()))
+        cantidad = L.cantidad_valida(cantidad)
+        caja = L.normalizar_caja(caja)
+        modelo = L.normalizar_modelo(modelo)
+        pedido = ' '.join((pedido or '').split())[:40]
+        self.palet_valido(palet)
+        if modelo not in self.modelos_de_las_in():
+            Product = self.env['product.product'].sudo().with_context(active_test=False)
+            if not Product.search_count(['|', ('default_code', '=', modelo),
+                                         ('default_code', '=like', N.escapar_like(modelo) + '-%')]):
+                raise UserError('No conozco el modelo %s: no hay ninguna prenda con esa referencia. Revisa el '
+                                'REFERENCE de la etiqueta o lee el código de barras de una prenda.' % modelo)
+        return Lectura.create({
+            'recepcion_id': self.id, 'caja': caja, 'pedido': pedido or False, 'modelo_leido': modelo,
+            'pedido_ajeno': L.pedido_ajeno(pedido, self._origenes()), 'palet_id': palet.id,
+            'cantidad': cantidad, 'employee_id': employee and employee.id or False, 'token': token or False})
+
     def guardar_lectura(self, caja, pedido, palet, producto, cantidad, employee=None, token=None):
         """Guarda lo leído de una caja del proveedor (1.1.0): su nº escrito a mano, el pedido de la etiqueta (opcional),
         el artículo y la cantidad, en el palé activo. Una caja con varios artículos = varias lecturas con el mismo nº.
@@ -394,6 +431,14 @@ class KoroshiRecepcion(models.Model):
         if otros:
             avisos.append('la caja %s ya está leída en %s' % (
                 lectura.caja_txt, ', '.join(sorted(set(otros.mapped('palet_id.name'))))))
+        if lectura.modelo_leido:
+            if lectura.modelo_leido not in self.modelos_de_las_in():
+                avisos.append('el modelo %s no viene en las IN de este contenedor' % lectura.modelo_leido)
+            igual = self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.id != lectura.id
+                                              and l.caja_txt == lectura.caja_txt and l.modelo == lectura.modelo)
+            if igual:
+                avisos.append('la caja %s ya tenía %d uds de %s: ¿la has apuntado dos veces? (si sí, anula una)' % (
+                    lectura.caja_txt, sum(igual.mapped('cantidad')), lectura.modelo))
         return avisos
 
     def siguiente_contenedor(self):
@@ -407,25 +452,51 @@ class KoroshiRecepcion(models.Model):
 
     # ------------------------------------------------------------------ comparar
     def comparar(self):
-        """Rehace las filas de comparación (teórico de las IN contra lo leído) y las devuelve."""
+        """Rehace las filas de comparación y las devuelve. 1.2.0: por MODELO (2711JA22): uds de las IN de ese modelo
+        (suma de sus SKU) contra las uds llegadas en sus cajas, con cuántas cajas y dónde (palé / caja)."""
         self.ensure_one()
         Comp = self.env['koroshi.recepcion.comparacion'].sudo()
         Comp.search([('recepcion_id', '=', self.id)]).unlink()
-        donde = {}
+        teorico = {}
+        for prod, uds in self._teorico().items():
+            m = L.modelo_de(prod.default_code or prod.name)
+            teorico[m] = teorico.get(m, 0) + uds
+        leido, donde, cajas = {}, {}, {}
         for l in self.lectura_ids.filtered(lambda x: x.estado == 'ok'):
-            d = donde.setdefault(l.producto_id, {})
+            m = l.modelo or '?'
+            leido[m] = leido.get(m, 0) + l.cantidad
+            cajas.setdefault(m, set()).add(l.caja_txt)
+            d = donde.setdefault(m, {})
             clave = '%s / caja %s' % (l.palet_id.name or '¿palé?', l.caja_txt)
             d[clave] = d.get(clave, 0) + l.cantidad
         filas = []
-        for prod, (t, le, dif, estado) in L.comparar(self._teorico(), self._leido()).items():
-            modelo, color, talla = L.partes_referencia(prod.default_code or prod.name)
+        for m, (t, le, dif, estado) in L.comparar(teorico, leido).items():
             filas.append({
-                'recepcion_id': self.id, 'producto_id': prod.id, 'modelo': modelo, 'color': color, 'talla': talla,
-                'ean': prod.barcode or '', 'teorico': t, 'leido': le, 'diferencia': dif, 'estado': estado,
-                'donde': ', '.join('%s: %g' % (k, v) for k, v in sorted(donde.get(prod, {}).items())),
+                'recepcion_id': self.id, 'modelo': m, 'cajas': len(cajas.get(m, ())), 'teorico': t, 'leido': le,
+                'diferencia': dif, 'estado': estado,
+                'donde': ', '.join('%s: %g' % (k, v) for k, v in sorted(
+                    donde.get(m, {}).items(), key=lambda kv: (L.clave_caja(kv[0].split('caja ')[-1]), kv[0]))),
             })
-        filas.sort(key=lambda f: (f['modelo'], f['color'], L.clave_talla(f['talla'])))
+        filas.sort(key=lambda f: f['modelo'])
         return Comp.create(filas) if filas else Comp
+
+    def cerrar(self, employee=None):
+        """1.2.0 (opción A): termina de apuntar cajas. No toca stock ni las IN (quedan pendientes, libres para leer
+        las prendas después)."""
+        self.ensure_one()
+        if self.state not in ('pendiente', 'leyendo'):
+            raise UserError('Solo se cierra una recepción abierta (esta está %s).' % dict(ESTADOS)[self.state].lower())
+        self._bloquear()
+        if self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.producto_id and not l.validada):
+            raise UserError('Hay prendas leídas sin pasar a stock: valídalas o anúlalas antes de cerrar.')
+        self.comparar()
+        self.sudo().state = 'cerrada'
+        self.message_post(body='Cerrada por %s: %d cajas, %d uds apuntadas. Las IN siguen pendientes (%s).' % (
+            employee and employee.name or self.env.user.name, self.cajas_leidas, self.uds_leidas,
+            ', '.join(self._in_abiertas().mapped('name')) or '-'))
+
+    def action_cerrar(self):
+        self.cerrar()
 
     # ------------------------------------------------------------------ validar
     def _bloquear(self):
@@ -445,6 +516,9 @@ class KoroshiRecepcion(models.Model):
             raise UserError('Solo se valida una recepción que se está leyendo (esta está %s).'
                             % dict(ESTADOS)[self.state].lower())
         self._bloquear()
+        if self.lectura_ids.filtered(lambda l: l.estado == 'ok' and not l.producto_id):
+            raise UserError('Esta recepción tiene cajas apuntadas por modelo (sin prendas): no pasa nada a stock. La IN '
+                            'queda pendiente hasta leer las prendas: usa «Cerrar».')
         self._foto_teorico()      # antes de tocar las IN: después Odoo cambia sus cantidades
         lecturas = self.lectura_ids.filtered(lambda l: l.estado == 'ok' and not l.validada).sorted('id')
         abiertas = self._in_abiertas().sorted(lambda p: (p.scheduled_date or fields.Datetime.now(), p.id))
@@ -516,8 +590,10 @@ class KoroshiRecepcion(models.Model):
     def reabrir(self, employee=None):
         """Vuelve a «Leyendo» un contenedor validado que dejó IN pendientes (llegan las cajas que faltaban)."""
         self.ensure_one()
-        if self.state != 'validada':
-            raise UserError('Solo se reabre una recepción validada.')
+        if self.state not in ('validada', 'cerrada'):
+            raise UserError('Solo se reabre una recepción validada o cerrada.')
+        if self.state == 'cerrada':
+            self._comprobar_ins()        # sus IN pueden estar ya en otra recepción abierta
         if not self._in_abiertas():
             raise UserError('%s no tiene IN pendientes: no hay nada que recibir.' % self.name)
         self.sudo().state = 'leyendo'
@@ -605,7 +681,9 @@ class KoroshiRecepcionLectura(models.Model):
     pedido_ajeno = fields.Boolean('Pedido que no es de este contenedor', readonly=True,
                                   help='Se escribió un pedido y no es el origen de ninguna IN del contenedor.')
     palet_id = fields.Many2one('stock.location', 'Palé', required=True)
-    producto_id = fields.Many2one('product.product', 'Artículo', required=True, index=True)
+    producto_id = fields.Many2one('product.product', 'Artículo', index=True,
+                                  help='Vacío en las cajas apuntadas por modelo (1.2.0).')
+    modelo_leido = fields.Char('Modelo (etiqueta)', help='1.2.0: el REFERENCE de la etiqueta de la caja (2711JA22).')
     cantidad = fields.Integer('Uds', required=True)
     employee_id = fields.Many2one('hr.employee', 'Operario')
     user_id = fields.Many2one('res.users', 'Usuario', default=lambda s: s.env.user)
@@ -627,12 +705,16 @@ class KoroshiRecepcionLectura(models.Model):
         for l in self:
             l.caja_txt = l.caja or l.contenedor_id.name or ''
 
-    @api.depends('producto_id')
+    @api.depends('producto_id', 'modelo_leido')
     def _compute_partes(self):
+        # 1.2.0: modelo = solo el modelo (2711JA22), sin color: así se compara con las cajas apuntadas por modelo
         for l in self:
-            modelo, color, talla = L.partes_referencia(l.producto_id.default_code or l.producto_id.name)
-            l.modelo = ('%s-%s' % (modelo, color)) if color else modelo
-            l.talla = talla
+            if l.producto_id:
+                l.modelo = L.modelo_de(l.producto_id.default_code or l.producto_id.name)
+                l.talla = L.partes_referencia(l.producto_id.default_code or l.producto_id.name)[2]
+            else:
+                l.modelo = l.modelo_leido or ''
+                l.talla = ''
 
     def anular(self):
         for l in self:
@@ -655,6 +737,7 @@ class KoroshiRecepcionComparacion(models.Model):
     color = fields.Char('Color')
     talla = fields.Char('Talla')
     ean = fields.Char('EAN')
+    cajas = fields.Integer('Cajas')
     teorico = fields.Float('Teórico (IN)', digits=(16, 0))
     leido = fields.Float('Leído', digits=(16, 0))
     diferencia = fields.Float('Diferencia', digits=(16, 0))

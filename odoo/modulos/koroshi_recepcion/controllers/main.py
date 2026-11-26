@@ -76,7 +76,7 @@ class KoroshiRecepcionPantalla(http.Controller):
     def _prod(self, p, r=None):
         modelo, color, talla = L.partes_referencia(p.default_code or p.name)
         return {'id': p.id, 'nombre': p.display_name, 'modelo': ('%s-%s' % (modelo, color)) if color else modelo,
-                'talla': talla, 'ean': p.barcode or ''}
+                'talla': talla, 'ean': p.barcode or '', 'base': L.modelo_de(p.default_code or p.name)}
 
     def _datos_recepcion(self, r, employee=None):
         ins = r._todas_las_in().sorted(lambda p: (p.scheduled_date or fields.Datetime.now(), p.id))
@@ -101,7 +101,7 @@ class KoroshiRecepcionPantalla(http.Controller):
     def _ultimas(self, r):
         ls = r.lectura_ids.filtered(lambda l: l.estado == 'ok').sorted('id', reverse=True)[:MAX_ULTIMAS]
         return [{'id': l.id, 'caja': l.caja_txt, 'pedido': l.pedido or '', 'ajeno': l.pedido_ajeno,
-                 'palet': l.palet_id.name, 'producto': l.producto_id.display_name,
+                 'palet': l.palet_id.name, 'producto': l.producto_id.display_name or 'Modelo %s' % (l.modelo or '?'),
                  'uds': l.cantidad, 'quien': l.employee_id.name or '', 'hora': _local(l.fecha)[-5:],
                  'validada': l.validada} for l in ls]
 
@@ -271,6 +271,18 @@ class KoroshiRecepcionPantalla(http.Controller):
                 dominio = []
                 for trozo in texto.split():
                     dominio += ['|', ('default_code', 'ilike', trozo), ('name', 'ilike', trozo)]
+            if kw.get('modelos'):
+                # 1.2.0: lista de MODELOS (2711JA22), primero los de las IN del contenedor
+                en_in = {L.modelo_de(p.default_code or p.name) for p in de_las_in}
+                vistos = {}
+                for p in Product.search(dominio + [DE_LA_COMPANIA], limit=500, order='default_code, id'):
+                    m = L.modelo_de(p.default_code or p.name)
+                    if m and m not in vistos:
+                        vistos[m] = p
+                lista = sorted(vistos, key=lambda m: (m not in en_in, m))[:MAX_BUSCAR]
+                return {'ok': True, 'modelos': [{'modelo': m, 'nombre': (vistos[m].name or '')[:60],
+                                                 'en_in': m in en_in} for m in lista],
+                        'mas': len(vistos) > MAX_BUSCAR}
             primero = Product.search(dominio + [('id', 'in', de_las_in.ids)]) if de_las_in else Product.browse()
             resto = Product.search(dominio + [DE_LA_COMPANIA, ('id', 'not in', primero.ids)],
                                    limit=MAX_BUSCAR, order='default_code, id')
@@ -283,8 +295,9 @@ class KoroshiRecepcionPantalla(http.Controller):
 
     @http.route('/koroshi/recepcion/guardar', type='json', auth='user')
     def guardar(self, recepcion_id=False, caja='', pedido='', palet_id=False, producto_id=False, cantidad=0,
-                employee_id=False, token=None, **kw):
-        """1.1.0: caja = el nº escrito a mano (texto); pedido = ORDER NUMBER de la etiqueta (opcional)."""
+                employee_id=False, token=None, modelo='', **kw):
+        """1.1.0: caja = el nº escrito a mano (texto); pedido = ORDER NUMBER de la etiqueta (opcional).
+        1.2.0: con «modelo» (sin producto) = una caja apuntada por modelo con sus uds totales; no toca stock."""
         try:
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
@@ -292,11 +305,15 @@ class KoroshiRecepcionPantalla(http.Controller):
             palet = request.env['stock.location'].sudo().browse(int(palet_id or 0)).exists()
             if not palet:
                 raise UserError('Falta el palé: tócalo arriba o lee su etiqueta.')
-            prod = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
-            lectura = r.guardar_lectura(caja, pedido, palet, prod, cantidad, emp, token)
+            if modelo and not producto_id:
+                lectura = r.guardar_caja(caja, pedido, palet, modelo, cantidad, emp, token)
+            else:
+                prod = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
+                lectura = r.guardar_lectura(caja, pedido, palet, prod, cantidad, emp, token)
             avisos = r.avisos_lectura(lectura)
             return {'ok': True, 'msg': '%s · %s · %d uds → %s / caja %s' % (
-                emp.name, lectura.producto_id.display_name, lectura.cantidad, lectura.palet_id.name,
+                emp.name, lectura.producto_id.display_name or 'Modelo %s' % lectura.modelo, lectura.cantidad,
+                lectura.palet_id.name,
                 lectura.caja_txt), 'avisos': avisos,
                 'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
         except (UserError, ValueError) as e:
@@ -314,7 +331,7 @@ class KoroshiRecepcionPantalla(http.Controller):
             r = l.recepcion_id
             l.anular()
             r.message_post(body='Lectura anulada por %s: %s %d uds en la caja %s.' % (
-                emp.name, l.producto_id.display_name, l.cantidad, l.caja_txt))
+                emp.name, l.producto_id.display_name or 'Modelo %s' % l.modelo, l.cantidad, l.caja_txt))
             return {'ok': True, 'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
         except UserError as e:
             request.env.cr.rollback()     # nada a medias
@@ -339,20 +356,10 @@ class KoroshiRecepcionPantalla(http.Controller):
             self._comprobar_usuario()
             self._responsable(employee_id)
             r = self._recepcion(recepcion_id)
-            filas = r.comparar()
-            modelos = {}
-            for f in filas:
-                m = modelos.setdefault(f.modelo + (('-' + f.color) if f.color else ''), {
-                    'modelo': f.modelo + (('-' + f.color) if f.color else ''), 'teorico': 0, 'leido': 0, 'filas': []})
-                m['teorico'] += f.teorico
-                m['leido'] += f.leido
-                m['filas'].append({'producto': f.producto_id.display_name, 'talla': f.talla, 'teorico': f.teorico,
-                                   'leido': f.leido, 'diferencia': f.diferencia, 'estado': f.estado,
-                                   'donde': f.donde or ''})
-            lista = sorted(modelos.values(), key=lambda m: m['modelo'])
-            for m in lista:
-                m['diferencia'] = m['leido'] - m['teorico']
-                m['problema'] = any(f['estado'] != 'ok' for f in m['filas'])
+            # 1.2.0: por modelo (sin tallas): cajas, uds de las IN y uds llegadas, y dónde está cada caja
+            lista = [{'modelo': f.modelo, 'cajas': f.cajas, 'teorico': f.teorico, 'leido': f.leido,
+                      'diferencia': f.diferencia, 'estado': f.estado, 'donde': f.donde or '',
+                      'problema': f.estado != 'ok', 'filas': []} for f in r.comparar()]
             cajas = r.resumen_cajas()
             return {'ok': True, 'modelos': lista,
                     'cajas': {'leidas': len(cajas['leidas']), 'esperadas': r.cajas or 0,
@@ -380,6 +387,19 @@ class KoroshiRecepcionPantalla(http.Controller):
             request.env.cr.rollback()
             _logger.exception('koroshi_recepcion: error al validar la recepción %s', recepcion_id)
             return {'ok': False, 'msg': 'No se ha validado nada: error de Odoo (%s). Avisa a IT.' % e}
+
+    @http.route('/koroshi/recepcion/cerrar', type='json', auth='user')
+    def cerrar(self, recepcion_id=False, employee_id=False, **kw):
+        """1.2.0: terminar de apuntar cajas (cualquier operario con su tarjeta). No toca stock: la IN sigue pendiente."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            r.cerrar(emp)
+            return {'ok': True, 'recepcion': self._datos_recepcion(r, emp)}
+        except UserError as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/recepcion/reabrir', type='json', auth='user')
     def reabrir(self, recepcion_id=False, employee_id=False, **kw):
@@ -410,12 +430,12 @@ class KoroshiRecepcionPantalla(http.Controller):
         estados = dict(request.env['koroshi.recepcion.comparacion']._fields['estado'].selection)
         filas = [['Recepción', r.name, 'Matrícula', r.matricula, 'Muelle', r.muelle or '', 'Llegada',
                   _local(r.fecha_llegada)], [],
-                 ['COMPARACIÓN (por artículo)'],
-                 ['Modelo', 'Color', 'Talla', 'EAN', 'Artículo', 'Teórico (IN)', 'Leído', 'Diferencia', 'Estado',
+                 ['COMPARACIÓN (por modelo)'],
+                 ['Modelo', 'Cajas', 'Uds de las IN', 'Uds llegadas', 'Diferencia', 'Estado',
                   'Dónde (palé / caja: uds)']]
         for f in filas_comp:
-            filas.append([f.modelo, f.color, f.talla, f.ean, f.producto_id.display_name, f.teorico, f.leido,
-                          f.diferencia, estados.get(f.estado, f.estado), f.donde])
+            filas.append([f.modelo, f.cajas, f.teorico, f.leido, f.diferencia, estados.get(f.estado, f.estado),
+                          f.donde])
         cajas = r.resumen_cajas()
         origenes = r._origenes()
         filas += [[], ['CAJAS'], ['Cajas leídas', len(cajas['leidas']), 'Cajas según quien recepciona', r.cajas or ''],
@@ -425,12 +445,12 @@ class KoroshiRecepcionPantalla(http.Controller):
                    ', '.join('caja %s (pedido %s)' % (c, p) for c, p in cajas['ajenas'])],
                   ['Pedidos de las IN', ', '.join(origenes)]]
         filas += [[], ['LECTURAS (caja a caja)'],
-                  ['Caja', 'Pedido (etiqueta)', 'Pedido de otro contenedor', 'Palé', 'Artículo', 'EAN', 'Uds',
-                   'Operario', 'Cuándo', 'Pasada a stock']]
+                  ['Caja', 'Pedido (etiqueta)', 'Pedido de otro contenedor', 'Palé', 'Modelo', 'Artículo', 'EAN',
+                   'Uds', 'Operario', 'Cuándo', 'Pasada a stock']]
         for l in r.lectura_ids.filtered(lambda x: x.estado == 'ok').sorted(
                 lambda x: (L.clave_caja(x.caja_txt), x.palet_id.name or '', x.id)):
             filas.append([l.caja_txt, l.pedido or '', 'sí' if L.pedido_ajeno(l.pedido, origenes) else '',
-                          l.palet_id.name, l.producto_id.display_name, l.producto_id.barcode or '',
+                          l.palet_id.name, l.modelo or '', l.producto_id.display_name or '', l.producto_id.barcode or '',
                           float(l.cantidad), l.employee_id.name or '', _local(l.fecha), 'sí' if l.validada else 'no'])
         datos = ('﻿' + L.csv_texto(filas)).encode('utf-8')
         nombre = 'recepcion_%s_%s.csv' % (r.name.replace('/', '-'), (r.matricula or '').replace('/', '-'))
