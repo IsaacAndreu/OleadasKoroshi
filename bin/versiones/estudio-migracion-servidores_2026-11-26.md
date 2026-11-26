@@ -7,16 +7,29 @@ lectura para responderlo.
 
 ## 0. Resumen para Isaac
 
+> **Actualizado el 26/11 (~10:30) con los datos reales de la consola de Google Cloud** (mirada en solo lectura con
+> permiso de Isaac; apartado 1.0). Cambian las cifras y la recomendación de 4.1.
+
+- **Hoy GCP cuesta unos 4.260 €/mes** (previsión de noviembre): **~3.660 € tuctuc** y **~980 € KOROSHI**. Cloud SQL es
+  el 80 %.
+- **El 41 % de la factura (~1.760 €/mes) es el «soporte extendido» de PostgreSQL 11.** Google cobra un recargo por
+  seguir en una versión sin soporte. Se elimina **subiendo PostgreSQL a 15 o 16**, se migre o no.
+- **Dos caminos**, y no son excluyentes:
+  1. **Quedarse en GCP y subir PostgreSQL** (más limpiar lo que sobra): de ~4.260 a **~2.000-2.400 €/mes**. Menos
+     riesgo: no cambia ni la IP ni el proveedor.
+  2. **Migrar a OVHcloud** (con PostgreSQL nuevo): **~1.400-1.900 €/mes** las dos plataformas. Ahorro de **~2.400-2.900
+     €/mes** (55-65 %), con más trabajo y más riesgo.
 - **Hay más de lo que parece.** En el proyecto `nath-269506` hay, como mínimo, **dos Odoo y dos bases de datos
   gestionadas (Cloud SQL)**: el de KOROSHI (`nath.tuctuc.com`) y el de tuctuc (`odoo.tuctuc.com`). La base de datos
   **no está en la VM**: es Cloud SQL, y probablemente es lo que más se paga.
 - **Recomendación: OVHcloud Public Cloud** (Francia), con una VM para Odoo y otra para PostgreSQL en la misma red
   privada (vRack), por cada Odoo. Alternativa: **Scaleway** (París) si se quiere la base de datos gestionada, como
   ahora. Hetzner es lo más barato por máquina, pero ha subido precios dos veces en 2026 y es alemán.
-- **Ahorro esperable: del 40 al 60 % de la factura de GCP** (orden de 300-500 €/mes por cada Odoo). Es una estimación:
-  no se conoce la factura real ni el tamaño de las máquinas (pregunta P1-P3).
-- **Primero KOROSHI o primero tuctuc, nunca los dos a la vez.** Propuesta: primero **tuctuc** como ensayo si su
-  horario es más flexible; si no, KOROSHI en un fin de semana con todo ensayado.
+- **Ahorro: ver 4.1** (con la factura real). Lo que más pesa es tuctuc (~3.660 €/mes), no KOROSHI (~980 €/mes).
+- **Primero KOROSHI o primero tuctuc, nunca los dos a la vez.** Propuesta: **KOROSHI primero** (base de 62 GB, más
+  rápida de copiar, y sirve de ensayo); tuctuc después (220 GB, alta disponibilidad, TPV de tiendas), que es donde
+  está el dinero.
+- **Lo más urgente, se migre o no: subir PostgreSQL 11 → 15/16.** Son ~1.760 €/mes que se van en el recargo.
 - **Corte: de 2 a 4 h, de madrugada en domingo**, con vuelta atrás preparada (GCP sigue encendido y sin tocar hasta
   que se dé por bueno).
 - **Tres cosas que pueden romperse y no se ven a simple vista**:
@@ -29,6 +42,86 @@ lectura para responderlo.
      arrancarla (apartado 3.3).
 
 ## 1. Inventario de lo que hay ahora
+
+### 1.0 Datos reales de la consola de Google Cloud (26/11/2026, solo lectura)
+
+Mirado en la consola: VM, discos, snapshots, IP, Cloud SQL, redes autorizadas, firewall, buckets, DNS y facturación.
+No se ha pulsado nada que cambie algo ni se ha entrado por SSH (el SSH del navegador añade claves a la VM, y eso ya es
+un cambio).
+
+**Máquinas virtuales**
+
+| VM | Zona | Tipo | vCPU / RAM | Disco | IP externa (fija) | Creada |
+|---|---|---|---|---|---|---|
+| `nath-erp-prod` (KOROSHI) | europe-west4-b | `n2d-custom-8-18432` (AMD Milan) | 8 / 18 GB | 300 GB SSD (`nath-erp-prod-cmek`) | **34.91.253.46** | 26/06/2020 |
+| `tuctuc-erp-prod-eu-w1b` | europe-west1-b | `n2-custom-14-49152` (Intel Cascade Lake) | 14 / 48 GB | 300 GB SSD (`tuctuc-erp-prod-eu-cmek`) | **35.241.160.100** | 01/10/2020 |
+
+Ninguna de las dos tiene copias programadas de disco (sin snapshot schedule ni backup plan).
+
+**Cloud SQL** (las dos con PostgreSQL 11.22, edición Enterprise, IP pública, sin IP privada)
+
+| Instancia | Región | vCPU / RAM | Disco (usado / total) | Alta disponibilidad | Copias | IP | IP de salida |
+|---|---|---|---|---|---|---|---|
+| `nath-erp-production` | europe-west4-b | 8 / 24 GB | **62 / 100 GB**, sin crecimiento automático | **No** (zonal) | Diarias (~20:40-21:00 UTC+1); **sin recuperación a un momento dado** | 34.90.144.125 | 34.91.252.159 |
+| `tuctuc-erp-prod-eu` | europe-west1-d | 16 / 104 GB | **220 / 390 GB**, con crecimiento automático | **Sí** (regional) | Diarias + recuperación a un momento dado | 104.199.5.207 | — |
+
+Avisos de la propia consola: «versión antigua que necesita soporte extendido» y «permite conexiones directas sin
+cifrar» en las dos.
+
+**Quién entra a las bases (redes autorizadas)**, las mismas en las dos instancias:
+
+| Nombre en Cloud SQL | IP | Qué es (a confirmar) |
+|---|---|---|
+| OdooServer / Odoo-Server | 34.91.253.46 / 35.241.160.100 | La VM de cada Odoo |
+| Oriola1 | 46.24.177.93 | Oficina (la de `App.config`, PedidosMultiples) |
+| Oriola2 | 80.103.98.47 | Otra conexión de Oriola |
+| Oriola3 / OriolaMagatzem2 | 84.78.198.137 | Almacén |
+| Oriola-Radio | 46.24.5.48 | Enlace radio |
+| **Ionos** | 82.223.30.89 | **Un servidor en Ionos que lee la base directamente** (¿web, integración?): P16 |
+| **Looker1 / Looker2** | 142.251.74.0/23, 74.125.0.0/16 | **Looker Studio**: hay informes que leen la base directamente: P17 |
+
+Todo esto hay que **reproducirlo en el servidor nuevo** (o cambiarlo en cada cliente) el día del corte.
+
+**Firewall (red `default`)**
+
+- Entrada abierta a todo Internet: 80, 443, **8069-8071** (Odoo directo, sin nginx), **22 (SSH)**, **3389 (RDP)**,
+  **5432** (etiqueta `postgres`, sin uso), ICMP. Lo de 8069, 3389 y 5432 sobra; en el servidor nuevo, solo 80/443 y
+  SSH limitado.
+- **Salida restringida** (`selective-egress` + `block-unnecessary-egress`): solo tcp 25, 53, 80, 443, 465, 587,
+  **3232**, 5432 y udp 53, 123. Todo lo demás se bloquea (480 bloqueos hoy). El **3232** lo usa alguna integración
+  (P18). El puerto 25 de salida está permitido en el proyecto.
+
+**Otras cosas del proyecto**
+
+| Qué | Detalle | Coste aprox. | Comentario |
+|---|---|---|---|
+| Discos sueltos | `nath-erp-prod-w4b` y `tuctuc-erp-prod-eu-wlb`, 300 GB SSD cada uno, **sin VM** | ~55-65 €/mes | Copias antiguas: sobran (confirmar antes) |
+| Snapshots | `nath-prova-snap` (57,6 GB, 07/10/2026) y `snapshot-tucutc-prod-1-oct-20` (4,8 GB, 2020) | pocos € | |
+| IP fijas sin usar | `nath-tes-app-1` 34.87.30.109 y `nath-tuctuc-test` 34.126.81.151 (Singapur) | ~13 €/mes | Sobran |
+| Buckets | `nath-erp-dev-data` (Asia, Nearline, 2021), `nath-erp-dev-data-eu` (Bélgica, Nearline, 2025), **`nath-stock-feed-q7m4x2`** (Bélgica, **público**, creado el 19/11/2026) | ~47 €/mes (sobre todo Asia, ~2,6 TB) | El público es un feed de stock: ¿quién lo lee? (P19) |
+| DNS | Sin zonas en Cloud DNS | — | El DNS de `tuctuc.com` está fuera de GCP (P8) |
+| Facturación | Cuenta **Prime Collections S.L.**; el proyecto pasó a esta cuenta a finales de octubre (factura de octubre: 440 €, solo unos días) | — | Los meses anteriores están en otra cuenta (P20) |
+
+**Facturación de noviembre (1-26/11: 4.141,67 €; previsión del mes: 4.263,63 €)**
+
+| Servicio | 1-26/11 |
+|---|---|
+| Cloud SQL | 3.421,20 € |
+| Compute Engine | 668,72 € (con −90,94 € de descuentos por uso continuado) |
+| Cloud Storage | 47,52 € |
+| Red y Logging | 4,24 € |
+
+Por plataforma (SKU de noviembre, llevado a 30 días):
+
+| | tuctuc (Bélgica) | KOROSHI (Países Bajos) |
+|---|---|---|
+| Cloud SQL: **soporte extendido PostgreSQL 11** | 1.194,98 € → **~1.380 €/mes** | 328,62 € → **~380 €/mes** |
+| Cloud SQL: vCPU + RAM + disco | 1.579,88 € → ~1.820 €/mes | 306,18 € → ~355 €/mes |
+| VM (CPU + RAM, con descuento) | 336,10 € → ~390 €/mes | 149,25 € → ~170 €/mes |
+| Discos SSD de VM (incluidos los sueltos) | 59,76 € → ~70 €/mes | 65,74 € → ~75 €/mes |
+| **Total aprox.** | **~3.660 €/mes** | **~980 €/mes** |
+
+Más ~65 €/mes comunes (buckets de Asia, IP de Singapur, tráfico).
 
 ### 1.1 Lo que se sabe desde el repo y la memoria
 
@@ -54,13 +147,12 @@ lectura para responderlo.
 
 ### 1.2 Lo que se deduce (a confirmar)
 
-- **Tamaño de la VM KOROSHI**: con 16 workers, lo normal son **8 vCPU y 16-32 GB**. Tuctuc, con 29 workers, unos
-  14-16 vCPU. Pendiente de P1.
-- **Lo caro es Cloud SQL**: una instancia de 8 vCPU/32 GB en Cloud SQL Enterprise ronda los 900-1.000 $/mes con alta
-  disponibilidad en EE. UU. (fuente S10); en `europe-west4` es algo más. Sin alta disponibilidad, aproximadamente la
-  mitad.
-- **PostgreSQL 11 está sin soporte desde noviembre de 2023.** Ningún proveedor gestionado lo ofrece ya: migrar es
-  también **subir de versión de PostgreSQL** (o montarlo a mano en una VM). Ver riesgo R2.
+- Tamaños y costes: **ya confirmados en 1.0** (KOROSHI 8 vCPU/18 GB + base 8 vCPU/24 GB; tuctuc 14 vCPU/48 GB + base
+  16 vCPU/104 GB con alta disponibilidad). El pico de CPU de las dos bases en las últimas 24 h ha sido del ~86 %: no
+  conviene quedarse cortos de CPU en la base.
+- **PostgreSQL 11 está sin soporte desde noviembre de 2023**, y Google lo cobra como «soporte extendido» (~1.760 €/mes
+  entre las dos bases). Ningún proveedor gestionado lo ofrece ya: migrar es también **subir de versión de
+  PostgreSQL** (o montarlo a mano en una VM). Ver riesgo R2.
 - El sistema operativo de la VM parece muy antiguo (por la versión de nginx). La VM nueva **no** puede ser una copia
   exacta del sistema: hay que reproducir el entorno de Python de Odoo 13 (versión de Python, `pip freeze`,
   wkhtmltopdf 0.12.5 «with patched qt»).
@@ -212,19 +304,39 @@ esperar a que la réplica esté al día, ajustar secuencias, arrancar). Más com
 
 ## 4. Riesgos y coste
 
-### 4.1 Ahorro (estimación)
+### 4.1 Ahorro (con la factura real de noviembre de 2026)
 
-Sin la factura real (P2), con precios públicos:
+**GCP hoy: ~4.260 €/mes** (tuctuc ~3.660 €, KOROSHI ~980 €, comunes ~65 €; detalle en 1.0).
 
-| | GCP hoy (estimado, KOROSHI) | OVH opción A | Scaleway opción B | Hetzner opción D |
-|---|---|---|---|---|
-| VM Odoo 8/32 | ~230 € | 173 € | 212 € | 138 € |
-| Base de datos | Cloud SQL 8/32: **~450-900 €** (sin/con HA) | VM 173 € | Gestionada ~415 € | VM 138 € |
-| Discos, IP, copias, tráfico | ~50-100 € | ~40-80 € | ~30-60 € | ~50 € |
-| **Total/mes** | **~730-1.230 €** | **~390-430 €** (330-370 con Savings Plan) | **~660-690 €** | **~330 €** |
+**Camino 1: quedarse en GCP y ordenar** (sin cambiar de proveedor)
 
-Para tuctuc (29 workers, base más grande) la cuenta es parecida, probablemente mayor en las dos columnas. **El ahorro
-real depende casi todo de cuánto cuesta hoy Cloud SQL** (P2).
+| Medida | Ahorro aprox./mes | Riesgo |
+|---|---|---|
+| Subir las dos bases de PostgreSQL 11 a 15/16 (actualización de versión mayor de Cloud SQL, con ensayo en un clon) | **~1.760 €** | Medio: las mismas pruebas de Odoo 13 que en R2; corte de ~30-60 min por base |
+| Borrar los dos discos sueltos, las dos IP de Singapur y los buckets de Asia que no se usen (tras confirmarlo) | ~120 € | Bajo |
+| Compromiso de uso de 1 año en Cloud SQL y VM (~−25 %) | ~400-500 € | Bajo (se paga un año) |
+| **GCP ordenado** | **de ~4.260 a ~2.000-2.400 €/mes** | |
+
+**Camino 2: migrar a OVHcloud** (también con PostgreSQL nuevo)
+
+| | KOROSHI | tuctuc |
+|---|---|---|
+| Odoo | `b3-32` (8/32): 173 € | `b3-64` (16/64): 343 € |
+| PostgreSQL | `b3-32` (8/32): 173 € | Máquina 16 vCPU/128 GB (gama r3 o b3-128): **~450-700 €** (precio a confirmar) |
+| Réplica de reserva (en vez de la alta disponibilidad de Cloud SQL) | No (hoy no la tiene) | Otra igual: ~450-700 € (opcional) |
+| Discos, IP, copias, Object Storage | ~40-80 € | ~80-150 € |
+| **Total/mes** | **~390-430 €** | **~870-1.200 €** sin réplica; **~1.300-1.900 €** con réplica |
+
+- **Total migrado: ~1.300-1.650 €/mes sin réplica en tuctuc, ~1.700-2.300 € con réplica.** Con Savings Plan de 12
+  meses, un 10-15 % menos.
+- **Ahorro frente a hoy: ~2.000-2.900 €/mes (50-65 %).** Frente a «GCP ordenado» (camino 1), el ahorro extra de
+  migrar es de **~300-1.000 €/mes**: hay que ponerlo al lado de las 90-150 h de trabajo y del riesgo de cambiar todo.
+- Scaleway y Hetzner salen en el mismo orden de magnitud (2.2/2.3); Scaleway con base gestionada sería algo más caro.
+
+**Recomendación:** primero el **camino 1** (subir PostgreSQL y limpiar), que da la mayor parte del ahorro con poco
+riesgo y además deja la base en una versión que sirve en cualquier proveedor. Después, si Isaac quiere el ahorro
+extra, el **camino 2** con OVH, empezando por KOROSHI. La subida de PostgreSQL es la misma pieza en los dos caminos:
+no se trabaja dos veces.
 
 ### 4.2 Horas de trabajo (Soporte, orientativo)
 
@@ -279,9 +391,12 @@ trabajo (los scripts ya estarán hechos).
 Lo que **solo** puede hacer Isaac u otra persona: crear la cuenta y pagar, entrar en el servidor y ejecutar, copiar
 configuraciones con claves, cambiar el DNS, hablar con S4T/transportistas/Odoo y probar con la PDA en el almacén.
 
-**Datos reales de la consola de Google Cloud: pendientes.** Isaac autorizó mirarla en solo lectura, pero el
-clasificador de permisos de esta sesión bloqueó la navegación a `console.cloud.google.com`. Hasta que se desbloquee
-(o Isaac pase la salida de los comandos de P1-P7), las cifras de 4.1 siguen siendo estimaciones.
+La fase 0 ya está casi hecha: los datos de la consola están en 1.0. Faltan los de dentro de las VM (P4, P5), que
+requieren entrar por SSH.
+
+Si solo se hace el **camino 1** (subir PostgreSQL en GCP): ensayo en un clon de cada base (Isaac lo crea; Claude
+prepara las pruebas de Odoo 13), ~15-25 h por base y una noche de corte de ~30-60 min por base. En calendario, 2-3
+semanas para las dos.
 
 ## 5. Preguntas para Isaac
 
@@ -290,13 +405,13 @@ Google Cloud.
 
 | # | Pregunta | Cómo responderla |
 |---|---|---|
-| P1 | ¿Qué máquinas hay en el proyecto y de qué tamaño (CPU, RAM, disco)? ¿Hay más VM aparte de `nath-erp-prod` y `tuctuc-erp-prod-eu-w1b`? | `gcloud compute instances list --project nath-269506 --format="table(name,zone,machineType.basename(),status)"` y `gcloud compute disks list --project nath-269506` |
-| P2 | ¿Cuánto se paga al mes en GCP y en qué se va? | Consola → Facturación → Informes, agrupado por **Servicio** y por **SKU**, últimos 3 meses (captura o CSV) |
-| P3 | ¿De qué tamaño son las bases de Cloud SQL, con o sin alta disponibilidad, y cuánto ocupan? | `gcloud sql instances list --project nath-269506` y `gcloud sql instances describe <instancia> --project nath-269506 --format="value(settings.tier,settings.availabilityType,settings.dataDiskSizeGb,databaseVersion)"`. En la VM: `psql ... -c "select pg_size_pretty(pg_database_size('NATH_PRODUCTION'))"` |
-| P4 | ¿Cuánto ocupa el filestore? | En la VM: `sudo du -sh /home/ubuntu/.local/share/Odoo/filestore/*` (o la ruta de `data_dir` en `nath-erp.conf`: `grep data_dir /opt/nath-erp/nath-erp.conf`) |
-| P5 | ¿Qué sistema operativo y versiones hay? | En la VM: `cat /etc/os-release; python3 --version; nginx -v; wkhtmltopdf --version` |
-| P6 | ¿Qué IP autorizadas tiene Cloud SQL (quién entra a la base aparte de la VM)? | `gcloud sql instances describe <instancia> --project nath-269506 --format="value(settings.ipConfiguration.authorizedNetworks)"` |
-| P7 | ¿Hay otros servicios en el proyecto (buckets, balanceadores, Cloud Functions, DNS de Google)? | `gcloud services list --enabled --project nath-269506`; `gcloud storage ls --project nath-269506` |
+| P1 | ~~Máquinas y tamaños~~ | **Respondida (1.0)**: dos VM, sin más. |
+| P2 | ~~Coste mensual~~ | **Respondida (1.0)**: ~4.260 €/mes en noviembre. Faltan los meses anteriores (P20). |
+| P3 | ~~Bases de Cloud SQL~~ | **Respondida (1.0)**: 62 GB usados (KOROSHI) y 220 GB (tuctuc). El tamaño exacto de cada base, con `select pg_size_pretty(pg_database_size(current_database()))` desde Odoo o PedidosMultiples. |
+| P4 | ¿Cuánto ocupa el filestore? **(pendiente: hace falta SSH)** | En la VM: `sudo du -sh /home/ubuntu/.local/share/Odoo/filestore/*` (o la ruta de `data_dir` en `nath-erp.conf`: `grep data_dir /opt/nath-erp/nath-erp.conf`) |
+| P5 | ¿Qué sistema operativo y versiones hay? **(pendiente: hace falta SSH; la pestaña «OS info» de la consola sale vacía)** | En la VM: `cat /etc/os-release; python3 --version; nginx -v; wkhtmltopdf --version` |
+| P6 | ~~IP autorizadas en Cloud SQL~~ | **Respondida (1.0)**: oficina/almacén Oriola, Ionos y Looker. |
+| P7 | ~~Otros servicios~~ | **Respondida (1.0)**: 3 buckets, discos e IP sueltos; sin Cloud DNS ni balanceadores. |
 | P8 | ¿Quién lleva el DNS de `tuctuc.com` y quién emite el certificado? | `nslookup -type=NS tuctuc.com` (desde cualquier PC); en la VM: `sudo ls /etc/letsencrypt/live 2>/dev/null; grep -r ssl_certificate /etc/nginx/` |
 | P9 | ¿Quién lleva el contrato de Odoo Enterprise (Odoo SA, Effective, un partner)? ¿Hay que avisar del cambio de servidor? | Odoo → Ajustes → (pie de la página) código de suscripción y fecha de caducidad |
 | P10 | ¿S4T, XPO, GLS u otros tienen nuestra IP en una lista blanca, o nos llaman ellos a nosotros (webhooks)? | Preguntar a S4T y transportistas. IP de salida de la VM: `curl -s ifconfig.me` en la VM |
@@ -305,10 +420,15 @@ Google Cloud.
 | P13 | ¿Se trabaja en el almacén los domingos de madrugada? ¿Y en tuctuc (TPV, tiendas)? | — |
 | P14 | ¿Quién es «Soporte» y tiene experiencia con PostgreSQL? Decide entre opción A (base en VM) y B (gestionada). | — |
 | P15 | ¿Se migra también tuctuc, y en qué orden? | — |
+| P16 | ¿Qué es el servidor de **Ionos** (82.223.30.89) que entra a las dos bases? ¿Quién lo lleva? | — |
+| P17 | ¿Qué informes de **Looker Studio** leen las bases directamente y quién los usa? | Looker Studio → Fuentes de datos |
+| P18 | ¿Qué integración usa el **puerto 3232** de salida? | Preguntar a Soporte, o en la VM: `sudo ss -tnp \| grep :3232` |
+| P19 | ¿Quién lee el bucket **público** `nath-stock-feed-q7m4x2` (creado el 19/11)? ¿Debe ser público? | — |
+| P20 | ¿Qué cuenta de facturación pagaba antes de finales de octubre y cuánto costaba? ¿Los dos discos sueltos, las IP de Singapur y los buckets de Asia se pueden borrar? | Consola → Facturación → la otra cuenta → Informes |
 
 ## 6. Siguiente paso propuesto
 
-1. Isaac responde P1-P3 y P13-P15 (con eso se cierra el ahorro y la opción).
+1. Isaac decide entre camino 1 (subir PostgreSQL en GCP) y camino 1 + 2 (después migrar), y responde P13-P20.
 2. Se pide presupuesto a OVHcloud (y a Scaleway como contraste) con las máquinas de 2.3, y se mide la latencia (P12).
 3. Con el sí de Isaac, Soporte monta el servidor nuevo y se hace el ensayo completo con la copia neutralizada.
 4. Fecha de corte solo cuando el ensayo haya salido bien y P10/P11 estén resueltos.
