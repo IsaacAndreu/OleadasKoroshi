@@ -524,6 +524,25 @@ El código actual corre en **Python 3.5.2**, que ya no viene en ningún Ubuntu m
 
 Subir a Python 3.8 se deja para después, como PostgreSQL: un cambio cada vez.
 
+### 7.6 Investigado el 26/11 por la tarde (segunda tanda)
+
+- **Feed `code22_lockergear_stock.csv` (P19): no lo escribe Odoo.** No hay ningún cron ni acción de servidor con
+  `q7m4x2`, `stock-feed`, `lockergear`, `storage.googleapis` ni `google.cloud` en las bases de KOROSHI ni de tuctuc
+  (búsqueda de solo lectura desde la sesión web). Tampoco hay Cloud Run ni Cloud Scheduler en el proyecto. Lo sube
+  la cuenta de servicio **`stock-feed-uploader@nath-269506.iam.gserviceaccount.com`** (permiso «Storage Object User»
+  solo en ese bucket), con **una clave creada el 19/11/2026**: el programa que lo sube está **fuera de Google**, con
+  esa clave en un fichero. Lo más probable: **vuestro servidor de Ionos** (mirar su `crontab` buscando `stock-feed`,
+  `gsutil`, `gcloud` o un `.json` de credenciales). No está en este PC (sin tareas programadas ni ficheros).
+  **Para la migración no molesta**: el bucket puede quedarse en Google (cuesta céntimos al mes) aunque los servidores
+  se vayan a OVH. Solo hay que no cerrar el proyecto de GCP entero hasta moverlo.
+- **IP de Google 34.156.218.56 (P10 bis): no es vuestra.** Es una máquina de Google Cloud de otra persona
+  (`…bc.googleusercontent.com`) que hoy, 26/11, ha hecho 335 peticiones buscando ficheros sensibles (`/.env`,
+  `/wp-content/uploads/dump.sql`, `/www.zip`, `/yarn.lock`…). Es un **robot que busca agujeros**, no una integración.
+  No hay que tenerla en cuenta en la migración; sí refuerza cerrar 8069-8071 y lo demás de H3.
+- **PedidosMultiples**: además de las dos IP de base de datos (`ConnectionSQL.cs:24,28`), usa
+  `https://odoo.tuctuc.com` por XML-RPC (`Envios.cs:268`); esa va por nombre y no cambia. Prompt para su sesión en
+  el mensaje a Isaac del 26/11.
+
 ## 6. Siguiente paso propuesto
 
 1. Isaac decide entre camino 1 (subir PostgreSQL en GCP) y camino 1 + 2 (después migrar), y responde P13-P20.
