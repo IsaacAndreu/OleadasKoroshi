@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.16.0: retirar cajas a 0. noupdate: si se cambian en Ajustes > Técnico > Parámetros del sistema, al
+         actualizar no se pisan. Los de tarjetas son ids de empleado (hr.employee) separados por comas; los pone IT.
+         - cajas_cero_lineales: lineales de la ronda (zona 0 = palés de L44 a L136).
+         - tarjetas_revisar: Isaac, Betty y José Luis (stock negativo y descuadres; decisión de Isaac del 26/11).
+         - tarjetas_con_prendas: José Luis, Betty, Jordi y Darwin (cajas a 0 con prendas; ídem). -->
+    <data noupdate="1">
+        <record id="parametro_cajas_cero_lineales" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.cajas_cero_lineales</field>
+            <field name="value">44-136</field>
+        </record>
+        <record id="parametro_tarjetas_revisar" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.tarjetas_revisar</field>
+            <field name="value">0</field>
+        </record>
+        <record id="parametro_tarjetas_con_prendas" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.tarjetas_con_prendas</field>
+            <field name="value">0</field>
+        </record>
+    </data>
+</odoo>

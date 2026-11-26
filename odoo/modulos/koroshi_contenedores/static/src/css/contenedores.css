@@ -90,3 +90,13 @@
 .o_koroshi_contenedores .o_kc_tipo_lineal { background: #ede7f6; color: #4527a0; }
 .o_koroshi_contenedores .o_kc_tipo_articulo { background: #e3f2fd; color: #1565c0; }
 .o_koroshi_contenedores .o_kc_aviso_reserva { color: #b02a37; margin: 6px 0; }   /* v1.12 */
+/* v1.16: retirar cajas a 0 (ronda) */
+.o_koroshi_contenedores .o_kc_ronda { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 1px solid #b86e00; background: #fff1d6; color: #7a4a00; border-radius: 8px; margin-left: 8px; }
+.o_koroshi_contenedores .o_kc_fila_r { cursor: pointer; }
+.o_koroshi_contenedores .o_kc_fila_r td { padding: 8px 4px; }
+.o_koroshi_contenedores .o_kc_libre { color: #14572a; }
+.o_koroshi_contenedores .o_kc_libre_grande { margin-top: 10px; padding: 14px; background: #dff3e3; color: #14572a; font-size: 20px; font-weight: bold; border-radius: 8px; }
+.o_koroshi_contenedores .o_kc_r_titulo { margin-top: 10px; font-weight: bold; color: #0b4f9c; }
+.o_koroshi_contenedores .o_kc_r_prendas { padding: 6px 10px; font-size: 15px; border: 1px solid #b86e00; background: #fff; color: #7a4a00; border-radius: 6px; }
+.o_koroshi_contenedores .o_kc_acciones .o_kc_r_retirar { background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.o_koroshi_contenedores .o_kc_card tr.o_kc_marcado { background: #e6f0fb; }

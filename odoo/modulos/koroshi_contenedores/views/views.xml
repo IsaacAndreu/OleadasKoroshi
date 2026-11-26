@@ -39,8 +39,12 @@
                 <field name="producto_id"/>
                 <field name="producto_nuevo_id"/>
                 <field name="employee_id"/>
-                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes / es otro)"
-                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante', 'cambiar_articulo'))]"/>
+                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes / es otro / encontrado)"
+                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante', 'cambiar_articulo', 'encontrado'))]"/>
+                <!-- v1.16.0: ronda de cajas a 0 -->
+                <filter name="retiradas" string="Cajas a 0 retiradas (ronda)"
+                        domain="[('accion', '=', 'archivar'), ('destino', 'in', ('(archivado, vacía, ronda cajas a 0)', '(archivado, no estaba en el hueco)'))]"/>
+                <filter name="con_prendas" string="Cajas a 0 con prendas (marcadas)" domain="[('accion', '=', 'con_prendas')]"/>
                 <filter name="faltantes" string="A Faltantes" domain="[('accion', '=', 'faltante')]"/>
                 <filter name="cambiar_articulo" string="Cambiar artículo (errores de talla)"
                         domain="[('accion', '=', 'cambiar_articulo')]"/>

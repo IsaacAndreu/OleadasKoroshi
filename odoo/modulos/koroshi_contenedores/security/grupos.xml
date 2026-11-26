@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.16.0: usuarios de Odoo que pueden «Revisar» (stock negativo y reservas descuadradas) sin tarjeta de la
+         lista. Lo decidió Isaac el 26/11: su usuario y almacen2. Los usuarios los pone IT a mano. -->
+    <record id="group_revisar" model="res.groups">
+        <field name="name">KOROSHI Contenedores: revisar cajas con stock negativo</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+</odoo>

@@ -1,6 +1,8 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.16 (26/11): «Retirar cajas a 0»: ronda por lineal y hueco; se lee cada caja a 0 y se retiran las vacías (o las
+ *   que no están); «Tiene prendas» la marca sin tocar el stock. «Revisar» y «Cajas con prendas», solo para su lista.
  * v1.15 (23/11, O4): la tarjeta y el lector «leer al parar» salen de koroshi_base.comun (los mismos en todas las
  *   pantallas de la PDA). Mismo comportamiento que antes.
  * v1.14 (23/11, R23): «Es otro» al lado de «Cambiar»: lo que Odoo llama A en el contenedor es otra prenda (error de
@@ -100,6 +102,16 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_otro_ok': '_onOtroOk',
         'click .o_kc_otro_no': '_onOtroNo',
         'keydown .o_kc_otro_uds': '_onOtroKey',
+        // v1.16: retirar cajas a 0
+        'click .o_kc_ronda': '_onRonda',
+        'click .o_kc_r_lineal': '_onRondaLineal',
+        'click .o_kc_r_hueco': '_onRondaHueco',
+        'click .o_kc_r_lista': '_onRondaLista',
+        'click .o_kc_r_pedir': '_onRondaPedir',
+        'click .o_kc_r_si': '_onRondaSi',
+        'click .o_kc_r_no': '_onRondaNo',
+        'click .o_kc_r_prendas': '_onRondaPrendas',
+        'click .o_kc_r_salir': '_onRondaSalir',
     },
 
     init: function () {
@@ -126,6 +138,7 @@ var Pantalla = AbstractAction.extend({
         this.otro = null;               // v1.14: «Es otro» {id, nombre, uds, reservadas, b, n, confirmado, tanda}
         this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
         this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
+        this.ronda = null;              // v1.16: ronda de cajas a 0 {resumen, lineal, hueco, lista, vistas, confirmar}
     },
 
     start: function () {
@@ -217,6 +230,7 @@ var Pantalla = AbstractAction.extend({
         this.editando = null;
         this.otro = null;               // v1.14
         this.candidatos = null;
+        this.ronda = null;              // v1.16
         if (conPersona) { this.persona = null; }
         this._pintar();
     },
@@ -335,6 +349,13 @@ var Pantalla = AbstractAction.extend({
             if (!self.persona) {
                 self._aviso('mal', 'Primero pasa tu tarjeta de operario.');
                 return;
+            }
+            if (self.ronda) {               // v1.16: en la ronda, las lecturas son huecos, lineales y cajas
+                if (self.detalle) {
+                    self._pitido(false);
+                    return self._aviso('mal', 'Cierra antes la caja abierta («← Volver»).');
+                }
+                return self._rondaLeido(r);
             }
             self.confirmando = false;
             self.detalle = null;
@@ -515,6 +536,7 @@ var Pantalla = AbstractAction.extend({
 
     _onVolverHueco: function () {
         var self = this;
+        if (this.ronda) { return this._rondaVolverDeFicha(); }   // v1.16
         if (this.anadiendo && this.anadiendo.length) {
             return this._aviso('mal', 'Tienes prendas leídas sin guardar: «Guardar» o «Cancelar» antes.');
         }
@@ -686,6 +708,7 @@ var Pantalla = AbstractAction.extend({
         if (this.confirmando) { return this._onConfirmarNo(); }
         if (this.otro) { return this._onOtroNo(); }             // v1.14
         if (this.editando) { return this._onEditarNo(); }       // v1.7
+        if (this.ronda) { return this._rondaAtras(); }          // v1.16
         if (this.detalle) { return this._onVolverHueco(); }
         if (this.conts.length) {
             if (this.origenHueco) {        // venía de «Mover marcados»: vuelve al hueco
@@ -1019,6 +1042,7 @@ var Pantalla = AbstractAction.extend({
         this.$('.o_kc_codigo').val('');
         this._sugerencias(null);
         if (this.teclado) { this._ponerTeclado(false); }
+        if (this.ronda && tipo === 'hueco') { return this._rondaHueco(id); }   // v1.16
         if (tipo === 'hueco') { return this._abrirHueco(id); }
         if (tipo === 'articulo') { return this._abrirArticulo(id); }
         this._leer(codigo, false, 'toque');   // contenedor (a la lista de mover) o lineal
@@ -1118,6 +1142,333 @@ var Pantalla = AbstractAction.extend({
         this._foco();
     },
 
+    // ================================================================== v1.16.0: retirar cajas a 0 (ronda)
+    // Resumen por lineal → lineal (huecos) → hueco: se lee cada caja a 0 (☑ vista) y «Retirar las vacías» o «No
+    // están». «Tiene prendas» marca la caja sin tocar el stock. «Revisar» (stock negativo o descuadrado) y «Cajas con
+    // prendas» solo salen a los de su lista (parámetros del servidor). Todo lo comprueba otra vez el servidor.
+    _rondaRpc: function (ruta, params, hecho) {
+        var self = this;
+        if (this.ocupado) { return; }
+        this.ocupado = true;
+        params = _.extend({employee_id: this.persona && this.persona.id}, params || {});
+        return this._rpc({route: '/koroshi/contenedores/ronda/' + ruta, params: params}).then(function (r) {
+            self._fin();
+            if (!self.ronda) { return; }
+            if (!r || !r.ok) {
+                self._pitido(false);
+                self._aviso('mal', (r && r.msg) || 'No se ha podido hacer.');
+                self._pintar();
+                return;
+            }
+            hecho(r);
+            self._pintar();
+            self._foco();
+        }, self._sinConexion.bind(self));
+    },
+
+    _onRonda: function () {
+        if (this.ocupado) { return; }
+        if (!this.persona) { return this._aviso('mal', 'Primero pasa tu tarjeta de operario.'); }
+        if (this.conts.length || (this.anadiendo && this.anadiendo.length)) {
+            return this._aviso('mal', 'Acaba antes lo que tienes a medias (contenedores para mover o prendas leídas).');
+        }
+        this._reiniciar(false);
+        this.ronda = {resumen: null, lineal: null, hueco: null, lista: null, vistas: {}, confirmar: null};
+        this._aviso('info', 'Calculando las cajas a 0…');
+        this._pintar();
+        return this._rondaResumen();
+    },
+
+    _rondaResumen: function () {
+        var self = this;
+        return this._rondaRpc('resumen', {}, function (r) {
+            self.ronda.resumen = r;
+            self.ronda.lineal = null;
+            self.ronda.lista = null;
+            self.ronda.hueco = null;
+            self._aviso('', '');
+        });
+    },
+
+    _rondaLineal: function (n) {
+        var self = this;
+        if (!n) { return; }
+        return this._rondaRpc('lineal', {lineal: n}, function (r) {
+            self.ronda.lineal = r;
+            self.ronda.hueco = null;
+            self.ronda.lista = null;
+            self._aviso(r.huecos.length ? '' : 'ok', r.huecos.length ? '' : 'L' + n + ': no quedan cajas a 0.');
+        });
+    },
+
+    _rondaHueco: function (id) {
+        var self = this;
+        if (!id) { return; }
+        return this._rondaRpc('hueco', {ubicacion_id: id}, function (r) {
+            var mismo = self.ronda.hueco && self.ronda.hueco.id === r.hueco.id;
+            self.ronda.hueco = r.hueco;
+            if (!mismo) { self.ronda.vistas = {}; }
+            self.ronda.confirmar = null;
+            self._aviso('', '');
+        });
+    },
+
+    _rondaLista: function (tipo) {
+        var self = this;
+        return this._rondaRpc('lista', {tipo: tipo}, function (r) {
+            self.ronda.lista = r;
+            self.ronda.hueco = null;
+            self._aviso('', '');
+        });
+    },
+
+    // Lectura en la ronda (resultado de /leer): hueco, lineal o caja del hueco abierto. Nada se archiva al leer.
+    _rondaLeido: function (r) {
+        var ro = this.ronda;
+        if (r.tipo === 'ubicacion') { return this._rondaHueco(r.ubicacion.id); }
+        if (r.tipo === 'lineal') {
+            var n = parseInt(String(r.lineal.codigo).replace(/\D/g, ''), 10);
+            if (/^L/i.test(r.lineal.codigo) && n) { return this._rondaLineal(n); }
+            this._pitido(false);
+            return this._aviso('mal', 'En la ronda solo hay lineales L (L44…L136).');
+        }
+        if (r.tipo === 'contenedor') {
+            var c = r.contenedor;
+            if (!ro.hueco) {
+                this._pitido(false);
+                return this._aviso('mal', 'Lee primero el hueco (' + c.nombre + ' está en ' + c.hueco + ').');
+            }
+            var h = ro.hueco;
+            var x = _.findWhere(h.cero, {id: c.id});
+            if (x) {
+                if (x.con_prendas) {
+                    this._pitido(false);
+                    return this._aviso('info', c.nombre + ' ya está marcada «Tiene prendas»: se queda en el palé.');
+                }
+                ro.vistas[c.id] = true;
+                ro.confirmar = null;
+                this._pitido(true);
+                this._aviso('ok', '☑ ' + c.nombre + ' (a 0 en Odoo). Si tiene alguna prenda: «Tiene prendas».');
+                return this._pintar();
+            }
+            this._pitido(false);
+            if (_.findWhere(h.stock, {id: c.id})) {
+                return this._aviso('mal', c.nombre + ' tiene ' + _n(c.uds) + ' uds en Odoo: NO se retira.');
+            }
+            if (_.findWhere(h.revisar, {id: c.id})) {
+                return this._aviso('mal', c.nombre + ' tiene stock negativo o descuadrado: la revisan ' + h.revisan +
+                    '. No se retira.');
+            }
+            if (_.findWhere(h.abierta, {id: c.id})) {
+                return this._aviso('mal', c.nombre + ' está en una recepción o traslado sin validar: no se retira.');
+            }
+            return this._aviso('mal', c.nombre + ' no es de este hueco: está en ' + c.hueco + '.');
+        }
+        this._pitido(false);
+        if (r.tipo === 'articulo') { return this._aviso('mal', 'Eso es una prenda. En la ronda lee huecos y cajas.'); }
+        this._aviso('mal', 'En la ronda lee un hueco, un lineal (L67) o una caja.');
+    },
+
+    _onRondaLineal: function (ev) { return this._rondaLineal(parseInt($(ev.currentTarget).data('lineal'), 10)); },
+    _onRondaHueco: function (ev) { return this._rondaHueco(parseInt($(ev.currentTarget).data('id'), 10)); },
+    _onRondaLista: function (ev) { return this._rondaLista(String($(ev.currentTarget).data('tipo'))); },
+
+    _rondaVistas: function (vistas) {
+        var ro = this.ronda;
+        if (!ro || !ro.hueco) { return []; }
+        return _.filter(ro.hueco.cero, function (c) { return !c.con_prendas && !!ro.vistas[c.id] === vistas; });
+    },
+
+    _onRondaPedir: function (ev) {
+        if (!this.ronda || !this.ronda.hueco) { return; }
+        this.ronda.confirmar = String($(ev.currentTarget).data('que'));   // 'vacia' | 'no_esta'
+        this._pintar();
+    },
+
+    _onRondaNo: function () {
+        if (this.ronda) { this.ronda.confirmar = null; }
+        this._pintar();
+        this._foco();
+    },
+
+    _onRondaSi: function () {
+        var self = this;
+        var ro = this.ronda;
+        if (!ro || !ro.hueco || !ro.confirmar) { return; }
+        var que = ro.confirmar;
+        var cajas = this._rondaVistas(que !== 'no_esta');
+        if (!cajas.length) { return; }
+        return this._rondaRpc('retirar', {ubicacion_id: ro.hueco.id, contenedor_ids: _.pluck(cajas, 'id'),
+            motivo: que, confirmado: true}, function (m) {
+            ro.hueco = m.hueco;
+            ro.confirmar = null;
+            _.each(cajas, function (c) { delete ro.vistas[c.id]; });
+            self._pitido(true);
+            self._aviso('ok', '✓ ' + m.msg);
+        });
+    },
+
+    _onRondaPrendas: function (ev) {
+        var self = this;
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        return this._rondaRpc('con_prendas', {contenedor_id: id}, function (m) {
+            self.ronda.hueco = m.hueco;
+            delete self.ronda.vistas[id];
+            self._aviso('ok', '✓ ' + m.msg);
+        });
+    },
+
+    _onRondaSalir: function () {
+        this.ronda = null;
+        this._aviso('', '');
+        this._pintar();
+        this._foco();
+    },
+
+    // «Atrás» en la ronda: confirmación → hueco; ficha → hueco o lista; hueco → lineal o lista; lista/lineal →
+    // resumen; resumen → fuera de la ronda
+    _rondaAtras: function () {
+        var ro = this.ronda;
+        if (ro.confirmar) { return this._onRondaNo(); }
+        if (this.detalle) { return this._rondaVolverDeFicha(); }
+        if (ro.hueco) {
+            ro.hueco = null;
+            ro.vistas = {};
+            if (ro.lineal) { return this._rondaLineal(ro.lineal.lineal); }
+            if (ro.lista) { return this._rondaLista(ro.lista.tipo); }
+            return this._rondaResumen();
+        }
+        if (ro.lista || ro.lineal) { return this._rondaResumen(); }
+        return this._onRondaSalir();
+    },
+
+    // Al cerrar la ficha de una caja (abierta desde el hueco o desde «Revisar» / «Cajas con prendas»)
+    _rondaVolverDeFicha: function () {
+        if (this.anadiendo && this.anadiendo.length) {
+            return this._aviso('mal', 'Tienes prendas leídas sin guardar: «Guardar» o «Cancelar» antes.');
+        }
+        this.detalle = null;
+        this.anadiendo = null;
+        this.editando = null;
+        this.otro = null;
+        this.confirmando = false;
+        var ro = this.ronda;
+        if (ro.hueco) { return this._rondaHueco(ro.hueco.id); }
+        if (ro.lista) { return this._rondaLista(ro.lista.tipo); }
+        this._pintar();
+    },
+
+    _pintarRonda: function () {
+        var ro = this.ronda;
+        if (!ro || this.detalle) { return ''; }
+        if (ro.hueco) { return this._pintarRondaHueco(); }
+        var html;
+        if (ro.lista) {
+            var l = ro.lista;
+            var revisar = l.tipo === 'revisar';
+            html = '<div class="o_kc_card"><h3>' + (revisar ? 'Revisar: stock negativo o descuadrado'
+                : 'Cajas a 0 con prendas') + ' (' + (l.items.length + l.mas) + ')</h3><div>' + (revisar
+                ? 'Abre la caja. Vacía: «Poner a cero» y después «Archivar». Con prendas: «Cambiar» a las uds que hay.'
+                : 'Abre la caja y «Añadir prendas»: lee las que hay. Si eran un faltante de esa caja o de su hueco, se ' +
+                    'da por encontrado; si no, ajuste de inventario. Si está vacía: «Archivar».') + '</div>';
+            if (!l.items.length) { return html + '<div class="o_kc_vacio">No hay ninguna.</div></div>'; }
+            html += '<table>' + l.items.map(function (i) {
+                return '<tr><td><button type="button" class="o_kc_ver" data-id="' + i.id + '">' + _e(i.nombre) +
+                    '</button> <small>' + _e(i.hueco) + '</small>' +
+                    (i.detalle ? '<br/><small>' + _e(i.detalle) + '</small>' : '') + '</td></tr>';
+            }).join('') + (l.mas ? '<tr><td>… y ' + l.mas + ' más</td></tr>' : '') + '</table>';
+            return html + '</div>';
+        }
+        if (ro.lineal) {
+            var li = ro.lineal;
+            html = '<div class="o_kc_card"><h3>Cajas a 0 · ' + _e(li.codigo) + '</h3><div>' + li.huecos.length +
+                ' huecos. Toca uno o lee su código.</div>';
+            if (!li.huecos.length) { return html + '<div class="o_kc_vacio">No quedan cajas a 0.</div></div>'; }
+            html += '<table>' + li.huecos.map(function (h) {
+                return '<tr class="o_kc_r_hueco o_kc_fila_r" data-id="' + h.id + '"><td>' + _e(h.nombre) +
+                    (h.libre ? ' <b class="o_kc_libre">queda libre</b>' : '') + '</td><td class="o_kc_n">' + h.cero +
+                    ' a 0' + (h.con_prendas ? ' · ' + h.con_prendas + ' con prendas' : '') +
+                    (h.revisar ? ' · ' + h.revisar + ' revisar' : '') + '</td></tr>';
+            }).join('') + '</table>';
+            return html + '</div>';
+        }
+        var r = ro.resumen;
+        if (!r) { return '<div class="o_kc_card">Cargando…</div>'; }
+        html = '<div class="o_kc_card"><h3>Retirar cajas a 0 (' + _e(r.rango) + ')</h3><div>' + r.cajas +
+            ' cajas en ' + r.huecos + ' huecos · <b class="o_kc_libre">' + r.libres + ' huecos quedan libres</b> al ' +
+            'retirarlas. Toca un lineal o lee un hueco.</div><div class="o_kc_acciones">' +
+            (r.puede_revisar ? '<button type="button" class="o_kc_r_lista" data-tipo="revisar">Revisar (' +
+                r.revisar + ')</button>' : '') +
+            (r.puede_con_prendas ? '<button type="button" class="o_kc_r_lista" data-tipo="con_prendas">Cajas con ' +
+                'prendas (' + r.con_prendas + ')</button>' : '') +
+            '<button type="button" class="o_kc_r_salir">Salir</button></div>';
+        if (!r.lineales.length) { return html + '<div class="o_kc_vacio">No hay cajas a 0.</div></div>'; }
+        html += '<table>' + r.lineales.map(function (l) {
+            return '<tr class="o_kc_r_lineal o_kc_fila_r" data-lineal="' + l.lineal + '"><td><b>L' + l.lineal +
+                '</b></td><td class="o_kc_n">' + l.huecos + ' huecos · ' + l.cajas + ' cajas' +
+                (l.libres ? ' · <b class="o_kc_libre">' + l.libres + ' libres</b>' : '') +
+                (l.con_prendas ? ' · ' + l.con_prendas + ' con prendas' : '') +
+                (l.revisar ? ' · ' + l.revisar + ' revisar' : '') + '</td></tr>';
+        }).join('') + '</table>';
+        return html + '</div>';
+    },
+
+    _pintarRondaHueco: function () {
+        var ro = this.ronda;
+        var h = ro.hueco;
+        var html = '<div class="o_kc_card"><h3>' + _e(h.nombre) + '</h3>';
+        if (h.libre) { return html + '<div class="o_kc_libre_grande">✓ Sin cajas: hueco LIBRE</div></div>'; }
+        if (h.directo) {
+            html += '<div class="o_kc_vacio">Hay prendas sueltas en el propio hueco (fuera de cajas).</div>';
+        }
+        // el nombre se puede abrir (ficha) si la caja es de la lista de quien la lleva
+        var nombre = function (c, abrir) {
+            return abrir ? '<button type="button" class="o_kc_ver" data-id="' + c.id + '">' + _e(c.nombre) +
+                '</button>' : _e(c.nombre);
+        };
+        if (h.cero.length) {
+            html += '<div class="o_kc_r_titulo">A 0 en Odoo: lee cada caja</div><table>' + h.cero.map(function (c) {
+                var vista = !!ro.vistas[c.id];
+                return '<tr class="' + (vista ? 'o_kc_marcado' : '') + '"><td>' +
+                    (c.con_prendas ? '■ ' : (vista ? '☑ ' : '☐ ')) + nombre(c, c.con_prendas && h.puede_con_prendas) +
+                    '</td><td class="o_kc_n">' + (c.con_prendas ? 'con prendas (pendiente)' : (vista
+                        ? '<button type="button" class="o_kc_r_prendas" data-id="' + c.id + '">Tiene prendas</button>'
+                        : 'sin leer')) + '</td></tr>';
+            }).join('') + '</table>';
+        } else {
+            html += '<div>No le quedan cajas a 0.</div>';
+        }
+        var otras = function (lista, texto, abrir) {
+            return lista.length ? '<div class="o_kc_r_titulo">' + texto + '</div><table>' + lista.map(function (c) {
+                return '<tr class="o_kc_sin"><td>' + nombre(c, abrir) + '</td><td class="o_kc_n">' +
+                    (c.uds ? _n(c.uds) + ' uds' : '') + '</td></tr>';
+            }).join('') + '</table>' : '';
+        };
+        html += otras(h.stock, 'Con prendas en Odoo: NO tocar', false);
+        html += otras(h.revisar, 'Stock negativo o descuadrado: la revisan ' + _e(h.revisan), h.puede_revisar);
+        html += otras(h.abierta, 'En una recepción o traslado sin validar: NO tocar', false);
+        var vistas = this._rondaVistas(true);
+        var noVistas = this._rondaVistas(false);
+        if (ro.confirmar) {
+            var noEsta = ro.confirmar === 'no_esta';
+            var n = noEsta ? noVistas.length : vistas.length;
+            html += '<div class="o_kc_confirmar"><div><b>' + (noEsta
+                ? '¿Seguro que estas ' + n + ' cajas NO están en el palé?</b> Se quitan de Odoo: ' +
+                    _e(_.pluck(noVistas, 'nombre').join(', ')) + '.'
+                : '¿Estas ' + n + ' cajas están FÍSICAMENTE vacías y las quitas del palé?</b> Arranca o tacha su ' +
+                    'etiqueta KO_.') + '</div><button type="button" class="o_kc_r_si">Sí: ' +
+                (noEsta ? 'no están (' + n + ')' : 'retirar ' + n) + '</button>' +
+                '<button type="button" class="o_kc_r_no">No</button></div>';
+        } else if (vistas.length || noVistas.length) {
+            html += '<div class="o_kc_acciones">' +
+                '<button type="button" class="o_kc_r_pedir o_kc_r_retirar" data-que="vacia"' +
+                (vistas.length ? '' : ' disabled="disabled"') + '>Retirar las vacías (' + vistas.length + ')</button>' +
+                (noVistas.length ? '<button type="button" class="o_kc_r_pedir" data-que="no_esta">No están (' +
+                    noVistas.length + ')</button>' : '') + '</div>';
+        }
+        return html + '</div>';
+    },
+
     // ------------------------------------------------------------------ pintar
     // v1.6: dónde hay stock de la prenda leída; tocar un hueco lo abre
     _pintarArticulo: function () {
@@ -1214,7 +1565,11 @@ var Pantalla = AbstractAction.extend({
         var puedeEditar = !this.anadiendo && !this.confirmando && !e && !o;
         var html = '<button type="button" class="o_kc_volver_hueco">' + (this.hueco ? '← Volver al hueco' : '← Volver') +
             '</button>' +
-            '<div class="o_kc_card"><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">En: ' + _e(c.hueco) + '</div>';
+            '<div class="o_kc_card"><h3>' + _e(c.nombre) + '</h3><div class="o_kc_hueco">En: ' + _e(c.hueco) + '</div>' +
+            (c.con_prendas ? '<div class="o_kc_aviso_reserva">Marcada «Tiene prendas» (a 0 en Odoo): «Añadir prendas» ' +
+                'y lee las que hay. Si está vacía, «Archivar».</div>' : '') +            // v1.16
+            (c.revisar ? '<div class="o_kc_aviso_reserva">Stock negativo o descuadrado: solo la tocan los de ' +
+                '«Revisar».</div>' : '');
         if (c.n_lineas) {
             html += '<div>' + c.n_lineas + ' ref. · ' + _n(c.uds) + ' uds' +
                 (c.reservadas ? ' · <b>' + _n(c.reservadas) + ' reservadas</b>' : '') + '</div><table>' +
@@ -1313,6 +1668,9 @@ var Pantalla = AbstractAction.extend({
             paso = 'Ahora escanea la ubicación de destino (o más contenedores).';
         } else if (this.anadiendo) {
             paso = 'Añadir prendas: lee cada prenda y después «Guardar»';
+        } else if (this.ronda && !this.detalle) {   // v1.16
+            paso = this.ronda.hueco ? 'Lee cada caja a 0 del hueco; después «Retirar las vacías»'
+                : (this.ronda.lista ? 'Toca una caja para abrirla' : 'Retirar cajas a 0: toca un lineal o lee un hueco');
         } else if (this.otro) {         // v1.14
             paso = this.otro.b ? 'Es otro: pon cuántas uds son y «Guardar»'
                 : 'Es otro: lee una prenda de las que hay de verdad';
@@ -1349,7 +1707,7 @@ var Pantalla = AbstractAction.extend({
                 _e(c.hueco) + '</div>' + cuerpo + '</div>';
         }).join('');
         this.$('.o_kc_lista').html(html);
-        this.$('.o_kc_hueco_panel').html(this._pintarCandidatos() + this._pintarArticulo() + this._pintarLineal() +
+        this.$('.o_kc_hueco_panel').html(this._pintarRonda() + this._pintarCandidatos() + this._pintarArticulo() + this._pintarLineal() +
             this._pintarHueco() + this._pintarDetalle());
     },
 });

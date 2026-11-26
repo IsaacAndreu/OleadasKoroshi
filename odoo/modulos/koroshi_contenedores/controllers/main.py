@@ -47,6 +47,11 @@ DE_LA_COMPANIA = ('company_id', 'in', [COMPANY_ID, False])
 # v1.8.2: también los lineales de MU (MU-01…MU-14): sus huecos se llaman «MU-01 P00 C1», sin número delante
 LINEAL_RE = re.compile(r'^(L\d{1,4}|MU-? ?\d{1,2})$', re.I)
 LINEAL_DELANTE_RE = re.compile(r'^(L\d{1,4}|MU-\d{1,2})(\s|$)', re.I)   # «MU-00 P» o «L70 P3»: se ofrece el lineal
+# v1.16.0: retirar cajas a 0 (parámetros del sistema; los pone IT)
+PARAM_LINEALES = 'koroshi_contenedores.cajas_cero_lineales'     # «44-136»: lineales de la ronda (zona 0)
+PARAM_REVISAR = 'koroshi_contenedores.tarjetas_revisar'         # ids de empleado: stock negativo y descuadres
+PARAM_CON_PRENDAS = 'koroshi_contenedores.tarjetas_con_prendas'  # ids de empleado: cajas a 0 con prendas
+GRUPO_REVISAR = 'koroshi_contenedores.group_revisar'            # usuarios de Odoo que revisan sin tarjeta
 
 
 def _lineal(texto):
@@ -97,6 +102,9 @@ class KoroshiContenedores(http.Controller):
             'n_lineas': len(quants),
             'lineas': lineas,
             'mas': max(0, len(quants) - MAX_LINEAS),
+            'con_prendas': loc.name in self._marcas_con_prendas(),     # v1.16.0
+            'revisar': bool(quants.filtered(lambda q: q.quantity < 0 or (q.reserved_quantity > 0 and
+                                                                        q.reserved_quantity > q.quantity))),
         }
 
     def _hijos_contenedor(self, hueco):
@@ -179,9 +187,7 @@ class KoroshiContenedores(http.Controller):
             self._comprobar_usuario()
             if not confirmado:
                 raise UserError('Confirma que la ubicación está físicamente vacía.')
-            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-            if not emp:
-                raise UserError('Pasa antes tu tarjeta de operario.')
+            emp = self._empleado(employee_id)   # v1.16.0: tarjeta válida (activo y de la compañía), como el resto
             hueco = request.env['stock.location'].sudo().browse(int(ubicacion_id or 0)).exists()
             if not hueco:
                 raise UserError('Escanea la ubicación.')
@@ -190,7 +196,13 @@ class KoroshiContenedores(http.Controller):
             Mov = request.env['koroshi.contenedor.movimiento'].sudo()
             archivados, con_stock = [], []
             Faltante = request.env['koroshi.faltante'].sudo()
+            marcadas = self._marcas_con_prendas()     # v1.16.0
             for c in self._hijos_contenedor(hueco):
+                if c.name in marcadas or request.env['stock.move.line'].sudo().search_count([
+                        ('state', 'not in', ('done', 'cancel')), '|', ('location_id', '=', c.id),
+                        ('location_dest_id', '=', c.id)]):
+                    con_stock.append('%s (marcada con prendas o con movimiento sin validar)' % c.name)
+                    continue
                 quants = Quant.search([('location_id', '=', c.id), '|', ('quantity', '!=', 0),
                                        ('reserved_quantity', '!=', 0)])
                 if quants:
@@ -318,7 +330,7 @@ class KoroshiContenedores(http.Controller):
             if con_stock:
                 raise UserError('No se archiva nada: %s tiene prendas en el sistema. Ponlo a cero primero '
                                 '(tócalo en la lista) o desmárcalo.' % ', '.join(con_stock))
-            self._antes_de_archivar(conts)   # v1.13 (R4): antes de escribir nada
+            self._antes_de_archivar(conts, emp)   # v1.13 (R4): antes de escribir nada
             Mov = request.env['koroshi.contenedor.movimiento'].sudo()
             for c in conts:
                 c.write({'active': False})
@@ -343,7 +355,7 @@ class KoroshiContenedores(http.Controller):
             c = self._contenedor(contenedor_id)
             if self._quants(c):
                 raise UserError('No se archiva: %s tiene prendas en el sistema. Ponlo a cero primero.' % c.name)
-            self._antes_de_archivar([c])   # v1.13 (R4)
+            self._antes_de_archivar([c], emp)   # v1.13 (R4)
             hueco = c.location_id
             c.write({'active': False})
             request.env['koroshi.contenedor.movimiento'].sudo().create({
@@ -451,11 +463,26 @@ class KoroshiContenedores(http.Controller):
                         'move_id': f.move_faltant_id.id, 'faltante_id': f.id, 'employee_id': emp.id})
         return resumen, faltantes
 
-    def _antes_de_archivar(self, conts):
+    def _antes_de_archivar(self, conts, emp=None):
         """v1.13 (R4): los faltantes pendientes con vuelta a estos contenedores pasan a apuntar a su hueco; si alguno
-        está en una ronda abierta, error y no se archiva ninguno."""
+        está en una ronda abierta, error y no se archiva ninguno.
+        v1.16.0: tampoco con movimientos sin validar, ni una caja marcada «Tiene prendas» salvo los de su lista."""
         Loc = request.env['stock.location'].sudo()
         ubicaciones = Loc.browse([c.id for c in conts])
+        marcadas = [c.name for c in ubicaciones if c.name in self._marcas_con_prendas()]
+        if marcadas and not self._puede_con_prendas(emp):
+            raise UserError('No se archiva nada: %s está marcada «Tiene prendas» y la resuelven %s.' % (
+                ', '.join(marcadas), self._nombres_tarjetas(PARAM_CON_PRENDAS)))
+        # v1.16.0: una caja de una IN, INT u OUT sin validar (sale de ella o va a ella) no se archiva: rompería ese
+        # albarán. Antes no se miraba (una caja a 0 de una recepción en curso se podía archivar).
+        abiertas = request.env['stock.move.line'].sudo().search([
+            ('state', 'not in', ('done', 'cancel')), '|', ('location_id', 'in', ubicaciones.ids),
+            ('location_dest_id', 'in', ubicaciones.ids)])
+        if abiertas:
+            raise UserError('No se archiva nada: %s tiene movimientos sin validar en %s.' % (
+                ', '.join(sorted(set((abiertas.mapped('location_id') | abiertas.mapped('location_dest_id'))
+                                     .filtered(lambda l: l in ubicaciones).mapped('name')))),
+                ', '.join(sorted(set(abiertas.mapped('picking_id.name')))) or 'un albarán'))
         request.env['koroshi.faltante'].sudo().antes_de_archivar(ubicaciones)
 
     @http.route('/koroshi/contenedores/cero', type='json', auth='user')
@@ -470,6 +497,7 @@ class KoroshiContenedores(http.Controller):
                 raise UserError('Confirma que el contenedor está físicamente vacío.')
             emp = self._empleado(employee_id)
             c = self._contenedor(contenedor_id)
+            self._exigir_revisar(c, emp)        # v1.16.0: negativos y descuadres, solo los de «Revisar»
             quants = self._quants(c)
             if not quants:
                 raise UserError('%s ya está a cero.' % c.name)
@@ -526,9 +554,17 @@ class KoroshiContenedores(http.Controller):
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             c = self._contenedor(contenedor_id)
-            tanda = (tanda or '').strip()[:64] if isinstance(tanda, str) else ''
+            tanda = (tanda or '').strip()[:60] if isinstance(tanda, str) else ''
+            # v1.16.0: caja marcada «Tiene prendas» en la ronda: solo la resuelven los de tarjetas_con_prendas, y lo
+            # leído cubre antes los faltantes pendientes de la caja o de su hueco (Encontrado)
+            pendiente = c.name in self._marcas_con_prendas()
+            if pendiente and not self._puede_con_prendas(emp):
+                raise UserError('%s está marcada «Tiene prendas»: la resuelven %s. No se añade nada.' % (
+                    c.name, self._nombres_tarjetas(PARAM_CON_PRENDAS)))
             if tanda:
-                ya = request.env['koroshi.contenedor.movimiento'].sudo().search([('tanda', '=', tanda)])
+                # v1.16.0: la tanda de lo encontrado en Faltantes lleva «-F» detrás
+                ya = request.env['koroshi.contenedor.movimiento'].sudo().search(
+                    [('tanda', 'in', [tanda, tanda + '-F'])])
                 if ya:
                     return {'ok': True, 'repetida': True,
                             'msg': 'Ya estaba guardado: %s uds añadidas a %s (no se añade otra vez)'
@@ -548,13 +584,25 @@ class KoroshiContenedores(http.Controller):
                 if uds > MAX_ANADIR:
                     raise UserError('Más de %d uds de %s: revisa las lecturas.' % (MAX_ANADIR, p.display_name))
             company = c.company_id or request.env['res.company'].sudo().browse(COMPANY_ID)
+            textos, ajustadas = [], 0.0
             with request.env.cr.savepoint():    # todo o nada
                 for p, uds in por_producto.items():
-                    self._ajuste(p, uds, c, company, emp, 'anadir',
-                                 'KOROSHI contenedor %s: añadir prendas (%s)' % (c.name, emp.name), tanda=tanda)
+                    resto = uds
+                    if pendiente:               # v1.16.0
+                        resto, t = self._encontrar(p, uds, c, emp, tanda)
+                        textos += t
+                    if not float_is_zero(resto, precision_rounding=p.uom_id.rounding):
+                        nombre = 'KOROSHI contenedor %s: %s (%s)' % (
+                            c.name, 'caja a 0 con prendas' if pendiente else 'añadir prendas', emp.name)
+                        self._ajuste(p, resto, c, company, emp, 'anadir', nombre, tanda=tanda)
+                        ajustadas += resto
                 request.env['stock.move'].flush()   # v1.13: la restricción de la tanda salta aquí dentro
-            return {'ok': True, 'msg': '%s: %d uds añadidas a %s' % (emp.name, sum(por_producto.values()), c.name),
-                    'contenedor': self._datos_contenedor(c)}
+            msg = '%s: %d uds añadidas a %s' % (emp.name, sum(por_producto.values()), c.name)
+            if pendiente:
+                msg += ' (%s por ajuste de inventario)' % _num(ajustadas)
+            if textos:
+                msg += '. ' + '. '.join(textos)
+            return {'ok': True, 'msg': msg, 'contenedor': self._datos_contenedor(c)}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
 
@@ -570,6 +618,7 @@ class KoroshiContenedores(http.Controller):
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             c = self._contenedor(contenedor_id)
+            self._exigir_revisar(c, emp)        # v1.16.0
             p = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
             if not p:
                 raise UserError('Artículo no válido. Vuelve a abrir el contenedor.')
@@ -658,6 +707,7 @@ class KoroshiContenedores(http.Controller):
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             c = self._contenedor(contenedor_id)
+            self._exigir_revisar(c, emp)        # v1.16.0
             Product = request.env['product.product'].sudo()
             a = Product.browse(int(producto_id or 0)).exists()
             b = Product.browse(int(producto_real_id or 0)).exists()
@@ -897,9 +947,7 @@ class KoroshiContenedores(http.Controller):
     def mover(self, contenedor_ids=None, destino_id=False, employee_id=False, **kw):
         try:
             self._comprobar_usuario()
-            emp = request.env['hr.employee'].sudo().browse(int(employee_id or 0)).exists()
-            if not emp:
-                raise UserError('Pasa antes tu tarjeta de operario.')
+            emp = self._empleado(employee_id)   # v1.16.0: tarjeta válida (activo y de la compañía), como el resto
             Loc = request.env['stock.location'].sudo()
             Quant = request.env['stock.quant'].sudo()
             Mov = request.env['koroshi.contenedor.movimiento'].sudo()
@@ -938,3 +986,336 @@ class KoroshiContenedores(http.Controller):
             return {'ok': True, 'msg': msg}
         except UserError as e:
             return {'ok': False, 'msg': _msg(e)}
+
+    # ================================================================== v1.16.0: retirar cajas a 0 (ronda)
+    # Diseño v2 aprobado por Isaac el 26/11 (bin/versiones/diseno-compactacion-odoo-retirar-vacias-juntar-cajas_
+    # 2026-11-26_v2.md, parte 1). La lista se calcula en vivo (SQL de solo lectura) y no se guarda: el rastro queda en
+    # koroshi.contenedor.movimiento. Una caja «a 0» es un KO_/TT_ activo de un hueco del rango de lineales, sin quants
+    # con cantidad ni reserva y sin líneas de movimiento abiertas. Las negativas y las de reserva descuadrada son
+    # «revisar» (solo las tarjetas de tarjetas_revisar o los usuarios del grupo «Contenedores: revisar»).
+    def _param(self, clave):
+        return request.env['ir.config_parameter'].sudo().get_param(clave) or ''
+
+    def _nombres_tarjetas(self, clave):
+        ids = logica.ids_tarjetas(self._param(clave))
+        emps = request.env['hr.employee'].sudo().browse(list(ids)).exists()
+        return ', '.join(emps.mapped('name')) or '(nadie: falta poner el parámetro %s)' % clave
+
+    def _puede_revisar(self, emp):
+        return request.env.user.has_group(GRUPO_REVISAR) or bool(
+            emp and emp.id in logica.ids_tarjetas(self._param(PARAM_REVISAR)))
+
+    def _puede_con_prendas(self, emp):
+        return bool(emp and emp.id in logica.ids_tarjetas(self._param(PARAM_CON_PRENDAS)))
+
+    def _exigir_revisar(self, c, emp):
+        """Las cajas con stock negativo o con más reservado que cantidad solo las tocan los de «Revisar»."""
+        raras = self._quants(c).filtered(lambda q: q.quantity < 0 or (q.reserved_quantity > 0 and
+                                                                     q.reserved_quantity > q.quantity))
+        if raras and not self._puede_revisar(emp):
+            raise UserError('%s tiene stock negativo o reservas descuadradas: la revisan %s. No se cambia nada.'
+                            % (c.name, self._nombres_tarjetas(PARAM_REVISAR)))
+
+    def _marcas_con_prendas(self):
+        """Nombres de las cajas marcadas «Tiene prendas» sin nada hecho después con su stock."""
+        cr = request.env.cr
+        cr.execute("""
+            SELECT contenedor,
+                   MAX(id) FILTER (WHERE accion = 'con_prendas'),
+                   MAX(id) FILTER (WHERE accion NOT IN ('con_prendas', 'mover'))
+              FROM koroshi_contenedor_movimiento
+             WHERE contenedor IN (SELECT contenedor FROM koroshi_contenedor_movimiento WHERE accion = 'con_prendas')
+             GROUP BY contenedor""")
+        return {n for n, marca, cambio in cr.fetchall() if logica.con_prendas_pendiente(marca, cambio)}
+
+    def _cajas(self, extra='', args=()):
+        """Cajas KO_/TT_ activas de la compañía en huecos del rango de lineales, con su estado para la ronda
+        (logica.clasificar). extra: condición SQL más sobre h (hueco) o c (caja), con sus args."""
+        cr = request.env.cr
+        cr.execute("""
+            SELECT c.id, c.name, h.id, h.name, h.complete_name,
+                   COUNT(q.id) FILTER (WHERE q.quantity <> 0 OR q.reserved_quantity <> 0),
+                   COUNT(q.id) FILTER (WHERE q.quantity < 0),
+                   COUNT(q.id) FILTER (WHERE q.reserved_quantity > 0 AND q.reserved_quantity > q.quantity),
+                   COALESCE(SUM(q.quantity), 0)
+              FROM stock_location c
+              JOIN stock_location h ON h.id = c.location_id
+              LEFT JOIN stock_quant q ON q.location_id = c.id
+             WHERE c.active AND c.usage = 'internal' AND (c.company_id = %s OR c.company_id IS NULL)
+               AND upper(left(c.name, 3)) IN ('KO_', 'TT_') """ + extra + """
+             GROUP BY c.id, h.id""", (COMPANY_ID,) + tuple(args))
+        filas = cr.fetchall()
+        # líneas abiertas (IN, INT u OUT sin hacer) que salen de una caja o van a ella: esa caja no se retira. Con
+        # pocas cajas (un hueco, un lineal) solo las suyas; con toda la nave, todas las abiertas de una vez
+        ids = tuple(f[0] for f in filas)
+        if not ids:
+            return []
+        if len(ids) <= 3000:
+            cr.execute("""SELECT location_id, location_dest_id FROM stock_move_line
+                           WHERE state NOT IN ('done', 'cancel') AND (location_id IN %s OR location_dest_id IN %s)""",
+                       (ids, ids))
+        else:
+            cr.execute("""SELECT location_id, location_dest_id FROM stock_move_line
+                           WHERE state NOT IN ('done', 'cancel')""")
+        abiertas = set()
+        for a, b in cr.fetchall():
+            abiertas.add(a)
+            abiertas.add(b)
+        marcas = self._marcas_con_prendas()
+        lo, hi = logica.rango_lineales(self._param(PARAM_LINEALES))
+        res = []
+        for cid, cnombre, hid, hnombre, hcompleto, activos, neg, desc, uds in filas:
+            lineal = logica.lineal_de(hnombre)
+            if lineal is None or not lo <= lineal <= hi or _es_contenedor_nombre(hnombre):
+                continue
+            estado = logica.clasificar(activos, neg, desc, cid in abiertas)
+            res.append({'id': cid, 'nombre': cnombre, 'hueco_id': hid, 'hueco': hcompleto or hnombre,
+                        'hueco_nombre': hnombre, 'lineal': lineal, 'estado': estado, 'uds': uds,
+                        'con_prendas': estado == 'cero' and cnombre in marcas})
+        return res
+
+    def _directo(self, hueco_ids):
+        """Huecos con prendas sueltas (fuera de cajas): no quedan libres aunque se retiren sus cajas."""
+        if not hueco_ids:
+            return set()
+        request.env.cr.execute("""SELECT DISTINCT location_id FROM stock_quant
+                                   WHERE location_id IN %s AND quantity <> 0""", (tuple(hueco_ids),))
+        return {f[0] for f in request.env.cr.fetchall()}
+
+    @staticmethod
+    def _por_hueco(cajas):
+        por = {}
+        for c in cajas:
+            por.setdefault(c['hueco_id'], []).append(c)
+        return por
+
+    @staticmethod
+    def _libre_si_retira(lista, directo):
+        """El hueco queda libre al retirar sus cajas a 0: todas a 0 (sin «con prendas») y nada suelto."""
+        return not directo and all(c['estado'] == 'cero' and not c['con_prendas'] for c in lista)
+
+    def _datos_ronda_hueco(self, hueco, emp):
+        cajas = sorted(self._cajas('AND h.id = %s', (hueco.id,)), key=lambda c: c['nombre'])
+        directo = bool(self._directo([hueco.id]))
+
+        def grupo(estado):
+            return [{'id': c['id'], 'nombre': c['nombre'], 'uds': c['uds'], 'con_prendas': c['con_prendas']}
+                    for c in cajas if c['estado'] == estado]
+        return {'id': hueco.id, 'nombre': hueco.complete_name, 'cero': grupo('cero'), 'stock': grupo('stock'),
+                'revisar': grupo('revisar'), 'abierta': grupo('abierta'), 'directo': directo,
+                'libre': not cajas and not directo,
+                'puede_revisar': self._puede_revisar(emp), 'puede_con_prendas': self._puede_con_prendas(emp),
+                'revisan': self._nombres_tarjetas(PARAM_REVISAR)}
+
+    @http.route('/koroshi/contenedores/ronda/resumen', type='json', auth='user')
+    def ronda_resumen(self, employee_id=False, **kw):
+        """Resumen por lineal: huecos con cajas a 0, cajas, huecos que quedan libres al retirarlas y pendientes."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            por_hueco = self._por_hueco(self._cajas())
+            directo = self._directo(list(por_hueco))
+            lineales = {}
+            for hid, lista in por_hueco.items():
+                l = lineales.setdefault(lista[0]['lineal'], {'lineal': lista[0]['lineal'], 'huecos': 0, 'cajas': 0,
+                                                             'libres': 0, 'con_prendas': 0, 'revisar': 0})
+                ceros = [c for c in lista if c['estado'] == 'cero' and not c['con_prendas']]
+                l['cajas'] += len(ceros)
+                l['con_prendas'] += len([c for c in lista if c['con_prendas']])
+                l['revisar'] += len([c for c in lista if c['estado'] == 'revisar'])
+                if ceros:
+                    l['huecos'] += 1
+                    if self._libre_si_retira(lista, hid in directo):
+                        l['libres'] += 1
+            filas = [l for l in sorted(lineales.values(), key=lambda x: x['lineal'])
+                     if l['cajas'] or l['con_prendas'] or l['revisar']]
+            lo, hi = logica.rango_lineales(self._param(PARAM_LINEALES))
+            return {'ok': True, 'rango': 'L%d–L%d' % (lo, hi), 'lineales': filas,
+                    'cajas': sum(l['cajas'] for l in filas), 'huecos': sum(l['huecos'] for l in filas),
+                    'libres': sum(l['libres'] for l in filas),
+                    'con_prendas': sum(l['con_prendas'] for l in filas),
+                    'revisar': sum(l['revisar'] for l in filas),
+                    'puede_revisar': self._puede_revisar(emp), 'puede_con_prendas': self._puede_con_prendas(emp)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/ronda/lineal', type='json', auth='user')
+    def ronda_lineal(self, lineal=0, employee_id=False, **kw):
+        """Huecos de un lineal con cajas a 0 (o pendientes), en orden de pasillo."""
+        try:
+            self._comprobar_usuario()
+            self._empleado(employee_id)
+            try:
+                n = int(lineal or 0)
+            except (TypeError, ValueError):
+                raise UserError('Lineal no válido.')
+            clave = 'L%d' % n
+            cajas = [c for c in self._cajas('AND (h.name ILIKE %s OR h.name ILIKE %s)',
+                                             ('%% %s %%' % clave, '%s %%' % clave)) if c['lineal'] == n]
+            por_hueco = self._por_hueco(cajas)
+            directo = self._directo(list(por_hueco))
+            huecos = []
+            for hid, lista in por_hueco.items():
+                ceros = [c for c in lista if c['estado'] == 'cero' and not c['con_prendas']]
+                prendas = [c for c in lista if c['con_prendas']]
+                revisar = [c for c in lista if c['estado'] == 'revisar']
+                if not (ceros or prendas or revisar):
+                    continue
+                huecos.append({'id': hid, 'nombre': lista[0]['hueco_nombre'], 'cero': len(ceros),
+                               'con_prendas': len(prendas), 'revisar': len(revisar),
+                               'stock': len([c for c in lista if c['estado'] == 'stock']),
+                               'libre': bool(ceros) and self._libre_si_retira(lista, hid in directo)})
+            huecos.sort(key=lambda h: logica.orden_hueco(h['nombre']))
+            return {'ok': True, 'lineal': n, 'codigo': clave, 'huecos': huecos}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/ronda/hueco', type='json', auth='user')
+    def ronda_hueco(self, ubicacion_id=False, employee_id=False, **kw):
+        """Cajas de un hueco por estado: a 0 (retirar), con prendas (no tocar), revisar y con movimientos abiertos."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            hueco = request.env['stock.location'].sudo().browse(int(ubicacion_id or 0)).exists()
+            if not hueco:
+                raise UserError('No encuentro la ubicación.')
+            self._validar_destino(hueco)
+            return {'ok': True, 'hueco': self._datos_ronda_hueco(hueco, emp)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/ronda/retirar', type='json', auth='user')
+    def ronda_retirar(self, ubicacion_id=False, contenedor_ids=None, employee_id=False, motivo='vacia',
+                      confirmado=False, **kw):
+        """Archiva cajas a 0 del hueco: «vacia» (leídas y vacías) o «no_esta» (en Odoo y no en el palé). Se mira en
+        vivo que cada una sigue a 0, sin marca «con prendas» y en ese hueco; si alguna no, no se archiva ninguna."""
+        try:
+            self._comprobar_usuario()
+            if not confirmado:
+                raise UserError('Confirma antes en la PDA.')
+            emp = self._empleado(employee_id)
+            hueco = request.env['stock.location'].sudo().browse(int(ubicacion_id or 0)).exists()
+            if not hueco:
+                raise UserError('Lee el hueco.')
+            ids = {int(i) for i in (contenedor_ids or [])}
+            if not ids:
+                raise UserError('No hay cajas que retirar.')
+            vivas = {c['id']: c for c in self._cajas('AND h.id = %s', (hueco.id,))}
+            por_que = {'stock': 'tiene prendas en Odoo', 'revisar': 'stock negativo o descuadrado',
+                       'abierta': 'tiene un movimiento sin validar'}
+            malas = []
+            for i in sorted(ids):
+                c = vivas.get(i)
+                if not c:
+                    malas.append('una caja que ya no está en %s' % hueco.complete_name)
+                elif c['estado'] != 'cero' or c['con_prendas']:
+                    malas.append('%s (%s)' % (c['nombre'], por_que.get(c['estado'], 'marcada «Tiene prendas»')))
+            if malas:
+                raise UserError('No se retira nada: %s. Vuelve a leer el hueco.' % '; '.join(malas))
+            conts = request.env['stock.location'].sudo().browse(sorted(ids))
+            self._antes_de_archivar(conts, emp)
+            nota = ('(archivado, no estaba en el hueco)' if motivo == 'no_esta'
+                    else '(archivado, vacía, ronda cajas a 0)')
+            Mov = request.env['koroshi.contenedor.movimiento'].sudo()
+            for c in conts:
+                c.write({'active': False})
+                Mov.create({'accion': 'archivar', 'contenedor': c.name, 'origen_id': hueco.id,
+                            'origen': hueco.complete_name, 'destino': nota, 'employee_id': emp.id})
+            datos = self._datos_ronda_hueco(hueco, emp)
+            msg = '%s: %d caja(s) %s en %s. Arranca o tacha su etiqueta KO_' % (
+                emp.name, len(conts), 'que no estaban, quitadas de Odoo' if motivo == 'no_esta' else 'retiradas',
+                hueco.complete_name)
+            if datos['libre']:
+                msg += '. %s queda LIBRE' % hueco.complete_name
+            return {'ok': True, 'msg': msg, 'hueco': datos}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/ronda/con_prendas', type='json', auth='user')
+    def ronda_con_prendas(self, contenedor_id=False, employee_id=False, **kw):
+        """«Tiene prendas»: la caja está a 0 en Odoo y tiene prendas. No cambia el stock: queda marcada para que la
+        resuelvan los de tarjetas_con_prendas (leer sus prendas: primero Faltantes, si no, ajuste +)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            c = self._contenedor(contenedor_id)
+            if self._quants(c):
+                raise UserError('%s ya tiene prendas en Odoo: no hace falta marcarla.' % c.name)
+            if c.name in self._marcas_con_prendas():
+                raise UserError('%s ya está marcada «Tiene prendas».' % c.name)
+            hueco = c.location_id
+            request.env['koroshi.contenedor.movimiento'].sudo().create({
+                'accion': 'con_prendas', 'contenedor': c.name, 'origen_id': hueco.id, 'origen': hueco.complete_name,
+                'destino': '(a 0 en Odoo con prendas: pendiente)', 'employee_id': emp.id})
+            return {'ok': True, 'msg': '%s marcada «Tiene prendas»: se queda en el palé. La resuelven %s.' % (
+                c.name, self._nombres_tarjetas(PARAM_CON_PRENDAS)), 'hueco': self._datos_ronda_hueco(hueco, emp)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/ronda/lista', type='json', auth='user')
+    def ronda_lista(self, tipo='revisar', employee_id=False, **kw):
+        """«Revisar» (stock negativo o descuadrado) o «Cajas con prendas», por lineal y hueco. Solo los de su lista."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            if tipo == 'revisar':
+                if not self._puede_revisar(emp):
+                    raise UserError('«Revisar» solo lo hacen %s.' % self._nombres_tarjetas(PARAM_REVISAR))
+                cajas = [c for c in self._cajas() if c['estado'] == 'revisar']
+            else:
+                tipo = 'con_prendas'
+                if not self._puede_con_prendas(emp):
+                    raise UserError('Las cajas con prendas las resuelven %s.'
+                                    % self._nombres_tarjetas(PARAM_CON_PRENDAS))
+                cajas = [c for c in self._cajas() if c['con_prendas']]
+            cajas.sort(key=lambda c: (logica.orden_hueco(c['hueco_nombre']), c['nombre']))
+            mas = max(0, len(cajas) - MAX_HUECOS)
+            cajas = cajas[:MAX_HUECOS]
+            detalle = {}
+            if tipo == 'revisar' and cajas:
+                for q in request.env['stock.quant'].sudo().search(
+                        [('location_id', 'in', [c['id'] for c in cajas]), '|',
+                         ('quantity', '!=', 0), ('reserved_quantity', '!=', 0)]):
+                    detalle.setdefault(q.location_id.id, []).append('%s: %s uds%s' % (
+                        q.product_id.display_name, _num(q.quantity),
+                        ' (res. %s)' % _num(q.reserved_quantity) if q.reserved_quantity else ''))
+            items = [{'id': c['id'], 'nombre': c['nombre'], 'hueco_id': c['hueco_id'], 'hueco': c['hueco_nombre'],
+                      'detalle': '; '.join(detalle.get(c['id'], []))} for c in cajas]
+            return {'ok': True, 'tipo': tipo, 'items': items, 'mas': mas}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _encontrar(self, producto, uds, c, emp, tanda):
+        """v1.16.0: caja marcada «Tiene prendas»: las prendas leídas de un artículo cubren antes los faltantes
+        pendientes de ese artículo con vuelta a la caja o a su hueco («Encontrado»: de FALTANTE a la caja, sin
+        ajuste). Un faltante no se parte. Devuelve (uds que sobran = ajuste +, textos para el mensaje)."""
+        Faltante = request.env['koroshi.faltante'].sudo()
+        fs = Faltante.search([('estado', '=', 'pendiente'), ('product_id', '=', producto.id),
+                              ('ubicacion_vieja_id', 'in', [c.id, c.location_id.id])], order='id')
+        fs = fs.filtered(lambda f: not f.en_ronda)
+        usados, resto = logica.repartir_encontrados(uds, [(f.id, f.cantidad_faltant) for f in fs])
+        hechos = Faltante.browse()
+        for f in Faltante.browse(usados):
+            try:
+                with request.env.cr.savepoint():
+                    f.marcar_encontrado(c)
+                hechos |= f
+            except UserError:
+                resto += f.cantidad_faltant      # no se ha podido (FALTANTE sin las uds): va como ajuste +
+        textos = []
+        if hechos:
+            uds_f = sum(hechos.mapped('cantidad_faltant'))
+            request.env['koroshi.contenedor.movimiento'].sudo().create({
+                'accion': 'encontrado', 'contenedor': c.name, 'origen_id': c.location_id.id, 'origen': 'FALTANTE',
+                'destino': '%s (%s)' % (c.location_id.complete_name, ', '.join(hechos.mapped('name'))),
+                'uds': uds_f, 'lineas': len(hechos), 'producto_id': producto.id, 'faltante_id': hechos[0].id,
+                'move_id': hechos[0].move_revision_id.id, 'employee_id': emp.id,
+                'tanda': (tanda + '-F') if tanda else False})
+            textos.append('%s uds de %s eran un faltante (%s): encontradas, sin ajuste' % (
+                _num(uds_f), producto.display_name, ', '.join(hechos.mapped('name'))))
+        otros = Faltante.search_count([('estado', '=', 'pendiente'), ('product_id', '=', producto.id),
+                                       ('id', 'not in', hechos.ids)])
+        if otros:
+            textos.append('hay %d faltante(s) de %s pendiente(s) de otros huecos: no se tocan (míralo en Faltantes)'
+                          % (otros, producto.display_name))
+        return max(0.0, resto), textos

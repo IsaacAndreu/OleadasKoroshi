@@ -11,9 +11,14 @@ class KoroshiContenedorMovimiento(models.Model):
     # v1.7: 'cantidad' también (uds reales de un artículo del contenedor; uds = diferencia, + o -)
     # v1.13: 'faltante' = una línea reservada (o una parte) que ha pasado a Faltantes al poner a cero o al cambiar la
     # cantidad (uds = las que salen del contenedor a FALTANTE; reservadas = las que ha perdido la reserva aquí)
+    # v1.16: 'con_prendas' = en la ronda de cajas a 0, la caja está a 0 en Odoo y tiene prendas (no cambia el stock;
+    # queda pendiente hasta que se añaden sus prendas o se archiva). 'encontrado' = al resolverla, prendas que eran un
+    # faltante pendiente de esa caja o de su hueco (de FALTANTE a la caja, sin ajuste)
     accion = fields.Selection([('mover', 'Mover'), ('archivar', 'Archivar vacío'), ('cero', 'Poner a cero'),
                                ('anadir', 'Añadir prendas'), ('cantidad', 'Cambiar cantidad'),
-                               ('faltante', 'A Faltantes'), ('cambiar_articulo', 'Cambiar artículo')], 'Acción',
+                               ('faltante', 'A Faltantes'), ('cambiar_articulo', 'Cambiar artículo'),
+                               ('con_prendas', 'Caja a 0 con prendas (marcada)'),
+                               ('encontrado', 'Encontrado (de Faltantes)')], 'Acción',
                               default='mover', required=True)
     contenedor = fields.Char('Contenedor', required=True, index=True)
     origen_id = fields.Many2one('stock.location', 'Origen (hueco)', ondelete='set null')

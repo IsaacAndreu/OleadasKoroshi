@@ -86,5 +86,57 @@ class TestCambiarArticulo(unittest.TestCase):
         self.assertEqual(logica.reservas_a_faltantes(5, 5, 0), 0)
 
 
+class TestRondaCajasCero(unittest.TestCase):
+    """v1.16.0: retirar cajas a 0."""
+
+    def test_rango(self):
+        self.assertEqual(logica.rango_lineales('44-136'), (44, 136))
+        self.assertEqual(logica.rango_lineales('L1 - L43'), (1, 43))
+        self.assertEqual(logica.rango_lineales('136-44'), (44, 136))
+        self.assertEqual(logica.rango_lineales(''), (44, 136))
+        self.assertEqual(logica.rango_lineales('todo'), (44, 136))
+
+    def test_lineal_de(self):
+        self.assertEqual(logica.lineal_de('07828 - L67 P16 C1'), 67)
+        self.assertEqual(logica.lineal_de('L200 P00 C1'), 200)
+        self.assertIsNone(logica.lineal_de('MU-01 P00 C1'))
+        self.assertIsNone(logica.lineal_de('KO_090726_030'))
+        self.assertIsNone(logica.lineal_de(''))
+
+    def test_orden_hueco(self):
+        huecos = ['07828 - L67 P10 C1', '07828 - L67 P2 C2', '07828 - L67 P2 C1', '07828 - L66 P40 C1']
+        self.assertEqual(sorted(huecos, key=logica.orden_hueco),
+                         ['07828 - L66 P40 C1', '07828 - L67 P2 C1', '07828 - L67 P2 C2', '07828 - L67 P10 C1'])
+
+    def test_clasificar(self):
+        self.assertEqual(logica.clasificar(0, 0, 0, False), 'cero')
+        self.assertEqual(logica.clasificar(0, 0, 0, True), 'abierta')
+        self.assertEqual(logica.clasificar(2, 0, 0, False), 'stock')
+        self.assertEqual(logica.clasificar(1, 1, 0, False), 'revisar')     # stock negativo
+        self.assertEqual(logica.clasificar(1, 0, 1, True), 'revisar')      # reservado sin cantidad
+
+    def test_ids_tarjetas(self):
+        self.assertEqual(logica.ids_tarjetas('12, 34; 56'), {12, 34, 56})
+        self.assertEqual(logica.ids_tarjetas(''), set())
+        self.assertEqual(logica.ids_tarjetas(None), set())
+
+    def test_con_prendas_pendiente(self):
+        self.assertFalse(logica.con_prendas_pendiente(None, None))
+        self.assertTrue(logica.con_prendas_pendiente(10, None))
+        self.assertTrue(logica.con_prendas_pendiente(10, 5))        # marcada después del último cambio
+        self.assertFalse(logica.con_prendas_pendiente(10, 12))      # ya se resolvió
+
+    def test_repartir_encontrados(self):
+        # KO_090726_045: 1 prenda y un faltante de 1 de esa caja: encontrado, sin ajuste
+        self.assertEqual(logica.repartir_encontrados(1, [(7, 1)]), ([7], 0.0))
+        # 3 prendas, faltantes de 1 y 1: los dos encontrados y 1 ud de ajuste +
+        self.assertEqual(logica.repartir_encontrados(3, [(7, 1), (8, 1)]), ([7, 8], 1.0))
+        # un faltante de 2 con 1 prenda: no se parte; ajuste + de 1
+        self.assertEqual(logica.repartir_encontrados(1, [(7, 2)]), ([], 1.0))
+        # el de 2 no cabe, el de 1 sí
+        self.assertEqual(logica.repartir_encontrados(1, [(7, 2), (8, 1)]), ([8], 0.0))
+        self.assertEqual(logica.repartir_encontrados(2, []), ([], 2.0))
+
+
 if __name__ == '__main__':
     unittest.main()

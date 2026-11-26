@@ -124,14 +124,30 @@ v1.15.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita korosh
   Devoluciones, Referencia y Prenda en el suelo: mismo comportamiento que la 1.9.3. En las rutas, el permiso, la
   tarjeta y la búsqueda de la prenda salen de koroshi_base.pda: la tarjeta tiene que ser de un operario activo de la
   compañía (antes bastaba con que existiera); la búsqueda es la misma que antes. Incluye la 1.14.0 (sin instalar).
+v1.16.0 (26/11/2026): «Retirar cajas a 0» (diseño v2 aprobado por Isaac el 26/11:
+  bin/versiones/diseno-compactacion-odoo-retirar-vacias-juntar-cajas_2026-11-26_v2.md, parte 1). En la zona 0 hay miles
+  de KO_ a 0 en Odoo que siguen en el palé (foto de L67 P16, 26/11). Botón nuevo en la PDA: resumen por lineal (cajas a
+  0, huecos que quedan libres), lineal, hueco; se lee cada caja a 0 y «Retirar las vacías» o «No están» (archivar, con
+  confirmación y nota en el registro). Lista en vivo (SQL de solo lectura), lineales del parámetro
+  koroshi_contenedores.cajas_cero_lineales (44-136). «Tiene prendas» marca la caja sin tocar el stock (acción nueva
+  con_prendas); la resuelven solo las tarjetas de tarjetas_con_prendas (José Luis, Betty, Jordi y Darwin): «Añadir
+  prendas» cubre antes los faltantes pendientes de la caja o de su hueco (Encontrado, acción nueva encontrado) y el resto
+  es ajuste +. Stock negativo y reservas descuadradas: lista «Revisar», solo las tarjetas de tarjetas_revisar (Isaac,
+  Betty y José Luis) o los usuarios del grupo nuevo «Contenedores: revisar» (Isaac y almacen2); «Poner a cero»,
+  «Cambiar» y «Es otro» en esas cajas solo para ellos. Archivar ya no deja archivar una caja con movimientos sin validar
+  (IN, INT u OUT que salen de ella o van a ella; antes no se miraba) ni una marcada «Tiene prendas». /mover y /limpiar
+  piden tarjeta válida (activo y de la compañía), como las demás rutas. Sin campos en tablas de Odoo; parámetros
+  nuevos (noupdate, los de tarjetas los pone IT con ids de empleado).
 """,
-    'version': '13.0.1.15.0',
+    'version': '13.0.1.16.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
     'depends': ['web', 'stock', 'hr', 'barcodes', 'koroshi_base', 'koroshi_operarios', 'koroshi_faltantes'],
     'data': [
+        'security/grupos.xml',
         'security/ir.model.access.csv',
+        'data/parametros.xml',
         'views/assets.xml',
         'views/views.xml',
         'views/menu.xml',
