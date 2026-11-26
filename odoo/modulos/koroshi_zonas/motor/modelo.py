@@ -83,6 +83,11 @@ def parametros(cambios=None, contexto=None):
         p['ZONAS_MUELLE'] = ctx.get('zonas_muelle')
     if p['ZONAS'] > p['PERSONAS']:
         p['ZONAS'] = p['PERSONAS']
+    # v1.8.0: para probar un ritmo sin tocar la configuracion (diagnostico sin guardar)
+    if ctx.get('seg_lectura'):
+        p['SEG_LECTURA'] = float(ctx['seg_lectura'])
+    if ctx.get('seg_lineal'):
+        p['SEG_LINEAL'] = float(ctx['seg_lineal'])
     return p
 
 

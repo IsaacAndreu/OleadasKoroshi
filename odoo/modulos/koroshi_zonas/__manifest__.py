@@ -42,6 +42,18 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.8.0 (26/11/2026): zonas que aprenden (bin/versiones/diseno-zonas-que-aprenden_2026-11-26.md), lo pide Isaac: «que
+  vaya aprendiendo y haciendo las zonas en base a lo que entra». El 26/11 una prenda para 49 tiendas (2621SU60 y
+  2621PL50, ~600 uds en L51-L52) dejo D2 en L42-L79 y estiro D3 de L70 a L136.
+  Que entra: el informe y el correo dicen si es dia de reposicion o de implantacion (% de uds en articulos que van a
+  la mitad o mas de las tiendas) y que articulos van a casi todas, con sus lineales. Solo texto: el reparto no cambia.
+  Ritmo real: cada noche, por zona, lecturas, lineales por OUT, anchura y segundos-persona reales (lecturas de la PDA;
+  pausas de mas de 10 min no cuentan). En la configuracion, el ritmo que sale de las ultimas 3 semanas (con 9
+  zonas-dia del 19 al 25/11: ~24 s por lectura y ~41 s por lineal; error 4 % contra 30 % con 52/21), escalado al
+  trabajo total de ahora (la hora de fin no salta), y el boton 'Usar el ritmo real'. No se aplica solo.
+  Para probar un ritmo sin tocar la configuracion, el diagnostico admite seg_lectura y seg_lineal en el contexto.
+  Campos nuevos solo en koroshi.zonas.ejecucion (tipo_dia, pct_compartido, ritmo_zonas). El modo del dia, que iba a
+  ser la 1.8.0, pasa a la 1.9.0.
 v1.7.0 (23/11/2026): revision general del 23/11 (R9), avisos cuando falla el reparto. En modo real, si el reparto
   falla antes de acabar (antes no quedaba ni ejecucion ni mensaje), si acaba en algo que no es «Hecho» o si el cron
   202 sigue activo, correo a los del parametro koroshi_zonas.avisar (isaac.andreu@nath.es de inicio). Cron nuevo
@@ -85,7 +97,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

@@ -4,18 +4,22 @@
 # Un registro por compania (la 8). Valores iniciales = los de la v12f: el reparto no cambia.
 # Litros por tipo de prenda: la tabla de koroshi_kpi (koroshi.kpi.peso.tipo), una sola para todo.
 # =============================================================================
+import datetime
+import json
 import logging
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
 from odoo.addons.koroshi_base import comun
 
+from ..motor import aprender
 from ..motor import modelo
 from ..motor import volumen
 
 _logger = logging.getLogger(__name__)
 
 COMPANY_ID = comun.COMPANY_ID     # v1.4.0: de koroshi_base
+DIAS_RITMO = 21                   # v1.8.0: zonas-dia de las ultimas 3 semanas para proponer el ritmo
 PARAM_LITROS_V12F = 'koroshi_zonas.litros_v12f_aplicados'
 
 
@@ -81,6 +85,11 @@ class KoroshiZonasConfig(models.Model):
                                        'como la acción 1883')
     ver_out = fields.Integer('OUT que se listan en el informe', default=400)
 
+    # v1.8.0: zonas que aprenden. Ritmo real de las ultimas semanas (lecturas de la PDA); se aplica con un boton.
+    ritmo_texto = fields.Text('Ritmo real', compute='_compute_ritmo')
+    seg_lectura_prop = fields.Float('Segundos por lectura propuestos', compute='_compute_ritmo')
+    seg_lineal_prop = fields.Float('Segundos por lineal propuestos', compute='_compute_ritmo')
+
     _sql_constraints = [('company_uniq', 'unique(company_id)', 'Ya hay una configuración para esta compañía.')]
 
     @api.constrains('personas', 'zonas', 'litros_caja', 'cierre_min', 'hora_inicio', 'hora_fin', 'dias_atras')
@@ -98,6 +107,52 @@ class KoroshiZonasConfig(models.Model):
                 partes = (h or '').split(':')
                 if len(partes) != 2 or not partes[0].isdigit() or not partes[1].isdigit():
                     raise ValidationError('Las horas van como HH:MM (inicio también puede ser AHORA): %s' % h)
+
+    def _filas_ritmo(self):
+        """v1.8.0: (lecturas, lineales por OUT, segundos-persona, dia, zona) de las zonas de lineal (D1...Dn) de los
+        repartos medidos del todo en los ultimos DIAS_RITMO dias."""
+        desde = comun.hoy_local() - datetime.timedelta(days=DIAS_RITMO)
+        filas = []
+        for ej in self.env['koroshi.zonas.ejecucion'].sudo().search([
+                ('company_id', '=', self.company_id.id), ('fecha', '>=', desde), ('medicion', '=', 'medida'),
+                ('ritmo_zonas', '!=', False), ('modo', 'in', ('real', 'historico'))], order='fecha'):
+            for zona, t in sorted(json.loads(ej.ritmo_zonas).items()):
+                if zona[:1] == 'D' and zona[1:].isdigit() and t.get('lecturas') and t.get('seg_persona'):
+                    filas.append((t['lecturas'], t['lineales_out'], t['seg_persona'], ej.fecha, zona))
+        return filas
+
+    def _compute_ritmo(self):
+        for r in self:
+            filas = r._filas_ritmo()
+            prop = aprender.proponer([f[:3] for f in filas], r.seg_lectura, r.seg_lineal)
+            r.seg_lectura_prop = prop and prop['seg_lectura_prop'] or 0.0
+            r.seg_lineal_prop = prop and prop['seg_lineal_prop'] or 0.0
+            if not prop:
+                r.ritmo_texto = ('Aún no hay bastantes días medidos: %d zonas-día de %d necesarias (zonas de lineal de '
+                                 'los repartos medidos de las últimas %d días). Cada noche se suma lo de ese día.' % (
+                                     len(filas), aprender.MIN_FILAS, DIAS_RITMO))
+                continue
+            dias = sorted(set(f[3] for f in filas))
+            r.ritmo_texto = (
+                'Con %d zonas-día (%s a %s), lo que tarda de verdad cada zona se explica así:\n'
+                '  %.1f s por lectura + %.1f s por cada lineal que visita cada OUT (error medio %.1f %%).\n'
+                'Con el ritmo de ahora (%.0f s y %.0f s) el error medio es del %.1f %%.\n'
+                'Propuesto: %d s por lectura y %d s por lineal. Es el mismo peso que lo real, escalado para que el '
+                'trabajo total del día sea el de ahora: la hora de fin prevista no cambia, cambian las fronteras '
+                '(las zonas anchas pesan más).' % (
+                    prop['n'], dias[0].strftime('%d/%m'), dias[-1].strftime('%d/%m'), prop['seg_lectura'],
+                    prop['seg_lineal'], prop['error_prop'], r.seg_lectura, r.seg_lineal, prop['error_ahora'],
+                    prop['seg_lectura_prop'], prop['seg_lineal_prop']))
+
+    def accion_usar_ritmo(self):
+        """v1.8.0: pone el ritmo propuesto en la configuracion (lo decide un jefe; no se cambia solo)."""
+        self.ensure_one()
+        if not self.seg_lectura_prop or not self.seg_lineal_prop:
+            raise ValidationError('Aún no hay ritmo propuesto: faltan días medidos.')
+        _logger.info('KOROSHI Zonas: ritmo cambiado por %s: %.0f/%.0f -> %.0f/%.0f s', self.env.user.login,
+                     self.seg_lectura, self.seg_lineal, self.seg_lectura_prop, self.seg_lineal_prop)
+        self.write({'seg_lectura': self.seg_lectura_prop, 'seg_lineal': self.seg_lineal_prop})
+        return True
 
     @api.model
     def obtener(self):

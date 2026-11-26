@@ -42,6 +42,16 @@
                             <field name="ver_out"/>
                         </group>
                     </group>
+                    <!-- v1.8.0: zonas que aprenden -->
+                    <group string="Ritmo real (aprende cada noche de las lecturas de la PDA)">
+                        <field name="ritmo_texto" nolabel="1" colspan="2"/>
+                        <field name="seg_lectura_prop"/>
+                        <field name="seg_lineal_prop"/>
+                        <button name="accion_usar_ritmo" type="object" string="Usar el ritmo real"
+                                class="btn-primary" groups="stock.group_stock_manager"
+                                attrs="{'invisible': [('seg_lectura_prop', '=', 0)]}"
+                                confirm="Se cambian los segundos por lectura y por lineal por los propuestos. El reparto de mañana ya los usa. ¿Seguro?"/>
+                    </group>
                 </sheet>
             </form>
         </field>

@@ -18,6 +18,7 @@ import pytz
 from odoo import api, fields, models
 from odoo.addons.koroshi_base import comun
 
+from ..motor import aprender as motor_aprender
 from ..motor import medir as motor_medir
 from ..motor import modelo
 from ..motor import tiempos as motor_tiempos
@@ -26,7 +27,7 @@ from . import escritor
 from . import lector
 
 CLAVES_CONTEXTO = ('personas', 'hora_inicio', 'hora_fin', 'una_ronda', 'zonas', 'zonas_muelle', 'prueba_ids',
-                   'prueba_agrupacion')
+                   'prueba_agrupacion', 'seg_lectura', 'seg_lineal')    # v1.8.0: probar un ritmo
 
 
 class _Deshacer(Exception):
@@ -100,6 +101,15 @@ class KoroshiZonasEjecucion(models.Model):
     desvio_min = fields.Integer('Desvío (min)', readonly=True,
                                 help='Duración real de la zona más larga menos la prevista (positivo = más lenta)')
     informe_tiempos = fields.Text('Previsto contra real', readonly=True)
+    # v1.8.0: zonas que aprenden. Que entra (al calcular) y ritmo real de cada zona (al medir)
+    tipo_dia = fields.Selection([('reposicion', 'Reposición'), ('mixto', 'Reposición con parte de implantación'),
+                                 ('implantacion', 'Implantación')], 'Tipo de día', readonly=True,
+                                help='Según el % de uds en artículos que van a la mitad o más de las tiendas')
+    pct_compartido = fields.Float('% uds compartidas', readonly=True, digits=(16, 1),
+                                  help='% de las uds en artículos que van a la mitad o más de las tiendas')
+    ritmo_zonas = fields.Text('Ritmo real por zona', readonly=True,
+                              help='JSON por zona: lecturas, lineales por OUT, uds, anchura y segundos-persona '
+                                   'reales (lecturas de la PDA). Con él se propone el ritmo en la configuración')
 
     # Medicion (fase 1)
     medicion = fields.Selection([('sin_medir', 'Sin medir'), ('parcial', 'En parte (hay OUT sin validar)'),
@@ -368,7 +378,15 @@ class KoroshiZonasEjecucion(models.Model):
         real = dict((zn, motor_tiempos.resumen_lecturas(ls)) for zn, ls in por_zona.items())
         previsto = self._prevision_del_dia()
         lineas, res = motor_tiempos.comparar(previsto, real, len(operarios))
+        # v1.8.0: ritmo real de cada zona (para aprender). No cambia nada fuera de esta ejecucion.
+        try:
+            ritmo, lineas_ritmo = self._ritmo_real(zona_de, operarios, dia0)
+        except Exception:
+            _logger.exception('KOROSHI Zonas: ritmo real de %s', self.prefijo)
+            ritmo, lineas_ritmo = {}, []
+        lineas += lineas_ritmo
         self.write({
+            'ritmo_zonas': ritmo and json.dumps(ritmo, sort_keys=True) or False,
             'fin_previsto': self.fin_previsto or (previsto and motor_tiempos.reloj(previsto['fin'])) or False,
             'inicio_real': res.get('inicio') is not None and motor_tiempos.reloj(res['inicio']) or False,
             'fin_real': res.get('fin') is not None and motor_tiempos.reloj(res['fin']) or False,
@@ -376,6 +394,49 @@ class KoroshiZonasEjecucion(models.Model):
             'desvio_min': res.get('desvio') or 0,
             'informe_tiempos': '\n'.join(lineas),
         })
+
+    def _ritmo_real(self, zona_de, operarios, dia0):
+        """v1.8.0: por zona, el trabajo (lecturas = hueco x producto por OUT, lineales por OUT, uds, anchura) y los
+        segundos-persona reales: para cada operario que ha leido aqui, el tiempo entre dos lecturas seguidas suyas
+        de ese dia (de cualquier sitio; pausas de mas de motor_aprender.HUECO_MAX no cuentan) se apunta a la zona de
+        la segunda. Devuelve ({zona: datos}, lineas de informe)."""
+        Linea = self.env['stock.move.line'].sudo()
+        outs = {}
+        for ml in Linea.search([('picking_id', 'in', list(zona_de.keys()))]):
+            q = max(ml.product_uom_qty, ml.qty_done)
+            if q <= 0:
+                continue
+            zona = zona_de.get(ml.picking_id.id, '')
+            outs.setdefault(zona, {}).setdefault(ml.picking_id.id, []).append(
+                (ml.location_id.id, ml.product_id.id, v12f.lineal_de(ml.location_id.complete_name), q))
+        if not operarios:
+            return {}, []
+        desde = dia0.astimezone(pytz.utc).replace(tzinfo=None)
+        hasta = desde + datetime.timedelta(days=1)
+        lect = self.env['koroshi.preparacion.lectura'].sudo().search_read(
+            [('employee_id', 'in', list(operarios)), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
+             ('deshecha', '=', False), ('fecha', '>=', desde), ('fecha', '<', hasta)],
+            ['fecha', 'employee_id', 'picking_id'])
+        seg = motor_aprender.segundos_persona([
+            ((l['fecha'] - desde).total_seconds(), l['employee_id'][0],
+             l['picking_id'] and zona_de.get(l['picking_id'][0], '') or '') for l in lect])
+        ritmo = {}
+        cfg = self.env['koroshi.zonas.config'].obtener()
+        lineas = ['', 'RITMO REAL (para aprender; segundos-persona entre lecturas, sin pausas de mas de %d min):' % (
+            motor_aprender.HUECO_MAX // 60),
+            '   Zona | uds | lecturas | lineales por OUT | anchura | s-persona | s por lectura | con el ritmo de ahora']
+        for zona in sorted(outs):
+            t = motor_aprender.trabajo_zona(outs[zona])
+            t['seg_persona'] = round(seg.get(zona, 0.0))
+            ritmo[zona] = t
+            if not t['lecturas'] or not t['seg_persona']:
+                continue
+            prev = t['lecturas'] * cfg.seg_lectura + t['lineales_out'] * cfg.seg_lineal
+            lineas.append('   %-5s | %d | %d | %d | %d (L%d-L%d) | %d | %.0f | %+d %%' % (
+                zona, t['uds'], t['lecturas'], t['lineales_out'], t['anchura'], t['lineal_min'], t['lineal_max'],
+                t['seg_persona'], t['seg_persona'] / float(t['lecturas']), round(100.0 * (prev - t['seg_persona'])
+                                                                                / t['seg_persona'])))
+        return ritmo, lineas
 
     def _texto_informe(self, tot, por_zona, filas, regla, medidas):
         lin = []
@@ -497,12 +558,18 @@ class KoroshiZonasEjecucion(models.Model):
                 if l.startswith('Acaba previsto') or l.startswith('Personas por zona') or l.startswith('AVISO:'):
                     pos = i + 1
             rep.lineas[pos:pos] = aviso
+            # v1.8.0: que entra (dia de reposicion o de implantacion). Solo texto: el reparto no cambia.
+            cls = motor_aprender.clasificar(rep)
+            pos += len(aviso)
+            rep.lineas[pos:pos] = motor_aprender.lineas_clasificar(cls)
             total, _por_zona = motor_tiempos.personas_necesarias(rep, fin_min)
             prev = motor_tiempos.prevision(rep)
             vals_tiempos = {
                 'fin_previsto': motor_tiempos.reloj(prev['fin']),
                 'personas_necesarias': total and total > p['PERSONAS'] and total or 0,
                 'prevision_zonas': json.dumps(prev, sort_keys=True),
+                'tipo_dia': cls['tipo'],
+                'pct_compartido': cls['pct'],
             }
         ej = self.create(dict(vals_tiempos, **{
             'modo': rep.modo.lower(),

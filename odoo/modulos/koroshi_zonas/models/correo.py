@@ -49,7 +49,9 @@ class KoroshiZonasCorreo(models.AbstractModel):
         # v1.3.0: el aviso de hora de fin (y las OUT de dias anteriores), arriba del correo
         for l in (ej.informe or '').split('\n'):
             # v1.5.0: y las lineas HORA DE FIN (a que hora se acaba y cuantas personas harian falta)
-            if l.startswith('AVISO:') or l.startswith('OUT de dias anteriores') or l.startswith('HORA DE FIN:'):
+            # v1.8.0: y las lineas TIPO DE DIA (reposicion o implantacion)
+            if (l.startswith('AVISO:') or l.startswith('OUT de dias anteriores') or l.startswith('HORA DE FIN:')
+                    or l.startswith('TIPO DE DIA:')):
                 extra += ' | %s' % l
         return '%s (%s)%s' % (primera, ej.name, extra), ej.informe or ''
 

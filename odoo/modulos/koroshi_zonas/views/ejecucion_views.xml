@@ -26,6 +26,8 @@
                 <field name="fin_real" optional="show"/>
                 <field name="personas_reales" optional="hide"/>
                 <field name="desvio_min" optional="show"/>
+                <field name="tipo_dia" optional="show"/>
+                <field name="pct_compartido" optional="hide"/>
                 <field name="medido_el" optional="hide"/>
                 <button name="action_medir" type="object" string="Medir" icon="fa-refresh"/>
             </tree>
@@ -79,6 +81,8 @@
                         <group>
                             <field name="fin_previsto"/>
                             <field name="personas_necesarias"/>
+                            <field name="tipo_dia"/>
+                            <field name="pct_compartido"/>
                         </group>
                         <group>
                             <field name="inicio_real"/>
