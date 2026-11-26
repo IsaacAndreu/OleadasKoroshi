@@ -253,6 +253,36 @@ real depende casi todo de cuánto cuesta hoy Cloud SQL** (P2).
 | R10 | Precios que suben (OVH subió el 01/10; Hetzner dos veces en 2026) | Savings Plan a 12 meses; volver a comparar cada año |
 | R11 | Dejar de pagar GCP antes de tiempo o borrar sin copia final | Baja a las 2-4 semanas, con copia final guardada |
 
+### 4.4 Cuánto tarda y quién hace cada parte (añadido el 26/11, a petición de Isaac)
+
+Reparto: **Claude** prepara scripts, comprobaciones, listas y documentos en el repo; **Isaac** (o Soporte) ejecuta en
+el servidor y en los proveedores, siempre con su sí, paso a paso; **otros** son quienes tienen que contestar o
+hacer algo fuera de nuestro alcance.
+
+| Fase | Qué | Claude | Isaac / Soporte | Otros | Horas de trabajo | Días de calendario |
+|---|---|---|---|---|---|---|
+| 0. Datos | Contestar P1-P8 (máquinas, factura, tamaños, IP, DNS) | Prepara los comandos `gcloud` de solo lectura y vuelca los resultados en este estudio | Los lanza en Cloud Shell o la consola y pega la salida | — | 1-2 h | 1-2 días |
+| 1. Decisión y contrato | Elegir proveedor y opción; pedir presupuesto | Ajusta el ahorro con la factura real; prepara la petición de presupuesto | Decide, crea la cuenta y contrata (Claude no crea cuentas ni contrata) | Comercial de OVH/Scaleway | 2-4 h | 3-7 días |
+| 2. Avisos externos | Listas blancas, SPF, DNS, contrato Enterprise | Redacta los correos a S4T, XPO, GLS, quien lleve el DNS y quien lleve Odoo Enterprise | Los envía | S4T, transportistas, proveedor de DNS/correo, Odoo/partner | 1-2 h | **1-3 semanas** (esperar respuestas; es lo que más tarda) |
+| 3. Montar el servidor | Sistema, nginx, certificados, Python/Odoo 13, wkhtmltopdf, PostgreSQL, copias, monitorización | Escribe los scripts de instalación (`bin/migracion/…`) con comprobaciones (`check` antes de `install`, como `desplegar.sh`) y la lista de versiones exactas | Ejecuta los scripts con su sí; copia el código y la configuración de la VM vieja (tienen claves: Claude no las toca) | — | 20-30 h | 1 semana |
+| 4. Copia y neutralización | `pg_dump`/`pg_restore`, `rsync` del filestore, neutralizar | Script de copia y SQL de neutralización (3.3) con su comprobación posterior | Lo lanza; mide el tiempo de la copia | — | 4-8 h | 1-2 días |
+| 5. Pruebas | Lista de 3.2 y 3.6 contra la copia | Prepara la lista, los scripts de comparación (tiempos, PDF de etiquetas) y una versión de PedidosMultiples con el host nuevo | Prueba en oficina | **Un responsable del almacén con una PDA** (1-2 h); quien lleve PedidosMultiples | 8-12 h | 3-5 días |
+| 6. Ensayo del corte | Corte completo sobre la copia, cronometrado | Guion del corte minuto a minuto y guion de vuelta atrás | Lo ensaya | — | 3-4 h | 1 noche |
+| 7. Corte real | Domingo 01:00-05:00 | Guion y lista de comprobación; durante el corte, revisa salidas y logs que Isaac le pase | Ejecuta todo (DNS, parar, copiar, arrancar) | Quien lleve el DNS si no es Isaac | 4-6 h | 1 noche |
+| 8. Vigilancia y baja de GCP | Primera semana; baja a las 2-4 semanas | Revisa logs, crons y cola S4T que Isaac le pase; lista para dar de baja | Mira el almacén el lunes a primera hora; da de baja GCP con copia final | — | 3-5 h | 2-4 semanas |
+
+**Total por Odoo: ~45-75 h de trabajo**, de las que **Isaac/Soporte ~30-45 h** (sobre todo las fases 3 y 7) y el
+resto preparación de Claude. **En calendario: 4-6 semanas** desde que se tengan los datos de la fase 0, sobre todo por
+esperar a terceros (fase 2) y por hacer el corte en domingo. El segundo Odoo, ~2-3 semanas más y algo menos de
+trabajo (los scripts ya estarán hechos).
+
+Lo que **solo** puede hacer Isaac u otra persona: crear la cuenta y pagar, entrar en el servidor y ejecutar, copiar
+configuraciones con claves, cambiar el DNS, hablar con S4T/transportistas/Odoo y probar con la PDA en el almacén.
+
+**Datos reales de la consola de Google Cloud: pendientes.** Isaac autorizó mirarla en solo lectura, pero el
+clasificador de permisos de esta sesión bloqueó la navegación a `console.cloud.google.com`. Hasta que se desbloquee
+(o Isaac pase la salida de los comandos de P1-P7), las cifras de 4.1 siguen siendo estimaciones.
+
 ## 5. Preguntas para Isaac
 
 Todos los comandos son **de solo lectura**. Los de `gcloud` se pueden lanzar desde Cloud Shell, en la consola de
