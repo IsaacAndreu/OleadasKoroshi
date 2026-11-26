@@ -246,8 +246,15 @@ v3.37.0 (26/11/2026): en la pausa de Lecturas, botón «Dejar este pedido (que l
 /koroshi/operarios/soltar (koroshi_operarios 2.25.0, instalarla antes): el pedido queda libre para otro, lo leído se
 queda y la PDA queda libre como en la pausa. Antes la pausa solo dejaba seguir con el mismo pedido. Isaac eligió que lo
 pueda hacer la operaria, con aviso al responsable en el Tablero. Sin campos nuevos.
+v3.38.0 (26/11/2026): OUT de tienda grande (516 líneas, 26/11): Validar con líneas sin leer ya no obliga a leerlas o a
+marcar Faltante. El aviso «Quedan N líneas» pasa el botón a «⚠ Validar incompleto» (8 s) y el segundo toque valida lo
+leído, que ya está en sus cajas CJ, y deja el resto en un pedido pendiente reservado para otro operario. Es el mismo
+asistente de Odoo que Validar -> «Crear pedido pendiente» en el ordenador; lo pidió Isaac («que facin validar i crear
+parcial»). No en Zalando / About You (ya lo tenían), ni en OUT de zona Z-, ni en la ronda de faltantes, ni a dos.
+Parámetro koroshi_preparacion.validar_parcial ('0' = como antes; sin crear vale '1'). Solo servidor: la PDA ya sabía
+pintar «Validar incompleto». S4T (acción 1800): el pedido espera a que se valide el pedido pendiente. Sin campos nuevos.
 """,
-    'version': '13.0.3.37.0',
+    'version': '13.0.3.38.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

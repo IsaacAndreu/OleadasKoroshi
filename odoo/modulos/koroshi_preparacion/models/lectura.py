@@ -61,6 +61,9 @@ VOL_UD_DEFECTO = 0.0084        # m3 por ud si ningún artículo tiene volumen (c
 # m3 por ud de cada OUT / agrupación, guardados en memoria: leer el volumen de 207 artículos costaba ~25 ms en cada
 # lectura (medido el 25/11 en la OUT/27651). Un volumen cambiado en Odoo se ve como mucho a los VOL_CACHE_SEG
 VOL_CACHE_SEG = 600
+# v3.38: OUT de tienda (y demás OUT con caja CJ) «Validar incompleto»: se valida lo leído y el resto queda en un pedido
+# pendiente, como Validar -> «Crear pedido pendiente» en el ordenador (Isaac, 26/11). '0' = como antes (leer o Faltante)
+PARAM_PARCIAL = 'koroshi_preparacion.validar_parcial'
 _vol_cache = {}                # (bd, clave) -> (momento, {product_id: m3 por ud})
 
 
@@ -381,6 +384,20 @@ class Lectura(models.Model):
             return True
         nombre = (picking.partner_id.display_name or '').upper()
         return any(m in nombre for m in MARKETPLACES)
+
+    @api.model
+    def _parcial(self, picking):
+        """v3.38: OUT que se puede validar a medias con «Validar incompleto» (el resto, a un pedido pendiente): OUT con
+        caja que no es de Zalando / About You (esas ya lo tenían, v3.27), ni de una agrupación de zona Z- (se valida con la
+        zona), ni la ronda de faltantes, preparada por una sola persona (a dos, cada uno espera al otro) y con el
+        parámetro koroshi_preparacion.validar_parcial encendido."""
+        if not self._con_caja(picking) or self._pack_auto(picking) or self._es_ronda(picking):
+            return False
+        if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+            return False
+        if len(self._equipo(picking)) > 1:
+            return False
+        return self._param(PARAM_PARCIAL, '1') not in ('0', 'False', 'false', '')
 
     @api.model
     def _sin_caja(self, picking):
@@ -1189,7 +1206,9 @@ class Lectura(models.Model):
     def _validar_incompleta(self, Faltante, picking, employee):
         """v3.27: Zalando / About You van por bultos: se valida lo leído y lo que falta queda en una OUT pendiente
         (siempre, aunque koroshi_faltantes.pedido_pendiente sea 'no'), por si se han hecho menos cajas de las que
-        tocaba y hay que revisarlo. Nota en las dos OUT."""
+        tocaba y hay que revisarlo. Nota en las dos OUT.
+        v3.38: también las OUT de tienda (_parcial): lo leído, ya en sus cajas CJ, se valida y el resto queda en el pedido
+        pendiente para otro operario. Es el asistente de Odoo de siempre («Crear pedido pendiente»)."""
         if picking.state in ('done', 'cancel'):
             raise UserError(_('La OUT %s ya está %s.') % (picking.name, picking.state == 'done' and _('validada')
                                                             or _('cancelada')))
@@ -1200,16 +1219,22 @@ class Lectura(models.Model):
         r = Faltante._todo_o_nada(Faltante._validar_out, picking, 'si')
         resto = picking.backorder_ids.filtered(lambda b: b.state not in ('done', 'cancel'))
         quien = employee and employee.name or self.env.user.name
+        marketplace = self._pack_auto(picking)
         try:
             with self.env.cr.savepoint():
+                if marketplace:
+                    nota = _('Validada INCOMPLETA en la PDA por %s: faltaban %s uds (%s líneas). Lo que falta queda en '
+                             '%s. Revisar si se han hecho menos cajas de las que tocaba.')
+                    nota_resto = _('Pendiente de %s, validada incompleta en la PDA por %s. Revisar antes de prepararla.')
+                else:
+                    # v3.38: OUT de tienda validada a medias en la PDA: el resto es trabajo para otro operario
+                    nota = _('Validada A MEDIAS en la PDA por %s: quedaban %s uds (%s líneas) por coger, que siguen '
+                             'reservadas en el pedido pendiente %s.')
+                    nota_resto = _('Resto de %s, validada a medias en la PDA por %s: lo que queda por coger.')
                 picking.message_post(body=html_escape(
-                    _('Validada INCOMPLETA en la PDA por %s: faltaban %s uds (%s líneas). Lo que falta queda en %s. '
-                      'Revisar si se han hecho menos cajas de las que tocaba.')
-                    % (quien, round(faltan), len(pendientes), ', '.join(resto.mapped('name')) or '-')))
+                    nota % (quien, round(faltan), len(pendientes), ', '.join(resto.mapped('name')) or '-')))
                 for b in resto:
-                    b.message_post(body=html_escape(
-                        _('Pendiente de %s, validada incompleta en la PDA por %s. Revisar antes de prepararla.')
-                        % (picking.name, quien)))
+                    b.message_post(body=html_escape(nota_resto % (picking.name, quien)))
         except Exception:
             _logger.exception('KOROSHI Preparación: no se ha podido poner la nota de validada incompleta en %s',
                               picking.name)
@@ -1262,7 +1287,9 @@ class Lectura(models.Model):
         se validó, contesta «validada» (antes decía «ya está validada» como error y el operario no sabía qué había
         pasado). Una OUT ya hecha también contesta «validada». La OUT se bloquea: dos validaciones a la vez de la
         misma OUT no pueden pasar (la segunda espera y vuelve a probar).
-        v3.34 (R6): la respuesta lleva '_tiempos' (ms de cada tramo); la ruta los pone en el log y los quita."""
+        v3.34 (R6): la respuesta lleva '_tiempos' (ms de cada tramo); la ruta los pone en el log y los quita.
+        v3.38: las OUT de tienda con líneas sin leer también contestan 'quedan' con 'incompleto': True (_parcial) y, con
+        incompleto=True, se valida lo leído y el resto queda en un pedido pendiente (_validar_incompleta)."""
         t0 = time.monotonic()
         tiempos = {}
 
@@ -1288,8 +1315,8 @@ class Lectura(models.Model):
                 return {'ok': False, 'que': 'quedan', 'incompleto': True, 'n': len(pendientes),
                         'msg': _('Faltan %s uds (%s líneas). Para validar así, pulsa otra vez «Validar incompleto»: '
                                  'lo que falta queda en otra OUT para revisar.') % (round(faltan), len(pendientes))}
-        else:
-            incompleto = False
+        elif not (incompleto and self._parcial(picking) and Faltante.lineas_pendientes(picking)):
+            incompleto = False   # v3.38: en las OUT de tienda, solo tras el primer toque (el aviso de «quedan»)
         caja_auto = {}
         if self._con_caja(picking) and self._pack_auto(picking) and self._sin_caja(picking):
             # v3.19: Zalando / About You: lo leído fuera de caja (lo de este operario) va solo a un paquete nuevo
@@ -1347,6 +1374,13 @@ class Lectura(models.Model):
                 return {'ok': False, 'que': 'quedan', 'n': r['n'],
                         'msg': _('Quedan %s líneas: lee la prenda si está o pulsa «No está» / «La ubicación no '
                                  'existe».') % r['n']}
+            if self._parcial(picking):
+                # v3.38: como Validar -> «Crear pedido pendiente» en el ordenador: segundo toque en «Validar incompleto»
+                faltan = sum(Faltante.pendiente_de(ml) for ml in Faltante.lineas_pendientes(picking))
+                return {'ok': False, 'que': 'quedan', 'incompleto': True, 'n': r['n'],
+                        'msg': _('Quedan %s líneas (%s uds) por coger: léelas o pulsa «Faltante». Para validar lo leído '
+                                 'y dejar el resto en otra OUT (pedido pendiente), pulsa otra vez «Validar '
+                                 'incompleto».') % (r['n'], round(faltan))}
             return {'ok': False, 'que': 'quedan', 'n': r['n'],
                     'msg': _('Quedan %s líneas por coger: léelas o pulsa «Faltante».') % r['n']}
         if r['estado'] == 'preguntar':
@@ -1360,8 +1394,11 @@ class Lectura(models.Model):
             except Exception:
                 _logger.exception('KOROSHI Preparación: no se ha podido actualizar la ronda %s', picking.name)
             msg = _('Ronda %s terminada.') % picking.name
-        if incompleto:   # v3.27
+        if incompleto and self._pack_auto(picking):   # v3.27
             msg = _('%s validada incompleta (faltan %s uds): lo que falta, en %s.') % (
+                picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
+        elif incompleto:   # v3.38: OUT de tienda
+            msg = _('%s validada a medias: el resto (%s uds) queda en %s para otro operario.') % (
                 picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
         self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg, id_lectura=id_lectura)
         t2 = time.monotonic()
