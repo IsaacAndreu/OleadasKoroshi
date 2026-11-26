@@ -332,6 +332,33 @@ class KoroshiRecepcionPantalla(http.Controller):
             request.env.cr.rollback()     # nada a medias
             return {'ok': False, 'msg': _msg(e)}
 
+    @http.route('/koroshi/recepcion/imprimir', type='json', auth='user')
+    def imprimir(self, recepcion_id=False, que='ultima', palet_id=False, employee_id=False, **kw):
+        """1.5.0: etiquetas a la Zebra por la cola de koroshi_impresion. que: 'ultima' (la última tanda), 'palets'
+        (todos los palés de la recepción, aunque ya existan) o 'palet' (solo palet_id)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            if que == 'ultima':
+                tanda = r.tanda_ids[:1]
+                if not tanda:
+                    raise UserError('No hay etiquetas que imprimir: usa «Etiquetas de los palés».')
+            else:
+                palet = False
+                if que == 'palet':
+                    palet = request.env['stock.location'].sudo().browse(int(palet_id or 0)).exists()
+                    if not palet:
+                        raise UserError('Toca primero el palé que quieres imprimir.')
+                tanda = r.tanda_palets(palet, emp)
+            res = tanda.imprimir(emp)
+            return {'ok': True, 'msg': '%s → %s.%s' % (tanda.name, res.get('impresora') or 'impresora',
+                                                         (' ' + res['aviso']) if res.get('aviso') else ''),
+                    'conectada': res.get('conectada'), 'recepcion': self._datos_recepcion(r, emp)}
+        except (UserError, ValueError) as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': 'No se ha mandado nada a imprimir. %s' % _msg(e)}
+
     @http.route('/koroshi/recepcion/mas_uno', type='json', auth='user')
     def mas_uno(self, recepcion_id=False, palet_id=False, modelo='', employee_id=False, token=None, **kw):
         """1.4.1: «+1 caja» del modelo activo en el palé activo (los dos opcionales)."""

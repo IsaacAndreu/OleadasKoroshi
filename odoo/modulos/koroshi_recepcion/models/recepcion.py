@@ -38,6 +38,8 @@ from odoo.addons.koroshi_ubicaciones import nombres as N
 _logger = logging.getLogger(__name__)
 
 PARAM_TIPO = 'koroshi_recepcion.tipo_in_id'     # si está, el id del tipo de operación de las IN (si no, se busca)
+PARAM_IMPRESORA = 'koroshi_recepcion.impresora'  # 1.5.0: código de la impresora de koroshi_impresion (si no, EXP1)
+IMPRESORA = 'EXP1'                               # la Zebra de Expediciones (26/11, Isaac)
 DESTINO_IN = 'EFFEC/RECEP_KO'                    # destino de las IN de KOROSHI (así se reconoce su tipo)
 NAVE = 'EFFEC/Stock/NAVE2'                       # donde nacen los KO_ (como en koroshi_ubicaciones)
 NOMBRE_PADRE_PALETS = 'RECEPCION'                # EFFEC/Stock/NAVE2/RECEPCION: dentro, los PAL-NN A/B
@@ -406,6 +408,33 @@ class KoroshiRecepcion(models.Model):
         self.message_post(body='Recepcionar: %s (%s).' % (', '.join(que), employee and employee.name or
                                                             self.env.user.name))
         return tanda
+
+    def tanda_palets(self, palet=None, employee=None):
+        """1.5.0: (re)imprimir. Los PAL-NN se reutilizan entre recepciones y «Recepcionar» solo hace tanda de los
+        nuevos: aquí se hace una tanda con los palés de ESTA recepción (PAL-01 A … PAL-<palés> B, creando los que
+        falten) o con uno solo («palet»), aunque ya existan. Devuelve la tanda."""
+        self.ensure_one()
+        if palet:
+            self.palet_valido(palet)
+            locs = palet
+            que = 'Palé %s' % palet.name
+        else:
+            if not self.palets:
+                raise UserError('Esta recepción no tiene palés: pon cuántos en «Recepcionar» (+ Palés).')
+            self._asegurar_palets(self.palets)
+            nombres = L.nombres_palets(self.palets)
+            locs = self.palets_existentes().filtered(lambda l: l.name in nombres)
+            que = 'Palés %s a %s' % (nombres[0], nombres[-1])
+        tanda = self.env['koroshi.recepcion.tanda'].sudo().create({
+            'recepcion_id': self.id, 'name': que, 'employee_id': employee and employee.id or False,
+            'ubicacion_ids': [(6, 0, locs.ids)]})
+        return tanda
+
+    def action_imprimir_palets(self):
+        """Oficina: etiquetas de los palés de esta recepción a la Zebra."""
+        self.ensure_one()
+        self.tanda_palets().imprimir()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
 
     def contenedor_para_leer(self, loc, escribir=True):
         """Comprueba que un KO_ leído se puede usar en esta recepción y, con escribir, lo añade si es nuevo (al
@@ -895,7 +924,27 @@ class KoroshiRecepcionTanda(models.Model):
     ubicacion_ids = fields.Many2many('stock.location', 'koroshi_recepcion_tanda_loc_rel', 'tanda_id', 'location_id',
                                      string='Ubicaciones')
 
+    def imprimir(self, employee=None):
+        """1.5.0: manda las etiquetas de la tanda a la cola de koroshi_impresion (Zebra de Expediciones, EXP1, o la
+        del parámetro koroshi_recepcion.impresora). Devuelve lo de encolar: {'trabajos', 'conectada', 'aviso',
+        'impresora'}."""
+        self.ensure_one()
+        codigo = self.env['ir.config_parameter'].sudo().get_param(PARAM_IMPRESORA) or IMPRESORA
+        res = self.env['koroshi.impresion.trabajo'].encolar(
+            codigo, descripcion='Recepción %s: %s' % (self.recepcion_id.name, self.name),
+            informe='koroshi_recepcion.etiqueta_tanda', modelo=self._name, ids=[self.id], origen='recepcion',
+            operario=employee and employee.name or '')
+        self.recepcion_id.message_post(body='Etiquetas «%s» a la impresora %s%s.' % (
+            self.name, res.get('impresora') or codigo, (' (%s)' % res['aviso']) if res.get('aviso') else ''))
+        return res
+
     def action_imprimir(self):
+        """Oficina: a la cola de la Zebra (antes abría el PDF). El aviso queda en el historial de la recepción."""
+        self.ensure_one()
+        self.imprimir()
+        return {'type': 'ir.actions.client', 'tag': 'reload'}
+
+    def action_pdf(self):
         self.ensure_one()
         return self.env.ref('koroshi_recepcion.action_etiqueta_tanda').report_action(self)
 

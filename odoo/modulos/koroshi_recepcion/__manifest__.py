@@ -87,12 +87,20 @@ v1.4.1 (26/11/2026): «+1 caja» (Isaac: «si fem X modelo el escribim 1 vegada 
   «leídas / total · faltan N». Comparación y Excel por modelo: cajas contadas y cajas del packing de S4T con ese
   modelo (caja física = lo de s4t_line_id antes del guion; solo lectura). Lectura detallada sin cambios. Lectura:
   campo «rapida» y palet_id deja de ser obligatorio; comparación: cajas_packing.
+v1.5.0 (26/11/2026): Isaac: las etiquetas se imprimen en la Zebra de Expediciones por la cola de koroshi_impresion
+  (código EXP1; otro, con el parámetro koroshi_recepcion.impresora). Depende de koroshi_impresion (ya instalado). En la
+  PDA, «🖨 Etiquetas (última tanda)», «🖨 Etiquetas de los palés» (ficha) y «🖨 Etiqueta de PAL-NN X» (al leer, el palé
+  tocado) mandan a la cola y dicen si la impresora no está conectada. Como los PAL-NN se reutilizan, «Recepcionar» no
+  hace tanda de los que ya existen: «Etiquetas de los palés» hace una tanda con PAL-01 A … PAL-<palés> B de esta
+  recepción (creando los que falten). En la oficina, «A la Zebra» y «PDF» en cada tanda y «Etiquetas de los palés a la
+  Zebra» arriba. El aviso queda en el historial.
 """,
-    'version': '13.0.1.4.1',
+    'version': '13.0.1.5.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
-    'depends': ['web', 'mail', 'stock', 'hr', 'koroshi_base', 'koroshi_menu', 'koroshi_ubicaciones'],
+    'depends': ['web', 'mail', 'stock', 'hr', 'koroshi_base', 'koroshi_menu', 'koroshi_ubicaciones',
+                'koroshi_impresion'],
     'data': [
         'security/ir.model.access.csv',
         'data/datos.xml',

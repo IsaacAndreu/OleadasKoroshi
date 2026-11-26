@@ -30,6 +30,8 @@
                     <button name="action_comparar" type="object" string="Comparar con las IN"/>
                     <button name="action_exportar" type="object" string="Exportar (Excel)"
                             groups="stock.group_stock_manager"/>
+                    <button name="action_imprimir_palets" type="object" string="Etiquetas de los palés a la Zebra"
+                            attrs="{'invisible': [('palets', '=', 0)]}"/>
                     <button name="action_cerrar" type="object" string="Cerrar (sin tocar stock)"
                             attrs="{'invisible': [('state', 'not in', ('pendiente', 'leyendo'))]}"
                             confirm="Termina de apuntar cajas. No toca el stock: las IN quedan pendientes hasta leer las prendas. ¿Seguro?"/>
@@ -111,7 +113,8 @@
                                     <field name="fecha"/>
                                     <field name="name"/>
                                     <field name="employee_id"/>
-                                    <button name="action_imprimir" type="object" string="Imprimir" icon="fa-print"/>
+                                    <button name="action_imprimir" type="object" string="A la Zebra" icon="fa-print"/>
+                                    <button name="action_pdf" type="object" string="PDF" icon="fa-file-pdf-o"/>
                                 </tree>
                             </field>
                         </page>

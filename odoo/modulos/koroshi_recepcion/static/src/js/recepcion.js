@@ -1,6 +1,8 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.4.1 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.5.0 (26/11/2026) - PDA o tablet.
+ * 1.5.0: las etiquetas van a la Zebra de Expediciones por la cola de koroshi_impresion (EXP1): última tanda, todos los
+ *    palés de la recepción (aunque ya existan) o solo el palé tocado.
  * 1.4.1: «+1 caja» (Isaac: «el escribim 1 vegada i dsp es anar sumant»): con el modelo activo puesto una vez, cada
  *    toque cuenta una caja de ese modelo en el palé activo, sin nº ni uds; «−1» deshace la última. 2 s entre toques.
  * 1.4.0: total de cajas del packing de S4T (o el escrito a mano) y contador «leídas / total · faltan N» siempre
@@ -453,14 +455,33 @@ var Pantalla = AbstractAction.extend({
             if (!r) { return; }
             self.rec = r.recepcion;
             self.vista = 'ficha';
-            self._aviso('ok', r.tanda ? 'Creado: ' + r.tanda + '. Imprime las etiquetas en el PC de Recepciones.'
+            self._aviso('ok', r.tanda ? 'Creado: ' + r.tanda + '. Imprímelas con «🖨 Etiquetas» (van a la Zebra de Expediciones).'
                 : 'No había nada nuevo que crear.');
             self._pintar();
         });
     },
-    _a_imprimir: function () {
-        if (!this.rec || !this.rec.tanda_id) { return this._aviso('mal', 'No hay etiquetas que imprimir.'); }
-        window.open('/report/pdf/koroshi_recepcion.etiqueta_tanda/' + this.rec.tanda_id, '_blank');
+    // 1.5.0: a la Zebra de Expediciones por la cola de koroshi_impresion (antes abría el PDF)
+    _imprimirEn: function (que, paletId) {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        return this._llamar('/koroshi/recepcion/imprimir', {
+            recepcion_id: this.rec.id, que: que, palet_id: paletId || false, employee_id: this.persona.id,
+        }).then(function (r) {
+            if (!r) { return; }
+            self.rec = r.recepcion;
+            self._pitido(!!r.conectada);
+            self._aviso(r.conectada ? 'ok' : 'mal', 'Enviado a imprimir: ' + r.msg);
+        });
+    },
+    _a_imprimir: function () { this._imprimirEn('ultima'); },
+    _a_imprimir_palets: function () {
+        if (!window.confirm('¿Imprimir las etiquetas de todos los palés de esta recepción (' + (this.rec.palets || 0) +
+                ' palés, caras A y B)?')) { return; }
+        this._imprimirEn('palets');
+    },
+    _a_imprimir_palet: function () {
+        if (!this.palet) { this._pitido(false); return this._aviso('mal', 'Toca primero el palé que quieres imprimir.'); }
+        this._imprimirEn('palet', this.palet.id);
     },
     _a_leer: function () {
         if (!this._necesitaPersona()) { return; }
@@ -860,6 +881,7 @@ var Pantalla = AbstractAction.extend({
                 '<button type="button" data-accion="recepcionar">+ Palés / cajas</button>';
         }
         if (r.tanda_id) { h += '<button type="button" data-accion="imprimir">🖨 Etiquetas (última tanda)</button>'; }
+        if (r.palets) { h += '<button type="button" data-accion="imprimir_palets">🖨 Etiquetas de los palés</button>'; }
         if (r.state === 'pendiente' || r.state === 'leyendo') {
             h += '<button type="button" data-accion="editar_ins">Cambiar IN</button>';
         }
@@ -880,7 +902,7 @@ var Pantalla = AbstractAction.extend({
     _htmlRecepcionar: function () {
         var r = this.rec;
         return '<div class="o_kr_grande">' + _e(r.matricula) + ': recepcionar</div>' +
-            '<p>Se crean los palés que falten, con sus etiquetas para la Zebra del PC de Recepciones. Las cajas NO ' +
+            '<p>Se crean los palés que falten, con sus etiquetas (🖨 a la Zebra de Expediciones). Las cajas NO ' +
             'llevan etiqueta nuestra: al leer se escribe el nº que llevan a mano.</p>' +
             '<label>¿Cuántas cajas hay? (opcional: para ver qué números faltan)</label>' +
             '<input type="number" min="0" class="o_kr_campo o_kr_cajas" value="' + (r.cajas || '') + '" placeholder="' +
@@ -905,6 +927,9 @@ var Pantalla = AbstractAction.extend({
                 (activo ? ' class="o_kr_activo"' : '') + '>' + _e(p.nombre.replace('PAL-', '')) + '</button>';
         });
         if (!r.palets_lista.length) { h += '<span class="o_kr_gris">Sin palés: «+ Palés / cajas» en la ficha.</span>'; }
+        if (this.palet) {
+            h += '<button type="button" data-accion="imprimir_palet">🖨 Etiqueta de ' + _e(this.palet.nombre) + '</button>';
+        }
         h += '</div>';
         h += '<div class="o_kr_fila">' +
             '<div class="o_kr_caja' + (this.caja ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">2. Caja</div>' +
