@@ -67,8 +67,15 @@ v1.2.1 (26/11/2026): la 1.1.0 sí se instaló (26/11 08:57) y se está recepcion
   caja). La 1.2.0 no dejaba «Terminar» con prendas leídas sin pasar a stock, y sin responsables nadie puede validar:
   el contenedor se quedaba sin cerrar. Ahora se cierra igual (opción A: la IN queda pendiente) y esas lecturas cuentan
   en la comparación por modelo.
+v1.3.0 (26/11/2026): primer día de uso real (Isaac): «necesito un buscador» y «que estigue lo de escribir i en intro es
+  agafe». Buscador de IN al crear el contenedor o cambiar sus IN: por nombre (IN/00396 o 396), pedido (0000002172 o
+  2172), referencia del proveedor (x_studio_order_remarks o nota) o principio de un código de artículo (2711JA22); lo
+  marcado se guarda entre búsquedas y la matrícula escrita no se borra. En «Leer cajas» todo se escribe con el teclado
+  de la PDA: Intro acepta el campo y pasa al siguiente (nº de caja → pedido → modelo → uds); en el modelo, Intro busca
+  y si hay uno solo lo coge; en uds, Intro = Guardar (las uds son un campo escribible; el teclado de pantalla sigue).
+  Un EAN leído en cualquiera de esos campos se toma como prenda (su modelo), como con el lector.
 """,
-    'version': '13.0.1.2.1',
+    'version': '13.0.1.3.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

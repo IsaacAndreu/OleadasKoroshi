@@ -140,6 +140,13 @@ class TestCajasProveedor(unittest.TestCase):
         self.assertEqual(res['2711JA04'], (18, 0, -18, 'falta'))
         self.assertEqual(res['2711JA99'][3], 'no_venia')
 
+    def test_buscar_in(self):
+        args = ('EFFEC/IN/00396', '0000002172', ['SKL20260104', None], ['2711JA22-000062-S', None])
+        for texto in ('', '396', '00396', 'in/00396', '2172', '0000002172', 'skl2026', '2711JA22', '2711ja'):
+            self.assertTrue(L.in_coincide(texto, *args), texto)
+        for texto in ('397', '1936', 'XYZ', '000062'):
+            self.assertFalse(L.in_coincide(texto, *args), texto)
+
     def test_repartir_al_palet(self):
         # el destino de la línea hecha es el palé (sin KO_): dos cajas en el mismo palé = una línea
         lineas, _ = L.repartir([('m1', 'a', 10)], [('l1', 'a', 'PAL-01 A', 4), ('l2', 'a', 'PAL-01 A', 3)])

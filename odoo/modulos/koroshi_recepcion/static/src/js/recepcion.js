@@ -1,6 +1,9 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.2.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.3.0 (26/11/2026) - PDA o tablet.
+ * 1.3.0: buscador de IN al crear o cambiar las IN (nombre, pedido, referencia del proveedor o modelo). En «Leer cajas»
+ *    todo se escribe con el teclado: Intro acepta el campo y pasa al siguiente (caja → pedido → modelo → uds →
+ *    Guardar); en el modelo, Intro busca y si hay uno solo lo coge. El lector sigue igual.
  * 1.2.0 (opción A de Isaac): por caja solo se apunta nº de caja + modelo (REFERENCE de la etiqueta: buscador de modelos
  *    o leer el EAN de una prenda) + uds totales de la caja + palé (+ pedido, opcional). No toca stock: «Cerrar» deja
  *    la IN pendiente hasta leer las prendas al ubicar. Comparación por modelo.
@@ -37,6 +40,9 @@ var Pantalla = AbstractAction.extend({
         'click .o_kr_tecla': '_onTecla',
         'keydown .o_kr_buscar': '_onBuscarKey',
         'keydown .o_kr_ncaja, .o_kr_pedido': '_onCampoCaja',
+        'keydown .o_kr_cant': '_onCantKey',
+        'input .o_kr_cant': '_onCantInput',
+        'keydown .o_kr_buscar_in': '_onBuscarInKey',
         'change .o_kr_ncaja, .o_kr_pedido': '_onCambiaCaja',
     },
 
@@ -54,6 +60,9 @@ var Pantalla = AbstractAction.extend({
         this.pedido = '';           // nº de pedido de la etiqueta (opcional)
         this.modelo = '';           // 1.2.0: modelo de la caja (2711JA22)
         this.resModelos = null;     // buscador de modelos
+        this.borrador = {};         // 1.3.0: matrícula, muelle y referencia mientras se buscan IN
+        this.textoIn = '';          // 1.3.0: lo buscado en el buscador de IN
+        this.insVistas = {};        // 1.3.0: id -> IN (para enseñar las marcadas que no salen en la búsqueda)
         this.prod = null;           // {id, nombre, modelo, talla}
         this.cantidad = '';
         this.token = _token();
@@ -319,13 +328,16 @@ var Pantalla = AbstractAction.extend({
             $i.val(this.caja || '');
             return this._leer(v, 'campo');
         }
+        if ($i.hasClass('o_kr_pedido') && /^\d{12,14}$/.test(v)) {    // un EAN leído en el pedido: es una prenda
+            $i.val(this.pedido || '');
+            return this._leer(v, 'campo');
+        }
         this._onCambiaCaja();
         if ($i.hasClass('o_kr_ncaja')) {
             this.$('.o_kr_pedido').focus();
         } else {
-            $i.blur();
-            this.$('.o_kr_codigo').focus();
-            this._aviso('ok', 'Caja ' + (this.caja || '?') + ': ahora la prenda.');
+            this._aviso('ok', 'Caja ' + (this.caja || '?') + (this.modelo ? ': escribe las uds.' : ': ahora el modelo.'));
+            this._siguienteCampo();
         }
     },
     _ponerProd: function (p) {
@@ -361,6 +373,9 @@ var Pantalla = AbstractAction.extend({
             if (!r) { return; }
             self.ins = r.ins;
             self.elegidas = {};
+            self.borrador = {};
+            self.textoIn = '';
+            _.each(r.ins, function (i) { self.insVistas[i.id] = i; });
             self.vista = 'nueva';
             self._pintar();
         });
@@ -371,7 +386,9 @@ var Pantalla = AbstractAction.extend({
             if (!r) { return; }
             self.ins = r.ins;
             self.elegidas = {};
-            _.each(self.rec.ins, function (i) { self.elegidas[i.id] = true; });
+            self.textoIn = '';
+            _.each(r.ins, function (i) { self.insVistas[i.id] = i; });
+            _.each(self.rec.ins, function (i) { self.elegidas[i.id] = true; self.insVistas[i.id] = i; });
             // las IN ya enlazadas pueden no estar abiertas: se enseñan igual
             _.each(self.rec.ins, function (i) {
                 if (!_.findWhere(self.ins, {id: i.id})) { self.ins.unshift(_.extend({en_otra: ''}, i)); }
@@ -404,6 +421,7 @@ var Pantalla = AbstractAction.extend({
             self._pintar();
         });
     },
+    _a_buscar_in_todas: function () { this.$('.o_kr_buscar_in').val(''); this._a_buscar_in(); },
     _a_guardar_ins: function () {
         var self = this;
         if (!this._necesitaPersona()) { return; }
@@ -473,6 +491,24 @@ var Pantalla = AbstractAction.extend({
         this.cantidad = '';
         this._aviso('ok', 'Modelo ' + this.modelo + ': escribe las uds de la caja.');
         this._pintar();
+        this._siguienteCampo();
+    },
+    // 1.3.0: el primer campo que falta (caja, modelo, uds), con el foco puesto para escribir
+    _siguienteCampo: function () {
+        var $c = !this.caja ? this.$('.o_kr_ncaja') : (!this.modelo ? this.$('.o_kr_buscar') : this.$('.o_kr_cant'));
+        if ($c.length) { $c.focus(); $c.select(); }
+    },
+    _onCantInput: function (ev) {
+        // un código leído aquí se reconoce al llegar el Intro (_onCantKey); sin Intro, Odoo rechaza la cantidad
+        this.cantidad = (ev.currentTarget.value || '').replace(/[^0-9]/g, '');
+    },
+    _onCantKey: function (ev) {
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        var v = (ev.currentTarget.value || '').trim();
+        if (/^\d{8,}$/.test(v)) { ev.currentTarget.value = this.cantidad || ''; return this._leer(v, 'campo'); }
+        this.cantidad = v.replace(/[^0-9]/g, '');
+        this._a_guardar();
     },
     _a_elegir_modelo: function (m) { this._ponerModelo(m); },
     _a_otro_modelo: function () { this.modelo = ''; this.resModelos = null; this._pintar(); },
@@ -492,7 +528,37 @@ var Pantalla = AbstractAction.extend({
             });
     },
     _onBuscarKey: function (ev) {
-        if (ev.which === 13) { ev.preventDefault(); this._a_buscar(); }
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        var v = (ev.currentTarget.value || '').trim();
+        if (/^\d{8,}$/.test(v)) { ev.currentTarget.value = ''; return this._leer(v, 'campo'); }   // EAN: su modelo
+        this._a_buscar();
+    },
+    // 1.3.0: buscador de IN (crear contenedor o cambiar sus IN)
+    _onBuscarInKey: function (ev) {
+        if (ev.which === 13) { ev.preventDefault(); this._a_buscar_in(); }
+    },
+    _guardarBorrador: function () {
+        if (this.vista !== 'nueva') { return; }
+        this.borrador = {matricula: this.$('.o_kr_matricula').val(), muelle: this.$('.o_kr_muelle').val(),
+            referencia: this.$('.o_kr_referencia').val()};
+    },
+    _a_buscar_in: function () {
+        var self = this;
+        this._elegidasIds();             // guarda lo marcado antes de cambiar la lista
+        this._guardarBorrador();
+        var texto = (this.$('.o_kr_buscar_in').val() || '').trim();
+        return this._llamar('/koroshi/recepcion/ins', {
+            recepcion_id: this.vista === 'editar_ins' && this.rec ? this.rec.id : false, texto: texto,
+        }).then(function (r) {
+            if (!r) { return; }
+            self.ins = r.ins;
+            self.textoIn = texto;
+            _.each(r.ins, function (i) { self.insVistas[i.id] = i; });
+            if (!r.ins.length) { self._aviso('mal', 'Ninguna IN abierta con «' + texto + '».'); }
+            self._pintar();
+            self.$('.o_kr_buscar_in').focus();
+        });
     },
     _a_elegir: function (id) {
         var p = _.findWhere(this.resultados || [], {id: id});
@@ -504,12 +570,13 @@ var Pantalla = AbstractAction.extend({
         if (t === 'borrar') { this.cantidad = this.cantidad.slice(0, -1); } else if (this.cantidad.length < 4) {
             this.cantidad = (this.cantidad === '0' ? '' : this.cantidad) + t;
         }
-        this.$('.o_kr_cantidad').text(this.cantidad || '0');
+        this.$('.o_kr_cant').val(this.cantidad);
     },
     _a_guardar: function () {
         var self = this;
         if (!this._necesitaPersona()) { return; }
         if (this.$('.o_kr_ncaja').length) { this._onCambiaCaja(); }
+        if (this.$('.o_kr_cant').length) { this.cantidad = (this.$('.o_kr_cant').val() || '').replace(/[^0-9]/g, ''); }
         if (!this.palet) { this._pitido(false); return this._aviso('mal', 'Falta el palé: tócalo arriba.'); }
         if (!this.caja) { this._pitido(false); return this._aviso('mal', 'Falta el nº de caja (el escrito a mano).'); }
         if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Falta el modelo: búscalo o lee una prenda.'); }
@@ -657,14 +724,31 @@ var Pantalla = AbstractAction.extend({
         var nueva = this.vista === 'nueva';
         var h = '';
         if (nueva) {
+            var b = this.borrador || {};
             h += '<label>Matrícula del contenedor (puerta o lateral)</label>' +
-                '<input type="text" class="o_kr_campo o_kr_matricula" placeholder="MSKU1234567"/>' +
-                '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" placeholder="1"/>' +
+                '<input type="text" class="o_kr_campo o_kr_matricula" placeholder="MSKU1234567" value="' +
+                _e(b.matricula) + '"/>' +
+                '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" placeholder="1" value="' +
+                _e(b.muelle) + '"/>' +
                 '<label>Referencia del proveedor o BL (si la sabes)</label>' +
-                '<input type="text" class="o_kr_campo o_kr_referencia"/>';
+                '<input type="text" class="o_kr_campo o_kr_referencia" value="' + _e(b.referencia) + '"/>';
         }
-        h += '<label>¿Qué IN trae? (pedidos de KOROSHI abiertos, por fecha prevista)</label>';
-        if (!this.ins.length) { h += '<p class="o_kr_gris">No hay IN abiertas.</p>'; }
+        h += '<label>¿Qué IN trae? (pedidos de KOROSHI abiertos, por fecha prevista)</label>' +
+            '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_buscar_in" autocomplete="off" ' +
+            'placeholder="Buscar: IN (396), pedido (2172), ref. proveedor o modelo" value="' + _e(this.textoIn) + '"/>' +
+            '<button type="button" data-accion="buscar_in">Buscar</button>' +
+            (this.textoIn ? '<button type="button" data-accion="buscar_in_todas">Ver todas</button>' : '') + '</div>';
+        var fuera = _.filter(_.keys(this.elegidas), function (k) {
+            return self.elegidas[k] && !_.findWhere(self.ins, {id: parseInt(k, 10)});
+        });
+        if (fuera.length) {
+            h += '<p>Marcadas que no salen en esta búsqueda: <b>' + _e(_.map(fuera, function (k) {
+                var i = self.insVistas[k];
+                return i ? (i.origen || i.name) : ('#' + k);
+            }).join(', ')) + '</b></p>';
+        }
+        if (!this.ins.length) { h += '<p class="o_kr_gris">No hay IN abiertas' + (this.textoIn ? ' con «' +
+            _e(this.textoIn) + '»' : '') + '.</p>'; }
         _.each(this.ins, function (i) {
             h += '<div class="o_kr_in"><input type="checkbox" value="' + i.id + '"' +
                 (self.elegidas[i.id] ? ' checked="checked"' : '') + '/><div><b>' + _e(i.origen || i.name) + '</b> ' +
@@ -787,8 +871,9 @@ var Pantalla = AbstractAction.extend({
             }
         }
         h += '</div>';
-        h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Uds de la caja (total)</div><div class="o_kr_cantidad">' +
-            _e(this.cantidad || '0') + '</div></div><div class="o_kr_teclado">';
+        h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Uds de la caja (total)</div>' +
+            '<input type="text" inputmode="numeric" autocomplete="off" class="o_kr_campo o_kr_cant o_kr_cantidad" ' +
+            'placeholder="0" value="' + _e(this.cantidad) + '"/></div><div class="o_kr_teclado">';
         _.each(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'borrar', '0'], function (t) {
             h += '<button type="button" class="o_kr_tecla" data-tecla="' + t + '">' + (t === 'borrar' ? '⌫' : t) +
                 '</button>';

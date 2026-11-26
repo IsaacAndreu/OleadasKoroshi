@@ -128,12 +128,20 @@ class KoroshiRecepcionPantalla(http.Controller):
             return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/recepcion/ins', type='json', auth='user')
-    def ins(self, recepcion_id=False, **kw):
-        """IN de KOROSHI abiertas para elegir las que trae un contenedor (con la referencia del proveedor y sus uds)."""
+    def ins(self, recepcion_id=False, texto='', **kw):
+        """IN de KOROSHI abiertas para elegir las que trae un contenedor (con la referencia del proveedor y sus uds).
+        1.3.0: «texto» filtra: nombre (IN/00396 o 396), pedido (0000002172 o 2172), referencia del proveedor
+        (x_studio_order_remarks o nota) o el principio de un código de artículo (2711JA22)."""
         try:
             self._comprobar_usuario()
             Rec = request.env['koroshi.recepcion'].sudo()
             abiertas = Rec.ins_abiertas()
+            if (texto or '').strip():
+                con_ref = 'x_studio_order_remarks' in request.env['stock.picking']._fields
+                abiertas = abiertas.filtered(lambda p: L.in_coincide(
+                    texto, p.name, p.origin,
+                    [con_ref and p.x_studio_order_remarks or '', p.note or ''],
+                    p.move_lines.mapped('product_id.default_code')))
             otras = Rec.search([('state', 'in', ('pendiente', 'leyendo')), ('id', '!=', int(recepcion_id or 0)),
                                 ('picking_ids', 'in', abiertas.ids)])
             en_otra = {}

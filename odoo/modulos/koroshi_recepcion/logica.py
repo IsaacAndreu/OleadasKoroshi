@@ -148,6 +148,29 @@ def modelo_de(ref):
     return (partes_referencia(ref)[0] or '').upper()
 
 
+def in_coincide(texto, nombre, origen, referencias, codigos):
+    """1.3.0: buscador de IN. True si «texto» está en el nombre (EFFEC/IN/00396; «396» vale), el origen (pedido
+    0000002172; «2172» vale), alguna referencia del proveedor (SKL20260104) o es el principio de algún código de
+    artículo de la IN (2711JA22). Sin texto: todas."""
+    t = ''.join((texto or '').split()).upper()
+    if not t:
+        return True
+    num = str(int(t)) if t.isdigit() else None
+    nombre = (nombre or '').upper()
+    if t in nombre:
+        return True
+    cola = re.search(r'(\d+)$', nombre)
+    if num and cola and str(int(cola.group(1))) == num:
+        return True
+    if num and num in clave_pedido(origen):
+        return True
+    if t in ''.join((origen or '').split()).upper():
+        return True
+    if any(t in ''.join((r or '').split()).upper() for r in referencias):
+        return True
+    return any((c or '').upper().startswith(t) for c in codigos)
+
+
 def clave_caja(caja):
     """Para ordenar nº de caja: los números por su valor, después lo demás."""
     c = caja or ''
