@@ -42,6 +42,9 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.8.1 (26/11/2026): el tipo de dia ensena el codigo de la prenda aunque no tenga referencia interna (las nuevas del
+  26/11, 2621SU60 y 2621PL50, no la tienen: salia el id del producto). El lector pasa tambien el nombre del producto;
+  el reparto no lo usa. Probado con los datos reales del 26/11. La 1.8.0 no se llego a instalar.
 v1.8.0 (26/11/2026): zonas que aprenden (bin/versiones/diseno-zonas-que-aprenden_2026-11-26.md), lo pide Isaac: «que
   vaya aprendiendo y haciendo las zonas en base a lo que entra». El 26/11 una prenda para 49 tiendas (2621SU60 y
   2621PL50, ~600 uds en L51-L52) dejo D2 en L42-L79 y estiro D3 de L70 a L136.
@@ -97,7 +100,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.8.0',
+    'version': '13.0.1.8.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

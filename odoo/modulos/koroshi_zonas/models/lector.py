@@ -98,6 +98,7 @@ def datos_reparto(env, contexto, ahora_local, p):
                 'parent_complete_name': ub.location_id.complete_name or '',
                 'product_id': ml.product_id.id,
                 'default_code': ml.product_id.default_code or False,
+                'nombre': ml.product_id.name or '',     # v1.8.0: para el tipo de dia (hay prendas sin referencia)
                 'volume': ml.product_id.volume or 0.0,
             })
         tipo = o.sale_id and o.sale_id.s_order_type_id and o.sale_id.s_order_type_id.name or ''

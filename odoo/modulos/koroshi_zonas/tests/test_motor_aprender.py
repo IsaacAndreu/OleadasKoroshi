@@ -60,6 +60,20 @@ class TestTipoDeDia(unittest.TestCase):
         otra = v12f.repartir(datos, {'MODO': 'DIAGNOSTICO'})
         self.assertEqual(rep.zona_fin, otra.zona_fin)
 
+    def test_codigo_sin_referencia(self):
+        # 26/11: 2621SU60 y 2621PL50 sin referencia interna; el codigo es el nombre
+        self.assertEqual(aprender.codigo_de_nombre('2621SU60-000003-L'), '2621SU60-000003-L')
+        self.assertEqual(aprender.codigo_de_nombre('[2621SU60-000003-L] Sudadera'), '2621SU60-000003-L')
+        self.assertEqual(aprender.codigo_de_nombre(''), '')
+        datos = con_implantacion(sintetico.generar(21, n_pedidos=90), uds=40)
+        for o in datos['outs']:
+            for ml in o['lineas']:
+                if ml['product_id'] == 555555:
+                    ml['default_code'] = False
+                    ml['nombre'] = '2621SU60-000003-L'
+        cls = aprender.clasificar(v12f.repartir(datos, {'MODO': 'DIAGNOSTICO'}))
+        self.assertEqual(cls['articulos'][0][0], '2621SU60-000003')
+
     def test_modelo_de(self):
         self.assertEqual(aprender.modelo_de('2621SU60-000003-XL'), '2621SU60-000003')
         self.assertEqual(aprender.modelo_de('SINGUION'), 'SINGUION')

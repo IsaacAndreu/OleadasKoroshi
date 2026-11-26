@@ -26,6 +26,15 @@ def modelo_de(codigo):
     return '-' in codigo and codigo.rsplit('-', 1)[0] or codigo
 
 
+def codigo_de_nombre(nombre):
+    """El 26/11 las prendas nuevas (2621SU60, 2621PL50) no tenian referencia interna: el codigo va en el nombre,
+    '[2621SU60-000003-L] 2621SU60-...' -> '2621SU60-000003-L'. Sin corchetes: la primera palabra."""
+    nombre = (nombre or '').strip()
+    if nombre.startswith('[') and ']' in nombre:
+        return nombre[1:nombre.index(']')].strip()
+    return nombre.split(' ')[0] if nombre else ''
+
+
 def clasificar(rep):
     """Que entra en el reparto. rep: motor.modelo.Reparto listo. Devuelve {'tipo': 'reposicion'|'mixto'|'implantacion',
     'pct': % de uds en articulos que van a >= 50 % de las tiendas, 'pct_casi': >= 80 %, 'tiendas', 'uds',
@@ -48,7 +57,7 @@ def clasificar(rep):
             total += q
             tiendas_de.setdefault(prod, set()).add(tienda)
             uds_de[prod] = uds_de.get(prod, 0.0) + q
-            codigo_de[prod] = ml.get('default_code') or str(prod)
+            codigo_de[prod] = ml.get('default_code') or codigo_de_nombre(ml.get('nombre')) or str(prod)
             lin = calc.info_ml[x][1]
             if lin:
                 lineales_de.setdefault(prod, set()).add(lin)
