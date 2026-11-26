@@ -91,8 +91,15 @@ v1.11.0 (26/11/2026): % de faltante (investigación de faltantes del 26/11, punt
   compensan tallas ni colores. Tabla propia (koroshi.faltante.relativo) que llena un cron cada hora y el menú
   «Recalcular % de faltante», con SQL de solo lectura sobre movimientos y stock. Solo prendas (NNNNLLNN-…). Sin campos
   nuevos en tablas de Odoo; la PDA no cambia.
+v1.12.0 (26/11/2026): correo diario del % de faltante (Isaac: «cada día a las 17:00 a mi correo»). Cron cada 15 min
+  que, una vez al día desde koroshi_faltantes.correo_hora (17:00, hora del almacén), recalcula y manda a
+  koroshi_faltantes.correo_destinatarios (isaac.andreu@nath.es) cuántos SKU, modelo-color y modelos hay en cada
+  alerta, el % global y las listas de SKU (60) y modelo-color (30) en alarma o crítico. Si no se puede recalcular, va
+  con lo de la última hora; si el correo falla, queda en el log y vuelve a la cola. Menú «Enviar ahora el correo de %
+  de faltante» para probarlo. Servidor de correo «NATH» como el informe (koroshi_faltantes.correo_servidor). Sin
+  campos nuevos.
 """,
-    'version': '13.0.1.11.0',
+    'version': '13.0.1.12.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -104,6 +111,7 @@ v1.11.0 (26/11/2026): % de faltante (investigación de faltantes del 26/11, punt
         'data/cron.xml',
         'data/parametros.xml',
         'data/parametros_relativo.xml',
+        'data/parametros_correo.xml',
         'views/assets.xml',
         'views/faltante_views.xml',
         'views/wizard_views.xml',

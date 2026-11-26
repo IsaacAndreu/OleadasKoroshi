@@ -29,4 +29,7 @@
     <menuitem id="menu_koroshi_faltantes_relativo_recalcular" name="Recalcular % de faltante"
               parent="menu_koroshi_faltantes_root" action="action_koroshi_faltante_relativo_recalcular" sequence="43"
               groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_faltantes_relativo_correo" name="Enviar ahora el correo de % de faltante"
+              parent="menu_koroshi_faltantes_root" action="action_koroshi_faltante_relativo_correo" sequence="44"
+              groups="stock.group_stock_manager"/>
 </odoo>

@@ -11,7 +11,8 @@
 #
 # Tabla propia que se rellena entera con SQL (cron cada hora y menú «Recalcular»): leer stock_move entero cada vez
 # que se abre la pantalla sería lento. Solo lee stock_move, stock_quant, stock_location, productos y, si existe,
-# koroshi_kpi_falta. No escribe en ninguna tabla de Odoo ni añade campos a tablas compartidas.
+# koroshi_kpi_falta. Solo escribe en su tabla (y, desde la v1.12.0, el correo diario: relativo_correo.py). No
+# añade campos a tablas compartidas.
 import logging
 from datetime import timedelta
 

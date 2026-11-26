@@ -96,4 +96,12 @@
         <field name="state">code</field>
         <field name="code">action = model.action_recalcular()</field>
     </record>
+
+    <!-- v1.12.0 Recalcula y manda ahora el correo del % de faltante (el mismo que sale cada día a las 17:00) -->
+    <record id="action_koroshi_faltante_relativo_correo" model="ir.actions.server">
+        <field name="name">Enviar ahora el correo de % de faltante</field>
+        <field name="model_id" ref="model_koroshi_faltante_relativo"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_enviar_correo()</field>
+    </record>
 </odoo>
