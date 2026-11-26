@@ -333,7 +333,16 @@ esperar a que la réplica esté al día, ajustar secuencias, arrancar). Más com
   migrar es de **~300-1.000 €/mes**: hay que ponerlo al lado de las 90-150 h de trabajo y del riesgo de cambiar todo.
 - Scaleway y Hetzner salen en el mismo orden de magnitud (2.2/2.3); Scaleway con base gestionada sería algo más caro.
 
-**Recomendación:** primero el **camino 1** (subir PostgreSQL y limpiar), que da la mayor parte del ahorro con poco
+**Decisión de Isaac (26/11, tarde): migrar a OVH con PostgreSQL 11 tal cual y subir de versión ya dentro de OVH.**
+Confirmado que se puede: el «soporte extendido» es un recargo de Google Cloud SQL (desde el 01/02/2025, hasta el
+01/02/2028; https://docs.cloud.google.com/sql/docs/extended-support). En una VM propia de OVH solo se paga la máquina,
+sea cual sea la versión. PostgreSQL 11 se instala con los paquetes del archivo oficial
+(https://apt-archive.postgresql.org) o con la imagen oficial `postgres:11` de Docker. Ventajas: el traspaso cambia lo
+mínimo (misma versión, mismo `pg_dump`) y la subida se ensaya después en un clon barato en OVH (`pg_upgrade`). Contra:
+PostgreSQL 11 no tiene parches de seguridad. Por eso, en OVH la base solo se abre a la red privada y a la lista
+blanca de 1.0 (oficina, almacén, Ionos, Looker), y la subida a 15/16 se hace en los 2-3 meses siguientes.
+
+**Recomendación anterior (antes de la decisión):** primero el **camino 1** (subir PostgreSQL y limpiar), que da la mayor parte del ahorro con poco
 riesgo y además deja la base en una versión que sirve en cualquier proveedor. Después, si Isaac quiere el ahorro
 extra, el **camino 2** con OVH, empezando por KOROSHI. La subida de PostgreSQL es la misma pieza en los dos caminos:
 no se trabaja dos veces.
