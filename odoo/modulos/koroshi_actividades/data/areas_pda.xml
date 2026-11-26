@@ -52,7 +52,8 @@
             <field name="color">#1e7b34</field>
             <field name="nota">App de código de barras</field>
             <field name="area">recepciones</field>
-            <field name="abre">stock_barcode.stock_barcode_action_main_menu</field>
+            <!-- v1.8.5: pantalla de koroshi_recepcion; sin ella, la app de código de barras -->
+            <field name="abre">koroshi_recepcion.action_koroshi_recepcion_pantalla,stock_barcode.stock_barcode_action_main_menu</field>
             <field name="en_portatil" eval="False"/>
         </record>
         <!-- Expediciones -->

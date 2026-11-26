@@ -28,9 +28,17 @@ AREAS = [
 
 def accion_de(env, texto):
     """v1.6.0: 'modulo.id_externo' o un número -> la acción (ir.actions.*), o None si no existe (módulo sin instalar,
-    acción borrada o texto mal escrito). Nunca da error: el botón simplemente no abre nada."""
+    acción borrada o texto mal escrito). Nunca da error: el botón simplemente no abre nada.
+    v1.8.5: varias separadas por coma = la primera que exista (p. ej. la pantalla de koroshi_recepcion y, si no está
+    instalada, la app de código de barras)."""
     texto = (texto or '').strip()
     if not texto:
+        return None
+    if ',' in texto:
+        for parte in texto.split(','):
+            accion = accion_de(env, parte)
+            if accion:
+                return accion
         return None
     try:
         if texto.isdigit():
@@ -67,7 +75,8 @@ class KoroshiActividad(models.Model):
     abre = fields.Char('Abre (PDA)',
                        help='Pantalla que se abre en la PDA al empezar esta actividad: id externo de la acción '
                             '(p. ej. koroshi_operarios.action_koroshi_operarios_pantalla) o su número. Vacío = se '
-                            'queda en el Inicio contando el tiempo.')
+                            'queda en el Inicio contando el tiempo. Varias separadas por coma = la primera que '
+                            'exista.')
     en_portatil = fields.Boolean('En el portátil', default=True,
                                  help='Sale como botón en el portátil de Actividades. Las de la PDA con su propia '
                                       'pantalla (Picking, Compactación...) no hace falta que salgan.')

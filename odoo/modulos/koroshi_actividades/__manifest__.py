@@ -119,8 +119,13 @@ campo Odoo tampoco da la lectura (barcode_scanned). Ahora, como Lecturas: en la 
 (el lector entra por barcode_scanned, con o sin Intro) y al tocar el campo sale el teclado; botón «Entrar» al lado del
 campo; y lo que llega a ritmo de lector (menos de 60 ms entre letras, 4 o más) entra solo a los 300 ms sin Intro. En
 el PC el campo sigue con el foco. Solo JS, XML y CSS del Inicio.
+v1.8.5 (26/11/2026): URGENTE (Isaac 26/11). Inicio PDA > Recepciones > «Recepcionar» abre la pantalla nueva de
+koroshi_recepcion (koroshi_recepcion.action_koroshi_recepcion_pantalla, con la tarjeta compartida) en vez de la app de
+código de barras. Sin depender de koroshi_recepcion: «Abre» acepta varias acciones separadas por coma y usa la primera
+que exista (models/actividad.py, accion_de); si koroshi_recepcion no está, sigue abriendo el código de barras. La
+actividad es noupdate: el cambio lo hace migrations/13.0.1.8.5, solo si «Abre» sigue como en la 1.6.0.
 """,
-    'version': '13.0.1.8.4',
+    'version': '13.0.1.8.5',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
