@@ -42,6 +42,14 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.9.0 (26/11/2026): elegir cada dia cuantas zonas de lineal. Isaac: probar 3, 4 y 5 zonas a las 04:50 y quedarse con
+  la que acaba antes. Ajuste nuevo 'Elegir cada dia cuantas zonas' (APAGADO al instalar) con la lista a probar (3,4,5):
+  antes de partir se calcula el reparto (sin escribir) con cada una y se usa la que acaba antes; si una con menos
+  zonas acaba a menos de 10 min, esa. El muelle (MU1, MU2) se suma. El informe y el correo lo dicen ('ZONAS DEL DIA').
+  Con los datos reales del 26/11: ritmo 52/21 -> 4 zonas (13:51 contra 14:15 con 3); ritmo aprendido 31/53 -> 3
+  (12:42). Mejor encenderlo despues de aplicar el ritmo real. Para probarlo sin encenderlo: contexto zonas_auto.
+  Campos nuevos solo en tablas propias (config: zonas_auto, zonas_probar; ejecucion: zonas_elegidas). Incluye la
+  1.8.1. El modo del dia (tradicional / agrupaciones T) pasa a la 1.10.0.
 v1.8.1 (26/11/2026): el tipo de dia ensena el codigo de la prenda aunque no tenga referencia interna (las nuevas del
   26/11, 2621SU60 y 2621PL50, no la tienen: salia el id del producto). El lector pasa tambien el nombre del producto;
   el reparto no lo usa. Probado con los datos reales del 26/11. La 1.8.0 no se llego a instalar.
@@ -100,7 +108,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.8.1',
+    'version': '13.0.1.9.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

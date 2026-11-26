@@ -21,6 +21,8 @@
                         <group string="Equipo y horario">
                             <field name="personas"/>
                             <field name="zonas"/>
+                            <field name="zonas_auto"/>
+                            <field name="zonas_probar" attrs="{'invisible': [('zonas_auto', '=', False)]}"/>
                             <field name="hora_inicio"/>
                             <field name="hora_fin"/>
                             <field name="una_ronda"/>

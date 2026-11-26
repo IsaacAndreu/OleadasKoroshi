@@ -19,6 +19,7 @@ from odoo import api, fields, models
 from odoo.addons.koroshi_base import comun
 
 from ..motor import aprender as motor_aprender
+from ..motor import elegir as motor_elegir
 from ..motor import medir as motor_medir
 from ..motor import modelo
 from ..motor import tiempos as motor_tiempos
@@ -27,7 +28,8 @@ from . import escritor
 from . import lector
 
 CLAVES_CONTEXTO = ('personas', 'hora_inicio', 'hora_fin', 'una_ronda', 'zonas', 'zonas_muelle', 'prueba_ids',
-                   'prueba_agrupacion', 'seg_lectura', 'seg_lineal')    # v1.8.0: probar un ritmo
+                   'prueba_agrupacion', 'seg_lectura', 'seg_lineal',    # v1.8.0: probar un ritmo
+                   'zonas_auto')                       # v1.9.0: probar la eleccion de zonas
 
 
 class _Deshacer(Exception):
@@ -107,6 +109,9 @@ class KoroshiZonasEjecucion(models.Model):
                                 help='Según el % de uds en artículos que van a la mitad o más de las tiendas')
     pct_compartido = fields.Float('% uds compartidas', readonly=True, digits=(16, 1),
                                   help='% de las uds en artículos que van a la mitad o más de las tiendas')
+    zonas_elegidas = fields.Integer('Zonas elegidas', readonly=True,
+                                    help='v1.9.0: zonas en total (lineal + muelle) que eligió el reparto probando '
+                                         'varias; 0 = las de la configuración')
     ritmo_zonas = fields.Text('Ritmo real por zona', readonly=True,
                               help='JSON por zona: lecturas, lineales por OUT, uds, anchura y segundos-persona '
                                    'reales (lecturas de la PDA). Con él se propone el ritmo en la configuración')
@@ -547,6 +552,19 @@ class KoroshiZonasEjecucion(models.Model):
         ahora = datetime.datetime.now(pytz.timezone(p['ZONA_HORARIA']))
         datos = lector.datos_reparto(self.env, contexto, ahora, p)
         datos['contexto'] = contexto
+        # v1.9.0: cuantas zonas de lineal (si esta encendido y no se ha dicho en el contexto ni es una prueba)
+        lineas_zonas = []
+        zonas_elegidas = 0
+        cfg = self.env['koroshi.zonas.config'].obtener()
+        if ((cfg.zonas_auto or contexto.get('zonas_auto')) and not contexto.get('zonas')
+                and not contexto.get('prueba_ids') and not contexto.get('prueba_agrupacion')):
+            lineales = motor_elegir.candidatos(cfg.zonas_probar)
+            if lineales:
+                elegidas, opciones = motor_elegir.elegir(datos, cambios, contexto, lineales)
+                lineas_zonas = motor_elegir.lineas_elegir(elegidas, opciones)
+                if elegidas:
+                    cambios['ZONAS'] = elegidas
+                    zonas_elegidas = elegidas
         rep = v12f.repartir(datos, cambios, contexto)
         # v1.5.0 (A): aviso de hora de fin y personas que harian falta. Solo texto: el reparto no cambia.
         vals_tiempos = {}
@@ -561,7 +579,10 @@ class KoroshiZonasEjecucion(models.Model):
             # v1.8.0: que entra (dia de reposicion o de implantacion). Solo texto: el reparto no cambia.
             cls = motor_aprender.clasificar(rep)
             pos += len(aviso)
-            rep.lineas[pos:pos] = motor_aprender.lineas_clasificar(cls)
+            lineas_cls = motor_aprender.lineas_clasificar(cls)
+            rep.lineas[pos:pos] = lineas_cls
+            pos += len(lineas_cls)
+            rep.lineas[pos:pos] = lineas_zonas          # v1.9.0
             total, _por_zona = motor_tiempos.personas_necesarias(rep, fin_min)
             prev = motor_tiempos.prevision(rep)
             vals_tiempos = {
@@ -570,6 +591,7 @@ class KoroshiZonasEjecucion(models.Model):
                 'prevision_zonas': json.dumps(prev, sort_keys=True),
                 'tipo_dia': cls['tipo'],
                 'pct_compartido': cls['pct'],
+                'zonas_elegidas': zonas_elegidas,
             }
         ej = self.create(dict(vals_tiempos, **{
             'modo': rep.modo.lower(),

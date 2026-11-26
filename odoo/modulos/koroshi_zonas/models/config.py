@@ -85,6 +85,14 @@ class KoroshiZonasConfig(models.Model):
                                        'como la acción 1883')
     ver_out = fields.Integer('OUT que se listan en el informe', default=400)
 
+    # v1.9.0: elegir cada dia cuantas zonas de lineal (prueba varias y se queda con la que acaba antes)
+    zonas_auto = fields.Boolean('Elegir cada día cuántas zonas', default=False,
+                                help='Marcado: antes de partir se calcula el reparto con cada número de zonas de lineal '
+                                     'de la lista y se usa el que acaba antes (con menos zonas si acaba casi igual). '
+                                     'El muelle (MU1, MU2) se suma. Sin marcar: siempre las zonas de arriba')
+    zonas_probar = fields.Char('Zonas de lineal a probar', default='3,4,5',
+                               help='Separadas por comas. Sin contar las 2 de muelle')
+
     # v1.8.0: zonas que aprenden. Ritmo real de las ultimas semanas (lecturas de la PDA); se aplica con un boton.
     ritmo_texto = fields.Text('Ritmo real', compute='_compute_ritmo')
     seg_lectura_prop = fields.Float('Segundos por lectura propuestos', compute='_compute_ritmo')

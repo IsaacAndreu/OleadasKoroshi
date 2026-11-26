@@ -82,6 +82,7 @@
                             <field name="fin_previsto"/>
                             <field name="personas_necesarias"/>
                             <field name="tipo_dia"/>
+                            <field name="zonas_elegidas" attrs="{'invisible': [('zonas_elegidas', '=', 0)]}"/>
                             <field name="pct_compartido"/>
                         </group>
                         <group>

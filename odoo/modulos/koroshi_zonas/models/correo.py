@@ -51,7 +51,7 @@ class KoroshiZonasCorreo(models.AbstractModel):
             # v1.5.0: y las lineas HORA DE FIN (a que hora se acaba y cuantas personas harian falta)
             # v1.8.0: y las lineas TIPO DE DIA (reposicion o implantacion)
             if (l.startswith('AVISO:') or l.startswith('OUT de dias anteriores') or l.startswith('HORA DE FIN:')
-                    or l.startswith('TIPO DE DIA:')):
+                    or l.startswith('TIPO DE DIA:') or l.startswith('ZONAS DEL DIA:')):
                 extra += ' | %s' % l
         return '%s (%s)%s' % (primera, ej.name, extra), ej.informe or ''
 
