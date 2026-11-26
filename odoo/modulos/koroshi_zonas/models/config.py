@@ -120,25 +120,26 @@ class KoroshiZonasConfig(models.Model):
         """v1.8.0: (lecturas, lineales por OUT, segundos-persona, dia, zona) de las zonas de lineal (D1...Dn) de los
         repartos medidos del todo en los ultimos DIAS_RITMO dias."""
         desde = comun.hoy_local() - datetime.timedelta(days=DIAS_RITMO)
-        filas = []
+        dias = []
         for ej in self.env['koroshi.zonas.ejecucion'].sudo().search([
                 ('company_id', '=', self.company_id.id), ('fecha', '>=', desde), ('medicion', '=', 'medida'),
                 ('ritmo_zonas', '!=', False), ('modo', 'in', ('real', 'historico'))], order='fecha'):
-            for zona, t in sorted(json.loads(ej.ritmo_zonas).items()):
-                if zona[:1] == 'D' and zona[1:].isdigit() and t.get('lecturas') and t.get('seg_persona'):
-                    filas.append((t['lecturas'], t['lineales_out'], t['seg_persona'], ej.fecha, zona))
-        return filas
+            dias.append((ej.fecha, json.loads(ej.ritmo_zonas)))
+        # v1.10.0: solo las zonas-dia medidas de verdad (con el 13 y el 16/11 salia 0 s + 67,6 s)
+        return aprender.filtrar_dias(dias)
 
     def _compute_ritmo(self):
         for r in self:
-            filas = r._filas_ritmo()
+            filas, descartes = r._filas_ritmo()
+            fuera = descartes and ('\nNo cuentan (mal medidos): %s.' % '; '.join(
+                '%s%s: %s' % (d.strftime('%d/%m'), z and ' ' + z or '', m) for d, z, m in descartes)) or ''
             prop = aprender.proponer([f[:3] for f in filas], r.seg_lectura, r.seg_lineal)
             r.seg_lectura_prop = prop and prop['seg_lectura_prop'] or 0.0
             r.seg_lineal_prop = prop and prop['seg_lineal_prop'] or 0.0
             if not prop:
                 r.ritmo_texto = ('Aún no hay bastantes días medidos: %d zonas-día de %d necesarias (zonas de lineal de '
                                  'los repartos medidos de las últimas %d días). Cada noche se suma lo de ese día.' % (
-                                     len(filas), aprender.MIN_FILAS, DIAS_RITMO))
+                                     len(filas), aprender.MIN_FILAS, DIAS_RITMO)) + fuera
                 continue
             dias = sorted(set(f[3] for f in filas))
             r.ritmo_texto = (
@@ -150,7 +151,7 @@ class KoroshiZonasConfig(models.Model):
                 '(las zonas anchas pesan más).' % (
                     prop['n'], dias[0].strftime('%d/%m'), dias[-1].strftime('%d/%m'), prop['seg_lectura'],
                     prop['seg_lineal'], prop['error_prop'], r.seg_lectura, r.seg_lineal, prop['error_ahora'],
-                    prop['seg_lectura_prop'], prop['seg_lineal_prop']))
+                    prop['seg_lectura_prop'], prop['seg_lineal_prop'])) + fuera
 
     def accion_usar_ritmo(self):
         """v1.8.0: pone el ritmo propuesto en la configuracion (lo decide un jefe; no se cambia solo)."""

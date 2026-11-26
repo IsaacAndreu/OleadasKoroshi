@@ -42,6 +42,15 @@ Fase 3 - Configuracion y sustitucion:
 - "Diagnostico sin guardar" de las OUT seleccionadas: calcula, lo ensena y no deja nada.
 - Las acciones 1880-1883, 1843 y 1868 no se tocan.
 
+v1.10.0 (26/11/2026): sin picos y ritmo bien medido (bin/versiones/diseno-zonas-criterio-tiempo-cajas-picos_2026-11-26.md).
+  Isaac: «No vull picos ni caixes que no estiguen tancades». (1) Ritmo real: solo cuentan las zonas-dia medidas de
+  verdad (todas las zonas de lineal con lecturas de la PDA, el 70 % de las uds leidas y de 10 a 150 s por lectura); con
+  el 13 y el 16/11 (PDA casi sin lecturas) el ajuste salia 0 s + 67,6 s. Se guarda uds_pda por zona al medir y la
+  configuracion dice que dias no cuentan. (2) Elegir cuantas zonas: fuera las que tengan un pico de mas de 30 min entre
+  la primera y la ultima zona de lineal que acaban o mas de 5 cajas abiertas por partir que la mejor; de las que quedan,
+  la que acaba antes. Si ninguna queda sin pico, la de menos pico y AVISO en el informe y el correo. Con los datos del
+  26/11 y el ritmo 23/73 (puesto en la configuracion el 26/11): 3 zonas, acaba 12:44, pico 16 min. Las fronteras segun
+  las personas (parte A del diseno) quedan para despues.
 v1.9.0 (26/11/2026): elegir cada dia cuantas zonas de lineal. Isaac: probar 3, 4 y 5 zonas a las 04:50 y quedarse con
   la que acaba antes. Ajuste nuevo 'Elegir cada dia cuantas zonas' (APAGADO al instalar) con la lista a probar (3,4,5):
   antes de partir se calcula el reparto (sin escribir) con cada una y se usa la que acaba antes; si una con menos
@@ -108,7 +117,7 @@ v1.1.1 (11/11/2026): el nombre de la ejecucion y el dia, la compania, la diferen
 v1.1 (11/11/2026): fase 2, la v12f dentro del modulo, igual que la 1883 en los tests sin Odoo.
 v1.0 (11/11/2026): fase 1, medir las cajas reales.
 """,
-    'version': '13.0.1.9.0',
+    'version': '13.0.1.10.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

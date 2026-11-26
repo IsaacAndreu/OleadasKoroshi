@@ -123,5 +123,46 @@ class TestRitmo(unittest.TestCase):
         self.assertEqual((p['SEG_LECTURA'], p['SEG_LINEAL']), (52, 21))
 
 
+class TestFiltrarDias(unittest.TestCase):
+    """v1.10.0: el 13 y el 16/11 la PDA casi no apunto lecturas y el ajuste salio 0 s + 67,6 s."""
+
+    def _datos(self):
+        def z(lect, lin, seg, uds=None, pda=None):
+            t = {'lecturas': lect, 'lineales_out': lin, 'seg_persona': seg, 'uds': uds or lect}
+            if pda is not None:
+                t['uds_pda'] = pda
+            return t
+        import datetime
+        d = datetime.date
+        return [
+            (d(2026, 11, 13), {'D1': z(962, 344, 1951), 'D2': z(1154, 605, 0), 'D3': z(949, 421, 0),
+                               'MU1': z(29, 25, 0)}),
+            (d(2026, 11, 16), {'D1': z(2603, 1097, 941), 'D2': z(1972, 752, 0), 'D3': z(2104, 1019, 0)}),
+            (d(2026, 11, 17), {'D1': z(627, 417, 32308), 'D2': z(903, 558, 42797), 'D3': z(685, 430, 38961)}),
+            (d(2026, 11, 19), {'D1': z(764, 496, 41040), 'D2': z(835, 549, 41818), 'D3': z(604, 431, 34449)}),
+            (d(2026, 11, 23), {'D1': z(1876, 891, 80488), 'D2': z(2345, 919, 84969), 'D3': z(2407, 1159, 101809)}),
+            (d(2026, 11, 25), {'D1': z(857, 554, 41742), 'D2': z(874, 583, 41199), 'D3': z(601, 425, 29395)}),
+        ]
+
+    def test_fuera_los_dias_sin_pda(self):
+        filas, descartes = aprender.filtrar_dias(self._datos())
+        self.assertEqual(len(filas), 12)
+        self.assertEqual(len(descartes), 2)
+        prop = aprender.proponer([f[:3] for f in filas], 52, 21)
+        # datos reales del servidor (26/11): 16,8 + 52,1 con error 4,9 % -> propuesto 23 / 73
+        self.assertEqual((prop['seg_lectura_prop'], prop['seg_lineal_prop']), (23, 73))
+        self.assertLess(prop['error_prop'], 6)
+
+    def test_cobertura_y_rango(self):
+        import datetime
+        dia = datetime.date(2026, 11, 27)
+        dias = [(dia, {'D1': {'lecturas': 100, 'lineales_out': 50, 'seg_persona': 5000, 'uds': 100, 'uds_pda': 50},
+                       'D2': {'lecturas': 100, 'lineales_out': 50, 'seg_persona': 500, 'uds': 100, 'uds_pda': 100},
+                       'D3': {'lecturas': 100, 'lineales_out': 50, 'seg_persona': 5000, 'uds': 100, 'uds_pda': 90}})]
+        filas, descartes = aprender.filtrar_dias(dias)
+        self.assertEqual([f[4] for f in filas], ['D3'])
+        self.assertEqual(sorted(d[1] for d in descartes), ['D1', 'D2'])     # D1: 50 % leido; D2: 5 s por lectura
+
+
 if __name__ == '__main__':
     unittest.main()

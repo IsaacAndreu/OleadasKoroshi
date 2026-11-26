@@ -151,6 +151,40 @@ def trabajo_zona(outs):
             'lineal_min': todos and min(todos) or 0, 'lineal_max': todos and max(todos) or 0}
 
 
+COBERTURA_MIN = 0.7          # v1.10.0: uds leidas con la PDA / uds de la zona para que la zona-dia cuente
+SEG_LECTURA_MIN = 10         # v1.10.0: s-persona por lectura fuera de esto = medicion rota (13 y 16/11: 2 y 0,4 s)
+SEG_LECTURA_MAX = 150
+
+
+def filtrar_dias(dias):
+    """v1.10.0. dias: [(dia, {zona: datos de ritmo_zonas})]. Solo cuentan las zonas de lineal (D1...Dn) medidas de
+    verdad: el 13 y el 16/11 la PDA casi no apunto lecturas (D2 y D3 a 0 s, D1 a 2 y 0,4 s por lectura) y el ajuste
+    salio 0 s por lectura + 67,6 s por lineal. Un dia con alguna zona de lineal sin segundos-persona no cuenta entero;
+    una zona-dia con menos de COBERTURA_MIN de sus uds leidas con la PDA (si se sabe) o fuera de SEG_LECTURA_MIN..MAX
+    por lectura, tampoco. Devuelve (filas [(lecturas, lineales_out, segundos, dia, zona)], descartes [(dia, zona,
+    motivo)])."""
+    filas = []
+    descartes = []
+    for dia, zonas in dias:
+        lin = dict((z, t) for z, t in zonas.items() if z[:1] == 'D' and z[1:].isdigit() and t.get('lecturas'))
+        if not lin:
+            continue
+        vacias = sorted(z for z, t in lin.items() if not t.get('seg_persona'))
+        if vacias:
+            descartes.append((dia, '', 'sin lecturas de la PDA en %s' % ', '.join(vacias)))
+            continue
+        for zona, t in sorted(lin.items()):
+            spl = t['seg_persona'] / float(t['lecturas'])
+            if t.get('uds_pda') is not None and t.get('uds') and t['uds_pda'] < COBERTURA_MIN * t['uds']:
+                descartes.append((dia, zona, 'solo %d%% de las uds leidas con la PDA' % round(
+                    100.0 * t['uds_pda'] / t['uds'])))
+            elif spl < SEG_LECTURA_MIN or spl > SEG_LECTURA_MAX:
+                descartes.append((dia, zona, '%.1f s por lectura' % spl))
+            else:
+                filas.append((t['lecturas'], t['lineales_out'], t['seg_persona'], dia, zona))
+    return filas, descartes
+
+
 def ajustar(filas):
     """filas: [(lecturas, lineales_out, segundos_persona)] de zonas-dia. Ajuste por minimos cuadrados (sin termino
     fijo, sin valores negativos) de segundos = a x lecturas + b x lineales_out. Devuelve {'seg_lectura': a,

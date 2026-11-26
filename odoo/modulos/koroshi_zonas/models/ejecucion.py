@@ -421,7 +421,12 @@ class KoroshiZonasEjecucion(models.Model):
         lect = self.env['koroshi.preparacion.lectura'].sudo().search_read(
             [('employee_id', 'in', list(operarios)), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
              ('deshecha', '=', False), ('fecha', '>=', desde), ('fecha', '<', hasta)],
-            ['fecha', 'employee_id', 'picking_id'])
+            ['fecha', 'employee_id', 'picking_id', 'cantidad'])
+        uds_pda = {}                # v1.10.0: uds leidas con la PDA por zona (para saber si la zona-dia esta medida)
+        for l in lect:
+            zn = l['picking_id'] and zona_de.get(l['picking_id'][0], '') or ''
+            if zn:
+                uds_pda[zn] = uds_pda.get(zn, 0.0) + (l['cantidad'] or 0.0)
         seg = motor_aprender.segundos_persona([
             ((l['fecha'] - desde).total_seconds(), l['employee_id'][0],
              l['picking_id'] and zona_de.get(l['picking_id'][0], '') or '') for l in lect])
@@ -433,6 +438,7 @@ class KoroshiZonasEjecucion(models.Model):
         for zona in sorted(outs):
             t = motor_aprender.trabajo_zona(outs[zona])
             t['seg_persona'] = round(seg.get(zona, 0.0))
+            t['uds_pda'] = round(uds_pda.get(zona, 0.0))
             ritmo[zona] = t
             if not t['lecturas'] or not t['seg_persona']:
                 continue
@@ -560,8 +566,15 @@ class KoroshiZonasEjecucion(models.Model):
                 and not contexto.get('prueba_ids') and not contexto.get('prueba_agrupacion')):
             lineales = motor_elegir.candidatos(cfg.zonas_probar)
             if lineales:
-                elegidas, opciones = motor_elegir.elegir(datos, cambios, contexto, lineales)
-                lineas_zonas = motor_elegir.lineas_elegir(elegidas, opciones)
+                try:
+                    elegidas, opciones = motor_elegir.elegir(datos, cambios, contexto, lineales)
+                    lineas_zonas = motor_elegir.lineas_elegir(elegidas, opciones)
+                except Exception:
+                    # v1.10.0: si falla la eleccion, el reparto sigue con las zonas de la configuracion
+                    _logger.exception('KOROSHI Zonas: fallo al elegir cuantas zonas; se usa la configuracion')
+                    elegidas = None
+                    lineas_zonas = ['AVISO: no se ha podido elegir cuantas zonas (ver el log); se usa la '
+                                    'configuracion (%d zonas).' % cambios.get('ZONAS', 0)]
                 if elegidas:
                     cambios['ZONAS'] = elegidas
                     zonas_elegidas = elegidas

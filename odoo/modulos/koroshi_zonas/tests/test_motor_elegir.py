@@ -45,10 +45,42 @@ class TestElegir(unittest.TestCase):
         datos = sintetico.generar(21, n_pedidos=120)
         total, opciones = elegir.elegir(datos, {}, {}, [3, 4])
         lineas = elegir.lineas_elegir(total, opciones)
-        self.assertEqual(len(lineas), 1)
-        self.assertTrue(lineas[0].startswith('ZONAS DEL DIA:'))     # el correo las busca asi
-        self.assertIn('<- ELEGIDA', lineas[0])
+        self.assertIn(len(lineas), (1, 2))
+        self.assertTrue(lineas[-1].startswith('ZONAS DEL DIA:'))    # el correo las busca asi
+        self.assertIn('<- ELEGIDA', lineas[-1])
+        if len(lineas) == 2:
+            self.assertTrue(lineas[0].startswith('AVISO:'))
         self.assertEqual(elegir.lineas_elegir(None, []), [])
+
+    def test_v1100_pico_y_cajas(self):
+        datos = sintetico.generar(21, n_pedidos=120)
+        _t, opciones = elegir.elegir(datos, {}, {}, [2, 3, 4], margen=0)
+        for o in opciones:
+            self.assertIsNotNone(o['pico'])
+            self.assertGreaterEqual(o['pico'], 0)
+            self.assertGreaterEqual(o['por_partir'], 0)
+
+    def test_v1100_no_elige_con_pico(self):
+        viejo = elegir.PICO_MAX
+        try:
+            datos = sintetico.generar(21, n_pedidos=120)
+            _t, opciones = elegir.elegir(datos, {}, {}, [2, 3, 4], margen=0)
+            picos = sorted(o['pico'] for o in opciones)
+            # con el limite justo por debajo del pico mas alto, esa opcion no se elige nunca
+            elegir.PICO_MAX = (picos[-2] + picos[-1]) / 2.0
+            if picos[-1] > picos[-2]:
+                total, opciones = elegir.elegir(datos, {}, {}, [2, 3, 4], margen=0)
+                peor = [o for o in opciones if o['pico'] == picos[-1]][0]
+                self.assertNotEqual(total, peor['zonas'])
+                self.assertEqual(peor['fuera'], 'pico')
+            # con un limite imposible: la de menos pico y aviso
+            elegir.PICO_MAX = -1
+            total, opciones = elegir.elegir(datos, {}, {}, [2, 3, 4], margen=0)
+            menos = min(opciones, key=lambda o: (o['pico'], o['lineal']))
+            self.assertEqual(total, menos['zonas'])
+            self.assertTrue(elegir.lineas_elegir(total, opciones)[0].startswith('AVISO:'))
+        finally:
+            elegir.PICO_MAX = viejo
 
     def test_pocas_uds_ninguna(self):
         datos = sintetico.generar(21, n_pedidos=3)

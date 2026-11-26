@@ -1,6 +1,6 @@
 # koroshi_zonas: elegir las zonas por tiempo, cajas cerradas y sin picos (diseño, 26/11/2026)
 
-Estado: **diseño, sin código**. Espera el visto bueno de Isaac. Instalada en el servidor: 1.9.0 (26/11, 15:45), con
+Estado: **26/11 por la tarde, Isaac: «implementámelo todo para probarlo mañana»**. Hecho: ritmo 23/73 puesto en la configuración (sirve ya para el 27/11) y **1.10.0 (sección 1 y parte B), sin instalar**. La parte A (fronteras según las personas) queda para después de ver el 27/11: cambia dónde se corta y hay que probarla con varios días. Antes: diseño, sin código. Instalada en el servidor: 1.9.0 (26/11, 15:45), con
 «Elegir cada día cuántas zonas» encendido (3, 4, 5) y el ritmo en 52 / 21 s.
 
 Lo que pide Isaac (26/11):
