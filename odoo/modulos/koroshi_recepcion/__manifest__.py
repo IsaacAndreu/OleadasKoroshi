@@ -107,8 +107,17 @@ v1.6.1 (26/11/2026): Isaac: el buscador de IN encuentra por contenedor (carrier_
   abierta; al marcar la IN se rellenan sus contenedores (corregibles). El buscador ya no mira la referencia del
   proveedor ni el BL, y la PDA deja de mostrarlos (campo y «Ref.»); en la ficha, la columna pasa a «Contenedores».
   Busca por contenedor, nº de IN, pedido y modelo. En la oficina el campo referencia sigue igual. Sin cambios en la BD.
+v1.7.0 (26/11/2026): Isaac: (1) el modelo se autocompleta al escribir (a los 3 caracteres, sin Intro): primero los
+  de las IN y del packing list de la recepción, después los de Odoo; tocar uno lo pone y, si solo queda uno, se pone
+  solo. Un modelo que solo está en el PL también vale. (2) Vuelve el contenedor de control KO_ por caja: «🏷 Etiquetas
+  KO» en la ficha crea N KO_ del día (hasta 500 de una vez, como en la 1.0.x), los apunta a la recepción y manda la
+  tanda a la Zebra (EXP1); si la impresora falla, quedan creados y se reimprimen con «Etiquetas (última tanda)». En
+  «Leer cajas» se lee el KO pegado en la caja (dice si ya tiene algo), el modelo y las uds; con el nº a mano y PL,
+  propone las uds del PL. Con KO, el nº a mano y el palé son opcionales; la caja física es el KO. Avisa si el mismo
+  KO lleva otro modelo. El nº a mano y «+1 caja» siguen como modo rápido. No toca stock (opción A: la IN queda
+  pendiente). Sin campos nuevos en tablas compartidas; koroshi.recepcion.lectura.contenedor_id ya existía.
 """,
-    'version': '13.0.1.6.1',
+    'version': '13.0.1.7.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

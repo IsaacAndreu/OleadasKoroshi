@@ -107,7 +107,8 @@ class KoroshiRecepcionPantalla(http.Controller):
 
     def _ultimas(self, r):
         ls = r.lectura_ids.filtered(lambda l: l.estado == 'ok').sorted('id', reverse=True)[:MAX_ULTIMAS]
-        return [{'id': l.id, 'caja': l.caja_txt or ('+1' if l.rapida else ''), 'pedido': l.pedido or '',
+        return [{'id': l.id, 'pedido': l.pedido or '',
+                 'caja': ' · '.join(x for x in (l.contenedor_id.name, l.caja) if x) or ('+1' if l.rapida else ''),
                  'ajeno': l.pedido_ajeno, 'palet': l.palet_id.name or '',
                  'producto': l.producto_id.display_name or (('Modelo %s' % l.modelo) if l.modelo else '(sin modelo)'),
                  'uds': l.cantidad, 'quien': l.employee_id.name or '', 'hora': _local(l.fecha)[-5:],
@@ -257,8 +258,12 @@ class KoroshiRecepcionPantalla(http.Controller):
                     raise UserError('No encuentro la caja %s.' % codigo)
                 if len(loc) > 1:
                     raise UserError('Hay %d ubicaciones llamadas %s. Avisa a IT.' % (len(loc), codigo))
-                # 1.1.0: la caja es su nº escrito a mano; un KO_ leído vale como nº de caja (texto)
-                return {'ok': True, 'tipo': 'caja', 'caja': {'id': False, 'nombre': loc.name}}
+                # 1.7.0: vuelve el KO_ por caja (Isaac): es la matrícula de la caja; el nº a mano, opcional
+                caja = {'id': loc.id, 'nombre': loc.name, 'ya': ''}
+                if r:
+                    r.contenedor_para_leer(loc, escribir=False)
+                    caja['ya'] = r.lo_del_ko(loc)
+                return {'ok': True, 'tipo': 'caja', 'caja': caja}
             p = self._buscar_producto(codigo)
             if p:
                 return {'ok': True, 'tipo': 'producto', 'producto': self._prod(p)}
@@ -289,17 +294,27 @@ class KoroshiRecepcionPantalla(http.Controller):
                 for trozo in texto.split():
                     dominio += ['|', ('default_code', 'ilike', trozo), ('name', 'ilike', trozo)]
             if kw.get('modelos'):
-                # 1.2.0: lista de MODELOS (2711JA22), primero los de las IN del contenedor
-                en_in = {L.modelo_de(p.default_code or p.name) for p in de_las_in}
+                # 1.2.0: lista de MODELOS (2711JA22). 1.7.0 (autocompletar): primero los de las IN y del packing list
+                # de la recepción (aunque no salgan entre los 500 primeros de Odoo), después los de Odoo
+                nombres = {}
+                for p in de_las_in:
+                    nombres.setdefault(L.modelo_de(p.default_code or p.name), p.name or '')
+                en_in = set(nombres)
+                en_pl = set(r.pl_ids.mapped('modelo')) if recepcion_id else set()
+                trozos = [t.upper() for t in texto.split()]
+                primero = sorted(m for m in (en_in | en_pl) if m and all(
+                    t in m or t in (nombres.get(m) or '').upper() for t in trozos))
                 vistos = {}
-                for p in Product.search(dominio + [DE_LA_COMPANIA], limit=500, order='default_code, id'):
+                encontrados = Product.search(dominio + [DE_LA_COMPANIA], limit=500, order='default_code, id')
+                for p in encontrados:
                     m = L.modelo_de(p.default_code or p.name)
-                    if m and m not in vistos:
+                    if m and m not in vistos and m not in primero:
                         vistos[m] = p
-                lista = sorted(vistos, key=lambda m: (m not in en_in, m))[:MAX_BUSCAR]
-                return {'ok': True, 'modelos': [{'modelo': m, 'nombre': (vistos[m].name or '')[:60],
-                                                 'en_in': m in en_in} for m in lista],
-                        'mas': len(vistos) > MAX_BUSCAR}
+                lista = primero + sorted(vistos)
+                return {'ok': True, 'modelos': [{
+                    'modelo': m, 'nombre': (nombres.get(m) or (vistos[m].name if m in vistos else '') or '')[:60],
+                    'en_in': m in en_in, 'en_pl': m in en_pl} for m in lista[:MAX_BUSCAR]],
+                    'mas': len(lista) > MAX_BUSCAR or len(encontrados) >= 500}
             primero = Product.search(dominio + [('id', 'in', de_las_in.ids)]) if de_las_in else Product.browse()
             resto = Product.search(dominio + [DE_LA_COMPANIA, ('id', 'not in', primero.ids)],
                                    limit=MAX_BUSCAR, order='default_code, id')
@@ -320,10 +335,11 @@ class KoroshiRecepcionPantalla(http.Controller):
             emp = self._empleado(employee_id)
             r = self._recepcion(recepcion_id)
             palet = request.env['stock.location'].sudo().browse(int(palet_id or 0)).exists()
-            if not palet:
+            ko = request.env['stock.location'].sudo().browse(int(kw.get('contenedor_id') or 0)).exists()   # 1.7.0
+            if not palet and not (ko and modelo and not producto_id):
                 raise UserError('Falta el palé: tócalo arriba o lee su etiqueta.')
             if modelo and not producto_id:
-                lectura = r.guardar_caja(caja, pedido, palet, modelo, cantidad, emp, token)
+                lectura = r.guardar_caja(caja, pedido, palet, modelo, cantidad, emp, token, contenedor=ko)
             else:
                 prod = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
                 lectura = r.guardar_lectura(caja, pedido, palet, prod, cantidad, emp, token)
@@ -332,8 +348,9 @@ class KoroshiRecepcionPantalla(http.Controller):
             avisos += pl_avisos
             return {'ok': True, 'msg': '%s · %s · %d uds → %s / caja %s' % (
                 emp.name, lectura.producto_id.display_name or 'Modelo %s' % lectura.modelo, lectura.cantidad,
-                lectura.palet_id.name,
-                lectura.caja_txt), 'avisos': avisos, 'pl': pl_txt,
+                lectura.palet_id.name or 'sin palé',
+                ' · '.join(x for x in (lectura.contenedor_id.name, lectura.caja) if x) or lectura.caja_txt),
+                'avisos': avisos, 'pl': pl_txt,
                 'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
         except (UserError, ValueError) as e:
             request.env.cr.rollback()     # nada a medias
@@ -365,6 +382,47 @@ class KoroshiRecepcionPantalla(http.Controller):
         except (UserError, ValueError) as e:
             request.env.cr.rollback()
             return {'ok': False, 'msg': 'No se ha mandado nada a imprimir. %s' % _msg(e)}
+
+    @http.route('/koroshi/recepcion/crear_ko', type='json', auth='user')
+    def crear_ko(self, recepcion_id=False, cantidad=0, employee_id=False, **kw):
+        """1.7.0: crea N KO_ (contenedor de control por caja) y manda sus etiquetas a la Zebra (EXP1)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            tanda = r.crear_ko(cantidad, emp)
+        except (UserError, ValueError) as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': 'No se ha creado nada. %s' % _msg(e)}
+        except Exception as e:            # p. ej. dos PDA creando KO_ a la vez: el mismo número
+            request.env.cr.rollback()
+            _logger.exception('koroshi_recepcion: error al crear KO en %s', recepcion_id)
+            return {'ok': False, 'msg': 'No se ha creado nada (%s). Vuelve a probar en un momento.' % e}
+        # creados: si la impresora falla, se reimprimen con «Etiquetas (última tanda)»
+        try:
+            res = tanda.imprimir(emp)
+            msg = 'Creadas %s → %s.%s' % (tanda.name, res.get('impresora') or 'impresora',
+                                          (' ' + res['aviso']) if res.get('aviso') else '')
+            conectada = res.get('conectada')
+        except UserError as e:
+            msg = 'Creadas %s, pero NO se han mandado a imprimir (%s): «🖨 Etiquetas (última tanda)».' % (
+                tanda.name, _msg(e))
+            conectada = False
+        return {'ok': True, 'msg': msg, 'conectada': conectada, 'recepcion': self._datos_recepcion(r, emp)}
+
+    @http.route('/koroshi/recepcion/pl_caja', type='json', auth='user')
+    def pl_caja(self, recepcion_id=False, modelo='', caja='', **kw):
+        """1.7.0: lo que dice el packing list de la caja nº «caja» del modelo (para proponer las uds)."""
+        try:
+            self._comprobar_usuario()
+            r = self._recepcion(recepcion_id)
+            n = (caja or '').strip().lstrip('0')
+            pl = r.pl_de(L.normalizar_modelo(modelo), n) if (modelo or '').strip() and n else None
+            if not pl:
+                return {'ok': True, 'uds': 0, 'texto': ''}
+            return {'ok': True, 'uds': pl.uds, 'texto': 'caja %s de %s: %s' % (n, pl.modelo, pl.contenido or '')}
+        except (UserError, ValueError) as e:
+            return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/recepcion/cargar_pl', type='json', auth='user')
     def cargar_pl(self, recepcion_id=False, employee_id=False, **kw):

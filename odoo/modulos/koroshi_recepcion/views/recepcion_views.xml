@@ -97,6 +97,7 @@
                                     <field name="fecha"/>
                                     <field name="palet_id"/>
                                     <field name="caja_txt"/>
+                                    <field name="contenedor_id"/>
                                     <field name="pedido"/>
                                     <field name="pedido_ajeno"/>
                                     <field name="rapida"/>
@@ -120,7 +121,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="KO_ (hasta la 1.0.1)" attrs="{'invisible': [('contenedor_ids', '=', [])]}">
+                        <page string="Cajas KO_" attrs="{'invisible': [('contenedor_ids', '=', [])]}">
                             <field name="contenedor_ids" readonly="1">
                                 <tree>
                                     <field name="complete_name"/>
@@ -192,6 +193,7 @@
                 <field name="fecha"/>
                 <field name="palet_id"/>
                 <field name="caja_txt"/>
+                <field name="contenedor_id"/>
                 <field name="pedido"/>
                 <field name="pedido_ajeno"/>
                 <field name="modelo"/>
@@ -215,6 +217,7 @@
                 <field name="producto_id"/>
                 <field name="modelo"/>
                 <field name="caja_txt"/>
+                <field name="contenedor_id"/>
                 <field name="pedido"/>
                 <field name="palet_id"/>
                 <filter name="ajenas" string="Pedido de otro contenedor" domain="[('pedido_ajeno', '=', True)]"/>

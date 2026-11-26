@@ -1,6 +1,9 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.6.1 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.7.0 (26/11/2026) - PDA o tablet.
+ * 1.7.0 (Isaac): el modelo se autocompleta al escribir (primero los de las IN y del PL; si queda uno, se pone solo).
+ *    Vuelve el KO_ por caja: «🏷 Etiquetas KO» crea N y las manda a la Zebra; se lee el KO de la caja, el modelo y
+ *    las uds (con nº y PL, propone las del PL) y se guarda. El nº a mano y «+1 caja» quedan como modo rápido.
  * 1.6.1: el buscador de IN encuentra por contenedor (carrier_tracking_ref; «4099960» o un trozo valen) y dice si no
  *    está en ninguna IN abierta; sin referencia del proveedor ni BL en el buscador ni en pantalla.
  * 1.6.0: datos de la IN: los contenedores (carrier_tracking_ref) rellenan la matrícula; el packing list en Excel
@@ -49,6 +52,7 @@ var Pantalla = AbstractAction.extend({
         'click [data-accion]': '_onAccion',
         'click .o_kr_tecla': '_onTecla',
         'keydown .o_kr_buscar': '_onBuscarKey',
+        'input .o_kr_buscar': '_onBuscarInput',
         'keydown .o_kr_ncaja, .o_kr_pedido': '_onCampoCaja',
         'keydown .o_kr_cant': '_onCantKey',
         'input .o_kr_cant': '_onCantInput',
@@ -69,6 +73,7 @@ var Pantalla = AbstractAction.extend({
         this.elegidas = {};
         this.palet = null;          // {id, nombre}
         this.caja = '';             // 1.1.0: nº de caja escrito a mano (texto)
+        this.ko = null;             // 1.7.0: KO_ pegado en la caja {id, nombre}
         this.pedido = '';           // nº de pedido de la etiqueta (opcional)
         this.modelo = '';           // 1.2.0: modelo de la caja (2711JA22)
         this.resModelos = null;     // buscador de modelos
@@ -230,8 +235,9 @@ var Pantalla = AbstractAction.extend({
             self._pitido(true);
             if (r.tipo === 'palet') { self.palet = r.palet; self._aviso('ok', 'Palé ' + r.palet.nombre); }
             if (r.tipo === 'caja') { self._ponerCaja(r.caja); }
-            if (r.tipo === 'producto') { self._ponerModelo(r.producto.base); }
+            if (r.tipo === 'producto') { return self._ponerModelo(r.producto.base); }
             self._pintar();
+            if (r.tipo === 'caja') { self._siguienteCampo(); }
         });
     },
 
@@ -321,16 +327,20 @@ var Pantalla = AbstractAction.extend({
         });
     },
     _ponerCaja: function (caja) {
-        this.caja = caja.nombre;
-        this._aviso('ok', 'Caja ' + caja.nombre + ': ahora la prenda.');
+        // 1.7.0: el KO_ es la matrícula de la caja; el nº escrito a mano queda opcional
+        this.ko = {id: caja.id, nombre: caja.nombre};
+        this.cantidad = '';
+        this._aviso(caja.ya ? 'mal' : 'ok', caja.nombre + (caja.ya ? ': OJO, ya tiene ' + caja.ya + '.' : '') +
+            (this.modelo ? ' Modelo ' + this.modelo + ': escribe las uds (o «Otro modelo»).' : ' Ahora el modelo.'));
     },
     // nº de caja y pedido (1.1.0): se escriben a mano. Si el lector escribe ahí un código (prenda), se lee como código.
-    _pareceCodigo: function (v) { return /^\d{8,}$/.test(v) || /^PAL/i.test(v); },
+    _pareceCodigo: function (v) { return /^\d{8,}$/.test(v) || /^(PAL|KO_|TT_)/i.test(v); },
     _onCambiaCaja: function () {
         var c = (this.$('.o_kr_ncaja').val() || '').trim();
         var p = (this.$('.o_kr_pedido').val() || '').trim();
         if (!this._pareceCodigo(c)) { this.caja = c; }
         this.pedido = p;
+        this._proponerPl();
     },
     _onCampoCaja: function (ev) {
         if (ev.which !== 13 && ev.which !== 9) { return; }
@@ -505,6 +515,8 @@ var Pantalla = AbstractAction.extend({
     _a_buscar: function () {
         var self = this;
         var texto = this.$('.o_kr_buscar').val();
+        clearTimeout(this.autoTimer);       // 1.7.0: Intro o «Buscar» manda; el autocompletar pendiente, no
+        this.autoTexto = null;
         return this._llamar('/koroshi/recepcion/buscar', {recepcion_id: this.rec.id, texto: texto, modelos: true})
             .then(function (r) {
                 if (!r) { return; }
@@ -517,6 +529,8 @@ var Pantalla = AbstractAction.extend({
             });
     },
     _ponerModelo: function (modelo) {
+        clearTimeout(this.autoTimer);
+        this.autoTexto = null;
         this.modelo = String(modelo || '');
         this.resModelos = null;
         this.textoBuscado = '';
@@ -524,12 +538,89 @@ var Pantalla = AbstractAction.extend({
         this._aviso('ok', 'Modelo ' + this.modelo + ': escribe las uds de la caja.');
         this._pintar();
         this._siguienteCampo();
+        this._proponerPl();
     },
-    // 1.3.0: el primer campo que falta (caja, modelo, uds), con el foco puesto para escribir
+    // 1.3.0: el primer campo que falta (caja, modelo, uds), con el foco puesto para escribir.
+    // 1.7.0: con KO leído, el nº a mano no hace falta
     _siguienteCampo: function () {
-        var $c = !this.caja ? this.$('.o_kr_ncaja') : (!this.modelo ? this.$('.o_kr_buscar') : this.$('.o_kr_cant'));
+        var $c = (!this.caja && !this.ko) ? this.$('.o_kr_ncaja')
+            : (!this.modelo ? this.$('.o_kr_buscar') : this.$('.o_kr_cant'));
         if ($c.length) { $c.focus(); $c.select(); }
     },
+    // 1.7.0: con nº de caja y modelo, propone las uds del packing list (Excel de la IN), si las uds están vacías
+    _proponerPl: function () {
+        var self = this;
+        if (!this.rec || !this.modelo || !this.caja || this.cantidad) { return; }
+        var modelo = this.modelo, caja = this.caja;
+        this._llamar('/koroshi/recepcion/pl_caja', {recepcion_id: this.rec.id, modelo: modelo, caja: caja}, true)
+            .then(function (r) {
+                if (!r || !r.uds || self.modelo !== modelo || self.caja !== caja || self.cantidad) { return; }
+                self.cantidad = String(r.uds);
+                self.$('.o_kr_cant').val(self.cantidad).focus().select();
+                self._aviso('ok', 'Según el PL, ' + r.texto + '. Revisa las uds y «Guardar».');
+            });
+    },
+    // 1.7.0: autocompletar el modelo al escribir (sin Intro): a los 3 caracteres, 300 ms después de la última tecla
+    _onBuscarInput: function (ev) {
+        var self = this;
+        var v = (ev.currentTarget.value || '').trim();
+        clearTimeout(this.autoTimer);
+        if (v.length < 3 || /^\d{8,}$/.test(v)) {      // un EAN se lee con su Intro
+            this.resModelos = null;
+            this.$('.o_kr_sugerencias').html('');
+            return;
+        }
+        this.autoTimer = setTimeout(function () { self._autocompletar(v); }, 300);
+    },
+    _autocompletar: function (texto) {
+        var self = this;
+        this.autoTexto = texto;
+        return this._llamar('/koroshi/recepcion/buscar', {recepcion_id: this.rec.id, texto: texto, modelos: true}, true)
+            .then(function (r) {
+                // solo la respuesta de lo último escrito (las anteriores llegan tarde y se ignoran)
+                if (!r || self.autoTexto !== texto || self.modelo) { return; }
+                var actual = (self.$('.o_kr_buscar').val() || '').trim();
+                if (actual !== texto) { return; }
+                self.resModelos = r.modelos;
+                self.resultadosMas = r.mas;
+                self.textoBuscado = texto;
+                if (r.modelos.length === 1 && !r.mas) { return self._ponerModelo(r.modelos[0].modelo); }
+                self.$('.o_kr_sugerencias').html(self._htmlSugerencias());
+            });
+    },
+    _htmlSugerencias: function () {
+        if (!this.resModelos) { return ''; }
+        if (!this.resModelos.length) {
+            return '<p class="o_kr_gris">Ningún modelo con «' + _e(this.textoBuscado) + '».</p>';
+        }
+        var h = '<div class="o_kr_resultados">';
+        _.each(this.resModelos, function (m) {
+            var propio = m.en_in || m.en_pl;
+            h += '<button type="button" data-accion="elegir_modelo" data-valor="' + _e(m.modelo) + '"' +
+                (propio ? ' class="o_kr_de_in"' : '') + '><b>' + _e(m.modelo) + '</b> ' + _e(m.nombre) +
+                (propio ? (m.en_in ? '' : ' <span class="o_kr_gris">(del PL)</span>')
+                    : ' <span class="o_kr_gris">(no está en las IN)</span>') + '</button>';
+        });
+        if (this.resultadosMas) { h += '<p class="o_kr_gris">Hay más: escribe un trozo más largo.</p>'; }
+        return h + '</div>';
+    },
+    // 1.7.0: «🏷 Etiquetas KO»: crea N KO_ de esta recepción y los manda a la Zebra de Expediciones
+    _a_crear_ko: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        var n = parseInt(window.prompt('¿Cuántas etiquetas KO (una por caja)? De 1 a 500 de una vez.', '50'), 10);
+        if (!n) { return; }
+        if (!window.confirm('Se crean ' + n + ' KO nuevos y se mandan a la Zebra de Expediciones. ¿Seguro?')) { return; }
+        return this._llamar('/koroshi/recepcion/crear_ko', {recepcion_id: this.rec.id, cantidad: n,
+            employee_id: this.persona.id}).then(function (r) {
+            if (!r) { return; }
+            self.rec = r.recepcion;
+            self._pitido(!!r.conectada);
+            self._aviso(r.conectada ? 'ok' : 'mal', r.msg);
+            self._pintar();
+        });
+    },
+    _a_quitar_ko: function () { this.ko = null; this._pintar(); this._siguienteCampo(); },
     _onCantInput: function (ev) {
         // un código leído aquí se reconoce al llegar el Intro (_onCantKey); sin Intro, Odoo rechaza la cantidad
         this.cantidad = (ev.currentTarget.value || '').replace(/[^0-9]/g, '');
@@ -706,13 +797,14 @@ var Pantalla = AbstractAction.extend({
         if (!this._necesitaPersona()) { return; }
         if (this.$('.o_kr_ncaja').length) { this._onCambiaCaja(); }
         if (this.$('.o_kr_cant').length) { this.cantidad = (this.$('.o_kr_cant').val() || '').replace(/[^0-9]/g, ''); }
-        if (!this.palet) { this._pitido(false); return this._aviso('mal', 'Falta el palé: tócalo arriba.'); }
-        if (!this.caja) { this._pitido(false); return this._aviso('mal', 'Falta el nº de caja (el escrito a mano).'); }
+        // 1.7.0: con KO, el palé y el nº a mano son opcionales
+        if (!this.palet && !this.ko) { this._pitido(false); return this._aviso('mal', 'Falta el palé: tócalo arriba (o lee el KO de la caja).'); }
+        if (!this.caja && !this.ko) { this._pitido(false); return this._aviso('mal', 'Lee el KO de la caja o escribe su nº (el escrito a mano).'); }
         if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Falta el modelo: búscalo o lee una prenda.'); }
         if (!parseInt(this.cantidad, 10)) { this._pitido(false); return this._aviso('mal', 'Escribe las uds de la caja.'); }
         return this._llamar('/koroshi/recepcion/guardar', {
-            recepcion_id: this.rec.id, caja: this.caja, pedido: this.pedido, palet_id: this.palet.id,
-            modelo: this.modelo, producto_id: false,
+            recepcion_id: this.rec.id, caja: this.caja, pedido: this.pedido, palet_id: this.palet ? this.palet.id : false,
+            modelo: this.modelo, producto_id: false, contenedor_id: this.ko ? this.ko.id : false,
             cantidad: parseInt(this.cantidad, 10), employee_id: this.persona.id, token: this.token,
         }).then(function (r) {
             if (!r) { return; }
@@ -721,6 +813,7 @@ var Pantalla = AbstractAction.extend({
             self.ultimas = r.ultimas;
             // 1.2.0: una línea por caja; el modelo, el pedido y el palé se quedan para la siguiente caja
             self.caja = '';
+            self.ko = null;                 // 1.7.0: la siguiente caja lleva otro KO
             self.cantidad = '';
             self._pintar();
             self.$('.o_kr_ncaja').focus();
@@ -736,6 +829,7 @@ var Pantalla = AbstractAction.extend({
     },
     _a_otra_caja: function () {
         this.caja = '';
+        this.ko = null;
         this.pedido = '';
         this.prod = null;
         this.cantidad = '';
@@ -940,6 +1034,9 @@ var Pantalla = AbstractAction.extend({
             h += '<button type="button" class="o_kr_primario" data-accion="leer">Leer cajas</button>' +
                 '<button type="button" data-accion="recepcionar">+ Palés / cajas</button>';
         }
+        if (r.state === 'pendiente' || r.state === 'leyendo') {
+            h += '<button type="button" data-accion="crear_ko">🏷 Etiquetas KO (cajas)</button>';
+        }
         if (r.tanda_id) { h += '<button type="button" data-accion="imprimir">🖨 Etiquetas (última tanda)</button>'; }
         h += '<button type="button" data-accion="cargar_pl">↻ Packing list (Excel de la IN)</button>';
         if (r.palets) { h += '<button type="button" data-accion="imprimir_palets">🖨 Etiquetas de los palés</button>'; }
@@ -993,36 +1090,31 @@ var Pantalla = AbstractAction.extend({
         }
         h += '</div>';
         h += '<div class="o_kr_fila">' +
-            '<div class="o_kr_caja' + (this.caja ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">2. Caja</div>' +
-            '<label>Nº de caja (el escrito a mano)</label>' +
+            '<div class="o_kr_caja' + ((this.caja || this.ko) ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">' +
+            '2. Caja: lee su etiqueta KO</div>' +
+            '<div class="o_kr_grande">' + (this.ko ? _e(this.ko.nombre) : 'Lee el KO') + '</div>' +
+            (this.ko ? '<button type="button" data-accion="quitar_ko">Quitar KO</button>' : '') +
+            '<label>Nº de caja (el escrito a mano; opcional con KO)</label>' +
             '<input type="text" class="o_kr_campo o_kr_ncaja" autocomplete="off" placeholder="108" value="' +
             _e(this.caja) + '"/>' +
             '<label>Nº de pedido de la etiqueta (ORDER NUMBER, si quieres)</label>' +
             '<input type="text" class="o_kr_campo o_kr_pedido" autocomplete="off" placeholder="0000001936" value="' +
             _e(this.pedido) + '"/>' +
-            (this.caja ? '<button type="button" data-accion="otra_caja">Otra caja</button>' : '') + '</div>' +
+            ((this.caja || this.ko) ? '<button type="button" data-accion="otra_caja">Otra caja</button>' : '') + '</div>' +
             '<div class="o_kr_caja' + (this.palet ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">Palé</div>' +
-            '<div class="o_kr_grande">' + (this.palet ? _e(this.palet.nombre) : 'Toca un palé') + '</div></div></div>';
+            '<div class="o_kr_grande">' + (this.palet ? _e(this.palet.nombre) : (this.ko ? 'sin palé (vale con KO)'
+                : 'Toca un palé')) + '</div></div></div>';
         h += '<div class="o_kr_caja' + (this.modelo ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">' +
             '3. Modelo (REFERENCE de la etiqueta)</div>';
         if (this.modelo) {
             h += '<div class="o_kr_grande">' + _e(this.modelo) + '</div>' +
                 '<button type="button" data-accion="otro_modelo">Otro modelo</button>';
         } else {
-            h += '<div>Lee el código de barras de una prenda o busca el modelo:</div><div class="o_kr_fila">' +
-                '<input type="text" class="o_kr_campo o_kr_buscar" placeholder="2711JA22 o un trozo" value="' +
-                _e(this.textoBuscado || '') + '"/>' +
-                '<button type="button" data-accion="buscar">Buscar</button></div>';
-            if (this.resModelos && this.resModelos.length) {
-                h += '<div class="o_kr_resultados">';
-                _.each(this.resModelos, function (m) {
-                    h += '<button type="button" data-accion="elegir_modelo" data-valor="' + _e(m.modelo) + '"' +
-                        (m.en_in ? ' class="o_kr_de_in"' : '') + '><b>' + _e(m.modelo) + '</b> ' + _e(m.nombre) +
-                        (m.en_in ? '' : ' <span class="o_kr_gris">(no está en las IN)</span>') + '</button>';
-                });
-                if (this.resultadosMas) { h += '<p class="o_kr_gris">Hay más: escribe un trozo más largo.</p>'; }
-                h += '</div>';
-            }
+            h += '<div>Lee el código de barras de una prenda o escribe el modelo (salen solos):</div>' +
+                '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_buscar" autocomplete="off" ' +
+                'placeholder="2711JA1…" value="' + _e(this.textoBuscado || '') + '"/>' +
+                '<button type="button" data-accion="buscar">Buscar</button></div>' +
+                '<div class="o_kr_sugerencias">' + this._htmlSugerencias() + '</div>';
         }
         h += '</div>';
         h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Uds de la caja (total)</div>' +
