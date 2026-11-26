@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.11.0 Cada hora: vuelve a calcular el % de faltante (koroshi.faltante.relativo). Solo escribe en su tabla. -->
+    <record id="cron_koroshi_faltante_relativo" model="ir.cron">
+        <field name="name">KOROSHI Faltantes: recalcular % de faltante</field>
+        <field name="model_id" ref="model_koroshi_faltante_relativo"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">hours</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

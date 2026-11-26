@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v1.11.0 Umbrales del % de faltante (faltante ÷ recibido), en %. Ajustes > Técnico > Parámetros del sistema.
+         Isaac, 26/11: alarma al 7 % y al 10 %. Si falta el parámetro, el código usa estos mismos valores. -->
+    <record id="parametro_vigilar_pct" model="ir.config_parameter">
+        <field name="key">koroshi_faltantes.vigilar_pct</field>
+        <field name="value">2</field>
+    </record>
+    <record id="parametro_alarma_pct" model="ir.config_parameter">
+        <field name="key">koroshi_faltantes.alarma_pct</field>
+        <field name="value">7</field>
+    </record>
+    <record id="parametro_critico_pct" model="ir.config_parameter">
+        <field name="key">koroshi_faltantes.critico_pct</field>
+        <field name="value">10</field>
+    </record>
+</odoo>

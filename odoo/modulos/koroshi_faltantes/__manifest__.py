@@ -83,8 +83,16 @@ v1.10.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita korosh
   lo que se escribe a mano («23649») sigue esperando al Enter. En las rutas, el operario que manda la PDA tiene que
   ser activo y de la compañía (si no, «Pasa otra vez tu tarjeta») y la prenda se busca como en las demás pantallas
   (también código alternativo, UPC con 0 y nombre). Sin campos nuevos.
+v1.11.0 (26/11/2026): % de faltante (investigación de faltantes del 26/11, punto 7; lo que pidió Andrés el 18/11).
+  Menús para responsables «% de faltante por SKU / por modelo-color / por modelo»: recibido, salido, devuelto, bajas
+  y altas por ajuste, uds en FALTANTE, stock, faltante = bajas − altas + en FALTANTE, % = faltante ÷ recibido (dos
+  decimales), faltas de tiendas en 7 días y última baja. Alerta por colores: vigilar ≥ 2 %, alarma ≥ 7 %, crítico
+  ≥ 10 % (parámetros koroshi_faltantes.vigilar_pct / alarma_pct / critico_pct). En modelo-color y modelo no se
+  compensan tallas ni colores. Tabla propia (koroshi.faltante.relativo) que llena un cron cada hora y el menú
+  «Recalcular % de faltante», con SQL de solo lectura sobre movimientos y stock. Solo prendas (NNNNLLNN-…). Sin campos
+  nuevos en tablas de Odoo; la PDA no cambia.
 """,
-    'version': '13.0.1.10.0',
+    'version': '13.0.1.11.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
@@ -95,9 +103,12 @@ v1.10.0 (23/11/2026): revisión general del 23/11 (O4, O5, R16). Necesita korosh
         'data/ubicacion_v131.xml',
         'data/cron.xml',
         'data/parametros.xml',
+        'data/parametros_relativo.xml',
         'views/assets.xml',
         'views/faltante_views.xml',
         'views/wizard_views.xml',
+        'views/relativo_views.xml',
+        'data/cron_relativo.xml',
         'views/menu.xml',
     ],
     'qweb': [

@@ -17,4 +17,16 @@
               groups="stock.group_stock_manager"/>
     <menuitem id="menu_koroshi_faltantes_cero" name="Puestos a 0 hoy" parent="menu_koroshi_faltantes_root"
               action="action_koroshi_puestos_a_cero" sequence="30" groups="stock.group_stock_manager"/>
+    <!-- v1.11.0: % de faltante (faltante ÷ recibido), para los responsables -->
+    <menuitem id="menu_koroshi_faltantes_relativo_sku" name="% de faltante por SKU" parent="menu_koroshi_faltantes_root"
+              action="action_koroshi_faltante_relativo_sku" sequence="40" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_faltantes_relativo_color" name="% de faltante por modelo-color"
+              parent="menu_koroshi_faltantes_root" action="action_koroshi_faltante_relativo_color" sequence="41"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_faltantes_relativo_modelo" name="% de faltante por modelo"
+              parent="menu_koroshi_faltantes_root" action="action_koroshi_faltante_relativo_modelo" sequence="42"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_koroshi_faltantes_relativo_recalcular" name="Recalcular % de faltante"
+              parent="menu_koroshi_faltantes_root" action="action_koroshi_faltante_relativo_recalcular" sequence="43"
+              groups="stock.group_stock_manager"/>
 </odoo>

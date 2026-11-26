@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.11.0 (26/11/2026): % de faltante (faltante ÷ recibido) por SKU, modelo-color y modelo. Solo lectura; la
+         tabla la rellena el cron cada hora o el menú «Recalcular % de faltante». -->
+    <record id="view_koroshi_faltante_relativo_tree" model="ir.ui.view">
+        <field name="name">koroshi.faltante.relativo.tree</field>
+        <field name="model">koroshi.faltante.relativo</field>
+        <field name="arch" type="xml">
+            <tree string="% de faltante" create="false" edit="false" delete="false"
+                  decoration-danger="alerta in ('alarma', 'critico')" decoration-bf="alerta == 'critico'"
+                  decoration-warning="alerta == 'vigilar'" decoration-muted="alerta == 'ok'">
+                <field name="nivel" invisible="1"/>
+                <field name="name"/>
+                <field name="pct"/>
+                <field name="alerta"/>
+                <field name="faltante" sum="Faltante"/>
+                <field name="recibido" sum="Recibido"/>
+                <field name="salido" optional="show"/>
+                <field name="devuelto" optional="hide"/>
+                <field name="bajas" optional="show"/>
+                <field name="altas" optional="show"/>
+                <field name="en_faltante" optional="show"/>
+                <field name="sobrante" optional="show"/>
+                <field name="neto" optional="hide"/>
+                <field name="stock" optional="show"/>
+                <field name="skus" optional="hide"/>
+                <field name="faltas_7d" optional="show"/>
+                <field name="tiendas_7d" optional="hide"/>
+                <field name="ultimo_ajuste" optional="show"/>
+                <field name="calculado" optional="hide"/>
+                <button name="action_ver" type="object" string="Ver" icon="fa-search"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_koroshi_faltante_relativo_search" model="ir.ui.view">
+        <field name="name">koroshi.faltante.relativo.search</field>
+        <field name="model">koroshi.faltante.relativo</field>
+        <field name="arch" type="xml">
+            <search string="% de faltante">
+                <field name="name"/>
+                <field name="modelo"/>
+                <filter name="alarma" string="En alarma (≥ 7 %)" domain="[('alerta', 'in', ('alarma', 'critico'))]"/>
+                <filter name="critico" string="Crítico (≥ 10 %)" domain="[('alerta', '=', 'critico')]"/>
+                <filter name="vigilar" string="Vigilar (≥ 2 %)" domain="[('alerta', '=', 'vigilar')]"/>
+                <separator/>
+                <filter name="con_faltas" string="Con faltas en tiendas (7 días)" domain="[('faltas_7d', '>', 0)]"/>
+                <filter name="en_faltante" string="Con uds en FALTANTE" domain="[('en_faltante', '>', 0)]"/>
+                <filter name="stock_cero" string="Stock 0" domain="[('stock', '&lt;=', 0)]"/>
+                <separator/>
+                <filter name="temporada_26" string="Temporada 26" domain="[('name', '=like', '26%')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_alerta" string="Alerta" context="{'group_by': 'alerta'}"/>
+                    <filter name="por_modelo" string="Modelo" context="{'group_by': 'modelo'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_koroshi_faltante_relativo_sku" model="ir.actions.act_window">
+        <field name="name">% de faltante por SKU</field>
+        <field name="res_model">koroshi.faltante.relativo</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_koroshi_faltante_relativo_tree"/>
+        <field name="search_view_id" ref="view_koroshi_faltante_relativo_search"/>
+        <field name="domain">[('nivel', '=', 'sku')]</field>
+        <field name="context">{'search_default_alarma': 1}</field>
+        <field name="help" type="html">
+            <p>Sin datos todavía: se calcula cada hora o con «Recalcular % de faltante».</p>
+        </field>
+    </record>
+
+    <record id="action_koroshi_faltante_relativo_color" model="ir.actions.act_window">
+        <field name="name">% de faltante por modelo-color</field>
+        <field name="res_model">koroshi.faltante.relativo</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_koroshi_faltante_relativo_tree"/>
+        <field name="search_view_id" ref="view_koroshi_faltante_relativo_search"/>
+        <field name="domain">[('nivel', '=', 'color')]</field>
+        <field name="context">{'search_default_alarma': 1}</field>
+    </record>
+
+    <record id="action_koroshi_faltante_relativo_modelo" model="ir.actions.act_window">
+        <field name="name">% de faltante por modelo</field>
+        <field name="res_model">koroshi.faltante.relativo</field>
+        <field name="view_mode">tree</field>
+        <field name="view_id" ref="view_koroshi_faltante_relativo_tree"/>
+        <field name="search_view_id" ref="view_koroshi_faltante_relativo_search"/>
+        <field name="domain">[('nivel', '=', 'modelo')]</field>
+        <field name="context">{'search_default_alarma': 1}</field>
+    </record>
+
+    <record id="action_koroshi_faltante_relativo_recalcular" model="ir.actions.server">
+        <field name="name">Recalcular % de faltante</field>
+        <field name="model_id" ref="model_koroshi_faltante_relativo"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_recalcular()</field>
+    </record>
+</odoo>
