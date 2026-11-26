@@ -1,6 +1,10 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.7.1 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.8.0 (26/11/2026) - PDA o tablet.
+ * 1.8.0 (diseño v7, Isaac): un KO por caja, numerados 1…N (el sistema crea los que faltan según el packing / PL).
+ *    «Leer cajas (KO)»: escanear el KO → modelo (autocompletar) → color y talla (botones) → uds → Guardar → siguiente
+ *    KO (el modelo y el artículo se quedan). Caja mixta: «+ otro artículo en el KO». «Asignar al palé»: las cajas
+ *    leídas sin palé (tocar el palé o leer su etiqueta).
  * 1.7.1 (prueba de Isaac 11:24): el campo de «Contar cajas» admite el modelo (con autocompletar): un número = nº de
  *    caja + «+1» (si no hay modelo, aviso «Primero el modelo»); otro texto = modelo. Nunca se queda sin aviso: el
  *    mensaje sale también dentro del bloque. Modelo activo grande arriba con «Cambiar».
@@ -45,6 +49,18 @@ var PERSONA_MS = 3600000;     // koroshi_operarios.minutos_tarjeta (60 por defec
 
 function _e(t) { return _.escape(t == null ? '' : String(t)); }
 function _n(x) { return (Math.round((x || 0) * 100) / 100).toString().replace('.', ','); }
+// 1.8.0: [1,2,3,7] -> «1-3, 7»
+function L_rangos(nums) {
+    var out = [], ini = null, prev = null;
+    _.each(nums, function (n) {
+        if (ini === null) { ini = prev = n; return; }
+        if (n === prev + 1) { prev = n; return; }
+        out.push(ini === prev ? String(ini) : ini + '-' + prev);
+        ini = prev = n;
+    });
+    if (ini !== null) { out.push(ini === prev ? String(ini) : ini + '-' + prev); }
+    return out.join(', ');
+}
 function _token() { return Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 10); }
 
 var Pantalla = AbstractAction.extend({
@@ -220,7 +236,8 @@ var Pantalla = AbstractAction.extend({
         this.ultima = {codigo: codigo, t: t, fuente: fuente};
         if (this.ocupado) { this._pitido(false); return this._aviso('mal', 'Espera: ' + codigo + ' NO se ha leído.'); }
         return this._llamar('/koroshi/recepcion/leer', {
-            recepcion_id: this.vista === 'leer' && this.rec ? this.rec.id : false, codigo: codigo,
+            recepcion_id: (this.vista === 'leer' || this.vista === 'ko') && this.rec ? this.rec.id : false,
+            codigo: codigo,
         }).then(function (r) {
             if (!r) { return; }
             if (r.tipo === 'persona') {
@@ -232,6 +249,7 @@ var Pantalla = AbstractAction.extend({
                 return self._pintar();
             }
             if (!self.persona) { self._pitido(false); return self._aviso('mal', 'Primero pasa tu tarjeta de operario.'); }
+            if (self.vista === 'ko') { return self._leidoKo(r); }      // 1.8.0
             if (self.vista !== 'leer') {
                 self._pitido(false);
                 return self._aviso('mal', 'Para leer cajas y prendas, entra en un contenedor y pulsa «Leer».');
@@ -540,6 +558,10 @@ var Pantalla = AbstractAction.extend({
         this.textoBuscado = '';
         this.cantidad = '';
         this.sug1 = null;
+        if (this.vista === 'ko') {       // 1.8.0: modelo → sus colores y tallas
+            this.prodKo = null;
+            return this._cargarArticulos();
+        }
         if (this.desdeMasUno) {          // 1.7.1: elegido en «Contar cajas»: se sigue allí
             this.desdeMasUno = false;
             this.msg1 = {tipo: 'ok', txt: 'Modelo ' + this.modelo + '. Ahora «+1 caja» o escribe el nº de caja e Intro.'};
@@ -624,9 +646,17 @@ var Pantalla = AbstractAction.extend({
     _a_crear_ko: function () {
         var self = this;
         if (!this._necesitaPersona()) { return; }
-        var n = parseInt(window.prompt('¿Cuántas etiquetas KO (una por caja)? De 1 a 500 de una vez.', '50'), 10);
-        if (!n) { return; }
-        if (!window.confirm('Se crean ' + n + ' KO nuevos y se mandan a la Zebra de Expediciones. ¿Seguro?')) { return; }
+        // 1.8.0: un KO por caja: los que faltan según el packing / PL; si ya están todos, «+ KO» pide cuántos de más
+        var n = 0;
+        var faltan = this.rec.ko_faltan || 0;
+        if (faltan) {
+            if (!window.confirm('Crear ' + faltan + ' KO (uno por caja: ' + ((this.rec.ko || {}).creados || 0) + ' ya hechos de ' +
+                    ((this.rec.ko || {}).esperadas || '?') + ') y mandarlos a la Zebra de Expediciones?')) { return; }
+        } else {
+            n = parseInt(window.prompt('Ya hay un KO para cada caja que se sabe. ¿Cuántas cajas de más (KO nuevos)?', ''), 10);
+            if (!n) { return; }
+            if (!window.confirm('Se crean ' + n + ' KO más y se mandan a la Zebra. ¿Seguro?')) { return; }
+        }
         return this._llamar('/koroshi/recepcion/crear_ko', {recepcion_id: this.rec.id, cantidad: n,
             employee_id: this.persona.id}).then(function (r) {
             if (!r) { return; }
@@ -637,6 +667,207 @@ var Pantalla = AbstractAction.extend({
         });
     },
     _a_quitar_ko: function () { this.ko = null; this._pintar(); this._siguienteCampo(); },
+    // ------------------------------------------------------------ 1.8.0: leer KO por caja (diseño v7)
+    _a_leer_ko: function () {
+        if (!this._necesitaPersona()) { return; }
+        this.vista = 'ko';
+        this.ko = null;
+        this.cantidad = '';
+        this.token = _token();
+        this._aviso('info', 'Escanea el KO de la caja.');
+        this._pintar();
+    },
+    _leidoKo: function (r) {
+        var self = this;
+        if (r.tipo === 'caja') {
+            if (!r.caja.caja_id) { this._pitido(false); return this._aviso('mal', r.caja.nombre + ' no es un KO de esta recepción.'); }
+            this.ko = r.caja;
+            this.cantidad = '';
+            this.token = _token();
+            this._pitido(!r.caja.ya);
+            this._aviso(r.caja.ya ? 'mal' : 'ok', 'KO ' + r.caja.numero + (r.caja.ya ? ': OJO, ya lleva ' + r.caja.ya +
+                ' (si es mixta, sigue; si no, mira el nº)' : '') + '. ' + (this.prodKo ? 'Artículo ' + this.prodKo.ref +
+                ': escribe las uds (o cámbialo).' : (this.modelo ? 'Elige color y talla.' : 'Ahora el modelo.')));
+            this._pintar();
+            return this._focoKo();
+        }
+        if (r.tipo === 'palet') { return this._a_asignar(r.palet.id, r.palet.nombre); }
+        if (r.tipo === 'producto') {       // una prenda (caja abierta): su modelo, color y talla
+            this._pitido(true);
+            this.modelo = r.producto.base;
+            this.resModelos = null;
+            return this._cargarArticulos(r.producto.id);
+        }
+        self._pitido(false);
+        return this._aviso('mal', 'Aquí se lee el KO de la caja, una prenda o un palé.');
+    },
+    _focoKo: function () {
+        var $c = !this.modelo ? this.$('.o_kr_buscar') : (this.prodKo ? this.$('.o_kr_cant') : $());
+        if ($c.length) { $c.focus(); $c.select(); }
+    },
+    _cargarArticulos: function (elegirId) {
+        var self = this;
+        var modelo = this.modelo;
+        return this._llamar('/koroshi/recepcion/articulos', {recepcion_id: this.rec.id, modelo: modelo})
+            .then(function (r) {
+                if (!r || self.modelo !== modelo) { return; }
+                self.articulos = r.articulos;
+                self.prodKo = null;
+                if (elegirId) { self.prodKo = _.findWhere(r.articulos, {id: elegirId}) || null; }
+                if (!self.prodKo && r.articulos.length === 1) { self.prodKo = r.articulos[0]; }
+                if (!r.articulos.length) {
+                    self._pitido(false);
+                    self._aviso('mal', 'El modelo ' + modelo + ' no tiene artículos (ni en las IN ni en Odoo).');
+                } else if (!r.en_in) {
+                    self._pitido(false);
+                    self._aviso('mal', 'OJO: el modelo ' + modelo + ' no viene en las IN de este contenedor.');
+                } else {
+                    self._aviso('ok', 'Modelo ' + modelo + (self.prodKo ? ' · ' + self.prodKo.ref + ': escribe las uds.'
+                        : ': toca el color y la talla.'));
+                }
+                self._pintar();
+                self._focoKo();
+            });
+    },
+    _a_articulo: function (id) {
+        this.prodKo = _.findWhere(this.articulos || [], {id: id}) || null;
+        this._pintar();
+        this._focoKo();
+    },
+    _a_cambiar_modelo_ko: function () {
+        this.modelo = '';
+        this.articulos = null;
+        this.prodKo = null;
+        this.resModelos = null;
+        this._pintar();
+        this.$('.o_kr_buscar').focus();
+    },
+    _a_guardar_ko: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        if (this.$('.o_kr_cant').length) { this.cantidad = (this.$('.o_kr_cant').val() || '').replace(/[^0-9]/g, ''); }
+        if (!this.ko) { this._pitido(false); return this._aviso('mal', 'Primero escanea el KO de la caja.'); }
+        if (!this.prodKo) { this._pitido(false); return this._aviso('mal', 'Falta el artículo: modelo, color y talla.'); }
+        if (!parseInt(this.cantidad, 10)) { this._pitido(false); return this._aviso('mal', 'Escribe las uds de la caja.'); }
+        var ko = this.ko;
+        return this._llamar('/koroshi/recepcion/guardar_ko', {
+            recepcion_id: this.rec.id, caja_id: ko.caja_id, producto_id: this.prodKo.id,
+            cantidad: parseInt(this.cantidad, 10), employee_id: this.persona.id, token: this.token,
+        }).then(function (r) {
+            if (!r) { return; }
+            self.token = _token();
+            self.rec = r.recepcion;
+            self.ultimas = r.ultimas;
+            self.ultimoKo = ko;              // para «+ otro artículo en este KO» (caja mixta)
+            self.ko = null;                  // la siguiente caja: otro KO (el modelo y el artículo se quedan)
+            self.cantidad = '';
+            self._pintar();
+            var txt = 'Guardado ' + r.msg + '. Escanea el siguiente KO.';
+            if (r.avisos && r.avisos.length) {
+                self._pitido(false);
+                self._aviso('mal', 'Guardado, pero OJO: ' + r.avisos.join('; ') + '. (' + r.msg + ')');
+            } else {
+                self._pitido(true);
+                self._aviso('ok', txt);
+            }
+        });
+    },
+    _a_otro_articulo: function () {
+        if (!this.ultimoKo) { return; }
+        this.ko = this.ultimoKo;
+        this.prodKo = null;
+        this.cantidad = '';
+        this.token = _token();
+        this._aviso('info', 'KO ' + this.ko.numero + ' (mixta): elige el otro artículo y sus uds.');
+        this._pintar();
+        this._focoKo();
+    },
+    _a_siguiente_ko: function () {
+        this.ko = null;
+        this.cantidad = '';
+        this._aviso('info', 'Escanea el siguiente KO.');
+        this._pintar();
+    },
+    _a_asignar: function (paletId, nombre) {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        var p = _.findWhere(this.rec.palets_lista || [], {id: paletId});
+        nombre = (typeof nombre === 'string' && nombre) || (p && p.nombre) || '';      // desde un botón llega $b
+        var n = (this.rec.ko || {}).sin_palet || 0;
+        if (!n) { this._pitido(false); return this._aviso('mal', 'No hay cajas leídas sin palé.'); }
+        if (!window.confirm('¿Asignar las ' + n + ' cajas leídas sin palé al palé ' + nombre + '?')) { return; }
+        return this._llamar('/koroshi/recepcion/asignar_palet', {recepcion_id: this.rec.id, palet_id: paletId,
+            employee_id: this.persona.id}).then(function (r) {
+            if (!r) { return; }
+            self.rec = r.recepcion;
+            self.ultimas = r.ultimas;
+            self._pitido(true);
+            self._aviso('ok', r.msg);
+            self._pintar();
+        });
+    },
+    _htmlKo: function () {
+        var self = this;
+        var r = this.rec;
+        var k = r.ko || {};
+        var h = '<div class="o_kr_fila"><button type="button" data-accion="ficha">← ' + _e(r.matricula) + '</button>' +
+            '<span class="o_kr_grande">' + (k.leidos || 0) + ' / ' + (k.creados || 0) + ' KO leídos</span>' +
+            (k.saltos && k.saltos.length ? ' <span class="o_kr_grande o_kr_falta">saltos: ' +
+                _e(k.saltos.slice(0, 15).join(', ')) + (k.saltos.length > 15 ? '…' : '') + '</span>' : '') + '</div>';
+        // 1. KO
+        h += '<div class="o_kr_caja ' + (this.ko ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">1. KO de la caja</div>' +
+            '<div class="o_kr_grande" style="font-size:40px">' + (this.ko ? 'KO ' + this.ko.numero : 'Escanea el KO') + '</div>' +
+            (this.ko ? '<div class="o_kr_gris">' + _e(this.ko.nombre) + (this.ko.palet ? ' · palé ' + _e(this.ko.palet) : '') +
+                '</div>' + (this.ko.ya ? '<div><b>Ya lleva: ' + _e(this.ko.ya) + '</b></div>' : '') : '') + '</div>';
+        // 2. modelo
+        h += '<div class="o_kr_caja ' + (this.modelo ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">' +
+            '2. Modelo (REFERENCE de la etiqueta)</div>';
+        if (this.modelo) {
+            h += '<div class="o_kr_fila"><div class="o_kr_grande">' + _e(this.modelo) + '</div>' +
+                '<button type="button" data-accion="cambiar_modelo_ko">Cambiar</button></div>';
+        } else {
+            h += '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_buscar" autocomplete="off" ' +
+                'placeholder="2711JA09 (salen solos)" value="' + _e(this.textoBuscado || '') + '"/>' +
+                '<button type="button" data-accion="buscar">Buscar</button></div>' +
+                '<div class="o_kr_sugerencias">' + this._htmlSugerencias() + '</div>';
+        }
+        h += '</div>';
+        // 3. color y talla
+        if (this.modelo) {
+            h += '<div class="o_kr_caja ' + (this.prodKo ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">' +
+                '3. Color y talla</div><div class="o_kr_palets">';
+            _.each(this.articulos || [], function (a) {
+                var activo = self.prodKo && self.prodKo.id === a.id;
+                h += '<button type="button" data-accion="articulo" data-valor="' + a.id + '"' +
+                    (activo ? ' class="o_kr_activo"' : '') + '><b style="font-size:22px">' + _e(a.talla || '?') + '</b> ' +
+                    _e(a.texto) + ' <span class="o_kr_gris">' + _e(a.color) + (a.en_in ? '' : ' (no está en las IN)') +
+                    '</span></button>';
+            });
+            h += '</div></div>';
+        }
+        // 4. uds
+        h += '<div class="o_kr_fila"><div><div class="o_kr_etq">4. Uds de la caja («Total pack»)</div>' +
+            '<input type="text" inputmode="numeric" autocomplete="off" class="o_kr_campo o_kr_cant o_kr_cantidad" ' +
+            'placeholder="0" value="' + _e(this.cantidad) + '"/></div><div class="o_kr_teclado">';
+        _.each(['1', '2', '3', '4', '5', '6', '7', '8', '9', 'borrar', '0'], function (t) {
+            h += '<button type="button" class="o_kr_tecla" data-tecla="' + t + '">' + (t === 'borrar' ? '⌫' : t) + '</button>';
+        });
+        h += '<button type="button" class="o_kr_primario" data-accion="guardar_ko">Guardar</button></div></div>';
+        h += '<div class="o_kr_fila">' + (this.ultimoKo ? '<button type="button" data-accion="otro_articulo">+ otro artículo en el KO ' +
+            this.ultimoKo.numero + ' (mixta)</button>' : '') +
+            (this.ko ? '<button type="button" data-accion="siguiente_ko">Siguiente KO</button>' : '') + '</div>';
+        // asignar al palé
+        h += '<div class="o_kr_caja ' + (k.sin_palet ? 'o_kr_falta' : 'o_kr_hecho') + '"><div class="o_kr_etq">' +
+            'Asignar al palé</div><div>' + (k.sin_palet ? '<b>' + k.sin_palet + ' cajas leídas sin palé</b>: toca su palé ' +
+            '(o lee su etiqueta)' : 'Todas las cajas leídas tienen palé.') + '</div><div class="o_kr_palets">';
+        _.each(r.palets_lista, function (p) {
+            h += '<button type="button" data-accion="asignar" data-valor="' + p.id + '">' + _e(p.nombre.replace('PAL-', '')) +
+                '</button>';
+        });
+        if (!r.palets_lista.length) { h += '<span class="o_kr_gris">Sin palés: «+ Palés / cajas» en la ficha.</span>'; }
+        h += '</div></div>';
+        return h + this._htmlUltimas();
+    },
     _onCantInput: function (ev) {
         // un código leído aquí se reconoce al llegar el Intro (_onCantKey); sin Intro, Odoo rechaza la cantidad
         this.cantidad = (ev.currentTarget.value || '').replace(/[^0-9]/g, '');
@@ -892,6 +1123,7 @@ var Pantalla = AbstractAction.extend({
     },
     _a_guardar: function () {
         var self = this;
+        if (this.vista === 'ko') { return this._a_guardar_ko(); }       // 1.8.0 (Intro en las uds)
         if (!this._necesitaPersona()) { return; }
         if (this.$('.o_kr_ncaja').length) { this._onCambiaCaja(); }
         if (this.$('.o_kr_cant').length) { this.cantidad = (this.$('.o_kr_cant').val() || '').replace(/[^0-9]/g, ''); }
@@ -1017,6 +1249,7 @@ var Pantalla = AbstractAction.extend({
         if (this.vista === 'ficha') { html = this._htmlFicha(); }
         if (this.vista === 'recepcionar') { html = this._htmlRecepcionar(); }
         if (this.vista === 'leer') { html = this._htmlLeer(); }
+        if (this.vista === 'ko') { html = this._htmlKo(); }
         if (this.vista === 'comparar') { html = this._htmlComparar(); }
         this.$('.o_kr_cuerpo').html(html);
         if (this.ocupado) { this.$('button').prop('disabled', true); }
@@ -1115,6 +1348,16 @@ var Pantalla = AbstractAction.extend({
         });
         if (!r.ins.length) { h += '<tr><td colspan="6" class="o_kr_gris">Sin IN: añádelas antes de validar.</td></tr>'; }
         h += '</table>';
+        if ((r.ko || {}).creados) {        // 1.8.0
+            var kk = r.ko;
+            h += '<div class="o_kr_caja ' + (kk.saltos.length || kk.sin_palet ? 'o_kr_falta' : 'o_kr_hecho') + '">' +
+                '<div class="o_kr_etq">KO (una por caja)</div><div class="o_kr_grande">' + kk.leidos + ' leídos de ' +
+                kk.creados + ' creados' + (kk.esperadas ? ' · ' + kk.esperadas + ' cajas esperadas' : '') + '</div>' +
+                (kk.sin_palet ? '<div>' + kk.sin_palet + ' leídas sin palé</div>' : '') +
+                (kk.saltos.length ? '<div><b>Saltos (KO sin leer entre los leídos): ' + _e(kk.saltos.join(', ')) + '</b></div>' : '') +
+                (kk.sin_leer_final.length && kk.leidos ? '<div class="o_kr_gris">Sin leer después del último: ' +
+                    _e(L_rangos(kk.sin_leer_final)) + '</div>' : '') + '</div>';
+        }
         h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Cajas</div><div class="o_kr_grande">' +
             r.cajas_leidas + ' / ' + (r.total || '?') + '</div>' + (r.total ? '<div>faltan ' +
             Math.max(r.total - r.cajas_leidas, 0) + '</div>' : '') + '<div class="o_kr_gris">' +
@@ -1128,12 +1371,17 @@ var Pantalla = AbstractAction.extend({
         if (r.state === 'pendiente') {
             h += '<button type="button" class="o_kr_primario" data-accion="recepcionar">Recepcionar</button>';
         }
+        var k = r.ko || {};
         if (r.state === 'leyendo') {
-            h += '<button type="button" class="o_kr_primario" data-accion="leer">Leer cajas</button>' +
+            // 1.8.0: con KO por caja, se lee por KO; «Contar sin KO» es lo de antes (nº a mano, «+1»)
+            h += (k.creados ? '<button type="button" class="o_kr_primario" data-accion="leer_ko">Leer cajas (KO)</button>' +
+                    '<button type="button" data-accion="leer">Contar sin KO</button>'
+                : '<button type="button" class="o_kr_primario" data-accion="leer">Leer cajas</button>') +
                 '<button type="button" data-accion="recepcionar">+ Palés / cajas</button>';
         }
         if (r.state === 'pendiente' || r.state === 'leyendo') {
-            h += '<button type="button" data-accion="crear_ko">🏷 Etiquetas KO (cajas)</button>';
+            h += '<button type="button" data-accion="crear_ko">' + (r.ko_faltan ? '🏷 Crear ' + r.ko_faltan +
+                ' KO (uno por caja)' : '🏷 + KO (cajas de más)') + '</button>';
         }
         if (r.tanda_id) { h += '<button type="button" data-accion="imprimir">🖨 Etiquetas (última tanda)</button>'; }
         h += '<button type="button" data-accion="cargar_pl">↻ Packing list (Excel de la IN)</button>';

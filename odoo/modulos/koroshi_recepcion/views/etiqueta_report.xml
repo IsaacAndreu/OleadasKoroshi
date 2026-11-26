@@ -19,7 +19,7 @@
                 <div class="page" style="font-family: Arial, Helvetica, sans-serif; color: #000; padding: 0 4mm;
                                          text-align: center;">
                     <div style="font-size: 11pt; letter-spacing: 3px;" t-esc="et['arriba']"/>
-                    <t t-if="et['tipo'] == 'palet'">
+                    <t t-if="et['tipo'] in ('palet', 'ko')">
                         <div style="font-size: 96pt; font-weight: 900; line-height: 1.0; margin-bottom: 4mm;"
                              t-esc="et['grande']"/>
                     </t>

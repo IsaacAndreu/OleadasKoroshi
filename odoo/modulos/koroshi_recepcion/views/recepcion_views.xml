@@ -128,6 +128,17 @@
                                 </tree>
                             </field>
                         </page>
+                        <page string="Cajas (KO)" attrs="{'invisible': [('caja_ids', '=', [])]}">
+                            <field name="caja_ids" readonly="1">
+                                <tree>
+                                    <field name="numero"/>
+                                    <field name="contenedor_id"/>
+                                    <field name="palet_id"/>
+                                    <field name="contenido"/>
+                                    <field name="uds" sum="Uds"/>
+                                </tree>
+                            </field>
+                        </page>
                         <page string="Packing list (Excel)" attrs="{'invisible': [('pl_ids', '=', [])]}">
                             <field name="pl_ids" readonly="1">
                                 <tree>

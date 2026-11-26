@@ -99,6 +99,7 @@ class KoroshiRecepcionPantalla(http.Controller):
                      'estado': dict(p._fields['state'].selection).get(p.state, p.state),
                      'uds': sum(p.move_lines.filtered(lambda m: m.state != 'cancel').mapped('product_uom_qty'))}
                     for p in ins],
+            'ko': r.resumen_ko(), 'ko_faltan': r.ko_que_faltan(),      # 1.8.0: KO por caja (diseño v7)
             'palets_lista': [{'id': l.id, 'nombre': l.name} for l in r.palets_existentes()
                              if L.numero_palet(l.name)[0] <= (r.palets or 0)],
             'tanda_id': r.tanda_ids[:1].id or False,
@@ -108,7 +109,8 @@ class KoroshiRecepcionPantalla(http.Controller):
     def _ultimas(self, r):
         ls = r.lectura_ids.filtered(lambda l: l.estado == 'ok').sorted('id', reverse=True)[:MAX_ULTIMAS]
         return [{'id': l.id, 'pedido': l.pedido or '',
-                 'caja': ' · '.join(x for x in (l.contenedor_id.name, l.caja) if x) or ('+1' if l.rapida else ''),
+                 'caja': ('KO %d' % l.caja_id.numero) if l.caja_id else (
+                     ' · '.join(x for x in (l.contenedor_id.name, l.caja) if x) or ('+1' if l.rapida else '')),
                  'ajeno': l.pedido_ajeno, 'palet': l.palet_id.name or '',
                  'producto': l.producto_id.display_name or (('Modelo %s' % l.modelo) if l.modelo else '(sin modelo)'),
                  'uds': l.cantidad, 'quien': l.employee_id.name or '', 'hora': _local(l.fecha)[-5:],
@@ -260,7 +262,11 @@ class KoroshiRecepcionPantalla(http.Controller):
                     raise UserError('Hay %d ubicaciones llamadas %s. Avisa a IT.' % (len(loc), codigo))
                 # 1.7.0: vuelve el KO_ por caja (Isaac): es la matrícula de la caja; el nº a mano, opcional
                 caja = {'id': loc.id, 'nombre': loc.name, 'ya': ''}
-                if r:
+                if r and r.caja_ids:          # 1.8.0: KO por caja de la recepción (1…N)
+                    c = r.caja_de_ko(loc)
+                    caja.update({'caja_id': c.id, 'numero': c.numero, 'palet': c.palet_id.name or '',
+                                 'ya': r.lo_del_ko(loc)})
+                elif r:
                     r.contenedor_para_leer(loc, escribir=False)
                     caja['ya'] = r.lo_del_ko(loc)
                 return {'ok': True, 'tipo': 'caja', 'caja': caja}
@@ -409,6 +415,76 @@ class KoroshiRecepcionPantalla(http.Controller):
                 tanda.name, _msg(e))
             conectada = False
         return {'ok': True, 'msg': msg, 'conectada': conectada, 'recepcion': self._datos_recepcion(r, emp)}
+
+    @http.route('/koroshi/recepcion/articulos', type='json', auth='user')
+    def articulos(self, recepcion_id=False, modelo='', **kw):
+        """1.8.0: los artículos (color + talla) de un modelo: primero los de las IN de la recepción; si no viene en
+        ellas, los de Odoo."""
+        try:
+            self._comprobar_usuario()
+            r = self._recepcion(recepcion_id)
+            modelo = L.normalizar_modelo(modelo)
+            de_in = r._todas_las_in().mapped('move_lines.product_id').filtered(
+                lambda p: L.modelo_de(p.default_code or p.name) == modelo)
+            prods = de_in
+            if not prods:
+                prods = request.env['product.product'].sudo().search(
+                    [('default_code', '=like', modelo.replace('_', r'\_').replace('%', r'\%') + '-%'), DE_LA_COMPANIA],
+                    limit=MAX_BUSCAR * 3)
+            lista = []
+            for p in prods:
+                _m, color, talla = L.partes_referencia(p.default_code or p.name)
+                valores = p.product_template_attribute_value_ids.mapped('name')
+                lista.append({'id': p.id, 'ref': p.default_code or '', 'color': color, 'talla': talla,
+                              'texto': ' '.join(valores) or p.display_name, 'en_in': p in de_in})
+            lista.sort(key=lambda x: (x['color'], L.clave_talla(x['talla']), x['ref']))
+            return {'ok': True, 'modelo': modelo, 'articulos': lista, 'en_in': bool(de_in)}
+        except (UserError, ValueError) as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/recepcion/guardar_ko', type='json', auth='user')
+    def guardar_ko(self, recepcion_id=False, caja_id=False, producto_id=False, cantidad=0, employee_id=False,
+                   token=None, **kw):
+        """1.8.0: KO + artículo + uds (una línea; la caja mixta, varias)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            caja = request.env['koroshi.recepcion.caja'].sudo().browse(int(caja_id or 0)).exists()
+            if not caja:
+                raise UserError('Primero escanea el KO de la caja.')
+            prod = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
+            lectura = r.guardar_ko(caja, prod, cantidad, emp, token)
+            avisos = []
+            if prod and prod not in r._teorico():
+                avisos.append('%s no viene en las IN de este contenedor' % (prod.default_code or prod.display_name))
+            otros = caja.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.id != lectura.id)
+            if otros.filtered(lambda l: l.producto_id == lectura.producto_id):
+                avisos.append('el KO %d ya tenía %s: ¿lo has apuntado dos veces? (si sí, anula una)' % (
+                    caja.numero, prod.default_code or prod.display_name))
+            return {'ok': True, 'msg': 'KO %d: %d × %s%s' % (
+                caja.numero, lectura.cantidad, prod.default_code or prod.display_name,
+                (' (lleva %s)' % caja.contenido) if otros else ''), 'avisos': avisos,
+                'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
+        except (UserError, ValueError) as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/recepcion/asignar_palet', type='json', auth='user')
+    def asignar_palet(self, recepcion_id=False, palet_id=False, employee_id=False, **kw):
+        """1.8.0: las cajas leídas y sin palé, a ese palé."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            palet = request.env['stock.location'].sudo().browse(int(palet_id or 0)).exists()
+            cajas = r.asignar_palet(palet, emp)
+            return {'ok': True, 'msg': '%d cajas (KO %s) al palé %s.' % (
+                len(cajas), L.rangos_texto(cajas.mapped('numero')), palet.name),
+                'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
+        except (UserError, ValueError) as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': _msg(e)}
 
     @http.route('/koroshi/recepcion/pl_caja', type='json', auth='user')
     def pl_caja(self, recepcion_id=False, modelo='', caja='', **kw):

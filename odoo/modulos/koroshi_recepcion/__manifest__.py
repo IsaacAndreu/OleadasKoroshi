@@ -122,8 +122,18 @@ v1.7.1 (26/11/2026): prueba de Isaac en la PDA (11:24): escribió «2711JA22» e
   rojo «Primero el modelo»); KO_/PAL/EAN se leen; otro texto es el modelo, con autocompletar (si queda uno se pone;
   si hay varios, salen para tocar). El aviso sale también dentro del bloque. El modelo activo se ve grande arriba con
   «Cambiar». Solo pantalla (JS y CSS); sin cambios en la BD.
+v1.8.0 (26/11/2026): diseño v7, fase 1 (Isaac, urgente; bin/versiones/diseno-recepciones-ko-por-caja_2026-11-26_v7.md).
+  Un KO_ por caja, numerados 1…N en la recepción: tabla nueva koroshi.recepcion.caja (nº, KO_, palé, palé ordenado)
+  y lectura.caja_id. «🏷 Crear N KO» crea los que faltan según las cajas del packing de S4T / PL (o «+ KO» con
+  cuántos de más) y manda las etiquetas a la Zebra con el nº grande («054») y el código KO_ debajo. «Leer cajas
+  (KO)»: escanear el KO → modelo (autocompletar) → color y talla (botones con los artículos del modelo en las IN; si
+  no viene, los de Odoo y aviso) → uds → Guardar → siguiente KO, con el modelo y el artículo ya puestos. Caja mixta:
+  «+ otro artículo en el KO». Una prenda leída pone su artículo (caja abierta). «Asignar al palé»: las cajas leídas
+  y sin palé pasan al palé tocado o leído. La ficha dice los KO leídos/creados, los sin palé y los saltos. «Contar
+  sin KO» sigue siendo lo de antes. Todavía no valida ni ordena (fases 2 y 3). Sin campos nuevos en tablas
+  compartidas.
 """,
-    'version': '13.0.1.7.1',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
