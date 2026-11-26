@@ -171,6 +171,29 @@ def in_coincide(texto, nombre, origen, referencias, codigos):
     return any((c or '').upper().startswith(t) for c in codigos)
 
 
+def total_packing(origenes, feeds):
+    """1.4.0: total de cajas y uds del packing list de S4T de los pedidos de las IN.
+    origenes: los origin de las IN. feeds: [(name, cajas, uds, duplicado)] de s4t.packing.feed (puede haber varios
+    con el mismo name: se cuenta uno, el primero). Devuelve {'cajas', 'uds', 'pedidos': [(name, cajas, uds, dup)],
+    'sin_packing': [pedidos sin feed], 'duplicados': [names marcados duplicated o repetidos]}."""
+    claves = []
+    for o in origenes:
+        k = clave_pedido(o)
+        if k and k not in claves:
+            claves.append(k)
+    por_clave, repetidos = {}, set()
+    for name, cajas, uds, dup in feeds:
+        k = clave_pedido(name)
+        if k in por_clave:
+            repetidos.add(name)
+            continue
+        por_clave[k] = (name, int(cajas or 0), int(uds or 0), bool(dup))
+    pedidos = [por_clave[k] for k in claves if k in por_clave]
+    duplicados = sorted({p[0] for p in pedidos if p[3]} | {n for n in repetidos if clave_pedido(n) in claves})
+    return {'cajas': sum(p[1] for p in pedidos), 'uds': sum(p[2] for p in pedidos), 'pedidos': pedidos,
+            'sin_packing': [k for k in claves if k not in por_clave], 'duplicados': duplicados}
+
+
 def clave_caja(caja):
     """Para ordenar nº de caja: los números por su valor, después lo demás."""
     c = caja or ''

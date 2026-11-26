@@ -1,6 +1,8 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.3.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.4.0 (26/11/2026) - PDA o tablet.
+ * 1.4.0: total de cajas del packing de S4T (o el escrito a mano) y contador «leídas / total · faltan N» siempre
+ *    visible en la ficha y al leer.
  * 1.3.0: buscador de IN al crear o cambiar las IN (nombre, pedido, referencia del proveedor o modelo). En «Leer cajas»
  *    todo se escribe con el teclado: Intro acepta el campo y pasa al siguiente (caja → pedido → modelo → uds →
  *    Guardar); en el modelo, Intro busca y si hay uno solo lo coge. El lector sigue igual.
@@ -701,6 +703,19 @@ var Pantalla = AbstractAction.extend({
         this._foco();
     },
 
+    // 1.4.0: «37 / 1046 cajas · faltan 1009»
+    _contador: function (r) {
+        var total = r.total || 0;
+        var h = '<span class="o_kr_grande">' + r.cajas_leidas + ' / ' + (total || '?') + ' cajas</span>';
+        if (total) {
+            var faltan = total - r.cajas_leidas;
+            h += ' <span class="o_kr_grande ' + (faltan > 0 ? 'o_kr_falta' : 'o_kr_hecho') + '">' +
+                (faltan > 0 ? 'faltan ' + faltan : (faltan === 0 ? 'completo' : 'sobran ' + (-faltan))) + '</span>';
+        }
+        if (r.packing_avisos) { h += '<div class="o_kr_gris">' + _e(r.packing_avisos) + '</div>'; }
+        return h;
+    },
+
     _htmlLista: function () {
         var h = '<div class="o_kr_fila"><button type="button" class="o_kr_primario" data-accion="nueva">' +
             '+ Nuevo contenedor</button><button type="button" data-accion="lista">↻ Actualizar</button></div>';
@@ -781,7 +796,11 @@ var Pantalla = AbstractAction.extend({
         if (!r.ins.length) { h += '<tr><td colspan="6" class="o_kr_gris">Sin IN: añádelas antes de validar.</td></tr>'; }
         h += '</table>';
         h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Cajas</div><div class="o_kr_grande">' +
-            r.cajas_leidas + ' / ' + (r.cajas || 0) + '</div></div><div class="o_kr_caja"><div class="o_kr_etq">Palés</div>' +
+            r.cajas_leidas + ' / ' + (r.total || '?') + '</div>' + (r.total ? '<div>faltan ' +
+            Math.max(r.total - r.cajas_leidas, 0) + '</div>' : '') + '<div class="o_kr_gris">' +
+            (r.cajas ? 'escritas a mano (packing: ' + (r.cajas_packing || '?') + ')' : 'según el packing de S4T') +
+            '</div>' + (r.packing_avisos ? '<div class="o_kr_gris">' + _e(r.packing_avisos) + '</div>' : '') +
+            '</div><div class="o_kr_caja"><div class="o_kr_etq">Palés</div>' +
             '<div class="o_kr_grande">' + (r.palets || 0) + '</div></div><div class="o_kr_caja"><div class="o_kr_etq">' +
             'Uds leídas / pasadas a stock</div><div class="o_kr_grande">' + _n(r.uds_leidas) + ' / ' +
             _n(r.uds_validadas) + '</div></div></div>';
@@ -817,7 +836,8 @@ var Pantalla = AbstractAction.extend({
             '<p>Se crean los palés que falten, con sus etiquetas para la Zebra del PC de Recepciones. Las cajas NO ' +
             'llevan etiqueta nuestra: al leer se escribe el nº que llevan a mano.</p>' +
             '<label>¿Cuántas cajas hay? (opcional: para ver qué números faltan)</label>' +
-            '<input type="number" min="0" class="o_kr_campo o_kr_cajas" value="' + (r.cajas || '') + '"/>' +
+            '<input type="number" min="0" class="o_kr_campo o_kr_cajas" value="' + (r.cajas || '') + '" placeholder="' +
+            (r.cajas_packing ? 'vacío = ' + r.cajas_packing + ' del packing' : '') + '"/>' +
             '<label>¿Cuántos palés vas a usar? (cada palé tiene cara A y cara B)</label>' +
             '<input type="number" min="1" max="99" class="o_kr_campo o_kr_npalets" value="' + (r.palets || '') + '"/>' +
             '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" value="' + _e(r.muelle) + '"/>' +
@@ -829,7 +849,7 @@ var Pantalla = AbstractAction.extend({
         var self = this;
         var r = this.rec;
         var h = '<div class="o_kr_fila"><button type="button" data-accion="ficha">← ' + _e(r.matricula) + '</button>' +
-            '<span class="o_kr_grande">' + r.cajas_leidas + ' / ' + (r.cajas || 0) + ' cajas</span></div>';
+            this._contador(r) + '</div>';
         h += '<div class="o_kr_etq">1. Palé y cara</div><div class="o_kr_palets">';
         _.each(r.palets_lista, function (p) {
             var activo = self.palet && self.palet.id === p.id;

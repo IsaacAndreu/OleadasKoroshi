@@ -85,6 +85,8 @@ class KoroshiRecepcionPantalla(http.Controller):
             'id': r.id, 'name': r.name, 'matricula': r.matricula, 'referencia': r.referencia or '',
             'muelle': r.muelle or '', 'llegada': _local(r.fecha_llegada), 'state': r.state,
             'cajas': r.cajas, 'palets': r.palets, 'contenedores': len(r.contenedor_ids),
+            # 1.4.0: total = las escritas a mano o, si no, las del packing de S4T
+            'cajas_packing': r.cajas_packing, 'total': r.cajas_total_txt, 'packing_avisos': r.packing_avisos or '',
             'cajas_leidas': len({l.caja_txt for l in ok}), 'lecturas': len(ok),
             'uds_leidas': sum(ok.mapped('cantidad')), 'uds_validadas': sum(ok.filtered('validada').mapped('cantidad')),
             'ins': [{'id': p.id, 'name': p.name, 'origen': p.origin or '', 'ref': (p.x_studio_order_remarks or '').strip()
@@ -119,7 +121,7 @@ class KoroshiRecepcionPantalla(http.Controller):
             rs |= validadas.filtered(lambda x: x._in_abiertas())
             return {'ok': True, 'recepciones': [{
                 'id': r.id, 'name': r.name, 'matricula': r.matricula, 'muelle': r.muelle or '',
-                'llegada': _local(r.fecha_llegada), 'state': r.state, 'cajas': r.cajas,
+                'llegada': _local(r.fecha_llegada), 'state': r.state, 'cajas': r.cajas_total_txt,
                 'cajas_leidas': len({l.caja_txt for l in r.lectura_ids if l.estado == 'ok'}),
                 'ins': ', '.join(o for o in r.picking_ids.mapped('origin') if o)} for r in rs],
                 'responsable': bool(emp) and request.env['koroshi.recepcion.responsable'].es_responsable(emp)}
@@ -370,7 +372,7 @@ class KoroshiRecepcionPantalla(http.Controller):
                       'problema': f.estado != 'ok', 'filas': []} for f in r.comparar()]
             cajas = r.resumen_cajas()
             return {'ok': True, 'modelos': lista,
-                    'cajas': {'leidas': len(cajas['leidas']), 'esperadas': r.cajas or 0,
+                    'cajas': {'leidas': len(cajas['leidas']), 'esperadas': r.cajas_total_txt or 0,
                               'huecos': [str(n) for n in cajas['huecos']], 'n_huecos': cajas['n_huecos'],
                               'ajenas': [{'caja': c, 'pedido': p} for c, p in cajas['ajenas']]},
                     'total': {'teorico': sum(m['teorico'] for m in lista), 'leido': sum(m['leido'] for m in lista)},
@@ -446,7 +448,8 @@ class KoroshiRecepcionPantalla(http.Controller):
                           f.donde])
         cajas = r.resumen_cajas()
         origenes = r._origenes()
-        filas += [[], ['CAJAS'], ['Cajas leídas', len(cajas['leidas']), 'Cajas según quien recepciona', r.cajas or ''],
+        filas += [[], ['CAJAS'], ['Cajas leídas', len(cajas['leidas']), 'Cajas según quien recepciona', r.cajas or '',
+                                  'Cajas según el packing de S4T', r.cajas_packing or '', r.packing_avisos or ''],
                   ['Huecos en la numeración', cajas['n_huecos'], ', '.join(map(str, cajas['huecos'])) +
                    ('…' if cajas['huecos_mas'] else '')],
                   ['Cajas con pedido que no es de este contenedor', len(cajas['ajenas']),

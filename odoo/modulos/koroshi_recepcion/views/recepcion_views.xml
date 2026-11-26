@@ -60,6 +60,9 @@
                         </group>
                         <group>
                             <field name="cajas"/>
+                            <field name="cajas_packing"/>
+                            <field name="cajas_total_txt"/>
+                            <field name="packing_avisos" attrs="{'invisible': [('packing_avisos', '=', False)]}"/>
                             <field name="palets"/>
                             <field name="cajas_leidas"/>
                             <field name="uds_leidas"/>

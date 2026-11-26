@@ -147,6 +147,16 @@ class TestCajasProveedor(unittest.TestCase):
         for texto in ('397', '1936', 'XYZ', '000062'):
             self.assertFalse(L.in_coincide(texto, *args), texto)
 
+    def test_total_packing(self):
+        feeds = [('0000002160', 1046, 20278, True), ('0000002160', 1046, 20278, False),
+                 ('0000002163', 137, 2118, False), ('0000009999', 5, 50, False)]
+        r = L.total_packing(['0000002160', '2160', '0000002163', '0000001936', False], feeds)
+        self.assertEqual(r['cajas'], 1046 + 137)       # el 2160 una sola vez
+        self.assertEqual(r['uds'], 20278 + 2118)
+        self.assertEqual(r['sin_packing'], ['1936'])
+        self.assertEqual(r['duplicados'], ['0000002160'])
+        self.assertEqual(L.total_packing([], feeds)['cajas'], 0)
+
     def test_repartir_al_palet(self):
         # el destino de la línea hecha es el palé (sin KO_): dos cajas en el mismo palé = una línea
         lineas, _ = L.repartir([('m1', 'a', 10)], [('l1', 'a', 'PAL-01 A', 4), ('l2', 'a', 'PAL-01 A', 3)])

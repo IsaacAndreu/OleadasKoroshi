@@ -74,8 +74,14 @@ v1.3.0 (26/11/2026): primer día de uso real (Isaac): «necesito un buscador» y
   de la PDA: Intro acepta el campo y pasa al siguiente (nº de caja → pedido → modelo → uds); en el modelo, Intro busca
   y si hay uno solo lo coge; en uds, Intro = Guardar (las uds son un campo escribible; el teclado de pantalla sigue).
   Un EAN leído en cualquiera de esos campos se toma como prenda (su modelo), como con el lector.
+v1.4.0 (26/11/2026): Isaac: «tenir lo total i q vaiguen contant» (incluye la 1.3.0, que no llegó a instalarse). Total
+  de cajas automático: suma de s4t_packages del packing list de S4T (s4t.packing.feed, solo se LEE; nunca se escribe
+  en él) de los pedidos de las IN (feed.name = origin); un pedido con varios feed cuenta una vez, y se avisa si está
+  marcado duplicado o si un pedido no tiene packing. Si se escriben las cajas a mano, manda lo escrito y se enseña
+  también el del packing. Contador «leídas / total · faltan N» siempre visible al leer y en la ficha; los huecos de
+  numeración van de 1 al total. No depende del módulo de S4T: sin él, el total es el escrito.
 """,
-    'version': '13.0.1.3.0',
+    'version': '13.0.1.4.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

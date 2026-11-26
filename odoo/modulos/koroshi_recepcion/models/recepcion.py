@@ -85,6 +85,11 @@ class KoroshiRecepcion(models.Model):
     cajas_leidas = fields.Integer('Cajas leídas', compute='_compute_resumen')
     uds_validadas = fields.Integer('Uds pasadas a stock', compute='_compute_resumen')
     uds_teoricas = fields.Integer('Uds de las IN', compute='_compute_resumen')
+    cajas_packing = fields.Integer('Cajas según el packing de S4T', compute='_compute_packing',
+                                   help='Suma de las cajas (s4t_packages) del packing list de S4T de los pedidos de '
+                                        'sus IN. Si se escribe «Cajas» a mano, manda lo escrito.')
+    cajas_total_txt = fields.Integer('Cajas a recibir', compute='_compute_packing')
+    packing_avisos = fields.Char('Avisos del packing', compute='_compute_packing')
     resumen_cajas_txt = fields.Text('Cajas leídas', compute='_compute_resumen_cajas',
                                     help='Cajas leídas, huecos en la numeración y cajas con un pedido que no es de las '
                                          'IN de este contenedor.')
@@ -105,13 +110,49 @@ class KoroshiRecepcion(models.Model):
     def _origenes(self):
         return [o for o in self._todas_las_in().mapped('origin') if o]
 
+    def packing(self):
+        """1.4.0: total de cajas y uds del packing list de S4T (s4t.packing.feed, módulo de Effective: solo se LEE)
+        de los pedidos de las IN (feed.name = origin de la IN). Ver logica.total_packing."""
+        self.ensure_one()
+        origenes = self._origenes()
+        feeds = []
+        if origenes and 's4t.packing.feed' in self.env:
+            Feed = self.env['s4t.packing.feed'].sudo()
+            campos = Feed._fields
+            for f in Feed.search([('name', 'in', origenes)], order='id desc'):
+                if 'company_id' in campos and f.company_id and f.company_id.id != comun.COMPANY_ID:
+                    continue
+                feeds.append((f.name, f.s4t_packages if 's4t_packages' in campos else 0,
+                              f.s4t_pack_qty if 's4t_pack_qty' in campos else 0,
+                              f.duplicated if 'duplicated' in campos else False))
+            feeds.sort(key=lambda x: x[3])      # del mismo pedido, primero el que no está marcado duplicado
+        return L.total_packing(origenes, feeds)
+
+    def cajas_total(self, pack=None):
+        """Las cajas que hay que recibir: las escritas a mano si las hay; si no, las del packing de S4T."""
+        self.ensure_one()
+        return self.cajas or (pack or self.packing())['cajas']
+
+    def _compute_packing(self):
+        for r in self:
+            pack = r.packing()
+            r.cajas_packing = pack['cajas']
+            r.cajas_total_txt = r.cajas_total(pack)
+            avisos = []
+            if pack['duplicados']:
+                avisos.append('packing marcado duplicado o repetido en S4T: %s (contado una vez)'
+                              % ', '.join(pack['duplicados']))
+            if pack['sin_packing']:
+                avisos.append('sin packing en S4T: %s' % ', '.join(pack['sin_packing']))
+            r.packing_avisos = '; '.join(avisos)
+
     def resumen_cajas(self):
         """Por caja: las leídas, los huecos de numeración y las de un pedido ajeno (ver logica.resumen_cajas)."""
         self.ensure_one()
         ok = self.lectura_ids.filtered(lambda l: l.estado == 'ok')
         origenes = self._origenes()       # ahora (si se enlaza la IN después, el aviso desaparece)
         return L.resumen_cajas([(l.caja_txt, l.pedido or '', L.pedido_ajeno(l.pedido, origenes)) for l in ok],
-                               self.cajas)
+                               self.cajas_total())      # 1.4.0: las escritas o, si no, las del packing
 
     @api.model
     def texto_cajas(self, res):
