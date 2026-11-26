@@ -93,8 +93,9 @@ class KoroshiRecepcionPantalla(http.Controller):
             'faltan': {m: L.rangos_texto(v) for m, v in r.faltan_por_modelo().items()},
             'cajas_leidas': r.cajas_leidas, 'lecturas': len(ok),
             'uds_leidas': sum(ok.mapped('cantidad')), 'uds_validadas': sum(ok.filtered('validada').mapped('cantidad')),
-            'ins': [{'id': p.id, 'name': p.name, 'origen': p.origin or '', 'ref': (p.x_studio_order_remarks or '').strip()
-                     if 'x_studio_order_remarks' in p._fields else '', 'fecha': _local(p.scheduled_date),
+            'ins': [{'id': p.id, 'name': p.name, 'origen': p.origin or '',
+                     'contenedores': request.env['koroshi.recepcion'].sudo().contenedores_de_ins(p),   # 1.6.1
+                     'fecha': _local(p.scheduled_date),
                      'estado': dict(p._fields['state'].selection).get(p.state, p.state),
                      'uds': sum(p.move_lines.filtered(lambda m: m.state != 'cancel').mapped('product_uom_qty'))}
                     for p in ins],
@@ -136,18 +137,17 @@ class KoroshiRecepcionPantalla(http.Controller):
 
     @http.route('/koroshi/recepcion/ins', type='json', auth='user')
     def ins(self, recepcion_id=False, texto='', **kw):
-        """IN de KOROSHI abiertas para elegir las que trae un contenedor (con la referencia del proveedor y sus uds).
-        1.3.0: «texto» filtra: nombre (IN/00396 o 396), pedido (0000002172 o 2172), referencia del proveedor
-        (x_studio_order_remarks o nota) o el principio de un código de artículo (2711JA22)."""
+        """IN de KOROSHI abiertas para elegir las que trae un contenedor (con sus contenedores y sus uds).
+        1.3.0: «texto» filtra: nombre (IN/00396 o 396), pedido (0000002172 o 2172) o el principio de un código de
+        artículo (2711JA22). 1.6.1: también el contenedor (carrier_tracking_ref); ya no la referencia del proveedor."""
         try:
             self._comprobar_usuario()
             Rec = request.env['koroshi.recepcion'].sudo()
             abiertas = Rec.ins_abiertas()
             if (texto or '').strip():
-                con_ref = 'x_studio_order_remarks' in request.env['stock.picking']._fields
+                con_cont = 'carrier_tracking_ref' in request.env['stock.picking']._fields
                 abiertas = abiertas.filtered(lambda p: L.in_coincide(
-                    texto, p.name, p.origin,
-                    [con_ref and p.x_studio_order_remarks or '', p.note or ''],
+                    texto, p.name, p.origin, [con_cont and p.carrier_tracking_ref or ''],
                     p.move_lines.mapped('product_id.default_code')))
             otras = Rec.search([('state', 'in', ('pendiente', 'leyendo')), ('id', '!=', int(recepcion_id or 0)),
                                 ('picking_ids', 'in', abiertas.ids)])
@@ -155,10 +155,8 @@ class KoroshiRecepcionPantalla(http.Controller):
             for o in otras:
                 for p in o.picking_ids:
                     en_otra[p.id] = '%s (%s)' % (o.name, o.matricula)
-            con_ref = 'x_studio_order_remarks' in request.env['stock.picking']._fields
             return {'ok': True, 'ins': [{
                 'id': p.id, 'name': p.name, 'origen': p.origin or '',
-                'ref': (p.x_studio_order_remarks or '').strip() if con_ref else '',
                 'fecha': _local(p.scheduled_date)[:10], 'backorder': bool(p.backorder_id),
                 'uds': sum(p.move_lines.filtered(lambda m: m.state != 'cancel').mapped('product_uom_qty')),
                 'en_otra': en_otra.get(p.id, ''),

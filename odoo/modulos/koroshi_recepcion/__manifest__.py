@@ -102,8 +102,13 @@ v1.6.0 (26/11/2026): Isaac: aprovechar lo que Mayte deja en cada IN (solo lectur
   Packing list». En «+1 caja» se puede poner el nº: dice qué lleva («caja 7 de JA12: 40 L»), cuenta las uds del PL
   y avisa si ese nº no está en el PL del modelo o ya se contó. «Faltan (nº)» por modelo en la PDA, y «Cajas en el
   PL» y «Nº que faltan» en la comparación y su Excel. Sin campos nuevos en stock.picking; no escribe en S4T.
+v1.6.1 (26/11/2026): Isaac: el buscador de IN encuentra por contenedor (carrier_tracking_ref, varios con «+»;
+  «MIEU4099960», «4099960» o un trozo valen) y, si no sale ninguna, dice que el contenedor no está en ninguna IN
+  abierta; al marcar la IN se rellenan sus contenedores (corregibles). El buscador ya no mira la referencia del
+  proveedor ni el BL, y la PDA deja de mostrarlos (campo y «Ref.»); en la ficha, la columna pasa a «Contenedores».
+  Busca por contenedor, nº de IN, pedido y modelo. En la oficina el campo referencia sigue igual. Sin cambios en la BD.
 """,
-    'version': '13.0.1.6.0',
+    'version': '13.0.1.6.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

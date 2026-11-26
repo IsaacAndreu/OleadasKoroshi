@@ -148,10 +148,11 @@ def modelo_de(ref):
     return (partes_referencia(ref)[0] or '').upper()
 
 
-def in_coincide(texto, nombre, origen, referencias, codigos):
+def in_coincide(texto, nombre, origen, contenedores, codigos):
     """1.3.0: buscador de IN. True si «texto» está en el nombre (EFFEC/IN/00396; «396» vale), el origen (pedido
-    0000002172; «2172» vale), alguna referencia del proveedor (SKL20260104) o es el principio de algún código de
-    artículo de la IN (2711JA22). Sin texto: todas."""
+    0000002172; «2172» vale), algún contenedor de la IN o es el principio de algún código de artículo (2711JA22).
+    1.6.1 (Isaac): contenedores = carrier_tracking_ref, puede traer varios con «+» («MIEU4099960», «4099960» o un
+    trozo valen); ya no busca por referencia del proveedor ni BL. Sin texto: todas."""
     t = ''.join((texto or '').split()).upper()
     if not t:
         return True
@@ -166,8 +167,10 @@ def in_coincide(texto, nombre, origen, referencias, codigos):
         return True
     if t in ''.join((origen or '').split()).upper():
         return True
-    if any(t in ''.join((r or '').split()).upper() for r in referencias):
-        return True
+    for c in contenedores or []:
+        for uno in (c or '').replace(',', '+').replace(';', '+').split('+'):
+            if t in ''.join(uno.split()).upper():
+                return True
     return any((c or '').upper().startswith(t) for c in codigos)
 
 

@@ -1,6 +1,8 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.6.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.6.1 (26/11/2026) - PDA o tablet.
+ * 1.6.1: el buscador de IN encuentra por contenedor (carrier_tracking_ref; «4099960» o un trozo valen) y dice si no
+ *    está en ninguna IN abierta; sin referencia del proveedor ni BL en el buscador ni en pantalla.
  * 1.6.0: datos de la IN: los contenedores (carrier_tracking_ref) rellenan la matrícula; el packing list en Excel
  *    dice qué lleva cada caja («caja 7 de 2711JA12: 40 L»), avisa si el nº no está o ya se contó, y qué nº faltan.
  * 1.5.0: las etiquetas van a la Zebra de Expediciones por la cola de koroshi_impresion (EXP1): última tanda, todos los
@@ -422,7 +424,7 @@ var Pantalla = AbstractAction.extend({
         var ids = this._elegidasIds();
         return this._llamar('/koroshi/recepcion/crear', {
             matricula: this.$('.o_kr_matricula').val(), muelle: this.$('.o_kr_muelle').val(),
-            referencia: this.$('.o_kr_referencia').val(), picking_ids: ids, employee_id: this.persona.id,
+            picking_ids: ids, employee_id: this.persona.id,
         }).then(function (r) {
             if (!r) { return; }
             self.rec = r.recepcion;
@@ -664,8 +666,7 @@ var Pantalla = AbstractAction.extend({
     },
     _guardarBorrador: function () {
         if (this.vista !== 'nueva') { return; }
-        this.borrador = {matricula: this.$('.o_kr_matricula').val(), muelle: this.$('.o_kr_muelle').val(),
-            referencia: this.$('.o_kr_referencia').val()};
+        this.borrador = {matricula: this.$('.o_kr_matricula').val(), muelle: this.$('.o_kr_muelle').val()};
     },
     _a_buscar_in: function () {
         var self = this;
@@ -679,7 +680,11 @@ var Pantalla = AbstractAction.extend({
             self.ins = r.ins;
             self.textoIn = texto;
             _.each(r.ins, function (i) { self.insVistas[i.id] = i; });
-            if (!r.ins.length) { self._aviso('mal', 'Ninguna IN abierta con «' + texto + '».'); }
+            if (!r.ins.length) {
+                self._aviso('mal', /\d{4,}/.test(texto) && /[A-Za-z]{3,}|^\d{6,}$/.test(texto.replace(/\s/g, ''))
+                    ? 'El contenedor «' + texto + '» no está en ninguna IN abierta (ni como nº de IN, pedido o modelo).'
+                    : 'Ninguna IN abierta con «' + texto + '».');
+            }
             self._pintar();
             self.$('.o_kr_buscar_in').focus();
         });
@@ -867,13 +872,11 @@ var Pantalla = AbstractAction.extend({
                 '<input type="text" class="o_kr_campo o_kr_matricula" placeholder="MSKU1234567" value="' +
                 _e(b.matricula) + '"/>' +
                 '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" placeholder="1" value="' +
-                _e(b.muelle) + '"/>' +
-                '<label>Referencia del proveedor o BL (si la sabes)</label>' +
-                '<input type="text" class="o_kr_campo o_kr_referencia" value="' + _e(b.referencia) + '"/>';
+                _e(b.muelle) + '"/>';
         }
         h += '<label>¿Qué IN trae? (pedidos de KOROSHI abiertos, por fecha prevista)</label>' +
             '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_buscar_in" autocomplete="off" ' +
-            'placeholder="Buscar: IN (396), pedido (2172), ref. proveedor o modelo" value="' + _e(this.textoIn) + '"/>' +
+            'placeholder="Buscar: contenedor (MIEU4099960), IN (396), pedido (2172) o modelo" value="' + _e(this.textoIn) + '"/>' +
             '<button type="button" data-accion="buscar_in">Buscar</button>' +
             (this.textoIn ? '<button type="button" data-accion="buscar_in_todas">Ver todas</button>' : '') + '</div>';
         var fuera = _.filter(_.keys(this.elegidas), function (k) {
@@ -891,7 +894,7 @@ var Pantalla = AbstractAction.extend({
             h += '<div class="o_kr_in"><input type="checkbox" value="' + i.id + '"' +
                 (self.elegidas[i.id] ? ' checked="checked"' : '') + '/><div><b>' + _e(i.origen || i.name) + '</b> ' +
                 _e(i.name) + (i.backorder ? ' (pendiente de otra)' : '') + ' · ' + _e(i.fecha) + ' · ' + _n(i.uds) +
-                ' uds' + (i.ref ? ' · Ref. ' + _e(i.ref) : '') +
+                ' uds' +
                 (i.contenedores ? '<br/>Contenedores: <b>' + _e(i.contenedores) + '</b>' : '') +
                 (i.en_otra ? '<br/><span class="o_kr_gris">Ya está en ' + _e(i.en_otra) + '</span>' : '') +
                 '</div></div>';
@@ -910,12 +913,12 @@ var Pantalla = AbstractAction.extend({
             '<button type="button" data-accion="ficha">↻</button></div>';
         h += '<div class="o_kr_grande">' + _e(r.matricula) + '</div><div>' + _e(r.name) +
             (r.muelle ? ' · Muelle ' + _e(r.muelle) : '') + ' · Llegada ' + _e(r.llegada) +
-            (r.referencia ? ' · Ref. ' + _e(r.referencia) : '') + '</div>' +
+            '</div>' +
             '<div class="o_kr_gris">Packing list (Excel de la IN): ' + _e(r.pl_info || 'sin cargar') + '</div>';
-        h += '<table><tr><th>IN</th><th>Pedido</th><th>Ref. proveedor</th><th>Fecha prevista</th><th>Estado</th>' +
+        h += '<table><tr><th>IN</th><th>Pedido</th><th>Contenedores</th><th>Fecha prevista</th><th>Estado</th>' +
             '<th class="o_kr_n">Uds</th></tr>';
         _.each(r.ins, function (i) {
-            h += '<tr><td>' + _e(i.name) + '</td><td>' + _e(i.origen) + '</td><td>' + _e(i.ref) + '</td><td>' +
+            h += '<tr><td>' + _e(i.name) + '</td><td>' + _e(i.origen) + '</td><td>' + _e(i.contenedores) + '</td><td>' +
                 _e(i.fecha) + '</td><td>' + _e(i.estado) + '</td><td class="o_kr_n">' + _n(i.uds) + '</td></tr>';
         });
         if (!r.ins.length) { h += '<tr><td colspan="6" class="o_kr_gris">Sin IN: añádelas antes de validar.</td></tr>'; }
