@@ -96,6 +96,13 @@ def avisos_transportista(elegido, bultos, historial):
     return res
 
 
+def devoluciones_vivas(devs):
+    """v1.6.0 (triplicados 24/11, K65: OUT 27486 con EFFEC/DEV/000145). devs: [(nombre del albarán DEV, estado del
+    movimiento de devolución)]. Devuelve los nombres de las DEV no canceladas (borrador, en espera, preparada o
+    hecha), ordenados y sin repetir. Si hay alguna, la OUT no sale: no va en la etiqueta del transportista."""
+    return sorted(set(n or '?' for n, estado in devs if estado != 'cancel'))
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')
@@ -143,6 +150,9 @@ def motivo_sobra(d):
     otras = sorted(set(o['tienda'] or 'sin tienda' for o in outs if o['tienda'] != d.get('tienda')))
     if otras:
         return 'es de otra tienda: %s' % ', '.join(otras)
+    con_dev = ['%s (%s)' % (o['nombre'], ', '.join(o['dev'])) for o in outs if o.get('dev')]   # v1.6.0
+    if con_dev:
+        return 'su OUT tiene devolución: %s. No sale (apártala)' % ', '.join(con_dev)
     dejadas = [o['nombre'] for o in outs if o.get('fuera')]      # v1.3.0
     if dejadas:
         return 'su OUT está dejada fuera de esta etiqueta: %s (apártala)' % ', '.join(dejadas)

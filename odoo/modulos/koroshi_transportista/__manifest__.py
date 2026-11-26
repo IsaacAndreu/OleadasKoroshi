@@ -40,8 +40,11 @@ v1.4.0 (25/11/2026): aviso de CJ impresas para la tienda que en Odoo están vac�
 v1.5.0 (25/11/2026): aviso en rojo (no prohíbe) si se elige el transportista que no toca: GLS con más de 5 bultos,
   o el contrario del habitual de la tienda (3 de cada 4 de sus expediciones parecidas de 30 días). El botón dice
   «Sí, con GLS igualmente». GLS/XPO ya no se marca solo (K68 salió por XPO sin querer) (Isaac, 25/11).
+v1.6.0 (26/11/2026): las OUT con alguna devolución no cancelada (borrador, en espera, preparada o hecha) ya no
+  salen en la pantalla ni en la etiqueta: aviso «OUT con devolución (DEV/xxxx): no sale» y, si se lee una de sus
+  CJ, el motivo. Triplicados del 24/11: unas 17 OUT así (K65: OUT 27486 con EFFEC/DEV/000145) (Isaac, 26/11).
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

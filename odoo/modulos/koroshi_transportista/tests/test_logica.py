@@ -123,6 +123,29 @@ class TestAvisoTransportista(unittest.TestCase):
         self.assertEqual(len(logica.avisos_transportista('xpo', 3, h)), 1)
 
 
+class TestDevolucion(unittest.TestCase):
+    """v1.6.0: K65 26/11: EFFEC/OUT/27486 (CJ665013642, validada el 24/11) tiene EFFEC/DEV/000145 preparada: no sale."""
+
+    def test_k65(self):
+        self.assertEqual(logica.devoluciones_vivas([('EFFEC/DEV/000145', 'assigned')]), ['EFFEC/DEV/000145'])
+
+    def test_estados(self):
+        for e in ('draft', 'waiting', 'confirmed', 'assigned', 'done'):
+            self.assertTrue(logica.devoluciones_vivas([('EFFEC/DEV/1', e)]), e)
+        self.assertEqual(logica.devoluciones_vivas([('EFFEC/DEV/1', 'cancel')]), [])
+        self.assertEqual(logica.devoluciones_vivas([]), [])
+        self.assertEqual(logica.devoluciones_vivas([('EFFEC/DEV/2', 'done'), ('EFFEC/DEV/2', 'done'),
+                                                    ('EFFEC/DEV/1', 'cancel')]), ['EFFEC/DEV/2'])
+
+    def test_motivo_k65(self):
+        d = {'existe': True, 'tienda': 'K65 - BARICENTRO', 'outs': [
+            {'nombre': 'EFFEC/OUT/27486', 'tienda': 'K65 - BARICENTRO', 'estado': 'done', 'tracking': '', 'dias': 2,
+             'en_cierre': False, 'fuera': False, 'dev': ['EFFEC/DEV/000145']}]}
+        m = logica.motivo_sobra(d)
+        self.assertIn('devolución', m)
+        self.assertIn('EFFEC/DEV/000145', m)
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

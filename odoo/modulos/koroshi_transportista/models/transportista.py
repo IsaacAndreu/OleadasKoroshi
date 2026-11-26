@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.5.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.6.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -83,9 +83,22 @@ class KoroshiTransportistaRegistro(models.Model):
         return fields.Datetime.now() - datetime.timedelta(days=logica.DIAS_PENDIENTES)
 
     @api.model
-    def _pendientes(self, partner, fuera=None):
+    def _devoluciones(self, pickings):
+        """v1.6.0: {id de OUT: [DEV no canceladas]} de las OUT que tienen alguna devolución viva (borrador, en espera,
+        preparada o hecha). Triplicados del 24/11: unas 17 OUT así (K65: OUT 27486 con EFFEC/DEV/000145)."""
+        res = {}
+        for p in pickings:
+            devs = p.move_lines.mapped('returned_move_ids')
+            nombres = logica.devoluciones_vivas([(m.picking_id.name, m.state) for m in devs])
+            if nombres:
+                res[p.id] = nombres
+        return res
+
+    @api.model
+    def _pendientes(self, partner, fuera=None, devueltas=None):
         """OUT de la tienda validadas, sin etiqueta, de los últimos 10 días y fuera de un camión cerrado.
-        v1.3.0: fuera = ids de OUT de otros días que el operario deja fuera de esta etiqueta (las de hoy, no)."""
+        v1.3.0: fuera = ids de OUT de otros días que el operario deja fuera de esta etiqueta (las de hoy, no).
+        v1.6.0: sin las OUT con devolución no cancelada; si se pasa el dict devueltas, se llena con {OUT: [DEV]}."""
         dominio = [('company_id', '=', COMPANY_ID), ('picking_type_code', '=', 'outgoing'),
                    ('partner_id', '=', partner.id), ('state', '=', 'done'), ('carrier_tracking_ref', '=', False),
                    ('date_done', '>=', self._desde())]
@@ -94,6 +107,11 @@ class KoroshiTransportistaRegistro(models.Model):
             dominio.append((CAMPO_BARRAS_GLS, '=', False))
         outs = Picking.search(dominio, order='date_done, id')
         outs = outs - self._en_cierre(outs)
+        devs = self._devoluciones(outs)                  # v1.6.0
+        if devs:
+            if devueltas is not None:
+                devueltas.update({p: devs[p.id] for p in outs if p.id in devs})
+            outs = outs.filtered(lambda p: p.id not in devs)
         if fuera:
             ids = set(int(x) for x in fuera)
             hoy = fields.Datetime.now().date()
@@ -130,12 +148,14 @@ class KoroshiTransportistaRegistro(models.Model):
                 d['juntada_en'] = j.cj_destino
         pickings = self._lineas_caja(paquete).mapped('picking_id')
         cerradas = self._en_cierre(pickings)
+        devs = self._devoluciones(pickings)             # v1.6.0
         ahora = fields.Datetime.now()
         for p in pickings:
             d['outs'].append({'nombre': p.name, 'tienda': logica.tienda_de(p.partner_id.display_name),
                               'estado': p.state, 'tracking': p.carrier_tracking_ref or '',
                               'dias': (ahora - p.date_done).days if p.date_done else 0,
-                              'en_cierre': p in cerradas, 'fuera': p.id in set(fuera or [])})
+                              'en_cierre': p in cerradas, 'fuera': p.id in set(fuera or []),
+                              'dev': devs.get(p.id, [])})
         return d
 
     @api.model
@@ -275,7 +295,8 @@ class KoroshiTransportistaRegistro(models.Model):
                 raise UserError(_('Lee una caja (CJ).'))
             partner = self._partner_de_cj(leidas[0])
         tienda = logica.tienda_de(partner.display_name)
-        outs = self._pendientes(partner, fuera)
+        devueltas = {}                                      # v1.6.0
+        outs = self._pendientes(partner, fuera, devueltas)
         dejadas = self._pendientes(partner) - outs          # v1.3.0
         esperadas = self._esperadas(outs)
         c = logica.cuadre(leidas, esperadas)
@@ -293,6 +314,9 @@ class KoroshiTransportistaRegistro(models.Model):
         if sin_validar:
             avisos.append(_('Hay %d OUT de esta tienda sin validar (%s): se quedan fuera de esta etiqueta.') % (
                 len(sin_validar), ', '.join(sin_validar[:5].mapped('name'))))
+        for p, devs in sorted(devueltas.items(), key=lambda x: x[0].name):     # v1.6.0
+            avisos.append(_('%s (%s) con devolución (%s): no sale. Aparta sus cajas (%s).') % (
+                p.name, p.origin or '', ', '.join(devs), ', '.join(self._cajas_de(p).mapped('name')) or 'sin cajas'))
         historial = self._historial(partner)            # v1.5.0
         vacias = self._cj_vacias(outs, esperadas)        # v1.4.0
         if vacias:
