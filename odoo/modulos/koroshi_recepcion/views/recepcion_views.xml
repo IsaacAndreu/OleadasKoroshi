@@ -95,6 +95,7 @@
                                     <field name="caja_txt"/>
                                     <field name="pedido"/>
                                     <field name="pedido_ajeno"/>
+                                    <field name="rapida"/>
                                     <field name="modelo"/>
                                     <field name="producto_id"/>
                                     <field name="cantidad" sum="Uds"/>
@@ -224,6 +225,7 @@
                 <field name="recepcion_id"/>
                 <field name="modelo"/>
                 <field name="cajas" sum="Cajas"/>
+                <field name="cajas_packing" sum="Cajas en el packing"/>
                 <field name="color"/>
                 <field name="talla"/>
                 <field name="ean"/>

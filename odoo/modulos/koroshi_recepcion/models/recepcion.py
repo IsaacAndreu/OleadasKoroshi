@@ -99,7 +99,7 @@ class KoroshiRecepcion(models.Model):
         for r in self:
             ok = r.lectura_ids.filtered(lambda l: l.estado == 'ok')
             r.uds_leidas = sum(ok.mapped('cantidad'))
-            r.cajas_leidas = len({l.caja_txt for l in ok})
+            r.cajas_leidas = L.cajas_contadas([l.caja_txt for l in ok])     # 1.4.1: cada «+1» es una caja
             r.uds_validadas = sum(ok.filtered('validada').mapped('cantidad'))
             r.uds_teoricas = int(sum(r._teorico().values()))
 
@@ -115,18 +115,47 @@ class KoroshiRecepcion(models.Model):
         de los pedidos de las IN (feed.name = origin de la IN). Ver logica.total_packing."""
         self.ensure_one()
         origenes = self._origenes()
-        feeds = []
-        if origenes and 's4t.packing.feed' in self.env:
-            Feed = self.env['s4t.packing.feed'].sudo()
-            campos = Feed._fields
-            for f in Feed.search([('name', 'in', origenes)], order='id desc'):
-                if 'company_id' in campos and f.company_id and f.company_id.id != comun.COMPANY_ID:
-                    continue
-                feeds.append((f.name, f.s4t_packages if 's4t_packages' in campos else 0,
-                              f.s4t_pack_qty if 's4t_pack_qty' in campos else 0,
-                              f.duplicated if 'duplicated' in campos else False))
-            feeds.sort(key=lambda x: x[3])      # del mismo pedido, primero el que no está marcado duplicado
+        feeds = [(f.name, f.s4t_packages if 's4t_packages' in f._fields else 0,
+                  f.s4t_pack_qty if 's4t_pack_qty' in f._fields else 0,
+                  f.duplicated if 'duplicated' in f._fields else False) for f in self._feeds(origenes)]
         return L.total_packing(origenes, feeds)
+
+    def _feeds(self, origenes=None):
+        """Los s4t.packing.feed de los pedidos de las IN (solo lectura), del mismo pedido primero el no duplicado."""
+        origenes = self._origenes() if origenes is None else origenes
+        if not origenes or 's4t.packing.feed' not in self.env:
+            return []
+        Feed = self.env['s4t.packing.feed'].sudo()
+        campos = Feed._fields
+        res = [f for f in Feed.search([('name', 'in', origenes)], order='id desc')
+               if not ('company_id' in campos and f.company_id and f.company_id.id != comun.COMPANY_ID)]
+        return sorted(res, key=lambda f: bool(f.duplicated) if 'duplicated' in campos else False)
+
+    def cajas_packing_por_modelo(self):
+        """1.4.1: {modelo: cajas físicas del packing que llevan ese modelo}. Caja física = lo de s4t_line_id antes del
+        guion («000235» de «000235-01»); una caja mezclada cuenta en cada modelo. Un feed por pedido. Solo lectura."""
+        self.ensure_one()
+        if 's4t.packing.feed.lines' not in self.env:
+            return {}
+        Lineas = self.env['s4t.packing.feed.lines'].sudo()
+        if not {'s4t_line_id', 'packing_feed_id'} <= set(Lineas._fields):
+            return {}
+        elegidos, vistos = [], set()
+        for f in self._feeds():
+            k = L.clave_pedido(f.name)
+            if k not in vistos:
+                vistos.add(k)
+                elegidos.append(f.id)
+        cajas = {}
+        con_sku = 's4t_sku' in Lineas._fields
+        for l in Lineas.search_read([('packing_feed_id', 'in', elegidos)],
+                                    ['s4t_line_id', 'product_id', 'packing_feed_id'] + (['s4t_sku'] if con_sku else [])):
+            sku = (con_sku and l.get('s4t_sku')) or (l.get('product_id') and l['product_id'][1]) or ''
+            m = L.modelo_de(sku.split('] ')[-1] if sku.startswith('[') else sku)
+            caja = (l.get('s4t_line_id') or '').split('-')[0]
+            if m and caja:
+                cajas.setdefault(m, set()).add((l['packing_feed_id'][0] if l.get('packing_feed_id') else 0, caja))
+        return {m: len(c) for m, c in cajas.items()}
 
     def cajas_total(self, pack=None):
         """Las cajas que hay que recibir: las escritas a mano si las hay; si no, las del packing de S4T."""
@@ -156,8 +185,9 @@ class KoroshiRecepcion(models.Model):
 
     @api.model
     def texto_cajas(self, res):
-        lineas = ['Cajas leídas: %d%s' % (len(res['leidas']),
-                                          (': ' + ', '.join(res['leidas'])) if res['leidas'] else '')]
+        lineas = ['Cajas contadas: %d (con nº: %d%s; con «+1», sin nº: %d)' % (
+            res['total'], len(res['leidas']), (': ' + ', '.join(res['leidas'])) if res['leidas'] else '',
+            res['sin_numero'])]
         if res['n_huecos']:
             lineas.append('Huecos en la numeración (%d): %s%s' % (
                 res['n_huecos'], ', '.join(map(str, res['huecos'])), '…' if res['huecos_mas'] else ''))
@@ -436,6 +466,42 @@ class KoroshiRecepcion(models.Model):
             'pedido_ajeno': L.pedido_ajeno(pedido, self._origenes()), 'palet_id': palet.id,
             'cantidad': cantidad, 'employee_id': employee and employee.id or False, 'token': token or False})
 
+    def mas_uno(self, palet=None, modelo=None, employee=None, token=None):
+        """1.4.1: «+1 caja»: una caja del modelo activo (si lo hay) en el palé activo (si lo hay), sin nº ni uds.
+        Mismo token = la misma pulsación (doble toque)."""
+        self.ensure_one()
+        Lectura = self.env['koroshi.recepcion.lectura'].sudo()
+        if token:
+            ya = Lectura.search([('token', '=', token)], limit=1)
+            if ya:
+                return ya
+        if self.state != 'leyendo':
+            raise UserError('La recepción %s no está abierta para leer (%s).' % (
+                self.name, dict(ESTADOS)[self.state].lower()))
+        if palet:
+            self.palet_valido(palet)
+        modelo = L.normalizar_modelo(modelo) if (modelo or '').strip() else False
+        return Lectura.create({
+            'recepcion_id': self.id, 'rapida': True, 'modelo_leido': modelo, 'palet_id': palet and palet.id or False,
+            'cantidad': 0, 'employee_id': employee and employee.id or False, 'token': token or False})
+
+    def menos_uno(self, employee=None):
+        """1.4.1: «−1»: anula el último «+1» de esta recepción. Devuelve la lectura anulada."""
+        self.ensure_one()
+        ultima = self.env['koroshi.recepcion.lectura'].sudo().search(
+            [('recepcion_id', '=', self.id), ('rapida', '=', True), ('estado', '=', 'ok')], order='id desc', limit=1)
+        if not ultima:
+            raise UserError('No hay ningún «+1» que deshacer.')
+        ultima.anular()
+        return ultima
+
+    def cajas_por_modelo(self):
+        """{modelo: cajas contadas} (con nº: distintas; «+1»: una cada uno)."""
+        res = {}
+        for l in self.lectura_ids.filtered(lambda x: x.estado == 'ok'):
+            res.setdefault(l.modelo or '', []).append(l.caja_txt)
+        return {m: L.cajas_contadas(c) for m, c in res.items()}
+
     def guardar_lectura(self, caja, pedido, palet, producto, cantidad, employee=None, token=None):
         """Guarda lo leído de una caja del proveedor (1.1.0): su nº escrito a mano, el pedido de la etiqueta (opcional),
         el artículo y la cantidad, en el palé activo. Una caja con varios artículos = varias lecturas con el mismo nº.
@@ -502,21 +568,37 @@ class KoroshiRecepcion(models.Model):
         for prod, uds in self._teorico().items():
             m = L.modelo_de(prod.default_code or prod.name)
             teorico[m] = teorico.get(m, 0) + uds
-        leido, donde, cajas = {}, {}, {}
+        leido, donde, cajas, rapidas = {}, {}, {}, {}
         for l in self.lectura_ids.filtered(lambda x: x.estado == 'ok'):
-            m = l.modelo or '?'
+            m = l.modelo or '(sin modelo)'
             leido[m] = leido.get(m, 0) + l.cantidad
-            cajas.setdefault(m, set()).add(l.caja_txt)
+            cajas.setdefault(m, []).append(l.caja_txt)
+            if l.rapida:            # 1.4.1: «+1»: cuántas en cada palé
+                rp = rapidas.setdefault(m, {})
+                rp[l.palet_id.name or '¿palé?'] = rp.get(l.palet_id.name or '¿palé?', 0) + 1
+                continue
             d = donde.setdefault(m, {})
             clave = '%s / caja %s' % (l.palet_id.name or '¿palé?', l.caja_txt)
             d[clave] = d.get(clave, 0) + l.cantidad
+        por_packing = self.cajas_packing_por_modelo()
         filas = []
-        for m, (t, le, dif, estado) in L.comparar(teorico, leido).items():
+        # un modelo con cajas contadas con «+1» (0 uds) también sale, aunque no tenga uds leídas
+        for m in cajas:
+            leido.setdefault(m, 0)
+        comp = L.comparar(teorico, leido)
+        for m in cajas:
+            if m not in comp:
+                comp[m] = (teorico.get(m, 0), 0, -teorico.get(m, 0), 'no_venia' if not teorico.get(m) else 'falta')
+        for m, (t, le, dif, estado) in comp.items():
+            texto = ', '.join('%s: %g' % (k, v) for k, v in sorted(
+                donde.get(m, {}).items(), key=lambda kv: (L.clave_caja(kv[0].split('caja ')[-1]), kv[0])))
+            if rapidas.get(m):
+                texto = ', '.join(['%s: %d cajas (+1)' % (p, n) for p, n in sorted(rapidas[m].items())] +
+                                  ([texto] if texto else []))
             filas.append({
-                'recepcion_id': self.id, 'modelo': m, 'cajas': len(cajas.get(m, ())), 'teorico': t, 'leido': le,
-                'diferencia': dif, 'estado': estado,
-                'donde': ', '.join('%s: %g' % (k, v) for k, v in sorted(
-                    donde.get(m, {}).items(), key=lambda kv: (L.clave_caja(kv[0].split('caja ')[-1]), kv[0]))),
+                'recepcion_id': self.id, 'modelo': m, 'cajas': L.cajas_contadas(cajas.get(m, [])),
+                'cajas_packing': por_packing.get(m, 0), 'teorico': t, 'leido': le,
+                'diferencia': dif, 'estado': estado, 'donde': texto,
             })
         filas.sort(key=lambda f: f['modelo'])
         return Comp.create(filas) if filas else Comp
@@ -721,7 +803,9 @@ class KoroshiRecepcionLectura(models.Model):
     pedido = fields.Char('Pedido (etiqueta)', help='ORDER NUMBER de la etiqueta de la caja, si se ha escrito.')
     pedido_ajeno = fields.Boolean('Pedido que no es de este contenedor', readonly=True,
                                   help='Se escribió un pedido y no es el origen de ninguna IN del contenedor.')
-    palet_id = fields.Many2one('stock.location', 'Palé', required=True)
+    palet_id = fields.Many2one('stock.location', 'Palé', help='1.4.1: puede faltar en una caja contada con «+1».')
+    rapida = fields.Boolean('«+1 caja»', readonly=True,
+                            help='1.4.1: caja contada con «+1»: sin nº de caja ni uds (solo el modelo activo).')
     producto_id = fields.Many2one('product.product', 'Artículo', index=True,
                                   help='Vacío en las cajas apuntadas por modelo (1.2.0).')
     modelo_leido = fields.Char('Modelo (etiqueta)', help='1.2.0: el REFERENCE de la etiqueta de la caja (2711JA22).')
@@ -779,6 +863,7 @@ class KoroshiRecepcionComparacion(models.Model):
     talla = fields.Char('Talla')
     ean = fields.Char('EAN')
     cajas = fields.Integer('Cajas')
+    cajas_packing = fields.Integer('Cajas en el packing', help='1.4.1: cajas físicas del packing de S4T con este modelo.')
     teorico = fields.Float('Teórico (IN)', digits=(16, 0))
     leido = fields.Float('Leído', digits=(16, 0))
     diferencia = fields.Float('Diferencia', digits=(16, 0))

@@ -80,8 +80,15 @@ v1.4.0 (26/11/2026): Isaac: «tenir lo total i q vaiguen contant» (incluye la 1
   marcado duplicado o si un pedido no tiene packing. Si se escriben las cajas a mano, manda lo escrito y se enseña
   también el del packing. Contador «leídas / total · faltan N» siempre visible al leer y en la ficha; los huecos de
   numeración van de 1 al total. No depende del módulo de S4T: sin él, el total es el escrito.
+v1.4.1 (26/11/2026): «+1 caja» (Isaac: «si fem X modelo el escribim 1 vegada i dsp es anar sumant»; incluye la 1.3.0
+  y la 1.4.0, que no se instalaron). Con el modelo activo puesto una vez (escrito + Intro, buscado o leyendo una
+  prenda), cada toque del botón grande guarda una caja de ese modelo en el palé activo (si lo hay), sin nº ni uds;
+  «−1» anula el último «+1». 2 s entre toques y un token por toque (doble toque). Contadores: «modelo: N cajas» y
+  «leídas / total · faltan N». Comparación y Excel por modelo: cajas contadas y cajas del packing de S4T con ese
+  modelo (caja física = lo de s4t_line_id antes del guion; solo lectura). Lectura detallada sin cambios. Lectura:
+  campo «rapida» y palet_id deja de ser obligatorio; comparación: cajas_packing.
 """,
-    'version': '13.0.1.4.0',
+    'version': '13.0.1.4.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

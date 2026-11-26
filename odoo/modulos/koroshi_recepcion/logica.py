@@ -206,12 +206,20 @@ def resumen_cajas(lecturas, esperadas=0):
     'huecos_mas': hay más huecos que MAX_HUECOS, 'ajenas': [(caja, pedido)] con un pedido que no es de este
     contenedor}."""
     cajas = sorted({c for c, _p, _a in lecturas if c}, key=clave_caja)
+    sin_numero = sum(1 for c, _p, _a in lecturas if not c)     # 1.5.0: cajas contadas con «+1» (sin nº)
     numeros = {int(c) for c in cajas if c.isdigit()}
     tope = max(list(numeros) + [int(esperadas or 0)]) if (numeros or esperadas) else 0
-    huecos = [n for n in range(1, tope + 1) if n not in numeros]
+    huecos = [n for n in range(1, tope + 1) if n not in numeros] if numeros else []
     ajenas = sorted({(c, p) for c, p, a in lecturas if a}, key=lambda x: (clave_caja(x[0]), x[1]))
-    return {'leidas': cajas, 'huecos': huecos[:MAX_HUECOS], 'huecos_mas': len(huecos) > MAX_HUECOS,
+    return {'leidas': cajas, 'sin_numero': sin_numero, 'total': len(cajas) + sin_numero,
+            'huecos': huecos[:MAX_HUECOS], 'huecos_mas': len(huecos) > MAX_HUECOS,
             'n_huecos': len(huecos), 'ajenas': ajenas}
+
+
+def cajas_contadas(cajas_de_lecturas):
+    """1.5.0: cajas que llevan contadas: las distintas con nº + una por cada «+1» (sin nº)."""
+    con = {c for c in cajas_de_lecturas if c}
+    return len(con) + sum(1 for c in cajas_de_lecturas if not c)
 
 
 # ----------------------------------------------------------------------------- comparar

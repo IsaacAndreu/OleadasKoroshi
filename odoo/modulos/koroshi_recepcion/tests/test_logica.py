@@ -147,6 +147,15 @@ class TestCajasProveedor(unittest.TestCase):
         for texto in ('397', '1936', 'XYZ', '000062'):
             self.assertFalse(L.in_coincide(texto, *args), texto)
 
+    def test_mas_uno(self):
+        # 1.4.1: cada «+1» (sin nº) es una caja; las de nº, distintas
+        self.assertEqual(L.cajas_contadas(['', '', '108', '108', '69']), 4)
+        r = L.resumen_cajas([('', '', False), ('', '', False), ('3', '', False)], esperadas=5)
+        self.assertEqual((r['total'], r['sin_numero']), (3, 2))
+        self.assertEqual(r['huecos'], [1, 2, 4, 5])
+        # solo «+1»: sin nº no hay huecos que calcular
+        self.assertEqual(L.resumen_cajas([('', '', False)], esperadas=1046)['huecos'], [])
+
     def test_total_packing(self):
         feeds = [('0000002160', 1046, 20278, True), ('0000002160', 1046, 20278, False),
                  ('0000002163', 137, 2118, False), ('0000009999', 5, 50, False)]

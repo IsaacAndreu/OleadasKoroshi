@@ -1,6 +1,8 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.4.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.4.1 (26/11/2026) - PDA o tablet.
+ * 1.4.1: «+1 caja» (Isaac: «el escribim 1 vegada i dsp es anar sumant»): con el modelo activo puesto una vez, cada
+ *    toque cuenta una caja de ese modelo en el palé activo, sin nº ni uds; «−1» deshace la última. 2 s entre toques.
  * 1.4.0: total de cajas del packing de S4T (o el escrito a mano) y contador «leídas / total · faltan N» siempre
  *    visible en la ficha y al leer.
  * 1.3.0: buscador de IN al crear o cambiar las IN (nombre, pedido, referencia del proveedor o modelo). En «Leer cajas»
@@ -64,6 +66,7 @@ var Pantalla = AbstractAction.extend({
         this.resModelos = null;     // buscador de modelos
         this.borrador = {};         // 1.3.0: matrícula, muelle y referencia mientras se buscan IN
         this.textoIn = '';          // 1.3.0: lo buscado en el buscador de IN
+        this.masUnoHasta = 0;       // 1.4.1: «+1» bloqueado hasta (doble toque, 2 s)
         this.insVistas = {};        // 1.3.0: id -> IN (para enseñar las marcadas que no salen en la búsqueda)
         this.prod = null;           // {id, nombre, modelo, talla}
         this.cantidad = '';
@@ -513,7 +516,51 @@ var Pantalla = AbstractAction.extend({
         this._a_guardar();
     },
     _a_elegir_modelo: function (m) { this._ponerModelo(m); },
-    _a_otro_modelo: function () { this.modelo = ''; this.resModelos = null; this._pintar(); },
+    _a_otro_modelo: function () { this.modelo = ''; this.resModelos = null; this._pintar(); this.$('.o_kr_buscar').focus(); },
+    // 1.4.1: «+1 caja» / «−1»
+    _a_mas_uno: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        if (Date.now() < this.masUnoHasta) { return; }          // doble toque: 2 s entre «+1»
+        this.masUnoHasta = Date.now() + 2000;
+        if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Primero pon el modelo (escríbelo y Intro, o lee una prenda).'); }
+        return this._llamar('/koroshi/recepcion/mas_uno', {
+            recepcion_id: this.rec.id, palet_id: this.palet ? this.palet.id : false, modelo: this.modelo,
+            employee_id: this.persona.id, token: _token(),
+        }).then(function (r) {
+            if (!r) { return; }
+            self.rec = r.recepcion;
+            self.ultimas = r.ultimas;
+            self._pitido(true);
+            self._aviso('ok', '+1 caja de ' + (r.modelo || 'sin modelo') + ': ' + ((self.rec.por_modelo || {})[r.modelo] || 0) +
+                ' de este modelo; ' + self.rec.cajas_leidas + ' / ' + (self.rec.total || '?') + ' en total.' +
+                (self.palet ? '' : ' (sin palé)'));
+            self._pintar();
+        });
+    },
+    _a_menos_uno: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        if (!window.confirm('¿Quitar el último «+1»?')) { return; }
+        return this._llamar('/koroshi/recepcion/menos_uno', {recepcion_id: this.rec.id, employee_id: this.persona.id})
+            .then(function (r) {
+                if (!r) { return; }
+                self.rec = r.recepcion;
+                self.ultimas = r.ultimas;
+                self._aviso('ok', 'Quitado un «+1» de ' + (r.modelo || 'sin modelo') + '.');
+                self._pintar();
+            });
+    },
+    _htmlMasUno: function () {
+        var r = this.rec;
+        var n = this.modelo ? ((r.por_modelo || {})[this.modelo] || 0) : 0;
+        return '<div class="o_kr_caja ' + (this.modelo ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">' +
+            'Contar cajas (modelo activo)</div>' +
+            '<div class="o_kr_grande">' + (this.modelo ? _e(this.modelo) + ': ' + n + ' cajas' : 'Pon el modelo abajo (3)') +
+            '</div><div class="o_kr_fila"><button type="button" class="o_kr_primario o_kr_mas_uno" ' +
+            'style="font-size:28px;min-width:180px;min-height:70px" data-accion="mas_uno">+1 caja</button>' +
+            '<button type="button" data-accion="menos_uno">−1</button></div></div>';
+    },
     _a_cerrar: function () {
         var self = this;
         if (!this._necesitaPersona()) { return; }
@@ -850,6 +897,7 @@ var Pantalla = AbstractAction.extend({
         var r = this.rec;
         var h = '<div class="o_kr_fila"><button type="button" data-accion="ficha">← ' + _e(r.matricula) + '</button>' +
             this._contador(r) + '</div>';
+        h += this._htmlMasUno();
         h += '<div class="o_kr_etq">1. Palé y cara</div><div class="o_kr_palets">';
         _.each(r.palets_lista, function (p) {
             var activo = self.palet && self.palet.id === p.id;
@@ -944,13 +992,14 @@ var Pantalla = AbstractAction.extend({
             (cj.ajenas.length ? '<div>' + _e(_.map(cj.ajenas, function (a) {
                 return 'caja ' + a.caja + ' (pedido ' + a.pedido + ')';
             }).join(', ')) + '</div>' : '') + '</div></div>';
-        h += '<table><tr><th>Modelo</th><th class="o_kr_n">Cajas</th><th class="o_kr_n">Uds IN</th>' +
+        h += '<table><tr><th>Modelo</th><th class="o_kr_n">Cajas (packing)</th><th class="o_kr_n">Uds IN</th>' +
             '<th class="o_kr_n">Llegadas</th><th class="o_kr_n">Diferencia</th><th>Dónde (palé / caja: uds)</th></tr>';
         var algo = false;
         _.each(c.modelos, function (m) {
             if (self.soloProblemas && !m.problema) { return; }
             algo = true;
             h += '<tr class="o_kr_' + m.estado + '"><td>' + _e(m.modelo) + '</td><td class="o_kr_n">' + m.cajas +
+                (m.cajas_packing ? ' (' + m.cajas_packing + ')' : '') +
                 '</td><td class="o_kr_n">' + _n(m.teorico) + '</td><td class="o_kr_n">' + _n(m.leido) +
                 '</td><td class="o_kr_n">' + _n(m.diferencia) + (m.estado === 'no_venia' ? ' (no venía)' : '') +
                 '</td><td>' + _e(m.donde) + '</td></tr>';
