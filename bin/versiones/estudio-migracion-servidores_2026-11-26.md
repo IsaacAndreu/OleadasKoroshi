@@ -409,6 +409,8 @@ semanas para las dos.
 
 ## 5. Preguntas para Isaac
 
+**Respondidas el 26/11 por la tarde: ver apartado 7** (queda abierta la P21 nueva y parte de P10, P11 y P19).
+
 Todos los comandos son **de solo lectura**. Los de `gcloud` se pueden lanzar desde Cloud Shell, en la consola de
 Google Cloud.
 
@@ -434,6 +436,90 @@ Google Cloud.
 | P18 | ¿Qué integración usa el **puerto 3232** de salida? | Preguntar a Soporte, o en la VM: `sudo ss -tnp \| grep :3232` |
 | P19 | ¿Quién lee el bucket **público** `nath-stock-feed-q7m4x2` (creado el 19/11)? ¿Debe ser público? | — |
 | P20 | ¿Qué cuenta de facturación pagaba antes de finales de octubre y cuánto costaba? ¿Los dos discos sueltos, las IP de Singapur y los buckets de Asia se pueden borrar? | Consola → Facturación → la otra cuenta → Informes |
+
+## 7. Respuestas de Isaac y comprobaciones (26/11, tarde)
+
+Isaac contestó las preguntas y pidió que se miraran P4, P5, P10, P11, P12, P18 y P19. Para eso se entró **por SSH en
+las dos VM, solo con comandos de lectura** (sistema, versiones, tamaños, configuración de nginx, conexiones abiertas,
+registros), con su permiso. No se cambió nada. Se vio una contraseña en claro en el `crontab` de tuctuc: **no se ha
+copiado** (ver 7.3).
+
+### 7.1 Respuestas
+
+| # | Respuesta |
+|---|---|
+| P4 | **Filestore KOROSHI: 44 GB** (`NATH_PRODUCTION`) + 2,8 GB y 18 GB de copias de prueba viejas. Disco: 81 de 291 GB. **Tuctuc: 138 GB** (`TUCTUC_PRODUCTION`) + 20 GB `TUCTUC_TEST` y otras pequeñas. Disco: 174 de 291 GB. |
+| P5 | Las dos VM: **Ubuntu 16.04.7** (sin soporte normal desde 2021), **Python 3.5.2**, nginx 1.10.3, **wkhtmltopdf 0.12.5 (with patched qt)**. KOROSHI: `workers = 16`, `max_cron_threads = 3`, `proxy_mode = True`, `server_wide_modules = web, queue_job, bi_sql_editor, integration, integration_shopify`. Tuctuc: `workers = 29`, `max_cron_threads = 4`. |
+| P8 | **El DNS de `tuctuc.com` está en Cloudflare** (`piper`/`toby.ns.cloudflare.com`). `nath.tuctuc.com` y `odoo.tuctuc.com` ya tienen **TTL 300 s**: no hace falta bajarlo. Certificado de `nath.tuctuc.com`: **Let's Encrypt con certbot**. Otros certificados en `/opt/nath-erp/SSL/` (code22lifestyle, code22showroom, modaintima, tuctuc). |
+| P9 | Lo lleváis vosotros. Contrato de Odoo hasta junio/julio de 2027 (a confirmar). **Plan: antes de mayo, decidir cuántas licencias de usuario se quitan y avisar de que no se renuevan todas.** No depende de la migración, pero conviene hacer el cambio de servidor antes, con el contrato vigente. |
+| P10 | **No se puede saber desde el servidor si S4T, XPO o GLS tienen nuestra IP en una lista blanca**: hay que preguntarles (7.4). Lo que sí se ve: (a) **nadie de fuera llama a Odoo** salvo oficina (46.24.177.93), almacén (84.78.198.137), **PDA (77.211.6.148)** y una IP de Google (34.156.218.56); no hay webhooks de terceros en el registro de nginx; (b) **la salida está limitada por el firewall** a los puertos 25, 53, 80, 443, 465, 587, 3232 y 5432. |
+| P11 | **El correo sale por Microsoft 365** (Exchange Online). En el registro hay un envío rechazado por Microsoft «sin autenticar» por el servidor SMTP «None»: algunos correos se envían **sin servidor configurado**. Antes del corte, mirar en Odoo (Ajustes → Técnico → Servidores de correo saliente) que todos vayan por el servidor `NATH` autenticado; así no depende de la IP. |
+| P12 | Latencia medida desde la oficina (46.24.177.93), media de 5 pings: **hoy `nath.tuctuc.com` 42 ms** y `odoo.tuctuc.com` 34 ms. **OVH Roubaix 24 ms**, Estrasburgo 27 ms, Gravelines 24-42 ms; **Scaleway París 22 ms**; Hetzner Núremberg/Falkenstein 41-42 ms, Helsinki 58 ms. **Con OVH (Roubaix) las PDA irían ~15-18 ms más rápidas que ahora.** |
+| P13 | **El fin de semana no se trabaja**: se puede usar entero. Entran pedidos web (ver 7.2). |
+| P14 | Soporte = Isaac. |
+| P15 | **Primero `nath.tuctuc.com` (KOROSHI), después `odoo.tuctuc.com`** (más pesado: 220 GB de base y 138 GB de filestore). |
+| P16 | El servidor de Ionos (82.223.30.89) es vuestro. La API del puerto **3232** está en otra IP de Ionos (82.223.131.45, `/api/service/products/by-season/...`, la usa `bin/KOROSHI_maestro_etiquetas_2026-11-26_v1.py`): el firewall de salida de GCP la permite. En OVH hay que dejar salir el 3232. |
+| P17 | Sí: hay informes de Looker Studio contra las bases. En OVH, abrir el 5432 a los rangos de Looker (o mover esos informes a una réplica). |
+| P18 | Ver P16: el 3232 es vuestra API de Ionos. |
+| P19 | El bucket público `nath-stock-feed-q7m4x2` tiene **un solo fichero, `code22_lockergear_stock.csv` (296 KB), que se regenera cada día a las 07:00**. Es el feed de stock de Code22/Lockergear para alguien de fuera. **No se ha encontrado quién lo escribe**: no está en el `crontab` de ninguna VM ni en los módulos de `custom_addons`. Probablemente un cron o acción de servidor de Odoo (en la base) o el servidor de Ionos. **Hay que saberlo antes de migrar**: quien lo lee usa la URL de Google Storage, y al dejar GCP hay que mantener ese bucket o darles una URL nueva. |
+| P20 | La cuenta de facturación antigua era NATH; ahora es Prime Collections. |
+
+### 7.2 El fin de semana del corte (respuesta a la duda de P13)
+
+La duda: si se saca una copia un día y se tarda 2-3 días, ¿hay que recuperar después lo que se ha hecho en el
+original? **No hace falta, si se hace así:**
+
+1. **Entre semana, ensayos con copias de prueba** (las que se quiera, de cualquier día). Son para probar; se tiran.
+   No se recupera nada de ellas.
+2. **El filestore se copia por adelantado** con `rsync`, entre semana; el sábado solo se copia la diferencia
+   (minutos).
+3. **Sábado por la mañana: se para el Odoo viejo** y desde ese momento no se trabaja en él. Se hace la copia
+   definitiva de la base (KOROSHI, 62 GB: estimación 1-2 h; tuctuc, 220 GB: 3-6 h; se mide en los ensayos), se
+   arranca el nuevo y se prueba el sábado por la tarde.
+4. **Domingo: margen** para arreglar lo que salga o, si no hay forma, volver al viejo (que está intacto) cambiando
+   el DNS en Cloudflare.
+5. **Lunes: se trabaja ya en el nuevo.**
+
+Así nunca se trabaja a la vez en los dos y no hay nada que recuperar. **Lo único que pasa durante la parada es que
+no entran pedidos ni se actualizan feeds** (S4T, Shopify/`integration_shopify`, marketplaces, el feed de stock de
+Lockergear). Si cada integración recoge «lo pendiente» y no «lo de la última hora», al arrancar el nuevo recoge lo
+acumulado. **Hay que comprobarlo integración por integración** en el ensayo (lista en 7.4).
+
+Con este esquema, **KOROSHI cabe en un fin de semana y tuctuc en otro**, separados al menos una semana.
+
+### 7.3 Cosas encontradas que hay que arreglar (se migre o no)
+
+| # | Qué | Dónde | Riesgo | Propuesta |
+|---|---|---|---|---|
+| H1 | **La copia diaria de tuctuc no se está haciendo.** El `crontab` hace a las 06:00 una copia de `TUCTUC_PRODUCTION` hacia `/gsmnt/nath-erp-dev-data/...`, pero el bucket ya no está montado (la carpeta está vacía; el bucket no se modifica desde el 18/02/2025). Solo quedan las copias automáticas de Cloud SQL. | VM tuctuc, `crontab` de root | Alto si se pierde Cloud SQL | Revisarlo con Isaac; en OVH, copias nuevas (pgBackRest + copia diaria a Object Storage y al NAS) |
+| H2 | **La contraseña maestra de Odoo de tuctuc está en claro en el `crontab`** (no se ha copiado aquí). | VM tuctuc | Alto: con ella se puede descargar o borrar la base desde la web | Cambiarla y quitarla del `crontab` |
+| H3 | Firewall abierto a todo Internet: 8069-8071 (Odoo sin nginx), 22, 3389, 5432. | GCP | Medio | En OVH, solo 80/443 y SSH limitado |
+| H4 | Ubuntu 16.04 y Python 3.5.2 sin soporte. | Las dos VM | Medio | Ver 7.5 |
+| H5 | Copias de prueba viejas en el filestore (`nath_prod_test_19_sept` 2,8 GB, `testt` 18 GB, `TUCTUC_TEST` 20 GB). | Las dos VM | Bajo | No copiarlas a OVH |
+
+### 7.4 Lo que hay que preguntar fuera y comprobar en el ensayo
+
+- **S4T, XPO, GLS, marketplaces (Veepee, El Corte Inglés, Sending, CEX, Nacex…) y Shopify**: «¿tenéis nuestra IP
+  (34.91.253.46 y 35.241.160.100) en alguna lista blanca?». Claude redacta el correo; Isaac lo envía. Dar la IP
+  nueva en cuanto se contrate OVH.
+- **Quién escribe y quién lee el feed `code22_lockergear_stock.csv`** (P19).
+- **Webs que sirve el nginx de KOROSHI además de `nath.tuctuc.com`: `moda-intima.com` (+ `www` y `*`) y
+  `wholesale.lockergear.es`.** Al cambiar de servidor, **también hay que cambiar su DNS** (¿también en Cloudflare?) y
+  sus certificados. Nueva pregunta: **P21: ¿quién lleva el DNS de `moda-intima.com` y `lockergear.es`?**
+- La IP de Google 34.156.218.56 que llama a `nath.tuctuc.com`: averiguar qué es (¿Looker? ¿Apps Script?).
+- Para cada integración, en el ensayo: ¿al arrancar recoge lo pendiente de la parada?
+
+### 7.5 Cómo montar el servidor nuevo, visto el sistema actual
+
+El código actual corre en **Python 3.5.2**, que ya no viene en ningún Ubuntu moderno. Dos opciones:
+
+- **A (recomendada): Ubuntu 22.04 + Python 3.5/3.6 con `pyenv`** y las mismas versiones de librerías (`pip freeze`
+  de la VM actual), wkhtmltopdf 0.12.5 «patched qt», nginx moderno y PostgreSQL 11 (archivo oficial o Docker).
+  Mismo comportamiento que hoy, con el sistema operativo al día.
+- **B: llevarse la imagen del disco tal cual** (GCP permite exportar la imagen y OVH importar imágenes propias). Es
+  lo más idéntico, pero se arrastra Ubuntu 16.04 y los agentes de Google: solo como plan de emergencia.
+
+Subir a Python 3.8 se deja para después, como PostgreSQL: un cambio cada vez.
 
 ## 6. Siguiente paso propuesto
 
