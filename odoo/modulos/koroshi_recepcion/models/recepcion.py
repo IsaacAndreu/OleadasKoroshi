@@ -487,8 +487,8 @@ class KoroshiRecepcion(models.Model):
         if self.state not in ('pendiente', 'leyendo'):
             raise UserError('Solo se cierra una recepción abierta (esta está %s).' % dict(ESTADOS)[self.state].lower())
         self._bloquear()
-        if self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.producto_id and not l.validada):
-            raise UserError('Hay prendas leídas sin pasar a stock: valídalas o anúlalas antes de cerrar.')
+        # 1.2.1: las prendas leídas con la 1.1.0 (artículo y cantidad) tampoco pasan a stock al cerrar (opción A):
+        # quedan apuntadas y la IN pendiente. Antes no se podía cerrar con ellas y, sin responsables, no había salida.
         self.comparar()
         self.sudo().state = 'cerrada'
         self.message_post(body='Cerrada por %s: %d cajas, %d uds apuntadas. Las IN siguen pendientes (%s).' % (

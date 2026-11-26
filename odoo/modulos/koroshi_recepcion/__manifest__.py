@@ -63,8 +63,12 @@ v1.2.0 (26/11/2026): opción A de Isaac (sustituye a la 1.1.0, que no llegó a i
   huecos en la numeración y cajas con pedido de otro contenedor. Avisos al guardar: pedido ajeno, caja ya en otro
   palé, modelo que no viene en las IN, la misma caja y modelo dos veces. Campos nuevos solo en tablas propias
   (lectura.modelo_leido, comparacion.cajas; producto_id de la lectura deja de ser obligatorio; estado «cerrada»).
+v1.2.1 (26/11/2026): la 1.1.0 sí se instaló (26/11 08:57) y se está recepcionando con ella (artículo y cantidad por
+  caja). La 1.2.0 no dejaba «Terminar» con prendas leídas sin pasar a stock, y sin responsables nadie puede validar:
+  el contenedor se quedaba sin cerrar. Ahora se cierra igual (opción A: la IN queda pendiente) y esas lecturas cuentan
+  en la comparación por modelo.
 """,
-    'version': '13.0.1.2.0',
+    'version': '13.0.1.2.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
