@@ -12,13 +12,15 @@ import ast
 import re
 from pathlib import Path
 
+from . import configuracion
+
 TEMPORADAS_ACTUALES = ('I27', 'V27')      # bin/KOROSHI_crear_INT_zonas_PLANIFICADA.py l. 56
 # PERMANENTE (54.449 uds el 23/11: perchas, bolsas, suministros y básicos) va en zona Z: lo decidió Isaac el
 # 23/11/2026. Ojo: el Excel del 06/11 la contaba en zona 0, así que las zonas de hoy no se comparan tal cual.
 TEMPORADAS_PERMANENTES = ('PERMANENTE',)
 ZONA_0, ZONA_Z, SIN_TEMPORADA = '0', 'Z', 'sin temporada'
 RE_FAMILIA = re.compile(r'^\d{4}([A-Z]{2})')
-RUTA_KPI = Path(__file__).resolve().parents[3] / 'odoo' / 'modulos' / 'koroshi_kpi' / 'models' / 'kpi.py'
+RUTA_KPI = configuracion.CARPETA.parents[1] / 'odoo' / 'modulos' / 'koroshi_kpi' / 'models' / 'kpi.py'
 
 _litros_familia = None
 

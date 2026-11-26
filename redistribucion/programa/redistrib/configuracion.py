@@ -7,11 +7,17 @@
   (servicio SERVICIO_KEYRING, cuenta = el usuario de Odoo) y se lee de ahí. Nunca se imprime.
 """
 import getpass
+import sys
 import tomllib
 from pathlib import Path
 
 SERVICIO_KEYRING = 'koroshi-redistribucion-odoo'
-CARPETA = Path(__file__).resolve().parent.parent
+# Compilado (PyInstaller, redistribucion/programa/dist/Redistribucion/Redistribucion.exe): la carpeta del programa
+# es la de dos niveles más arriba del .exe, para usar las mismas copias, matrices y configuración del repo.
+if getattr(sys, 'frozen', False):
+    CARPETA = Path(sys.executable).resolve().parents[2]
+else:
+    CARPETA = Path(__file__).resolve().parent.parent
 RUTA_CONFIG = CARPETA / 'config.local.toml'
 POR_DEFECTO = {'pausa': 0.5, 'pagina': 2000, 'timeout': 120}
 

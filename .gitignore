@@ -37,3 +37,8 @@ redistribucion/**/*.sqlite
 redistribucion/**/*.sqlite-journal
 # Mapa v3 (24/11/2026): datos generados desde la copia de Odoo («python programa.py generar-mapa»), ~10 MB
 redistribucion/prototipo-mapa_2026-11-24_v3/*.json
+# Programa de redistribución compilado (26/11/2026): PyInstaller deja build/ y dist/ (~170 MB); se recompila con
+# «python -m PyInstaller Redistribucion.spec» en redistribucion/programa
+redistribucion/programa/build/
+redistribucion/programa/dist/
+redistribucion/prototipo-mapa_2026-11-26_v4/*.json

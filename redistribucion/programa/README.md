@@ -35,6 +35,30 @@ El usuario Departament IT puede escribir, así que la solo lectura la pone `redi
   petición y lista de campos obligatoria.
 - La contraseña está en el almacén de credenciales de Windows; no sale en pantalla, ni en errores, ni en repr.
 
+## Programa de Windows (26/11/2026)
+
+Se abre con doble clic en `../Redistribucion NAU-2.bat`: abre `dist/Redistribucion/Redistribucion.exe` si está
+compilado y, si no, `pythonw ventana.py` (necesita PySide6 6.12.0).
+
+**Compilar el .exe** (26/11/2026, PyInstaller 6, carpeta de ~170 MB fuera de git):
+`python -m PyInstaller --noconfirm Redistribucion.spec`. El .exe usa las copias, las matrices y la configuración
+del repo (`configuracion.CARPETA` = dos carpetas por encima del .exe), así que hay que dejarlo en
+`dist/Redistribucion/`; si se copia a otro sitio, no encuentra los datos. Solo lee: no se conecta a Odoo y no escribe ni en
+Odoo ni en las matrices.
+
+- **Fuentes:** la última versión de cada matriz de KOROSHI en `bin/versiones` (`AAMMDD_KOROSHI_<n>_<nombre>_v<v>.xlsx`;
+  `redistrib/fuentes.py`) y la última copia de Odoo. Si sale una versión nueva de una matriz, la coge sola.
+  Hoy solo se usa la matriz 1 (MASTER: litros por modelo); la 2 y la 3 salen en la lista, pero aún no las usa
+  ningún cálculo.
+- **Inicio:** el plan de trabajo en tres pasos (1 retirar cajas vacías, 2 juntar cajas, 3 lineales que podrían
+  quedar vacíos, como estimación por volumen) y por qué lineal empezar (donde más huecos se liberan).
+- **Por lineal:** alzado del lineal (posiciones × columnas C1–C4, cada una de 4 cajas de alto, en colores) y sus tareas: retirar vacías, sacar cajas y
+  cajas que entran. Botón «Imprimir hoja de trabajo (Excel)»: tres hojas con casilla «Hecho», en apaisado.
+- **Plano de la nave:** botones Hoy · Paso 1 · Paso 2 · Resultado. Clic en una posición: qué hay que hacer en cada
+  nivel, con flechas (verdes: salen; azules: llegan). Doble clic: abrir el lineal.
+- **Listas completas** (cajas vacías, cajas a mover, lineales) con filtro y «Exportar a Excel» (fichero nuevo;
+  no sobrescribe).
+
 ## Uso
 
 ```powershell

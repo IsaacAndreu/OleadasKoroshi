@@ -9,6 +9,9 @@ Uso (desde esta carpeta):
   python programa.py resumen [copia]        resumen de una copia con las reglas actuales (no la modifica)
   python programa.py generar-mapa [copia]   datos del mapa v3 desde una copia (no habla con Odoo)
         [--desde AAAA-MM-DD]                desde cuándo contar el histórico de salidas (por defecto, hace un año)
+  python programa.py compactar-0 [copia]    zona 0: clasificación ABC × tamaño y propuesta de compactación a Excel
+        [--master fichero.xlsx]             MASTER del que salen los litros (por defecto, la última versión)
+        [--mapa carpeta]                    deja también compactacion.json en el mapa (por defecto, el v4)
 
 Nada de esto escribe en Odoo: todo pasa por redistrib/odoo_lectura.py, que solo deja leer.
 """
@@ -19,6 +22,9 @@ import time
 
 from redistrib import configuracion, consultas
 from redistrib.odoo_lectura import ClienteLectura, ErrorOdoo
+
+
+MAPA_ACTUAL = 'prototipo-mapa_2026-11-26_v4'     # carpeta del mapa que se usa ahora (las anteriores no se tocan)
 
 
 def _cliente(cfg):
@@ -114,7 +120,7 @@ def generar_mapa(args):
     from redistrib.descarga import copias_completas
     ruta = Path(args.copia) if args.copia else copias_completas(configuracion.CARPETA / 'copias')[-1]
     raiz = configuracion.CARPETA.parent
-    salida = Path(args.mapa) if args.mapa else raiz / 'prototipo-mapa_2026-11-24_v3'
+    salida = Path(args.mapa) if args.mapa else raiz / MAPA_ACTUAL
     datos, tam = mapa_json.generar(ruta, raiz / 'prototipo-mapa_2026-11-23_v2', salida)
     c = datos['cifras']
     print('Copia %s (Odoo %s) -> %s' % (ruta.name, datos['fecha_datos'], salida))
@@ -122,6 +128,35 @@ def generar_mapa(args):
     print('  %d posiciones; %d de %d modelos-color en más de un lineal; %d contenedores a cero; %d uds pendientes de ubicar'
           % (len(datos['posiciones']), c['mc_mas_de_1_lineal'], c['modelos_color'], c['contenedores_a_cero'],
              c['uds_pendiente']))
+
+
+def compactar_0(args):
+    """Clasificación de la zona 0 y propuesta de compactación, a Excel. No habla con Odoo."""
+    from pathlib import Path
+    from redistrib import compactar as C
+    from redistrib.descarga import copias_completas
+    ruta = Path(args.copia) if args.copia else copias_completas(configuracion.CARPETA / 'copias')[-1]
+    raiz = configuracion.CARPETA.parent
+    from redistrib import fuentes
+    master = Path(args.master) if args.master else fuentes.matriz(1).ruta    # última versión del MASTER
+    r = C.ReglasCompactar()
+    datos = C.cargar(ruta, raiz / 'prototipo-mapa_2026-11-23_v2', C.leer_master(master), r)
+    mcs = C.clasificar(datos, r)
+    pasos, res = C.compactar(datos, mcs, r)
+    vacias = C.cajas_a_cero(ruta, datos, r)
+    salida = raiz / ('compactacion-zona0_%s.xlsx' % datetime.datetime.now().strftime('%Y%m%d_%H%M'))
+    C.exportar_excel(salida, mcs, pasos, res, r, vacias=vacias)
+    print('Copia %s, MASTER %s' % (ruta.name, master.name))
+    for k, v in list(res.items()) + list(C.resumen_cajas_a_cero(vacias, r).items()):
+        print('  %s: %s' % (k, v))
+    print('Excel en %s' % salida)
+    import json
+    mapa = Path(args.mapa) if args.mapa else raiz / MAPA_ACTUAL
+    if mapa.is_dir():
+        j = C.para_mapa(ruta, datos, mcs, pasos, res, vacias, r)
+        (mapa / 'compactacion.json').write_text(json.dumps(j, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+        print('Mapa: %s (lineales que se podrían vaciar enteros, estimación: %d)'
+              % (mapa / 'compactacion.json', j['resumen']['lineales_vaciables']))
 
 
 def main(argv=None):
@@ -139,11 +174,16 @@ def main(argv=None):
     sub.add_parser('copia-inventada', help='copia con datos inventados, sin Odoo').set_defaults(funcion=copia_inventada)
     pg = sub.add_parser('generar-mapa', help='datos del mapa v3 desde una copia (no habla con Odoo)')
     pg.add_argument('copia', nargs='?', help='fichero .sqlite (por defecto, la última copia)')
-    pg.add_argument('--mapa', help='carpeta del mapa (por defecto, prototipo-mapa_2026-11-24_v3)')
+    pg.add_argument('--mapa', help='carpeta del mapa (por defecto, %s)' % MAPA_ACTUAL)
     pg.set_defaults(funcion=generar_mapa)
     pr = sub.add_parser('resumen', help='resumen de una copia con las reglas actuales (no la modifica)')
     pr.add_argument('copia', nargs='?', help='fichero .sqlite (por defecto, la última copia)')
     pr.set_defaults(funcion=rehacer_resumen)
+    pk = sub.add_parser('compactar-0', help='zona 0: clasificación y propuesta de compactación a Excel (no habla con Odoo)')
+    pk.add_argument('copia', nargs='?', help='fichero .sqlite (por defecto, la última copia)')
+    pk.add_argument('--master', help='Excel MASTER (por defecto, la última versión de KOROSHI_1_MASTER en bin/versiones)')
+    pk.add_argument('--mapa', help='carpeta del mapa donde dejar compactacion.json (por defecto, %s)' % MAPA_ACTUAL)
+    pk.set_defaults(funcion=compactar_0)
     args = p.parse_args(argv)
     try:
         args.funcion(args)
