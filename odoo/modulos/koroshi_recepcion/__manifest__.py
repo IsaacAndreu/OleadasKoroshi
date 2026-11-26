@@ -10,20 +10,19 @@ de la reunión en el almacén del 23/11/2026 y su diseño v6 (bin/versiones/dise
 - Contenedor: la matrícula (la de la puerta; Odoo no la tiene), el muelle y las IN de KOROSHI que trae (las crea
   OdooBot por API, una por pedido; se eligen de una lista de IN abiertas por fecha prevista). Lo crea el muelle al
   llegar o la oficina antes.
-- «Recepcionar»: quien recepciona escribe cuántas cajas y cuántos palés ve. Se crea un contenedor de control KO_ por
-  caja (KO_ddmmaa_NNN, como koroshi_ubicaciones) y los palés que falten (PAL-01 A, PAL-01 B…, dentro de
-  EFFEC/Stock/NAVE2/RECEPCION; se reutilizan). Etiquetas 4x6 para la Zebra del PC de Recepciones; la de la caja lleva
-  el muelle, el día y la matrícula.
-- Leer, a ciegas (no se enseña lo que traen las IN): palé y cara, caja (etiqueta KO_ o «Siguiente caja»), prenda
-  (código de barras o buscador: últimos 4 números del EAN o un trozo del modelo) y cantidad. El KO_ queda dentro de su
-  palé. Anular una lectura mientras no esté en stock. Contra el doble toque de la PDA: botones bloqueados hasta la
-  respuesta y un token por lectura.
+- «Recepcionar»: quien recepciona escribe cuántos palés usa (y, si quiere, cuántas cajas hay). Se crean los palés
+  que falten (PAL-01 A, PAL-01 B…, dentro de EFFEC/Stock/NAVE2/RECEPCION; se reutilizan), con etiquetas 4x6 para la
+  Zebra del PC de Recepciones. Desde la 1.1.0 no se crean KO_: las cajas solo llevan la etiqueta del proveedor.
+- Leer, a ciegas (no se enseña lo que traen las IN): palé y cara, caja (su nº escrito a mano y, si se quiere, el
+  ORDER NUMBER de su etiqueta: si no es de ninguna IN del contenedor, avisa), prenda (código de barras o buscador:
+  últimos 4 números del EAN o un trozo del modelo) y cantidad. Anular una lectura mientras no esté en stock. Contra el
+  doble toque de la PDA: botones bloqueados hasta la respuesta y un token por lectura.
 - Comparar (responsable): teórico de las IN contra lo leído, por modelo y talla, con dónde está cada prenda (palé /
-  caja). Exportar a Excel (CSV con «;»), solo el responsable o la oficina (lleva el teórico: la lectura es a ciegas).
+  caja), y por caja: leídas, huecos en la numeración y cajas de otro pedido. Exportar a Excel (CSV con «;»), solo el responsable o la oficina (lleva el teórico: la lectura es a ciegas).
   En la oficina, la comparación también es una lista con filtros. El teórico se guarda (foto) antes de la primera
   validación: después Odoo suma la sobra a la demanda de la IN y ya no se vería.
 - Validar (responsable: su tarjeta en «Responsables de recepción»; en la oficina, Inventario / Administrador): pone
-  las líneas hechas en las IN, con destino el KO_ de cada caja, y valida cada IN con algo leído. Lo que no ha llegado
+  las líneas hechas en las IN, con destino el palé de cada caja (1.1.0), y valida cada IN con algo leído. Lo que no ha llegado
   queda en una IN pendiente (backorder), como hoy, y se enlaza sola al contenedor: es el «shipment incompleto» que se
   reabre cuando llegan las cajas («Reabrir», o un contenedor nuevo con esa IN). «Validar lo leído hasta ahora» hace
   lo mismo y la lectura sigue. Solo se validan las IN donde se han puesto líneas. Lo que sobra de un artículo que
@@ -33,7 +32,7 @@ de la reunión en el almacén del 23/11/2026 y su diseño v6 (bin/versiones/dise
 
 Solo tablas propias (koroshi.recepcion, .lectura, .comparacion, .teorico, .tanda, .responsable). No añade campos a
 stock.picking, stock.picking.type ni stock.move.line: crea ubicaciones (KO_ y PAL-), líneas hechas de las IN y valida
-la IN con lo de Odoo. No toca Contenedores, Lecturas, preparación ni S4T. Depende de koroshi_ubicaciones (nombres de
+la IN con lo de Odoo. El KO_ se pone después, al ordenar y ubicar. No toca Contenedores, Lecturas, preparación ni S4T. Depende de koroshi_ubicaciones (nombres de
 los KO_ y papel 4x6): instalar koroshi_ubicaciones antes.
 
 Parámetro opcional koroshi_recepcion.tipo_in_id: el id del tipo de operación de las IN (si no está, se busca el de
@@ -44,8 +43,18 @@ v1.0.1 (23/11/2026): el campo teorico_ids (la foto del teórico) no existía en 
   quedaba como una tupla («Trailing comma after field definition» en el log al instalar la 1.0.0). Con la 1.0.0
   fallaban la comparación, la ficha de la oficina, cambiar las IN y validar. Solo se quita la coma; comprobar.py lo
   detecta desde ahora (E9).
+v1.1.0 (26/11/2026): urgente (Isaac): la recepción ya no usa el contenedor de control KO_. Las cajas llegan solo con
+  la etiqueta del proveedor (REFERENCE, ORDER NUMBER = origen de la IN, talla y uds a mano, nº de caja a rotulador).
+  «Recepcionar» solo crea los palés (las cajas son opcionales, para ver huecos); no crea ni imprime KO_. Cada lectura:
+  nº de caja escrito a mano (obligatorio), nº de pedido de la etiqueta (opcional; si no es el origen de ninguna IN del
+  contenedor, avisa en pantalla), artículo y cantidad, en el palé y cara activos; varias líneas con el mismo nº si la
+  caja lleva varios artículos; aviso si la caja ya está leída en otro palé. Al validar, el destino de las líneas hechas
+  es el palé (PAL-NN A/B). Comparación, ficha y Excel: cajas leídas, huecos en la numeración y cajas con un pedido que
+  no es de este contenedor. El KO_ se pondrá al ordenar y ubicar (fase 2). Las lecturas de la 1.0.x con KO_ siguen
+  validándose a su KO_. Campos nuevos solo en koroshi.recepcion.lectura (caja, caja_txt, pedido, pedido_ajeno);
+  contenedor_id deja de ser obligatorio.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

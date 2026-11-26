@@ -94,6 +94,46 @@ class TestRepartir(unittest.TestCase):
         self.assertEqual(lineas, [('m1', 'KO1', 3, ['l1'])])
 
 
+class TestCajasProveedor(unittest.TestCase):
+    """1.1.0: la caja es el nº escrito a mano en la caja del proveedor (sin KO_)."""
+    def test_normalizar_caja(self):
+        self.assertEqual(L.normalizar_caja(' 0108 '), '108')
+        self.assertEqual(L.normalizar_caja('108a'), '108A')
+        self.assertEqual(L.normalizar_caja('12  b'), '12 B')
+        for malo in ('', '   ', None, '8436583251234567890123', '8436583251234'):
+            with self.assertRaises(ValueError):
+                L.normalizar_caja(malo)
+
+    def test_pedido(self):
+        self.assertEqual(L.clave_pedido(' 0000001936 '), '1936')
+        self.assertEqual(L.clave_pedido('po-12 3'), 'PO-123')
+        self.assertEqual(L.clave_pedido(None), '')
+        self.assertFalse(L.pedido_ajeno('1936', ['0000001936', False]))
+        self.assertFalse(L.pedido_ajeno('', ['0000001936']))        # sin pedido escrito: no avisa
+        self.assertTrue(L.pedido_ajeno('0000001937', ['0000001936']))
+        self.assertTrue(L.pedido_ajeno('1936', []))                  # sin IN enlazadas: ajeno
+
+    def test_resumen(self):
+        lecturas = [('3', '', False), ('1', '1936', False), ('1', '1936', False), ('6', '9999', True),
+                    ('X', '', False)]
+        r = L.resumen_cajas(lecturas)
+        self.assertEqual(r['leidas'], ['1', '3', '6', 'X'])
+        self.assertEqual(r['huecos'], [2, 4, 5])
+        self.assertEqual(r['ajenas'], [('6', '9999')])
+        r = L.resumen_cajas(lecturas, esperadas=8)              # las que dijo quien recepciona
+        self.assertEqual(r['huecos'], [2, 4, 5, 7, 8])
+        self.assertEqual(L.resumen_cajas([])['huecos'], [])
+        r = L.resumen_cajas([('1000', '', False)])
+        self.assertEqual(r['n_huecos'], 999)
+        self.assertTrue(r['huecos_mas'])
+        self.assertEqual(len(r['huecos']), L.MAX_HUECOS)
+
+    def test_repartir_al_palet(self):
+        # el destino de la línea hecha es el palé (sin KO_): dos cajas en el mismo palé = una línea
+        lineas, _ = L.repartir([('m1', 'a', 10)], [('l1', 'a', 'PAL-01 A', 4), ('l2', 'a', 'PAL-01 A', 3)])
+        self.assertEqual(lineas, [('m1', 'PAL-01 A', 7, ['l1', 'l2'])])
+
+
 class TestCsv(unittest.TestCase):
     def test_celdas(self):
         self.assertEqual(L.csv_texto([['a;b', 1.5, None, 'x"y']]), '"a;b";1,5;;"x""y"\r\n')

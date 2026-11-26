@@ -64,6 +64,10 @@
                             <field name="uds_teoricas"/>
                         </group>
                     </group>
+                    <!-- 1.1.0: por caja del proveedor (nº escrito a mano) -->
+                    <group string="Cajas" attrs="{'invisible': [('cajas_leidas', '=', 0)]}">
+                        <field name="resumen_cajas_txt" nolabel="1"/>
+                    </group>
                     <notebook>
                         <page string="IN que trae">
                             <field name="picking_ids" domain="[('picking_type_id.code', '=', 'incoming'), ('company_id', '=', company_id)]"
@@ -82,7 +86,9 @@
                                 <tree decoration-muted="estado == 'anulada'" decoration-success="validada">
                                     <field name="fecha"/>
                                     <field name="palet_id"/>
-                                    <field name="contenedor_id"/>
+                                    <field name="caja_txt"/>
+                                    <field name="pedido"/>
+                                    <field name="pedido_ajeno"/>
                                     <field name="producto_id"/>
                                     <field name="cantidad" sum="Uds"/>
                                     <field name="employee_id"/>
@@ -101,7 +107,7 @@
                                 </tree>
                             </field>
                         </page>
-                        <page string="Cajas (KO_)">
+                        <page string="KO_ (hasta la 1.0.1)" attrs="{'invisible': [('contenedor_ids', '=', [])]}">
                             <field name="contenedor_ids" readonly="1">
                                 <tree>
                                     <field name="complete_name"/>
@@ -154,7 +160,9 @@
                 <field name="matricula"/>
                 <field name="fecha"/>
                 <field name="palet_id"/>
-                <field name="contenedor_id"/>
+                <field name="caja_txt"/>
+                <field name="pedido"/>
+                <field name="pedido_ajeno"/>
                 <field name="modelo"/>
                 <field name="talla"/>
                 <field name="producto_id"/>
@@ -175,14 +183,16 @@
                 <field name="recepcion_id"/>
                 <field name="producto_id"/>
                 <field name="modelo"/>
-                <field name="contenedor_id"/>
+                <field name="caja_txt"/>
+                <field name="pedido"/>
                 <field name="palet_id"/>
+                <filter name="ajenas" string="Pedido de otro contenedor" domain="[('pedido_ajeno', '=', True)]"/>
                 <filter name="leidas" string="Leídas" domain="[('estado', '=', 'ok')]"/>
                 <filter name="sin_validar" string="Sin pasar a stock" domain="[('estado', '=', 'ok'), ('validada', '=', False)]"/>
                 <filter name="anuladas" string="Anuladas" domain="[('estado', '=', 'anulada')]"/>
                 <group expand="0" string="Agrupar por">
                     <filter name="g_palet" string="Palé" context="{'group_by': 'palet_id'}"/>
-                    <filter name="g_caja" string="Caja" context="{'group_by': 'contenedor_id'}"/>
+                    <filter name="g_caja" string="Caja" context="{'group_by': 'caja_txt'}"/>
                     <filter name="g_modelo" string="Modelo" context="{'group_by': 'modelo'}"/>
                     <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
                 </group>

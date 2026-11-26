@@ -5,7 +5,7 @@
             <header class="o_kr_cab">
                 <div class="o_kr_titulo">Recepción de contenedores</div>
                 <input type="text" class="o_kr_codigo" autocomplete="off" inputmode="none"
-                       placeholder="Lee la tarjeta, la caja (KO_), el palé o la prenda"/>
+                       placeholder="Lee la tarjeta, el palé o la prenda"/>
             </header>
             <div class="o_kr_persona"/>
             <div class="o_kr_aviso"/>

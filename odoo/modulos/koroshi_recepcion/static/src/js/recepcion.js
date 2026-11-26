@@ -1,11 +1,13 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.0.0 (23/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.1.0 (26/11/2026) - PDA o tablet.
+ * 1.1.0: sin contenedor de control KO_. La caja es su nº escrito a mano (rotulador) y, si se quiere, el nº de pedido
+ *    de su etiqueta (ORDER NUMBER): si no es de ninguna IN del contenedor, avisa. Recepcionar solo crea palés.
  * 0. Pasar la tarjeta (la misma de Lecturas, Contenedores y Faltante: memoria de la PDA).
  * 1. Lista de contenedores abiertos o «Nuevo contenedor»: matrícula, muelle y las IN que trae.
- * 2. Ficha: «Recepcionar»: cuántas cajas y cuántos palés ve quien recepciona (crea un KO_ por caja y los PAL-NN A/B
- *    que falten) y el PDF de etiquetas para la Zebra del PC de Recepciones.
- * 3. Leer, a ciegas: palé y cara (botón o etiqueta), caja (etiqueta KO_ o «Siguiente caja»), prenda (código o
+ * 2. Ficha: «Recepcionar»: cuántos palés usa quien recepciona (crea los PAL-NN A/B que falten; las cajas, opcional)
+ *    y el PDF de etiquetas de los palés para la Zebra del PC de Recepciones.
+ * 3. Leer, a ciegas: palé y cara (botón o etiqueta), caja (nº a mano y pedido de la etiqueta), prenda (código o
  *    buscador: últimos 4 números del EAN o un trozo del modelo) y cantidad. «Guardar». Abajo, las últimas con «Anular».
  * 4. Responsable (su tarjeta en «Responsables de recepción»): «Comparar» con las IN, «Validar lo leído hasta ahora»
  *    o «Validar». Exportar (Excel).
@@ -31,6 +33,8 @@ var Pantalla = AbstractAction.extend({
         'click [data-accion]': '_onAccion',
         'click .o_kr_tecla': '_onTecla',
         'keydown .o_kr_buscar': '_onBuscarKey',
+        'keydown .o_kr_ncaja, .o_kr_pedido': '_onCampoCaja',
+        'change .o_kr_ncaja, .o_kr_pedido': '_onCambiaCaja',
     },
 
     init: function (parent, action) {
@@ -43,7 +47,8 @@ var Pantalla = AbstractAction.extend({
         this.ins = [];
         this.elegidas = {};
         this.palet = null;          // {id, nombre}
-        this.caja = null;           // {id, nombre}
+        this.caja = '';             // 1.1.0: nº de caja escrito a mano (texto)
+        this.pedido = '';           // nº de pedido de la etiqueta (opcional)
         this.prod = null;           // {id, nombre, modelo, talla}
         this.cantidad = '';
         this.token = _token();
@@ -289,8 +294,34 @@ var Pantalla = AbstractAction.extend({
         });
     },
     _ponerCaja: function (caja) {
-        this.caja = caja;
+        this.caja = caja.nombre;
         this._aviso('ok', 'Caja ' + caja.nombre + ': ahora la prenda.');
+    },
+    // nº de caja y pedido (1.1.0): se escriben a mano. Si el lector escribe ahí un código (prenda), se lee como código.
+    _pareceCodigo: function (v) { return /^\d{8,}$/.test(v) || /^PAL/i.test(v); },
+    _onCambiaCaja: function () {
+        var c = (this.$('.o_kr_ncaja').val() || '').trim();
+        var p = (this.$('.o_kr_pedido').val() || '').trim();
+        if (!this._pareceCodigo(c)) { this.caja = c; }
+        this.pedido = p;
+    },
+    _onCampoCaja: function (ev) {
+        if (ev.which !== 13 && ev.which !== 9) { return; }
+        ev.preventDefault();
+        var $i = $(ev.currentTarget);
+        var v = ($i.val() || '').trim();
+        if ($i.hasClass('o_kr_ncaja') && this._pareceCodigo(v)) {
+            $i.val(this.caja || '');
+            return this._leer(v, 'campo');
+        }
+        this._onCambiaCaja();
+        if ($i.hasClass('o_kr_ncaja')) {
+            this.$('.o_kr_pedido').focus();
+        } else {
+            $i.blur();
+            this.$('.o_kr_codigo').focus();
+            this._aviso('ok', 'Caja ' + (this.caja || '?') + ': ahora la prenda.');
+        }
     },
     _ponerProd: function (p) {
         this.prod = p;
@@ -416,14 +447,6 @@ var Pantalla = AbstractAction.extend({
         this.palet = p || null;
         this._pintar();
     },
-    _a_siguiente: function () {
-        var self = this;
-        return this._llamar('/koroshi/recepcion/siguiente', {recepcion_id: this.rec.id}).then(function (r) {
-            if (!r) { return; }
-            self._ponerCaja(r.caja);
-            self._pintar();
-        });
-    },
     _a_buscar: function () {
         var self = this;
         var texto = this.$('.o_kr_buscar').val();
@@ -454,26 +477,40 @@ var Pantalla = AbstractAction.extend({
     _a_guardar: function () {
         var self = this;
         if (!this._necesitaPersona()) { return; }
+        if (this.$('.o_kr_ncaja').length) { this._onCambiaCaja(); }
         if (!this.palet) { this._pitido(false); return this._aviso('mal', 'Falta el palé: tócalo arriba.'); }
-        if (!this.caja) { this._pitido(false); return this._aviso('mal', 'Falta la caja: lee su etiqueta KO_ o «Siguiente caja».'); }
+        if (!this.caja) { this._pitido(false); return this._aviso('mal', 'Falta el nº de caja (el escrito a mano).'); }
         if (!this.prod) { this._pitido(false); return this._aviso('mal', 'Falta la prenda: léela o búscala.'); }
         if (!parseInt(this.cantidad, 10)) { this._pitido(false); return this._aviso('mal', 'Escribe la cantidad.'); }
         return this._llamar('/koroshi/recepcion/guardar', {
-            recepcion_id: this.rec.id, caja_id: this.caja.id, palet_id: this.palet.id, producto_id: this.prod.id,
+            recepcion_id: this.rec.id, caja: this.caja, pedido: this.pedido, palet_id: this.palet.id,
+            producto_id: this.prod.id,
             cantidad: parseInt(this.cantidad, 10), employee_id: this.persona.id, token: this.token,
         }).then(function (r) {
             if (!r) { return; }
             self.token = _token();          // la siguiente lectura es otra
             self.rec = r.recepcion;
             self.ultimas = r.ultimas;
-            self.prod = null;               // la caja y el palé se quedan: una caja puede tener varias tallas
+            self.prod = null;               // la caja, el pedido y el palé se quedan: una caja puede tener varias tallas
             self.cantidad = '';
-            self._pitido(true);
-            self._aviso('ok', 'Guardado: ' + r.msg);
             self._pintar();
+            if (r.avisos && r.avisos.length) {
+                self._pitido(false);
+                self._aviso('mal', 'Guardado, pero OJO: ' + r.avisos.join('; ') + '. (' + r.msg + ')');
+            } else {
+                self._pitido(true);
+                self._aviso('ok', 'Guardado: ' + r.msg);
+            }
         });
     },
-    _a_otra_caja: function () { this.caja = null; this.prod = null; this.cantidad = ''; this._pintar(); },
+    _a_otra_caja: function () {
+        this.caja = '';
+        this.pedido = '';
+        this.prod = null;
+        this.cantidad = '';
+        this._pintar();
+        this.$('.o_kr_ncaja').focus();
+    },
     _a_anular: function (id) {
         var self = this;
         if (!this._necesitaPersona()) { return; }
@@ -636,7 +673,7 @@ var Pantalla = AbstractAction.extend({
         }
         if (r.state === 'leyendo') {
             h += '<button type="button" class="o_kr_primario" data-accion="leer">Leer cajas</button>' +
-                '<button type="button" data-accion="recepcionar">+ Cajas / + Palés</button>';
+                '<button type="button" data-accion="recepcionar">+ Palés / cajas</button>';
         }
         if (r.tanda_id) { h += '<button type="button" data-accion="imprimir">🖨 Etiquetas (última tanda)</button>'; }
         if (r.state === 'pendiente' || r.state === 'leyendo') {
@@ -657,16 +694,15 @@ var Pantalla = AbstractAction.extend({
     _htmlRecepcionar: function () {
         var r = this.rec;
         return '<div class="o_kr_grande">' + _e(r.matricula) + ': recepcionar</div>' +
-            '<p>Escribe lo que ves. Se crea un contenedor de control (KO_) por caja y los palés que falten, con sus ' +
-            'etiquetas para la Zebra del PC de Recepciones.' + (r.contenedores ? ' Ya hay ' + r.contenedores +
-            ' cajas creadas: solo se crean las que falten hasta el número nuevo.' : '') + '</p>' +
-            '<label>¿Cuántas cajas?</label><input type="number" min="1" class="o_kr_campo o_kr_cajas" value="' +
-            (r.cajas || '') + '"/>' +
+            '<p>Se crean los palés que falten, con sus etiquetas para la Zebra del PC de Recepciones. Las cajas NO ' +
+            'llevan etiqueta nuestra: al leer se escribe el nº que llevan a mano.</p>' +
+            '<label>¿Cuántas cajas hay? (opcional: para ver qué números faltan)</label>' +
+            '<input type="number" min="0" class="o_kr_campo o_kr_cajas" value="' + (r.cajas || '') + '"/>' +
             '<label>¿Cuántos palés vas a usar? (cada palé tiene cara A y cara B)</label>' +
             '<input type="number" min="1" max="99" class="o_kr_campo o_kr_npalets" value="' + (r.palets || '') + '"/>' +
             '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" value="' + _e(r.muelle) + '"/>' +
             '<div class="o_kr_fila"><button type="button" class="o_kr_primario" data-accion="hacer_recepcionar">' +
-            'Crear cajas y palés</button><button type="button" data-accion="ficha">Cancelar</button></div>';
+            'Crear palés y empezar</button><button type="button" data-accion="ficha">Cancelar</button></div>';
     },
 
     _htmlLeer: function () {
@@ -680,12 +716,16 @@ var Pantalla = AbstractAction.extend({
             h += '<button type="button" data-accion="palet" data-valor="' + p.id + '"' +
                 (activo ? ' class="o_kr_activo"' : '') + '>' + _e(p.nombre.replace('PAL-', '')) + '</button>';
         });
-        if (!r.palets_lista.length) { h += '<span class="o_kr_gris">Sin palés: «+ Cajas / + Palés» en la ficha.</span>'; }
+        if (!r.palets_lista.length) { h += '<span class="o_kr_gris">Sin palés: «+ Palés / cajas» en la ficha.</span>'; }
         h += '</div>';
         h += '<div class="o_kr_fila">' +
             '<div class="o_kr_caja' + (this.caja ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">2. Caja</div>' +
-            '<div class="o_kr_grande">' + (this.caja ? _e(this.caja.nombre) : 'Lee la etiqueta KO_') + '</div>' +
-            '<button type="button" data-accion="siguiente">Siguiente caja</button>' +
+            '<label>Nº de caja (el escrito a mano)</label>' +
+            '<input type="text" class="o_kr_campo o_kr_ncaja" autocomplete="off" placeholder="108" value="' +
+            _e(this.caja) + '"/>' +
+            '<label>Nº de pedido de la etiqueta (ORDER NUMBER, si quieres)</label>' +
+            '<input type="text" class="o_kr_campo o_kr_pedido" autocomplete="off" placeholder="0000001936" value="' +
+            _e(this.pedido) + '"/>' +
             (this.caja ? '<button type="button" data-accion="otra_caja">Otra caja</button>' : '') + '</div>' +
             '<div class="o_kr_caja' + (this.palet ? ' o_kr_hecho' : ' o_kr_falta') + '"><div class="o_kr_etq">Palé</div>' +
             '<div class="o_kr_grande">' + (this.palet ? _e(this.palet.nombre) : 'Toca un palé') + '</div></div></div>';
@@ -725,9 +765,12 @@ var Pantalla = AbstractAction.extend({
     _htmlUltimas: function () {
         if (!this.ultimas || !this.ultimas.length) { return ''; }
         var h = '<div class="o_kr_etq" style="margin-top:10px">Últimas lecturas</div><table><tr><th>Hora</th>' +
-            '<th>Palé</th><th>Caja</th><th>Prenda</th><th class="o_kr_n">Uds</th><th>Quién</th><th></th></tr>';
+            '<th>Palé</th><th>Caja</th><th>Pedido</th><th>Prenda</th><th class="o_kr_n">Uds</th><th>Quién</th>' +
+            '<th></th></tr>';
         _.each(this.ultimas, function (l) {
-            h += '<tr><td>' + _e(l.hora) + '</td><td>' + _e(l.palet) + '</td><td>' + _e(l.caja) + '</td><td>' +
+            h += '<tr><td>' + _e(l.hora) + '</td><td>' + _e(l.palet) + '</td><td>' + _e(l.caja) + '</td><td' +
+                (l.ajeno ? ' class="o_kr_falta" title="No es de ninguna IN de este contenedor"' : '') + '>' +
+                _e(l.pedido) + (l.ajeno ? ' ⚠' : '') + '</td><td>' +
                 _e(l.producto) + '</td><td class="o_kr_n">' + _n(l.uds) + '</td><td>' + _e(l.quien) + '</td><td>' +
                 (l.validada ? '<span class="o_kr_gris">en stock</span>'
                     : '<button type="button" data-accion="anular" data-valor="' + l.id + '">Anular</button>') +
@@ -749,6 +792,18 @@ var Pantalla = AbstractAction.extend({
             : 'o_kr_falta') + '"><div class="o_kr_etq">Leído</div><div class="o_kr_grande">' + _n(c.total.leido) +
             '</div></div><div class="o_kr_caja"><div class="o_kr_etq">Leído sin pasar a stock</div><div class="o_kr_grande">' +
             _n(c.sin_validar) + '</div></div></div>';
+        var cj = c.cajas || {leidas: 0, esperadas: 0, huecos: [], n_huecos: 0, ajenas: []};
+        h += '<div class="o_kr_fila"><div class="o_kr_caja"><div class="o_kr_etq">Cajas leídas</div>' +
+            '<div class="o_kr_grande">' + cj.leidas + (cj.esperadas ? ' / ' + cj.esperadas : '') + '</div></div>' +
+            '<div class="o_kr_caja ' + (cj.n_huecos ? 'o_kr_falta' : 'o_kr_hecho') + '"><div class="o_kr_etq">' +
+            'Huecos en la numeración</div><div class="o_kr_grande">' + cj.n_huecos + '</div>' +
+            (cj.n_huecos ? '<div>' + _e(cj.huecos.join(', ')) + (cj.huecos.length < cj.n_huecos ? '…' : '') +
+            '</div>' : '') + '</div>' +
+            '<div class="o_kr_caja ' + (cj.ajenas.length ? 'o_kr_falta' : 'o_kr_hecho') + '"><div class="o_kr_etq">' +
+            'Cajas de otro pedido</div><div class="o_kr_grande">' + cj.ajenas.length + '</div>' +
+            (cj.ajenas.length ? '<div>' + _e(_.map(cj.ajenas, function (a) {
+                return 'caja ' + a.caja + ' (pedido ' + a.pedido + ')';
+            }).join(', ')) + '</div>' : '') + '</div></div>';
         h += '<table><tr><th>Modelo / talla</th><th class="o_kr_n">Teórico</th><th class="o_kr_n">Leído</th>' +
             '<th class="o_kr_n">Diferencia</th><th>Dónde (palé / caja: uds)</th></tr>';
         var algo = false;

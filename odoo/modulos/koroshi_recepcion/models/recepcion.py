@@ -11,6 +11,13 @@
 # Solo tablas propias. No añade campos a stock.picking, stock.picking.type ni stock.move.line: crea registros
 # (ubicaciones KO_ y PAL-, líneas hechas de las IN) y valida la IN con lo de Odoo.
 # Diseño: bin/versiones/diseno-recepciones-packing-list_2026-11-23_v6.md
+#
+# 1.1.0 (26/11/2026, urgente, Isaac): la recepción ya NO usa el contenedor de control KO_. Las cajas llegan solo con
+# la etiqueta del proveedor (REFERENCE, ORDER NUMBER = origin de la IN, talla y uds a mano, nº de caja a rotulador).
+# Cada lectura = nº de caja (el escrito a mano) + nº de pedido de la etiqueta (opcional; aviso si no es de ninguna IN
+# del contenedor) + artículo + cantidad, en el palé y cara activos. Al validar, el destino de las líneas hechas es el
+# palé (PAL-NN A/B). El KO_ se pondrá después, al ordenar y ubicar (fase 2). Las lecturas de la 1.0.x con KO_ siguen
+# validándose a su KO_.
 # =============================================================================
 import logging
 
@@ -53,7 +60,9 @@ class KoroshiRecepcion(models.Model):
                                    string='IN que trae',
                                    help='Las IN de KOROSHI de este contenedor. Al validar a medias se añaden solas '
                                         'las IN pendientes que deja Odoo (backorder).')
-    cajas = fields.Integer('Cajas (según quien recepciona)', tracking=True)
+    cajas = fields.Integer('Cajas (según quien recepciona)', tracking=True,
+                           help='Las que dice quien recepciona (o el albarán). Opcional: sirve para ver los huecos de '
+                                'numeración hasta ese número.')
     palets = fields.Integer('Palés', tracking=True)
     contenedor_ids = fields.Many2many('stock.location', 'koroshi_recepcion_contenedor_rel', 'recepcion_id',
                                       'location_id', string='Contenedores de control (KO_)')
@@ -70,15 +79,47 @@ class KoroshiRecepcion(models.Model):
     cajas_leidas = fields.Integer('Cajas leídas', compute='_compute_resumen')
     uds_validadas = fields.Integer('Uds pasadas a stock', compute='_compute_resumen')
     uds_teoricas = fields.Integer('Uds de las IN', compute='_compute_resumen')
+    resumen_cajas_txt = fields.Text('Cajas leídas', compute='_compute_resumen_cajas',
+                                    help='Cajas leídas, huecos en la numeración y cajas con un pedido que no es de las '
+                                         'IN de este contenedor.')
 
     @api.depends('lectura_ids.cantidad', 'lectura_ids.estado', 'lectura_ids.validada', 'picking_ids')
     def _compute_resumen(self):
         for r in self:
             ok = r.lectura_ids.filtered(lambda l: l.estado == 'ok')
             r.uds_leidas = sum(ok.mapped('cantidad'))
-            r.cajas_leidas = len(ok.mapped('contenedor_id'))
+            r.cajas_leidas = len({l.caja_txt for l in ok})
             r.uds_validadas = sum(ok.filtered('validada').mapped('cantidad'))
             r.uds_teoricas = int(sum(r._teorico().values()))
+
+    def _compute_resumen_cajas(self):
+        for r in self:
+            r.resumen_cajas_txt = r.texto_cajas(r.resumen_cajas())
+
+    def _origenes(self):
+        return [o for o in self._todas_las_in().mapped('origin') if o]
+
+    def resumen_cajas(self):
+        """Por caja: las leídas, los huecos de numeración y las de un pedido ajeno (ver logica.resumen_cajas)."""
+        self.ensure_one()
+        ok = self.lectura_ids.filtered(lambda l: l.estado == 'ok')
+        origenes = self._origenes()       # ahora (si se enlaza la IN después, el aviso desaparece)
+        return L.resumen_cajas([(l.caja_txt, l.pedido or '', L.pedido_ajeno(l.pedido, origenes)) for l in ok],
+                               self.cajas)
+
+    @api.model
+    def texto_cajas(self, res):
+        lineas = ['Cajas leídas: %d%s' % (len(res['leidas']),
+                                          (': ' + ', '.join(res['leidas'])) if res['leidas'] else '')]
+        if res['n_huecos']:
+            lineas.append('Huecos en la numeración (%d): %s%s' % (
+                res['n_huecos'], ', '.join(map(str, res['huecos'])), '…' if res['huecos_mas'] else ''))
+        else:
+            lineas.append('Sin huecos en la numeración.')
+        if res['ajenas']:
+            lineas.append('Cajas con un pedido que no es de este contenedor: %s' % ', '.join(
+                'caja %s (pedido %s)' % (c, p) for c, p in res['ajenas']))
+        return '\n'.join(lineas)
 
     @api.model
     def create(self, vals):
@@ -256,23 +297,20 @@ class KoroshiRecepcion(models.Model):
         return locs
 
     def recepcionar(self, cajas, palets, muelle=None, employee=None):
-        """Botón «Recepcionar» (o «+ cajas» / «+ palés» después): crea los KO_ que faltan hasta «cajas», los palés que
-        faltan hasta «palets» y una tanda de etiquetas con lo nuevo. Devuelve la tanda (o vacío si no hay nada nuevo)."""
+        """Botón «Recepcionar» (o «+ palés» después): crea los palés que faltan hasta «palets» y una tanda de etiquetas
+        con los nuevos. «cajas» es opcional (las que dice quien recepciona): desde la 1.1.0 NO se crean KO_ (las cajas
+        llevan su nº escrito a mano). Devuelve la tanda (o vacío si no hay nada nuevo)."""
         self.ensure_one()
         if self.state in ('validada', 'cancelada'):
             raise UserError('La recepción %s está %s.' % (self.name, dict(ESTADOS)[self.state].lower()))
         cajas, palets = int(cajas or 0), int(palets or 0)
-        if cajas < 1:
-            raise UserError('Escribe cuántas cajas hay.')
+        if not (0 <= cajas <= L.MAX_CAJAS):
+            raise UserError('El nº de cajas va de 0 a %d.' % L.MAX_CAJAS)
         if not (1 <= palets <= L.MAX_PALETS):
             raise UserError('Escribe cuántos palés vas a usar (de 1 a %d).' % L.MAX_PALETS)
-        nuevos_ko = self.env['stock.location']
-        faltan = cajas - len(self.contenedor_ids)
-        if faltan > 0:
-            nuevos_ko = self._crear_contenedores(faltan)
+        nuevos_ko = self.env['stock.location']      # 1.1.0: ya no se crean KO_ al recepcionar
         nuevos_pal = self._asegurar_palets(max(palets, self.palets or 0))
-        vals = {'cajas': max(cajas, len(self.contenedor_ids) + len(nuevos_ko)), 'palets': max(palets, self.palets or 0),
-                'state': 'leyendo'}
+        vals = {'cajas': cajas or self.cajas, 'palets': max(palets, self.palets or 0), 'state': 'leyendo'}
         if muelle:
             vals['muelle'] = muelle.strip()
         if nuevos_ko:
@@ -320,9 +358,10 @@ class KoroshiRecepcion(models.Model):
             raise UserError('%s no es un palé de recepción (PAL-01 A…).' % (loc and loc.display_name or '?'))
         return loc
 
-    def guardar_lectura(self, contenedor, palet, producto, cantidad, employee=None, token=None):
-        """Guarda lo leído de una caja. El KO_ queda dentro de su palé (como un KO_ dentro de un hueco). Si la misma
-        lectura llega dos veces (mismo token: doble toque o reintento), devuelve la primera sin repetirla."""
+    def guardar_lectura(self, caja, pedido, palet, producto, cantidad, employee=None, token=None):
+        """Guarda lo leído de una caja del proveedor (1.1.0): su nº escrito a mano, el pedido de la etiqueta (opcional),
+        el artículo y la cantidad, en el palé activo. Una caja con varios artículos = varias lecturas con el mismo nº.
+        Si la misma lectura llega dos veces (mismo token: doble toque o reintento), devuelve la primera sin repetirla."""
         self.ensure_one()
         Lectura = self.env['koroshi.recepcion.lectura'].sudo()
         if token:
@@ -333,16 +372,29 @@ class KoroshiRecepcion(models.Model):
             raise UserError('La recepción %s no está abierta para leer (%s).' % (
                 self.name, dict(ESTADOS)[self.state].lower()))
         cantidad = L.cantidad_valida(cantidad)
+        caja = L.normalizar_caja(caja)
+        pedido = ' '.join((pedido or '').split())[:40]
         self.palet_valido(palet)
         if not producto:
             raise UserError('Falta el artículo.')
-        self.contenedor_para_leer(contenedor)
-        if contenedor.location_id != palet:
-            contenedor.sudo().write({'location_id': palet.id})
         return Lectura.create({
-            'recepcion_id': self.id, 'contenedor_id': contenedor.id, 'palet_id': palet.id,
+            'recepcion_id': self.id, 'caja': caja, 'pedido': pedido or False,
+            'pedido_ajeno': L.pedido_ajeno(pedido, self._origenes()), 'palet_id': palet.id,
             'producto_id': producto.id, 'cantidad': cantidad, 'employee_id': employee and employee.id or False,
             'token': token or False})
+
+    def avisos_lectura(self, lectura):
+        """Lo que se enseña en pantalla al guardar (no para nada): pedido ajeno, caja ya leída en otro palé."""
+        avisos = []
+        if lectura.pedido_ajeno:
+            avisos.append('el pedido %s no es de ninguna IN de este contenedor (%s)' % (
+                lectura.pedido, ', '.join(self._origenes()) or 'sin IN'))
+        otros = self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.id != lectura.id
+                                          and l.caja_txt == lectura.caja_txt and l.palet_id != lectura.palet_id)
+        if otros:
+            avisos.append('la caja %s ya está leída en %s' % (
+                lectura.caja_txt, ', '.join(sorted(set(otros.mapped('palet_id.name'))))))
+        return avisos
 
     def siguiente_contenedor(self):
         """El primer KO_ de la recepción sin ninguna lectura (para «Siguiente caja» sin leer la etiqueta)."""
@@ -362,7 +414,7 @@ class KoroshiRecepcion(models.Model):
         donde = {}
         for l in self.lectura_ids.filtered(lambda x: x.estado == 'ok'):
             d = donde.setdefault(l.producto_id, {})
-            clave = '%s / %s' % (l.palet_id.name or '¿palé?', l.contenedor_id.name)
+            clave = '%s / caja %s' % (l.palet_id.name or '¿palé?', l.caja_txt)
             d[clave] = d.get(clave, 0) + l.cantidad
         filas = []
         for prod, (t, le, dif, estado) in L.comparar(self._teorico(), self._leido()).items():
@@ -405,11 +457,12 @@ class KoroshiRecepcion(models.Model):
         for p in abiertas:
             for m in p.move_lines.filtered(lambda x: x.state not in ('done', 'cancel')).sorted('id'):
                 pendientes.append((m, m.product_id, m.product_uom_qty - m.quantity_done))
-        leidos = [(l, l.producto_id, l.contenedor_id, l.cantidad) for l in lecturas]
+        # destino: el palé (1.1.0); las lecturas de la 1.0.x con KO_, su KO_
+        leidos = [(l, l.producto_id, l.contenedor_id or l.palet_id, l.cantidad) for l in lecturas]
         lineas, sin_in = L.repartir(pendientes, leidos)
         teoricos = set(self._teorico())
-        sin_in_txt = ['%s %g uds en %s%s' % (
-            l.producto_id.display_name, l.cantidad, l.contenedor_id.name,
+        sin_in_txt = ['%s %g uds en la caja %s%s' % (
+            l.producto_id.display_name, l.cantidad, l.caja_txt,
             ' (sus IN ya están validadas)' if l.producto_id in teoricos else ' (no viene en ninguna IN)')
             for l in sin_in]
         if sin_in and not parcial:
@@ -543,7 +596,14 @@ class KoroshiRecepcionLectura(models.Model):
     _order = 'id desc'
 
     recepcion_id = fields.Many2one('koroshi.recepcion', required=True, ondelete='cascade', index=True)
-    contenedor_id = fields.Many2one('stock.location', 'Caja (KO_)', required=True, index=True)
+    contenedor_id = fields.Many2one('stock.location', 'KO_ (hasta la 1.0.1)', index=True,
+                                    help='Solo en lecturas de la 1.0.x: desde la 1.1.0 la caja es su nº escrito a mano.')
+    caja = fields.Char('Nº de caja', index=True, help='El nº escrito a mano en la caja del proveedor (1.1.0).')
+    caja_txt = fields.Char('Caja', compute='_compute_caja_txt', store=True, index=True,
+                           help='El nº de caja o, en las lecturas de la 1.0.x, el KO_.')
+    pedido = fields.Char('Pedido (etiqueta)', help='ORDER NUMBER de la etiqueta de la caja, si se ha escrito.')
+    pedido_ajeno = fields.Boolean('Pedido que no es de este contenedor', readonly=True,
+                                  help='Se escribió un pedido y no es el origen de ninguna IN del contenedor.')
     palet_id = fields.Many2one('stock.location', 'Palé', required=True)
     producto_id = fields.Many2one('product.product', 'Artículo', required=True, index=True)
     cantidad = fields.Integer('Uds', required=True)
@@ -561,6 +621,11 @@ class KoroshiRecepcionLectura(models.Model):
     matricula = fields.Char(related='recepcion_id.matricula', store=True, string='Matrícula')
 
     _sql_constraints = [('token_unico', 'unique(token)', 'Esta lectura ya está guardada.')]
+
+    @api.depends('caja', 'contenedor_id')
+    def _compute_caja_txt(self):
+        for l in self:
+            l.caja_txt = l.caja or l.contenedor_id.name or ''
 
     @api.depends('producto_id')
     def _compute_partes(self):

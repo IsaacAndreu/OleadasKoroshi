@@ -101,6 +101,59 @@ def cantidad_valida(texto):
     return n
 
 
+# ----------------------------------------------------------------------------- cajas del proveedor (1.1.0)
+MAX_CAJA = 20               # caracteres del nº de caja escrito a mano
+MAX_HUECOS = 300            # huecos de numeración que se enseñan
+
+
+def normalizar_caja(texto):
+    """El nº de caja escrito a rotulador: «108», « 0108 », «108a» -> «108», «108», «108A». Vacío -> ValueError.
+    Las cifras sin ceros delante (así «0108» y «108» son la misma caja)."""
+    t = ' '.join((texto or '').split()).upper()
+    if not t:
+        raise ValueError('Escribe el nº de caja (el que lleva escrito a mano).')
+    if len(t) > MAX_CAJA or (t.isdigit() and len(t) >= 8):
+        raise ValueError('El nº de caja «%s» parece un código de barras: escribe el nº que lleva la caja a mano.' % t)
+    if t.isdigit():
+        t = str(int(t))
+    return t
+
+
+def clave_pedido(texto):
+    """Nº de pedido de la etiqueta («ORDER NUMBER 0000001936») para compararlo con el origen de las IN: sin espacios,
+    en mayúsculas y, si son cifras, sin ceros delante («1936» = «0000001936»). Vacío -> ''."""
+    t = ''.join((texto or '').split()).upper()
+    if t.isdigit():
+        t = str(int(t))
+    return t
+
+
+def pedido_ajeno(pedido, origenes):
+    """True si se ha escrito un pedido y no es el de ninguna IN (origenes: los origin de las IN del contenedor)."""
+    p = clave_pedido(pedido)
+    return bool(p) and p not in {clave_pedido(o) for o in origenes if o}
+
+
+def clave_caja(caja):
+    """Para ordenar nº de caja: los números por su valor, después lo demás."""
+    c = caja or ''
+    return (0, int(c), '') if c.isdigit() else (1, 0, c)
+
+
+def resumen_cajas(lecturas, esperadas=0):
+    """lecturas: [(caja, pedido, ajeno)] de las lecturas buenas. esperadas: las cajas que dijo quien recepciona.
+    Devuelve {'leidas': [cajas ordenadas], 'huecos': [números que faltan entre 1 y el mayor (o las esperadas)],
+    'huecos_mas': hay más huecos que MAX_HUECOS, 'ajenas': [(caja, pedido)] con un pedido que no es de este
+    contenedor}."""
+    cajas = sorted({c for c, _p, _a in lecturas if c}, key=clave_caja)
+    numeros = {int(c) for c in cajas if c.isdigit()}
+    tope = max(list(numeros) + [int(esperadas or 0)]) if (numeros or esperadas) else 0
+    huecos = [n for n in range(1, tope + 1) if n not in numeros]
+    ajenas = sorted({(c, p) for c, p, a in lecturas if a}, key=lambda x: (clave_caja(x[0]), x[1]))
+    return {'leidas': cajas, 'huecos': huecos[:MAX_HUECOS], 'huecos_mas': len(huecos) > MAX_HUECOS,
+            'n_huecos': len(huecos), 'ajenas': ajenas}
+
+
 # ----------------------------------------------------------------------------- comparar
 def comparar(teorico, leido):
     """teorico, leido: {producto: uds}. Devuelve {producto: (teorico, leido, diferencia, estado)}.
