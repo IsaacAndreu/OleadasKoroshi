@@ -1,6 +1,8 @@
 odoo.define('koroshi_recepcion.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Recepción de contenedores v1.5.0 (26/11/2026) - PDA o tablet.
+/* KOROSHI Recepción de contenedores v1.6.0 (26/11/2026) - PDA o tablet.
+ * 1.6.0: datos de la IN: los contenedores (carrier_tracking_ref) rellenan la matrícula; el packing list en Excel
+ *    dice qué lleva cada caja («caja 7 de 2711JA12: 40 L»), avisa si el nº no está o ya se contó, y qué nº faltan.
  * 1.5.0: las etiquetas van a la Zebra de Expediciones por la cola de koroshi_impresion (EXP1): última tanda, todos los
  *    palés de la recepción (aunque ya existan) o solo el palé tocado.
  * 1.4.1: «+1 caja» (Isaac: «el escribim 1 vegada i dsp es anar sumant»): con el modelo activo puesto una vez, cada
@@ -49,6 +51,8 @@ var Pantalla = AbstractAction.extend({
         'keydown .o_kr_cant': '_onCantKey',
         'input .o_kr_cant': '_onCantInput',
         'keydown .o_kr_buscar_in': '_onBuscarInKey',
+        'keydown .o_kr_ncaja1': '_onCaja1Key',
+        'change .o_kr_in input[type=checkbox]': '_onMarcaIn',
         'change .o_kr_ncaja, .o_kr_pedido': '_onCambiaCaja',
     },
 
@@ -545,18 +549,26 @@ var Pantalla = AbstractAction.extend({
         if (Date.now() < this.masUnoHasta) { return; }          // doble toque: 2 s entre «+1»
         this.masUnoHasta = Date.now() + 2000;
         if (!this.modelo) { this._pitido(false); return this._aviso('mal', 'Primero pon el modelo (escríbelo y Intro, o lee una prenda).'); }
+        var nCaja = (this.$('.o_kr_ncaja1').val() || '').trim();     // 1.6.0: nº de caja, opcional
         return this._llamar('/koroshi/recepcion/mas_uno', {
             recepcion_id: this.rec.id, palet_id: this.palet ? this.palet.id : false, modelo: this.modelo,
-            employee_id: this.persona.id, token: _token(),
+            employee_id: this.persona.id, token: _token(), caja: nCaja,
         }).then(function (r) {
             if (!r) { return; }
             self.rec = r.recepcion;
             self.ultimas = r.ultimas;
-            self._pitido(true);
-            self._aviso('ok', '+1 caja de ' + (r.modelo || 'sin modelo') + ': ' + ((self.rec.por_modelo || {})[r.modelo] || 0) +
-                ' de este modelo; ' + self.rec.cajas_leidas + ' / ' + (self.rec.total || '?') + ' en total.' +
-                (self.palet ? '' : ' (sin palé)'));
+            var txt = '+1 ' + (r.pl ? r.pl : (r.caja ? 'caja ' + r.caja + ' de ' : 'caja de ') + (r.modelo || 'sin modelo')) +
+                ' · ' + ((self.rec.por_modelo || {})[r.modelo] || 0) + ' de este modelo; ' + self.rec.cajas_leidas + ' / ' +
+                (self.rec.total || '?') + ' en total.' + (self.palet ? '' : ' (sin palé)');
             self._pintar();
+            self.$('.o_kr_ncaja1').focus();
+            if (r.avisos && r.avisos.length) {
+                self._pitido(false);
+                self._aviso('mal', 'Contada, pero OJO: ' + r.avisos.join('; ') + '. ' + txt);
+            } else {
+                self._pitido(true);
+                self._aviso('ok', txt);
+            }
         });
     },
     _a_menos_uno: function () {
@@ -575,12 +587,54 @@ var Pantalla = AbstractAction.extend({
     _htmlMasUno: function () {
         var r = this.rec;
         var n = this.modelo ? ((r.por_modelo || {})[this.modelo] || 0) : 0;
+        var faltan = this.modelo ? (r.faltan || {})[this.modelo] : '';
         return '<div class="o_kr_caja ' + (this.modelo ? 'o_kr_hecho' : 'o_kr_falta') + '"><div class="o_kr_etq">' +
             'Contar cajas (modelo activo)</div>' +
             '<div class="o_kr_grande">' + (this.modelo ? _e(this.modelo) + ': ' + n + ' cajas' : 'Pon el modelo abajo (3)') +
-            '</div><div class="o_kr_fila"><button type="button" class="o_kr_primario o_kr_mas_uno" ' +
+            '</div>' + (faltan ? '<div>Faltan (nº): ' + _e(faltan) + '</div>' : '') +
+            '<div class="o_kr_fila"><input type="text" class="o_kr_campo o_kr_ncaja1" autocomplete="off" ' +
+            'placeholder="nº de caja (si quieres) e Intro" style="max-width:220px"/>' +
+            '<button type="button" class="o_kr_primario o_kr_mas_uno" ' +
             'style="font-size:28px;min-width:180px;min-height:70px" data-accion="mas_uno">+1 caja</button>' +
             '<button type="button" data-accion="menos_uno">−1</button></div></div>';
+    },
+    // 1.6.0: Intro en el nº de caja del «+1» = «+1 caja» (un EAN leído ahí es una prenda: su modelo)
+    _onCaja1Key: function (ev) {
+        if (ev.which !== 13) { return; }
+        ev.preventDefault();
+        var v = (ev.currentTarget.value || '').trim();
+        if (/^\d{8,}$/.test(v)) { ev.currentTarget.value = ''; return this._leer(v, 'campo'); }
+        this.masUnoHasta = 0;
+        this._a_mas_uno();
+    },
+    // 1.6.0: al marcar IN, la matrícula sale de sus contenedores (carrier_tracking_ref) si no se ha escrito otra
+    _onMarcaIn: function () {
+        var self = this;
+        if (this.vista !== 'nueva') { return; }
+        this._elegidasIds();
+        var $m = this.$('.o_kr_matricula');
+        var actual = ($m.val() || '').trim();
+        if (actual && actual !== this.matriculaAuto) { return; }
+        var conts = [];
+        _.each(_.keys(this.elegidas), function (k) {
+            var i = self.elegidas[k] && self.insVistas[k];
+            _.each(((i && i.contenedores) || '').split(' + '), function (c) {
+                if (c && conts.indexOf(c) < 0) { conts.push(c); }
+            });
+        });
+        this.matriculaAuto = conts.join(' + ');
+        $m.val(this.matriculaAuto);
+    },
+    _a_cargar_pl: function () {
+        var self = this;
+        if (!this._necesitaPersona()) { return; }
+        return this._llamar('/koroshi/recepcion/cargar_pl', {recepcion_id: this.rec.id, employee_id: this.persona.id})
+            .then(function (r) {
+                if (!r) { return; }
+                self.rec = r.recepcion;
+                self._aviso(r.recepcion.pl_cajas ? 'ok' : 'mal', 'Packing list: ' + r.msg);
+                self._pintar();
+            });
     },
     _a_cerrar: function () {
         var self = this;
@@ -665,12 +719,13 @@ var Pantalla = AbstractAction.extend({
             self.cantidad = '';
             self._pintar();
             self.$('.o_kr_ncaja').focus();
+            var pl = r.pl ? ' Según el PL: ' + r.pl + '.' : '';
             if (r.avisos && r.avisos.length) {
                 self._pitido(false);
-                self._aviso('mal', 'Guardado, pero OJO: ' + r.avisos.join('; ') + '. (' + r.msg + ')');
+                self._aviso('mal', 'Guardado, pero OJO: ' + r.avisos.join('; ') + '. (' + r.msg + ')' + pl);
             } else {
                 self._pitido(true);
-                self._aviso('ok', 'Guardado: ' + r.msg);
+                self._aviso('ok', 'Guardado: ' + r.msg + pl);
             }
         });
     },
@@ -808,7 +863,7 @@ var Pantalla = AbstractAction.extend({
         var h = '';
         if (nueva) {
             var b = this.borrador || {};
-            h += '<label>Matrícula del contenedor (puerta o lateral)</label>' +
+            h += '<label>Contenedores (salen de la IN al marcarla; corrígelos si no son)</label>' +
                 '<input type="text" class="o_kr_campo o_kr_matricula" placeholder="MSKU1234567" value="' +
                 _e(b.matricula) + '"/>' +
                 '<label>Muelle</label><input type="text" class="o_kr_campo o_kr_muelle" placeholder="1" value="' +
@@ -837,6 +892,7 @@ var Pantalla = AbstractAction.extend({
                 (self.elegidas[i.id] ? ' checked="checked"' : '') + '/><div><b>' + _e(i.origen || i.name) + '</b> ' +
                 _e(i.name) + (i.backorder ? ' (pendiente de otra)' : '') + ' · ' + _e(i.fecha) + ' · ' + _n(i.uds) +
                 ' uds' + (i.ref ? ' · Ref. ' + _e(i.ref) : '') +
+                (i.contenedores ? '<br/>Contenedores: <b>' + _e(i.contenedores) + '</b>' : '') +
                 (i.en_otra ? '<br/><span class="o_kr_gris">Ya está en ' + _e(i.en_otra) + '</span>' : '') +
                 '</div></div>';
         });
@@ -854,7 +910,8 @@ var Pantalla = AbstractAction.extend({
             '<button type="button" data-accion="ficha">↻</button></div>';
         h += '<div class="o_kr_grande">' + _e(r.matricula) + '</div><div>' + _e(r.name) +
             (r.muelle ? ' · Muelle ' + _e(r.muelle) : '') + ' · Llegada ' + _e(r.llegada) +
-            (r.referencia ? ' · Ref. ' + _e(r.referencia) : '') + '</div>';
+            (r.referencia ? ' · Ref. ' + _e(r.referencia) : '') + '</div>' +
+            '<div class="o_kr_gris">Packing list (Excel de la IN): ' + _e(r.pl_info || 'sin cargar') + '</div>';
         h += '<table><tr><th>IN</th><th>Pedido</th><th>Ref. proveedor</th><th>Fecha prevista</th><th>Estado</th>' +
             '<th class="o_kr_n">Uds</th></tr>';
         _.each(r.ins, function (i) {
@@ -881,6 +938,7 @@ var Pantalla = AbstractAction.extend({
                 '<button type="button" data-accion="recepcionar">+ Palés / cajas</button>';
         }
         if (r.tanda_id) { h += '<button type="button" data-accion="imprimir">🖨 Etiquetas (última tanda)</button>'; }
+        h += '<button type="button" data-accion="cargar_pl">↻ Packing list (Excel de la IN)</button>';
         if (r.palets) { h += '<button type="button" data-accion="imprimir_palets">🖨 Etiquetas de los palés</button>'; }
         if (r.state === 'pendiente' || r.state === 'leyendo') {
             h += '<button type="button" data-accion="editar_ins">Cambiar IN</button>';
@@ -1017,19 +1075,20 @@ var Pantalla = AbstractAction.extend({
             (cj.ajenas.length ? '<div>' + _e(_.map(cj.ajenas, function (a) {
                 return 'caja ' + a.caja + ' (pedido ' + a.pedido + ')';
             }).join(', ')) + '</div>' : '') + '</div></div>';
-        h += '<table><tr><th>Modelo</th><th class="o_kr_n">Cajas (packing)</th><th class="o_kr_n">Uds IN</th>' +
-            '<th class="o_kr_n">Llegadas</th><th class="o_kr_n">Diferencia</th><th>Dónde (palé / caja: uds)</th></tr>';
+        h += '<table><tr><th>Modelo</th><th class="o_kr_n">Cajas / PL</th><th>Nº que faltan</th>' +
+            '<th class="o_kr_n">Uds IN</th><th class="o_kr_n">Llegadas</th><th class="o_kr_n">Diferencia</th>' +
+            '<th>Dónde (palé / caja: uds)</th></tr>';
         var algo = false;
         _.each(c.modelos, function (m) {
             if (self.soloProblemas && !m.problema) { return; }
             algo = true;
             h += '<tr class="o_kr_' + m.estado + '"><td>' + _e(m.modelo) + '</td><td class="o_kr_n">' + m.cajas +
-                (m.cajas_packing ? ' (' + m.cajas_packing + ')' : '') +
+                ' / ' + (m.cajas_pl || m.cajas_packing || '?') + '</td><td>' + _e(m.faltan) +
                 '</td><td class="o_kr_n">' + _n(m.teorico) + '</td><td class="o_kr_n">' + _n(m.leido) +
                 '</td><td class="o_kr_n">' + _n(m.diferencia) + (m.estado === 'no_venia' ? ' (no venía)' : '') +
                 '</td><td>' + _e(m.donde) + '</td></tr>';
         });
-        if (!algo) { h += '<tr><td colspan="6">Todo cuadra.</td></tr>'; }
+        if (!algo) { h += '<tr><td colspan="7">Todo cuadra.</td></tr>'; }
         h += '</table>';
         if (this.rec.state === 'leyendo') {
             h += '<div class="o_kr_fila"><button type="button" class="o_kr_primario" data-accion="cerrar">' +

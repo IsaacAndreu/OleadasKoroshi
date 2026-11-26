@@ -216,6 +216,19 @@ def resumen_cajas(lecturas, esperadas=0):
             'n_huecos': len(huecos), 'ajenas': ajenas}
 
 
+def rangos_texto(numeros, maximo=60):
+    """[1, 2, 3, 7, 9, 10] -> «1-3, 7, 9-10» (1.6.0: cajas que faltan). Si hay más de «maximo» trozos, «…»."""
+    nums = sorted(set(int(n) for n in numeros))
+    trozos = []
+    for n in nums:
+        if trozos and n == trozos[-1][1] + 1:
+            trozos[-1][1] = n
+        else:
+            trozos.append([n, n])
+    txt = ['%d' % a if a == b else '%d-%d' % (a, b) for a, b in trozos]
+    return ', '.join(txt[:maximo]) + (', …' if len(txt) > maximo else '')
+
+
 def cajas_contadas(cajas_de_lecturas):
     """1.5.0: cajas que llevan contadas: las distintas con nº + una por cada «+1» (sin nº)."""
     con = {c for c in cajas_de_lecturas if c}

@@ -7,3 +7,4 @@ access_koroshi_recepcion_tanda_usuario,koroshi.recepcion.tanda usuario,model_kor
 access_koroshi_recepcion_responsable_usuario,koroshi.recepcion.responsable usuario,model_koroshi_recepcion_responsable,stock.group_stock_user,1,0,0,0
 access_koroshi_recepcion_responsable_jefe,koroshi.recepcion.responsable jefe,model_koroshi_recepcion_responsable,stock.group_stock_manager,1,1,1,1
 access_koroshi_recepcion_teorico_usuario,koroshi.recepcion.teorico usuario,model_koroshi_recepcion_teorico,stock.group_stock_user,1,0,0,0
+access_koroshi_recepcion_pl_usuario,koroshi.recepcion.pl usuario,model_koroshi_recepcion_pl,stock.group_stock_user,1,0,0,0

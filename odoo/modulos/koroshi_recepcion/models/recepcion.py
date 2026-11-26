@@ -25,6 +25,7 @@
 # se «Cierra» (libera sus IN). La comparación es por modelo: cajas y uds llegadas contra las uds de las IN de ese
 # modelo (suma de sus SKU). Las prendas se leen después, al ubicar.
 # =============================================================================
+import base64
 import logging
 
 from odoo import api, fields, models
@@ -33,6 +34,7 @@ from odoo.tools import float_is_zero
 
 from odoo.addons.koroshi_base import comun
 from odoo.addons.koroshi_recepcion import logica as L
+from odoo.addons.koroshi_recepcion import packing_xlsx as PX
 from odoo.addons.koroshi_ubicaciones import nombres as N
 
 _logger = logging.getLogger(__name__)
@@ -77,6 +79,9 @@ class KoroshiRecepcion(models.Model):
     lectura_ids = fields.One2many('koroshi.recepcion.lectura', 'recepcion_id', 'Lecturas')
     comparacion_ids = fields.One2many('koroshi.recepcion.comparacion', 'recepcion_id', 'Comparación')
     tanda_ids = fields.One2many('koroshi.recepcion.tanda', 'recepcion_id', 'Etiquetas')
+    pl_ids = fields.One2many('koroshi.recepcion.pl', 'recepcion_id', 'Packing list (Excel de la IN)')
+    pl_info = fields.Char('Packing list', readonly=True,
+                          help='1.6.0: lo cargado del Excel del packing list que BackOffice adjunta a la IN.')
     teorico_ids = fields.One2many('koroshi.recepcion.teorico', 'recepcion_id', 'Teórico guardado',
                                   help='Foto de lo que traían las IN, tomada antes de la primera validación: después '
                                        'Odoo cambia las cantidades de las IN validadas (lo que sobra se suma).')
@@ -101,7 +106,8 @@ class KoroshiRecepcion(models.Model):
         for r in self:
             ok = r.lectura_ids.filtered(lambda l: l.estado == 'ok')
             r.uds_leidas = sum(ok.mapped('cantidad'))
-            r.cajas_leidas = L.cajas_contadas([l.caja_txt for l in ok])     # 1.4.1: cada «+1» es una caja
+            # 1.4.1: cada «+1» sin nº es una caja; 1.6.0: la caja física es modelo + nº (la numeración es por modelo)
+            r.cajas_leidas = L.cajas_contadas([l.clave_fisica for l in ok])
             r.uds_validadas = sum(ok.filtered('validada').mapped('cantidad'))
             r.uds_teoricas = int(sum(r._teorico().values()))
 
@@ -208,6 +214,7 @@ class KoroshiRecepcion(models.Model):
             vals['matricula'] = vals['matricula'].strip().upper()
         r = super().create(vals)
         r._comprobar_ins()
+        r._cargar_pl_callado()          # 1.6.0
         return r
 
     def write(self, vals):
@@ -218,6 +225,7 @@ class KoroshiRecepcion(models.Model):
         res = super().write(vals)
         if cambia_in:
             self._comprobar_ins()
+            self._cargar_pl_callado()   # 1.6.0: el packing list de las IN nuevas
             for r in self:
                 if not r.teorico_ids:
                     continue
@@ -230,6 +238,95 @@ class KoroshiRecepcion(models.Model):
                 for m in nuevas.mapped('move_lines').filtered(lambda x: x.state != 'cancel'):
                     Teorico.create({'recepcion_id': r.id, 'producto_id': m.product_id.id, 'uds': m.product_qty})
         return res
+
+    # ------------------------------------------------------------------ 1.6.0: datos que Mayte deja en la IN
+    @api.model
+    def contenedores_de_ins(self, pickings):
+        """«MIEU4099960+MIEU4100819» (carrier_tracking_ref de las IN, solo lectura) -> «MIEU4099960 + MIEU4100819»."""
+        vistos = []
+        for p in pickings:
+            ref = p.carrier_tracking_ref if 'carrier_tracking_ref' in p._fields else ''
+            for c in (ref or '').replace(',', '+').replace(';', '+').split('+'):
+                c = ''.join(c.split()).upper()
+                if c and c not in vistos:
+                    vistos.append(c)
+        return ' + '.join(vistos)
+
+    def _adjuntos_pl(self):
+        """Los Excel (.xlsx) adjuntos a las IN de la recepción (y a las IN de las que salen sus pendientes)."""
+        ins = self._todas_las_in()
+        ids = set(ins.ids) | set(ins.mapped('backorder_id').ids)
+        return self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', 'stock.picking'), ('res_id', 'in', list(ids)), ('name', '=ilike', '%.xlsx')],
+            order='id desc')
+
+    def cargar_pl(self):
+        """Lee el packing list (Excel adjunto a las IN; no se toca) y rehace las filas koroshi.recepcion.pl: una por
+        caja física (modelo + nº). Si dos Excel traen la misma caja, vale la del más nuevo. Devuelve un texto."""
+        self.ensure_one()
+        Pl = self.env['koroshi.recepcion.pl'].sudo()
+        filas, leidos, avisos, vistas = [], [], [], set()
+        for a in self._adjuntos_pl():
+            try:
+                res = PX.leer_packing(PX.filas_xlsx(base64.b64decode(a.datas or b'')))
+            except Exception as e:      # un Excel que no es un packing list: se avisa y se sigue
+                avisos.append('%s: %s' % (a.name, e))
+                continue
+            leidos.append('%s (%d cajas, %d uds)' % (a.name, res['total_cajas'], res['total_uds']))
+            avisos += ['%s: %s' % (a.name, x) for x in res['avisos'][:5]]
+            for c in res['cajas']:
+                clave = (c['modelo'], c['caja'])
+                if clave in vistas:
+                    continue
+                vistas.add(clave)
+                filas.append({
+                    'recepcion_id': self.id, 'picking_id': a.res_id, 'adjunto_id': a.id, 'modelo': c['modelo'],
+                    'color': c['color'] or '', 'color_nombre': c['color_nombre'] or '', 'caja': c['caja'],
+                    'contenido': PX.contenido_texto(c['tallas']), 'uds': c['uds'], 'largo': c['largo'],
+                    'ancho': c['ancho'], 'alto': c['alto'], 'cbm_caja': c['cbm_caja'], 'cbm_ud': c['cbm_ud']})
+        Pl.search([('recepcion_id', '=', self.id)]).unlink()
+        if filas:
+            Pl.create(filas)
+        info = ('%d cajas, %d uds: %s' % (len(filas), sum(f['uds'] for f in filas), ', '.join(leidos))) if filas \
+            else 'Sin packing list en Excel en las IN'
+        if avisos:
+            info += '. Avisos: ' + '; '.join(avisos[:5])
+        self.sudo().write({'pl_info': info[:500]})
+        return info
+
+    def _cargar_pl_callado(self):
+        """Al crear o cambiar las IN: carga el PL sin parar nada si el Excel falla (queda en pl_info)."""
+        for r in self:
+            try:
+                with self.env.cr.savepoint():
+                    r.cargar_pl()
+            except Exception as e:
+                _logger.warning('koroshi_recepcion: no se ha podido leer el packing list de %s: %s', r.name, e)
+                r.sudo().write({'pl_info': ('No se ha podido leer el packing list: %s' % e)[:500]})
+
+    def action_cargar_pl(self):
+        for r in self:
+            r.cargar_pl()
+
+    def pl_de(self, modelo, caja):
+        """La fila del PL de la caja «caja» (nº) del modelo, o vacío."""
+        self.ensure_one()
+        if not (modelo and caja and str(caja).isdigit()):
+            return self.env['koroshi.recepcion.pl']
+        return self.env['koroshi.recepcion.pl'].sudo().search(
+            [('recepcion_id', '=', self.id), ('modelo', '=', modelo), ('caja', '=', int(caja))], limit=1)
+
+    def faltan_por_modelo(self):
+        """{modelo: [nº de caja del PL sin contar]} (1.6.0). Solo los modelos que tienen PL."""
+        self.ensure_one()
+        contadas = {}
+        for l in self.lectura_ids.filtered(lambda x: x.estado == 'ok' and x.caja_txt.isdigit()):
+            contadas.setdefault(l.modelo, set()).add(int(l.caja_txt))
+        res = {}
+        for p in self.pl_ids:
+            if p.caja not in contadas.get(p.modelo, ()):
+                res.setdefault(p.modelo, []).append(p.caja)
+        return {m: sorted(v) for m, v in res.items()}
 
     def _comprobar_ins(self):
         """Solo IN de KOROSHI, y ninguna en otra recepción abierta (contaría dos veces)."""
@@ -495,9 +592,9 @@ class KoroshiRecepcion(models.Model):
             'pedido_ajeno': L.pedido_ajeno(pedido, self._origenes()), 'palet_id': palet.id,
             'cantidad': cantidad, 'employee_id': employee and employee.id or False, 'token': token or False})
 
-    def mas_uno(self, palet=None, modelo=None, employee=None, token=None):
+    def mas_uno(self, palet=None, modelo=None, employee=None, token=None, caja=None):
         """1.4.1: «+1 caja»: una caja del modelo activo (si lo hay) en el palé activo (si lo hay), sin nº ni uds.
-        Mismo token = la misma pulsación (doble toque)."""
+        1.6.0: con «caja» (el nº escrito a mano), además se apunta el nº. Mismo token = la misma pulsación."""
         self.ensure_one()
         Lectura = self.env['koroshi.recepcion.lectura'].sudo()
         if token:
@@ -510,9 +607,35 @@ class KoroshiRecepcion(models.Model):
         if palet:
             self.palet_valido(palet)
         modelo = L.normalizar_modelo(modelo) if (modelo or '').strip() else False
+        caja = L.normalizar_caja(caja) if (caja or '').strip() else False
+        pl = self.pl_de(modelo, caja)
         return Lectura.create({
             'recepcion_id': self.id, 'rapida': True, 'modelo_leido': modelo, 'palet_id': palet and palet.id or False,
-            'cantidad': 0, 'employee_id': employee and employee.id or False, 'token': token or False})
+            'caja': caja, 'cantidad': pl.uds if pl else 0,      # 1.6.0: con nº y PL, las uds del PL
+            'employee_id': employee and employee.id or False, 'token': token or False})
+
+    def info_caja(self, lectura, repetida=True):
+        """1.6.0: qué debe llevar la caja según el PL («caja 7 de 2711JA12: 40 L») y avisos: el nº no está en el PL de
+        ese modelo, o la caja ya estaba contada. Devuelve (texto, [avisos])."""
+        self.ensure_one()
+        modelo, caja = lectura.modelo, lectura.caja_txt
+        if not (modelo and caja):
+            return '', []
+        avisos = []
+        pl = self.pl_de(modelo, caja)
+        texto = ''
+        if pl:
+            texto = 'caja %s de %s%s: %s' % (caja, modelo, (' (%s)' % ' '.join(x for x in (pl.color, pl.color_nombre)
+                                                                              if x)) if (pl.color or pl.color_nombre)
+                                             else '', pl.contenido or '%d uds' % pl.uds)
+        elif self.pl_ids.filtered(lambda p: p.modelo == modelo):
+            avisos.append('la caja %s no está en el packing list de %s' % (caja, modelo))
+        repetidas = repetida and self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.id != lectura.id
+                                                           and l.modelo == modelo and l.caja_txt == caja)
+        if repetidas:
+            avisos.append('la caja %s de %s ya estaba contada (%s)' % (caja, modelo, ', '.join(
+                sorted(set(x.palet_id.name or 'sin palé' for x in repetidas)))))
+        return texto, avisos
 
     def menos_uno(self, employee=None):
         """1.4.1: «−1»: anula el último «+1» de esta recepción. Devuelve la lectura anulada."""
@@ -562,8 +685,10 @@ class KoroshiRecepcion(models.Model):
         if lectura.pedido_ajeno:
             avisos.append('el pedido %s no es de ninguna IN de este contenedor (%s)' % (
                 lectura.pedido, ', '.join(self._origenes()) or 'sin IN'))
+        # 1.6.0: la misma caja física = mismo modelo y nº (la numeración empieza en cada modelo)
         otros = self.lectura_ids.filtered(lambda l: l.estado == 'ok' and l.id != lectura.id
-                                          and l.caja_txt == lectura.caja_txt and l.palet_id != lectura.palet_id)
+                                          and l.clave_fisica == lectura.clave_fisica
+                                          and l.palet_id != lectura.palet_id)
         if otros:
             avisos.append('la caja %s ya está leída en %s' % (
                 lectura.caja_txt, ', '.join(sorted(set(otros.mapped('palet_id.name'))))))
@@ -610,6 +735,13 @@ class KoroshiRecepcion(models.Model):
             clave = '%s / caja %s' % (l.palet_id.name or '¿palé?', l.caja_txt)
             d[clave] = d.get(clave, 0) + l.cantidad
         por_packing = self.cajas_packing_por_modelo()
+        # 1.6.0: del packing list en Excel de la IN: cajas por modelo y cuáles faltan por contar (sus nº)
+        cajas_pl = {}
+        for p in self.pl_ids:
+            cajas_pl[p.modelo] = cajas_pl.get(p.modelo, 0) + 1
+        faltan = self.faltan_por_modelo()
+        for m in cajas_pl:
+            cajas.setdefault(m, [])
         filas = []
         # un modelo con cajas contadas con «+1» (0 uds) también sale, aunque no tenga uds leídas
         for m in cajas:
@@ -626,7 +758,8 @@ class KoroshiRecepcion(models.Model):
                                   ([texto] if texto else []))
             filas.append({
                 'recepcion_id': self.id, 'modelo': m, 'cajas': L.cajas_contadas(cajas.get(m, [])),
-                'cajas_packing': por_packing.get(m, 0), 'teorico': t, 'leido': le,
+                'cajas_packing': por_packing.get(m, 0), 'cajas_pl': cajas_pl.get(m, 0),
+                'faltan': L.rangos_texto(faltan.get(m, [])), 'teorico': t, 'leido': le,
                 'diferencia': dif, 'estado': estado, 'donde': texto,
             })
         filas.sort(key=lambda f: f['modelo'])
@@ -854,6 +987,15 @@ class KoroshiRecepcionLectura(models.Model):
 
     _sql_constraints = [('token_unico', 'unique(token)', 'Esta lectura ya está guardada.')]
 
+    clave_fisica = fields.Char('Caja física', compute='_compute_clave_fisica',
+                               help='1.6.0: modelo + nº de caja (la numeración empieza en cada modelo); vacío en «+1» '
+                                    'sin nº.')
+
+    @api.depends('caja_txt', 'modelo')
+    def _compute_clave_fisica(self):
+        for l in self:
+            l.clave_fisica = ('%s/%s' % (l.modelo or '', l.caja_txt)) if l.caja_txt else ''
+
     @api.depends('caja', 'contenedor_id')
     def _compute_caja_txt(self):
         for l in self:
@@ -893,12 +1035,37 @@ class KoroshiRecepcionComparacion(models.Model):
     ean = fields.Char('EAN')
     cajas = fields.Integer('Cajas')
     cajas_packing = fields.Integer('Cajas en el packing', help='1.4.1: cajas físicas del packing de S4T con este modelo.')
+    cajas_pl = fields.Integer('Cajas en el PL (Excel)', help='1.6.0: cajas de este modelo en el Excel de la IN.')
+    faltan = fields.Char('Cajas que faltan (nº)', help='1.6.0: nº de caja del PL de este modelo sin contar.')
     teorico = fields.Float('Teórico (IN)', digits=(16, 0))
     leido = fields.Float('Leído', digits=(16, 0))
     diferencia = fields.Float('Diferencia', digits=(16, 0))
     estado = fields.Selection([('ok', 'Correcto'), ('falta', 'Falta'), ('sobra', 'Sobra'),
                                ('no_venia', 'No venía en las IN')], 'Estado')
     donde = fields.Char('Dónde (palé / caja: uds)')
+
+
+class KoroshiRecepcionPl(models.Model):
+    """1.6.0: una caja física del packing list en Excel que BackOffice adjunta a la IN (modelo + nº de caja, que
+    empieza en cada modelo): qué lleva y su volumen. Se rehace al cargar; el Excel no se toca."""
+    _name = 'koroshi.recepcion.pl'
+    _description = 'KOROSHI: caja del packing list (Excel de la IN)'
+    _order = 'modelo, caja'
+
+    recepcion_id = fields.Many2one('koroshi.recepcion', required=True, ondelete='cascade', index=True)
+    picking_id = fields.Many2one('stock.picking', 'IN')
+    adjunto_id = fields.Many2one('ir.attachment', 'Excel')
+    modelo = fields.Char('Modelo', index=True)
+    color = fields.Char('Color')
+    color_nombre = fields.Char('Nombre del color')
+    caja = fields.Integer('Nº de caja', index=True)
+    contenido = fields.Char('Lleva', help='Uds por talla: «40 L», «23 S + 20 3XL».')
+    uds = fields.Integer('Uds')
+    largo = fields.Float('Largo (cm)')
+    ancho = fields.Float('Ancho (cm)')
+    alto = fields.Float('Alto (cm)')
+    cbm_caja = fields.Float('m³ de la caja', digits=(16, 5))
+    cbm_ud = fields.Float('m³ por prenda', digits=(16, 6))
 
 
 class KoroshiRecepcionTeorico(models.Model):

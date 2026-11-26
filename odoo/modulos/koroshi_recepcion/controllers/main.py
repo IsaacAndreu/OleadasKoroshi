@@ -88,6 +88,9 @@ class KoroshiRecepcionPantalla(http.Controller):
             # 1.4.0: total = las escritas a mano o, si no, las del packing de S4T
             'cajas_packing': r.cajas_packing, 'total': r.cajas_total_txt, 'packing_avisos': r.packing_avisos or '',
             'por_modelo': r.cajas_por_modelo(),        # 1.4.1: {modelo: cajas contadas}
+            # 1.6.0: packing list en Excel de la IN: qué se ha cargado y qué nº faltan por modelo
+            'pl_info': r.pl_info or '', 'pl_cajas': len(r.pl_ids),
+            'faltan': {m: L.rangos_texto(v) for m, v in r.faltan_por_modelo().items()},
             'cajas_leidas': r.cajas_leidas, 'lecturas': len(ok),
             'uds_leidas': sum(ok.mapped('cantidad')), 'uds_validadas': sum(ok.filtered('validada').mapped('cantidad')),
             'ins': [{'id': p.id, 'name': p.name, 'origen': p.origin or '', 'ref': (p.x_studio_order_remarks or '').strip()
@@ -158,7 +161,8 @@ class KoroshiRecepcionPantalla(http.Controller):
                 'ref': (p.x_studio_order_remarks or '').strip() if con_ref else '',
                 'fecha': _local(p.scheduled_date)[:10], 'backorder': bool(p.backorder_id),
                 'uds': sum(p.move_lines.filtered(lambda m: m.state != 'cancel').mapped('product_uom_qty')),
-                'en_otra': en_otra.get(p.id, '')} for p in abiertas]}
+                'en_otra': en_otra.get(p.id, ''),
+                'contenedores': Rec.contenedores_de_ins(p)} for p in abiertas]}   # 1.6.0: carrier_tracking_ref
         except UserError as e:
             request.env.cr.rollback()     # nada a medias
             return {'ok': False, 'msg': _msg(e)}
@@ -169,6 +173,9 @@ class KoroshiRecepcionPantalla(http.Controller):
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             matricula = (matricula or '').strip().upper()
+            if not matricula:       # 1.6.0: los contenedores que Mayte pone en la IN (carrier_tracking_ref)
+                matricula = request.env['koroshi.recepcion'].sudo().contenedores_de_ins(
+                    request.env['stock.picking'].sudo().browse([int(i) for i in (picking_ids or [])]))
             if len(matricula) < 4:
                 raise UserError('Escribe la matrícula del contenedor (la de la puerta o el lateral).')
             r = request.env['koroshi.recepcion'].sudo().create({
@@ -323,10 +330,12 @@ class KoroshiRecepcionPantalla(http.Controller):
                 prod = request.env['product.product'].sudo().browse(int(producto_id or 0)).exists()
                 lectura = r.guardar_lectura(caja, pedido, palet, prod, cantidad, emp, token)
             avisos = r.avisos_lectura(lectura)
+            pl_txt, pl_avisos = r.info_caja(lectura, repetida=False)      # 1.6.0: lo que dice el PL de esa caja
+            avisos += pl_avisos
             return {'ok': True, 'msg': '%s · %s · %d uds → %s / caja %s' % (
                 emp.name, lectura.producto_id.display_name or 'Modelo %s' % lectura.modelo, lectura.cantidad,
                 lectura.palet_id.name,
-                lectura.caja_txt), 'avisos': avisos,
+                lectura.caja_txt), 'avisos': avisos, 'pl': pl_txt,
                 'recepcion': self._datos_recepcion(r, emp), 'ultimas': self._ultimas(r)}
         except (UserError, ValueError) as e:
             request.env.cr.rollback()     # nada a medias
@@ -359,16 +368,31 @@ class KoroshiRecepcionPantalla(http.Controller):
             request.env.cr.rollback()
             return {'ok': False, 'msg': 'No se ha mandado nada a imprimir. %s' % _msg(e)}
 
+    @http.route('/koroshi/recepcion/cargar_pl', type='json', auth='user')
+    def cargar_pl(self, recepcion_id=False, employee_id=False, **kw):
+        """1.6.0: (re)lee el packing list en Excel adjunto a las IN."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            r = self._recepcion(recepcion_id)
+            info = r.cargar_pl()
+            return {'ok': True, 'msg': info, 'recepcion': self._datos_recepcion(r, emp)}
+        except UserError as e:
+            request.env.cr.rollback()
+            return {'ok': False, 'msg': _msg(e)}
+
     @http.route('/koroshi/recepcion/mas_uno', type='json', auth='user')
-    def mas_uno(self, recepcion_id=False, palet_id=False, modelo='', employee_id=False, token=None, **kw):
+    def mas_uno(self, recepcion_id=False, palet_id=False, modelo='', employee_id=False, token=None, caja='', **kw):
         """1.4.1: «+1 caja» del modelo activo en el palé activo (los dos opcionales)."""
         try:
             self._comprobar_usuario()
             emp = self._empleado(employee_id)
             r = self._recepcion(recepcion_id)
             palet = request.env['stock.location'].sudo().browse(int(palet_id or 0)).exists()
-            l = r.mas_uno(palet, modelo, emp, token)
-            return {'ok': True, 'modelo': l.modelo or '', 'recepcion': self._datos_recepcion(r, emp),
+            l = r.mas_uno(palet, modelo, emp, token, caja)
+            pl_txt, avisos = r.info_caja(l)                              # 1.6.0
+            return {'ok': True, 'modelo': l.modelo or '', 'caja': l.caja_txt or '', 'pl': pl_txt, 'avisos': avisos,
+                    'recepcion': self._datos_recepcion(r, emp),
                     'ultimas': self._ultimas(r)}
         except (UserError, ValueError) as e:
             request.env.cr.rollback()
@@ -426,7 +450,8 @@ class KoroshiRecepcionPantalla(http.Controller):
             self._responsable(employee_id)
             r = self._recepcion(recepcion_id)
             # 1.2.0: por modelo (sin tallas): cajas, uds de las IN y uds llegadas, y dónde está cada caja
-            lista = [{'modelo': f.modelo, 'cajas': f.cajas, 'cajas_packing': f.cajas_packing, 'teorico': f.teorico,
+            lista = [{'modelo': f.modelo, 'cajas': f.cajas, 'cajas_packing': f.cajas_packing, 'cajas_pl': f.cajas_pl,
+                      'faltan': f.faltan or '', 'teorico': f.teorico,
                       'leido': f.leido,
                       'diferencia': f.diferencia, 'estado': f.estado, 'donde': f.donde or '',
                       'problema': f.estado != 'ok', 'filas': []} for f in r.comparar()]
@@ -501,10 +526,12 @@ class KoroshiRecepcionPantalla(http.Controller):
         filas = [['Recepción', r.name, 'Matrícula', r.matricula, 'Muelle', r.muelle or '', 'Llegada',
                   _local(r.fecha_llegada)], [],
                  ['COMPARACIÓN (por modelo)'],
-                 ['Modelo', 'Cajas contadas', 'Cajas en el packing', 'Uds de las IN', 'Uds llegadas', 'Diferencia',
+                 ['Modelo', 'Cajas contadas', 'Cajas en el packing', 'Cajas en el PL (Excel)', 'Nº que faltan',
+                  'Uds de las IN', 'Uds llegadas', 'Diferencia',
                   'Estado', 'Dónde (palé / caja: uds)']]
         for f in filas_comp:
-            filas.append([f.modelo, f.cajas, f.cajas_packing or '', f.teorico, f.leido, f.diferencia,
+            filas.append([f.modelo, f.cajas, f.cajas_packing or '', f.cajas_pl or '', f.faltan or '', f.teorico,
+                          f.leido, f.diferencia,
                           estados.get(f.estado, f.estado), f.donde])
         cajas = r.resumen_cajas()
         origenes = r._origenes()

@@ -94,8 +94,16 @@ v1.5.0 (26/11/2026): Isaac: las etiquetas se imprimen en la Zebra de Expedicione
   hace tanda de los que ya existen: «Etiquetas de los palés» hace una tanda con PAL-01 A … PAL-<palés> B de esta
   recepción (creando los que falten). En la oficina, «A la Zebra» y «PDF» en cada tanda y «Etiquetas de los palés a la
   Zebra» arriba. El aviso queda en el historial.
+v1.6.0 (26/11/2026): Isaac: aprovechar lo que Mayte deja en cada IN (solo lectura). Los contenedores salen del
+  carrier_tracking_ref de las IN marcadas (se pueden corregir; el muelle sigue siendo opcional). El packing list en
+  Excel adjunto a la IN (o a su IN de origen) se lee en una tabla nueva koroshi.recepcion.pl: modelo, color, nº de
+  caja (la numeración empieza en cada modelo: caja física = modelo + nº), tallas y uds, medidas y CBM por caja y por
+  unidad (para el diseño futuro de «caja llena por volumen»). Se carga sola al crear o cambiar las IN, y con «↻
+  Packing list». En «+1 caja» se puede poner el nº: dice qué lleva («caja 7 de JA12: 40 L»), cuenta las uds del PL
+  y avisa si ese nº no está en el PL del modelo o ya se contó. «Faltan (nº)» por modelo en la PDA, y «Cajas en el
+  PL» y «Nº que faltan» en la comparación y su Excel. Sin campos nuevos en stock.picking; no escribe en S4T.
 """,
-    'version': '13.0.1.5.0',
+    'version': '13.0.1.6.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

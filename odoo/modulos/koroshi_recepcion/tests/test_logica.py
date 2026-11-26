@@ -156,6 +156,11 @@ class TestCajasProveedor(unittest.TestCase):
         # solo «+1»: sin nº no hay huecos que calcular
         self.assertEqual(L.resumen_cajas([('', '', False)], esperadas=1046)['huecos'], [])
 
+    def test_rangos(self):
+        self.assertEqual(L.rangos_texto([9, 1, 2, 3, 7, 10]), '1-3, 7, 9-10')
+        self.assertEqual(L.rangos_texto([]), '')
+        self.assertEqual(L.rangos_texto(range(1, 200, 2), maximo=2), '1, 3, …')
+
     def test_total_packing(self):
         feeds = [('0000002160', 1046, 20278, True), ('0000002160', 1046, 20278, False),
                  ('0000002163', 137, 2118, False), ('0000009999', 5, 50, False)]

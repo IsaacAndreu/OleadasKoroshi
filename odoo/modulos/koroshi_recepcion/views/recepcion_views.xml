@@ -30,6 +30,7 @@
                     <button name="action_comparar" type="object" string="Comparar con las IN"/>
                     <button name="action_exportar" type="object" string="Exportar (Excel)"
                             groups="stock.group_stock_manager"/>
+                    <button name="action_cargar_pl" type="object" string="Cargar packing list (Excel de la IN)"/>
                     <button name="action_imprimir_palets" type="object" string="Etiquetas de los palés a la Zebra"
                             attrs="{'invisible': [('palets', '=', 0)]}"/>
                     <button name="action_cerrar" type="object" string="Cerrar (sin tocar stock)"
@@ -65,6 +66,7 @@
                             <field name="cajas_packing"/>
                             <field name="cajas_total_txt"/>
                             <field name="packing_avisos" attrs="{'invisible': [('packing_avisos', '=', False)]}"/>
+                            <field name="pl_info"/>
                             <field name="palets"/>
                             <field name="cajas_leidas"/>
                             <field name="uds_leidas"/>
@@ -122,6 +124,24 @@
                             <field name="contenedor_ids" readonly="1">
                                 <tree>
                                     <field name="complete_name"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="Packing list (Excel)" attrs="{'invisible': [('pl_ids', '=', [])]}">
+                            <field name="pl_ids" readonly="1">
+                                <tree>
+                                    <field name="modelo"/>
+                                    <field name="color"/>
+                                    <field name="color_nombre"/>
+                                    <field name="caja"/>
+                                    <field name="contenido"/>
+                                    <field name="uds" sum="Uds"/>
+                                    <field name="largo"/>
+                                    <field name="ancho"/>
+                                    <field name="alto"/>
+                                    <field name="cbm_caja" sum="m³"/>
+                                    <field name="cbm_ud"/>
+                                    <field name="picking_id"/>
                                 </tree>
                             </field>
                         </page>
@@ -229,6 +249,8 @@
                 <field name="modelo"/>
                 <field name="cajas" sum="Cajas"/>
                 <field name="cajas_packing" sum="Cajas en el packing"/>
+                <field name="cajas_pl" sum="Cajas en el PL"/>
+                <field name="faltan"/>
                 <field name="color"/>
                 <field name="talla"/>
                 <field name="ean"/>
