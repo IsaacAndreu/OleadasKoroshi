@@ -46,8 +46,12 @@ v1.6.0 (26/11/2026): las OUT con alguna devolución no cancelada (borrador, en e
 v1.7.0 (26/11/2026): lista fija abajo con las expediciones de hoy (PDF de GLS/XPO creados hoy, desde la PDA o el
   portátil, de todas las tiendas) con su K##, hora, tracking y bultos, y botón «Reimprimir» sin leer ninguna caja.
   La impresora a veces se queda sin papel o se atasca y hay que volver a darle (Isaac, 26/11).
+v1.8.0 (27/11/2026): si GLS contesta -70 (la expedición ya existe: el primer intento llegó y la respuesta no), la
+  PDA enseña «Recuperar etiqueta GLS»: busca la expedición por el nombre de cada OUT del grupo, baja el PDF y deja
+  las OUT como un envío normal (GLS, tracking, código de barras, mensaje) e imprime. borrado=S solo avisa. Antes
+  lo hacía la oficina con la acción 1879, que no ponía tracking (K85 y K10, 27/11) (Isaac, 27/11).
 """,
-    'version': '13.0.1.7.0',
+    'version': '13.0.1.8.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

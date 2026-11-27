@@ -1,6 +1,7 @@
 odoo.define('koroshi_transportista.Pantalla', function (require) {
 'use strict';
-/* KOROSHI Transportista v1.7.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+/* KOROSHI Transportista v1.8.0 - pantalla de la PDA (área Expediciones). v1.1.0: CJ por sus últimas cifras.
+ * v1.8.0: GLS -70 (ya existe) -> botón «Recuperar etiqueta GLS».
  * v1.7.0: lista fija abajo con las expediciones de hoy (K##) y «Reimprimir», sin leer ninguna caja.
  * v1.5.0: aviso de transportista (bultos e historial); GLS/XPO ya no se marca solo.
  * v1.3.0: «Dejar fuera» una OUT de otro día.
@@ -41,6 +42,7 @@ var Transportista = AbstractAction.extend({
         'click .o_ktr_fuera': '_onFuera',
         'click .o_ktr_meter': '_onMeter',
         'click .o_ktr_recargar': '_cargarExpediciones',
+        'click .o_ktr_recuperar': '_onRecuperar',
     },
 
     init: function () {
@@ -62,6 +64,7 @@ var Transportista = AbstractAction.extend({
         this.fuera = [];             // v1.3.0: ids de OUT de otros días dejadas fuera de esta etiqueta
         this.confirmando = false;
         this.hecho = null;
+        this.glsExiste = '';         // v1.8.0: texto del -70 de GLS (enseña «Recuperar etiqueta GLS»)
         this.token = _token();
     },
 
@@ -316,19 +319,32 @@ var Transportista = AbstractAction.extend({
         var self = this;
         if (!this._puedeImprimir() || this.ocupado || !this.transportista) { return; }
         this.$('.o_ktr_confirmar').prop('disabled', true).text('Registrando en ' + NOMBRE[this.transportista] + '…');
+        return this._etiquetar(false);
+    },
+    // v1.8.0: GLS dijo -70 (ya existe): se busca en GLS y se baja la etiqueta, sin mandar otra expedición
+    _onRecuperar: function () {
+        if (!this._puedeImprimir() || this.ocupado || !this.persona) { return; }
+        this.transportista = 'gls';
+        this.$('.o_ktr_recuperar').prop('disabled', true).text('Buscando en GLS…');
+        return this._etiquetar(true);
+    },
+    _etiquetar: function (recuperar) {
+        var self = this;
         return this._llamar('/koroshi/transportista/etiquetar', {
             leidas: this.leidas, partner_id: this.estado.partner_id, transportista: this.transportista,
-            employee_id: this.persona.id, token: this.token, fuera: this.fuera,
+            employee_id: this.persona.id, token: this.token, fuera: this.fuera, recuperar: !!recuperar,
         }).then(function (r) {
             if (r.sinConexion) { return; }
             self.confirmando = false;
             if (!r.ok) {
                 self._pitido(false);
                 self._aviso('mal', r.msg || 'Error');
+                self.glsExiste = r.gls_existe ? (r.msg || 'GLS: ya existe (-70).') : '';
                 if (r.hecho) { self.hecho = {ok: false, texto: r.msg}; }
                 return self._pintar();
             }
             self._pitido(true);
+            self.glsExiste = '';
             self.hecho = r;
             self._cargarExpediciones();
             self._aviso(r.aviso_envio || r.aviso_impresion ? 'info' : 'ok', r.impresos ?
@@ -420,11 +436,20 @@ var Transportista = AbstractAction.extend({
         } else if (!this.estado) {
             h = this._htmlInicio();
         } else {
-            h = (this.confirmando ? this._htmlConfirmar() : '') + this._htmlRechazadas() + this._htmlEstado() +
+            h = this._htmlGlsExiste() + (this.confirmando ? this._htmlConfirmar() : '') + this._htmlRechazadas() +
+                this._htmlEstado() +
                 this._htmlBotones() + this._htmlCajas() + this._htmlEtiquetadas();
         }
         this.$('.o_ktr_cuerpo').html(h);
         this.$('.o_ktr_expediciones').html(this._htmlExpediciones());
+    },
+
+    _htmlGlsExiste: function () {
+        if (!this.glsExiste || this.hecho) { return ''; }
+        return '<div class="o_ktr_card o_ktr_card_mal"><div class="o_ktr_rojo">⚠ ' + _e(this.glsExiste) + '</div>' +
+            '<div class="o_ktr_nota">No se manda otra expedición: se busca la que ya está en GLS, se baja su etiqueta ' +
+            'y se imprime.</div><div class="o_ktr_botones"><button type="button" class="o_ktr_recuperar">' +
+            'Recuperar etiqueta GLS</button></div></div>';
     },
 
     _htmlExpediciones: function () {

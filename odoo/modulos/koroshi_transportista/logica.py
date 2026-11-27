@@ -129,6 +129,26 @@ def agrupar_expediciones(filas):
     return sorted(res.values(), key=lambda e: (e['hora'], e['tracking']), reverse=True)
 
 
+def elegir_expedicion(exps):
+    """v1.8.0 (GLS -70 «ya existe», K85 y K10 27/11): de lo que devuelve gls_asm_buscar_expedicion ([{'codexp',
+    'codbar', 'bultos', 'estado', 'borrado', ...}]), la expedición a recuperar: con codexp y codbar; primero las no
+    marcadas como borradas; de ellas, la última. Devuelve (expedición o None, avisos [textos]). borrado='S' no bloquea
+    (GLS la marca así también en las que están bien, GRABADO -10): solo avisa."""
+    buenas = [e for e in (exps or []) if e.get('codexp') and e.get('codbar')]
+    if not buenas:
+        return None, []
+    vivas = [e for e in buenas if (e.get('borrado') or '').upper() != 'S']
+    e = (vivas or buenas)[-1]
+    avisos = []
+    if len(buenas) > 1:
+        avisos.append('GLS tiene %d expediciones con esta referencia (%s): se usa la %s.' % (
+            len(buenas), ', '.join(str(x['codexp']) for x in buenas), e['codexp']))
+    if (e.get('borrado') or '').upper() == 'S':
+        avisos.append('GLS la marca como borrada (borrado=S, %s): comprobar en el portal de GLS.' % (
+            e.get('estado') or 'sin estado'))
+    return e, avisos
+
+
 def es_sumi(origen):
     """v1.2.0: OUT de suministros de la tienda (origen «SUMINISTROS KOROSHI 24/11 K41»), no del pedido S-."""
     return (origen or '').strip().upper().startswith('SUMINISTROS')

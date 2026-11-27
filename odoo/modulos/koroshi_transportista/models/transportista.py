@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 # =============================================================================
-# KOROSHI Transportista v1.7.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
+# KOROSHI Transportista v1.8.0 - etiqueta GLS/XPO desde la PDA (área Expediciones), escaneando las CJ de la tienda.
 # Diseño: bin/versiones/diseno-imprimir-desde-pda_2026-11-25_v4.md (visto bueno de Isaac el 25/11/2026).
 #
 # 1. Se escanean las CJ que hay físicamente. La primera fija la tienda (cliente de la OUT, «..., K24 - VALLADOLID»).
@@ -36,6 +36,10 @@ CARRIER_XPO = 173           # «XPO ES» (el que exige la acción 1771)
 PARAM_IMPRESORA = 'koroshi_transportista.impresora'
 CAMPO_BARRAS_GLS = 'gls_asm_public_tracking_ref'
 PREFIJOS_ETIQUETA = ('LabelXPO_', 'gls_label_')
+
+
+class GlsYaExiste(UserError):
+    """v1.8.0: GLS contesta -70 (la expedición ya existe): la PDA ofrece «Recuperar etiqueta GLS»."""
 
 
 class KoroshiTransportistaRegistro(models.Model):
@@ -408,9 +412,13 @@ class KoroshiTransportistaRegistro(models.Model):
             raise UserError(_('Otra persona está etiquetando esta tienda ahora mismo. Espera un momento.'))
 
     @api.model
-    def etiquetar(self, leidas, partner_id, transportista, employee=None, token='', fuera=None):
+    def etiquetar(self, leidas, partner_id, transportista, employee=None, token='', fuera=None, recuperar=False):
+        """v1.8.0: recuperar=True (solo GLS, tras el -70): no se manda nada a GLS; se busca la expedición que ya
+        existe, se baja su etiqueta y las OUT quedan como si hubiera salido bien a la primera."""
         if transportista not in logica.TRANSPORTISTAS:
             raise UserError(_('Elige GLS o XPO.'))
+        if recuperar and transportista != logica.GLS:
+            raise UserError(_('Recuperar la etiqueta solo se hace con GLS.'))
         if token:
             ya = self.sudo().search([('token', '=', token)], limit=1)
             if ya:
@@ -431,6 +439,8 @@ class KoroshiTransportistaRegistro(models.Model):
         operario = employee.name if employee else ''
         if transportista == logica.XPO:
             r = self._enviar_xpo(outs)
+        elif recuperar:
+            r = self._recuperar_gls(outs)                # v1.8.0
         else:
             r = self._enviar_gls(outs)
         # La expedición ya existe en el transportista: se guarda YA (tracking y transportista en las OUT), pase lo que
@@ -525,8 +535,9 @@ class KoroshiTransportistaRegistro(models.Model):
             msg = self._error_texto(e)
             _logger.warning('Transportista: error de GLS en %s: %s', enviar.mapped('name'), msg)
             if msg.strip().endswith('-70'):
-                raise UserError(_('GLS dice que esta expedición YA EXISTE (-70). NO repetir: hacerlo desde el '
-                                  'portátil con «Enviar al Expedidor» (acción 1834), que la recupera.'))
+                # v1.8.0: casi siempre el primer intento llegó a GLS y la respuesta no (timeout): se recupera
+                raise GlsYaExiste(_('GLS dice que esta expedición YA EXISTE (-70): seguramente el primer intento sí '
+                                    'llegó. NO repetir: pulsa «Recuperar etiqueta GLS».'))
             raise UserError(_('GLS ha dado un error: %s. No se ha hecho la etiqueta.') % msg)
         vals = res[0] if res else {}
         enviar.invalidate_cache()
@@ -564,6 +575,68 @@ class KoroshiTransportistaRegistro(models.Model):
                                       'entre OUT que no se han podido quitar). Avisar a GLS o corregirla.') % (
                     rep['bultos_gls'], rep['cajas']))
         return {'tracking': tracking, 'texto': texto, 'aviso': aviso}
+
+    @api.model
+    def _recuperar_gls(self, outs):
+        """v1.8.0 (Isaac 27/11, K85 y K10: -70 y la oficina lo hacía a mano con la acción 1879). Solo lee en GLS: busca
+        la expedición por el nombre de cada OUT (en un envío agrupado GLS guarda el de la primera y las otras no la
+        encuentran), baja la etiqueta y deja las OUT como _enviar_gls: transportista GLS, tracking = codexp, código de
+        barras = codbar y el PDF gls_label_<codbar>.pdf adjunto a las OUT que llevan bultos."""
+        carrier = self.env['delivery.carrier'].sudo().browse(CARRIER_GLS).exists()
+        if not carrier or not hasattr(carrier, 'gls_asm_buscar_expedicion') or \
+                not hasattr(carrier, 'gls_asm_get_label'):
+            raise UserError(_('No está el transportista GLS (id %d) o no sabe buscar expediciones.') % CARRIER_GLS)
+        rep = logica.reparto_gls([{'id': p.id, 'bultos': p.number_of_packages,
+                                   'cajas': self._cajas_de(p).ids if p.has_packages else []} for p in outs])
+        Picking = self.env['stock.picking'].sudo()
+        enviar = Picking.browse(rep['enviar'])
+        juntadas = Picking.browse(rep['juntadas'])
+        exp, avisos, probadas = None, [], []
+        for p in enviar | outs:                          # primero las que llevan bultos, en el orden del envío
+            ref = p.name[:15]
+            try:
+                exp, avisos = logica.elegir_expedicion(carrier.gls_asm_buscar_expedicion(ref) or [])
+            except Exception as e:  # noqa: BLE001 - las OUT que no son la referencia dan error en GLS
+                _logger.info('Transportista: GLS no encuentra %s: %s', ref, self._error_texto(e))
+                exp = None
+            probadas.append(ref)
+            if exp:
+                break
+        if not exp:
+            raise UserError(_('GLS no encuentra la expedición de estas OUT (%s). No se ha hecho nada: avisar a la '
+                              'oficina.') % ', '.join(probadas))
+        codexp, codbar = str(exp['codexp']), str(exp['codbar'])
+        pdf = False
+        for codigo in (codbar, probadas[-1]):
+            try:
+                pdf = carrier.gls_asm_get_label(codigo)
+            except Exception as e:  # noqa: BLE001
+                avisos.append(_('GLS no da la etiqueta con %s: %s.') % (codigo, self._error_texto(e)))
+            if pdf:
+                break
+        vals = {'carrier_id': carrier.id, 'carrier_tracking_ref': codexp}
+        if CAMPO_BARRAS_GLS in enviar._fields:
+            enviar.write(dict(vals, **{CAMPO_BARRAS_GLS: codbar}))
+        else:
+            enviar.write(vals)
+        juntadas.write(vals)
+        detalle = _('Expedición %s, código de barras %s, %s bultos, %s, borrado=%s.') % (
+            codexp, codbar, exp.get('bultos') or '?', exp.get('estado') or '?', exp.get('borrado') or '-')
+        for p in enviar:
+            p.message_post(body=_('GLS: expedición recuperada desde la PDA (ya existía en GLS, -70). %s %s') % (
+                detalle, ' '.join(avisos)), attachments=[('gls_label_%s.pdf' % codbar, pdf)] if pdf else None)
+        for p in juntadas:
+            p.message_post(body=_('GLS: esta OUT va en la expedición recuperada %s (sin bultos propios).') % codexp)
+        try:
+            bultos_gls = int(exp.get('bultos') or 0)
+        except (TypeError, ValueError):
+            bultos_gls = 0
+        if bultos_gls and bultos_gls != rep['cajas']:
+            avisos.append(_('GLS tiene %d bultos y hay %d cajas: avisar a la oficina.') % (bultos_gls, rep['cajas']))
+        if not pdf:
+            avisos.append(_('No ha llegado el PDF: imprímela desde el portátil.'))
+        texto = _('GLS %s recuperada (ya existía en GLS).') % codexp + (' ' + ' '.join(avisos) if avisos else '')
+        return {'tracking': codexp, 'texto': texto, 'aviso': bool(avisos)}
 
     # ------------------------------------------------------------------ reimprimir
     @api.model

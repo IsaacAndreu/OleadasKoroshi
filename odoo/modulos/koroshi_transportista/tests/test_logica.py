@@ -171,6 +171,28 @@ class TestExpedicionesHoy(unittest.TestCase):
         self.assertEqual(logica.codigo_tienda(''), '')
 
 
+class TestRecuperarGls(unittest.TestCase):
+    """v1.8.0: GLS -70 (ya existe). K10 27/11: expedición 1386233314, 6 bultos, GRABADO, borrado=S."""
+
+    def test_k10_borrado_avisa_no_bloquea(self):
+        e, avisos = logica.elegir_expedicion([{'codexp': '1386233314', 'codbar': '61000323309079', 'bultos': '6',
+                                               'estado': 'GRABADO', 'borrado': 'S'}])
+        self.assertEqual(e['codexp'], '1386233314')
+        self.assertEqual(len(avisos), 1)
+        self.assertIn('borrada', avisos[0])
+
+    def test_prefiere_la_no_borrada(self):
+        e, avisos = logica.elegir_expedicion([
+            {'codexp': '1', 'codbar': 'a', 'borrado': 'N'}, {'codexp': '2', 'codbar': 'b', 'borrado': 'S'}])
+        self.assertEqual(e['codexp'], '1')
+        self.assertEqual(len(avisos), 1)                 # hay 2
+
+    def test_nada(self):
+        self.assertEqual(logica.elegir_expedicion([]), (None, []))
+        self.assertEqual(logica.elegir_expedicion(None), (None, []))
+        self.assertEqual(logica.elegir_expedicion([{'codexp': '1', 'codbar': ''}]), (None, []))
+
+
 class TestCuadre(unittest.TestCase):
     ESP = {'CJ665000001': ['OUT/1'], 'CJ665000002': ['OUT/1'], 'CJ665000003': ['OUT/2']}
 

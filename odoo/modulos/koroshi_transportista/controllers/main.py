@@ -4,6 +4,7 @@
 # /leer: tarjeta -> la persona; CJ (o sus últimas 4-9 cifras, v1.1.0) -> el estado de la tienda con las CJ leídas (solo lee).
 # /etiquetar: GLS o XPO de verdad (solo si cuadra), y el PDF a la cola del portátil. Tarjeta obligatoria. Token.
 # /reimprimir: vuelve a mandar a la cola el PDF de una expedición hecha.
+# /etiquetar con recuperar (v1.8.0): tras el -70 de GLS, recupera la expedición que ya existe.
 # /expediciones (v1.7.0): las expediciones de hoy de todas las tiendas, para la lista fija de reimprimir.
 # Permiso, tarjeta y lector: koroshi_base.pda, como Juntar cajas.
 # =============================================================================
@@ -14,6 +15,7 @@ from odoo.http import request
 from odoo.addons.koroshi_base import comun, pda
 
 from .. import logica
+from ..models.transportista import GlsYaExiste
 
 
 class KoroshiTransportista(http.Controller):
@@ -61,11 +63,15 @@ class KoroshiTransportista(http.Controller):
 
     @http.route('/koroshi/transportista/etiquetar', type='json', auth='user')
     def etiquetar(self, leidas=None, partner_id=False, transportista='', employee_id=False, token='', fuera=None,
-                  **kw):
+                  recuperar=False, **kw):
         def hacer():
             emp = pda.empleado_valido(request.env, employee_id)
-            return self._modelo().etiquetar(list(leidas or []), partner_id, transportista, employee=emp,
-                                            token=token or '', fuera=fuera)
+            try:
+                return self._modelo().etiquetar(list(leidas or []), partner_id, transportista, employee=emp,
+                                                token=token or '', fuera=fuera, recuperar=bool(recuperar))
+            except GlsYaExiste as e:                     # v1.8.0: la PDA enseña «Recuperar etiqueta GLS»
+                request.env.cr.rollback()
+                return {'ok': False, 'gls_existe': True, 'msg': e.args[0] if e.args else str(e)}
         return self._envolver(hacer)
 
     @http.route('/koroshi/transportista/expediciones', type='json', auth='user')
