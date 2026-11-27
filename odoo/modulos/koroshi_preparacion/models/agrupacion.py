@@ -440,7 +440,8 @@ class Agrupacion(models.AbstractModel):
             with self.env.cr.savepoint():
                 self.env.cr.execute('SELECT id FROM stock_picking_batch WHERE id = %s FOR UPDATE NOWAIT', (lote.id,))
         except Exception:
-            raise Ocupada(_('Otra PDA está validando %s. Se vuelve a probar sola.') % lote.name)
+            raise Ocupada(_('%s está ocupada en Odoo (otra PDA validando o una operación de la oficina). '
+                            'Se vuelve a probar sola.') % lote.name)   # v3.38.1
 
     # ------------------------------------------------------------------ imprimir
     @api.model

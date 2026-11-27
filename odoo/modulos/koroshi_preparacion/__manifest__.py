@@ -253,8 +253,13 @@ asistente de Odoo que Validar -> «Crear pedido pendiente» en el ordenador; lo 
 parcial»). No en Zalando / About You (ya lo tenían), ni en OUT de zona Z-, ni en la ronda de faltantes, ni a dos.
 Parámetro koroshi_preparacion.validar_parcial ('0' = como antes; sin crear vale '1'). Solo servidor: la PDA ya sabía
 pintar «Validar incompleto». S4T (acción 1800): el pedido espera a que se valide el pedido pendiente. Sin campos nuevos.
+v3.38.1 (27/11/2026): el aviso de OUT ocupada ya no dice siempre «Otra PDA está guardando». El 27/11 a las 09:00 una
+acción masiva de reservas lanzada desde la oficina (Almacen 2) tuvo 6 OUT bloqueadas 7 min (deadlock con las
+validaciones) y las PDA culpaban a «otra PDA». Ahora: «La OUT está ocupada en Odoo (otra PDA o una operación de la
+oficina)». Validar, Cambiar de caja y Deshacer, cuando tras los reintentos sigue ocupada, ya no dicen «se vuelve a
+probar sola» (no es verdad): «Espera un momento y pulsa otra vez: no se valida dos veces». Solo textos.
 """,
-    'version': '13.0.3.38.0',
+    'version': '13.0.3.38.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

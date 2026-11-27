@@ -705,7 +705,9 @@ class Lectura(models.Model):
             with self.env.cr.savepoint():
                 self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE NOWAIT', (picking.id,))
         except Exception:
-            raise Ocupada(_('Otra PDA está guardando en %s. Se vuelve a probar sola.') % picking.name)
+            # v3.38.1: no siempre es otra PDA (27/11: «Comprobar disponibilidad» desde la oficina la tuvo 7 min)
+            raise Ocupada(_('%s está ocupada en Odoo (otra PDA o una operación de la oficina). '
+                            'Se vuelve a probar sola.') % picking.name)
 
     @api.model
     def _variantes(self, codigo):

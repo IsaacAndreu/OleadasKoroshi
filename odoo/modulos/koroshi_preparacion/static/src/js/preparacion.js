@@ -74,6 +74,8 @@ var COLA_HORAS = 24;            // v3.6: las pendientes de más de un día no se
 var CLAVE_CADUCADAS = 'koroshi_preparacion_caducadas';   // v3.29: caducadas pendientes de apuntar en Odoo
 var VALIDAR_MAX_MS = 90000;     // v3.29: validar una OUT grande puede tardar: más tiempo antes de reintentar
 var REINTENTOS_MAX = 8;         // v3.29: mover / deshacer / validar: reintentos con el mismo id (lento u ocupada)
+// v3.38.1: lo que sale cuando la OUT sigue ocupada tras los reintentos (no siempre es otra PDA)
+var OCUPADA_TEXTO = 'La OUT sigue ocupada en Odoo (otra PDA o una operación de la oficina).';
 var MAX_ALTERNATIVAS = 3;
 var ICONOS = {ok: '✓', info: 'ℹ', warn: '⚠', mal: '✖'};
 // v3.22: ALARMA DE PARADO. Con la OUT abierta y X min sin leer ninguna prenda (parámetro
@@ -1610,8 +1612,9 @@ var Pantalla = AbstractAction.extend({
                 self._actividad();   // v3.22
                 return;
             }
-            self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')
-                .text('✖ ' + ((r && r.msg) || 'No se ha podido cambiar de caja.'));
+            self.$('.o_kp_mv_aviso').attr('class', 'o_kp_hoja_aviso o_kp_mv_aviso o_kp_mal')   // v3.38.1: ocupada
+                .text('✖ ' + (r && r.que === 'ocupada' ? OCUPADA_TEXTO + ' Toca otra vez en un momento.'
+                              : ((r && r.msg) || 'No se ha podido cambiar de caja.')));
             self._pitido(false);
         }, function (err) {
             self.moviendo = false;
@@ -1729,6 +1732,13 @@ var Pantalla = AbstractAction.extend({
                 return;
             }
             self.modo = 'leer';
+            if (r && r.que === 'ocupada') {
+                // v3.38.1: tras REINTENTOS_MAX ya no se prueba sola: decirlo claro (27/11: la tenía la oficina 7 min)
+                self._pintar();
+                self._aviso(OCUPADA_TEXTO + ' Espera un momento y pulsa Validar otra vez: no se valida dos veces.', 'warn');
+                self._pitido(false);
+                return;
+            }
             if (r && r.que === 'quedan' && r.incompleto) { self._armarIncompleto(out.id); }   // v3.27
             self._pintar();
             self._aviso((r && r.msg) || 'No se ha podido validar.', r && r.que === 'quedan' ? 'warn' : 'mal');
@@ -1780,7 +1790,7 @@ var Pantalla = AbstractAction.extend({
             employee_id: this.operario ? this.operario.id : false, id_lectura: this._nuevoId(),
         })).then(function (r) {
             self.enviando = false;
-            if (r && r.que === 'ocupada') { return self._aviso('Odoo está guardando: pulsa otra vez.', 'warn'); }
+            if (r && r.que === 'ocupada') { return self._aviso(OCUPADA_TEXTO + ' Pulsa otra vez en un momento.', 'warn'); }
             if (r && r.estado && !self._aplicar(r.estado)) { self._recargar(); }   // v3.5: ligero
             if (r && r.ok && r.linea_id) { self.verId = r.linea_id; }   // v3.0.1: se ve la línea deshecha
             self._pintar();
