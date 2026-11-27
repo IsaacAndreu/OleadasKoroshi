@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- ============================================================ v2.0: reparto de hoy, colas, motivos -->
+
+    <!-- Colas (asignaciones) -->
+    <record id="view_tuctuc_operario_asignacion_tree" model="ir.ui.view">
+        <field name="name">tuctuc.operario.asignacion.tree</field>
+        <field name="model">tuctuc.operario.asignacion</field>
+        <field name="arch" type="xml">
+            <tree create="false" editable="bottom" decoration-success="estado == 'curso'"
+                  decoration-warning="estado == 'oficina'" decoration-muted="estado in ('hecha', 'quitada')">
+                <field name="secuencia" widget="handle"/>
+                <field name="employee_id" attrs="{'readonly': [('estado', 'not in', ('cola', 'oficina'))]}"
+                       options="{'no_create': True}"/>
+                <field name="name" readonly="1"/>
+                <field name="tipo" readonly="1"/>
+                <field name="tienda" readonly="1"/>
+                <!-- v2.5: preparar a dos -->
+                <field name="uds" readonly="1"/>
+                <field name="a_dos" readonly="1" string="A dos"/>
+                <field name="ayudante_id" options="{'no_create': True}"
+                       attrs="{'readonly': ['|', ('tipo', '!=', 'out'), ('estado', 'not in', ('cola', 'curso'))]}"/>
+                <field name="estado_out" readonly="1"/>
+                <field name="estado" readonly="1"/>
+                <field name="origen" readonly="1"/>
+                <field name="motivo_id" readonly="1"/>
+                <field name="nota" readonly="1"/>
+                <field name="saltos" readonly="1"/>
+                <button name="action_subir" type="object" string="Primera" icon="fa-arrow-up"
+                        attrs="{'invisible': [('estado', '!=', 'cola')]}"/>
+                <button name="action_liberar" type="object" string="Liberar" icon="fa-unlock"
+                        attrs="{'invisible': [('estado', '!=', 'oficina')]}"/>
+                <button name="action_quitar" type="object" string="Quitar" icon="fa-times"
+                        attrs="{'invisible': [('estado', 'not in', ('cola', 'curso'))]}"
+                        confirm="¿Quitar este pedido de la cola? Si se está haciendo, la tarea se cierra como dejada."/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_tuctuc_operario_asignacion_search" model="ir.ui.view">
+        <field name="name">tuctuc.operario.asignacion.search</field>
+        <field name="model">tuctuc.operario.asignacion</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="employee_id"/>
+                <field name="name"/>
+                <field name="picking_id"/>
+                <field name="batch_id"/>
+                <filter name="vivas" string="En cola, haciéndose o en expediciones"
+                        domain="[('estado', 'in', ('cola', 'curso', 'oficina'))]"/>
+                <filter name="oficina" string="En expediciones" domain="[('estado', '=', 'oficina')]"/>
+                <filter name="curso" string="Haciéndose" domain="[('estado', '=', 'curso')]"/>
+                <separator/>
+                <filter name="saltadas" string="Saltadas alguna vez" domain="[('saltos', '>', 0)]"/>
+                <filter name="a_dos" string="Grandes: para hacer a dos" domain="[('a_dos', '=', True)]"/>
+                <filter name="con_ayudante" string="Con ayudante" domain="[('ayudante_id', '!=', False)]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                    <filter name="g_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="g_motivo" string="Motivo" context="{'group_by': 'motivo_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_operario_colas" model="ir.actions.act_window">
+        <field name="name">Colas de operarios</field>
+        <field name="res_model">tuctuc.operario.asignacion</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_vivas': 1, 'search_default_g_operario': 1}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">No hay pedidos asignados</p>
+            <p>Para asignar a mano: lista de albaranes (o de agrupaciones), seleccionar y Acción > Asignar a operario.
+                En modo automático o por pasillos se asignan solos cuando el operario pide el siguiente.</p>
+        </field>
+    </record>
+
+    <!-- Reparto de hoy -->
+    <record id="view_tuctuc_operario_dia_form" model="ir.ui.view">
+        <field name="name">tuctuc.operario.dia.form</field>
+        <field name="model">tuctuc.operario.dia</field>
+        <field name="arch" type="xml">
+            <form string="Reparto del día">
+                <header>
+                    <button name="action_repartir_ahora" type="object" string="Repartir ahora" class="btn-primary"
+                            attrs="{'invisible': [('modo', '=', 'manual')]}"
+                            help="Llena la cola de cada operario de hoy hasta «Pedidos por bloque», uno a cada uno por turnos"/>
+                </header>
+                <sheet>
+                    <div class="oe_title">
+                        <h1>Reparto del <field name="fecha" readonly="1" class="oe_inline"/></h1>
+                    </div>
+                    <p class="text-muted">Un reparto para toda la nave (PRIME, MODA INTIMA y UNITED). Con «darle la
+                        siguiente sola» encendido, cada PDA coge sola la OUT directa o la INT al SORTER más antigua.
+                        Para repartir por bloques: poner los operarios de hoy y «Repartir ahora».
+                        Lo asignado a mano (Colas, o Acción > Asignar a operario en albaranes) va siempre primero.
+                        Las OUT que salen del SORTER no se dan nunca (las reparte PedidosMultiples).</p>
+                    <group>
+                        <group>
+                            <field name="modo" widget="radio"/>
+                            <field name="pasillos_a_auto" attrs="{'invisible': [('modo', '!=', 'pasillos')]}"/>
+                        </group>
+                        <group>
+                            <field name="bloque" attrs="{'invisible': [('modo', '=', 'manual')]}"/>
+                            <field name="aviso_quedan"/>
+                            <field name="dar_sin_etiqueta" attrs="{'invisible': [('modo', '=', 'manual')]}"/>
+                            <field name="dar_int"/>
+                            <field name="agrupaciones"/>
+                            <field name="solo_preparadas"/>
+                            <field name="company_id" groups="base.group_multi_company"/>
+                        </group>
+                    </group>
+                    <notebook>
+                        <page string="Operarios de hoy" name="tramos">
+                            <field name="tramo_ids">
+                                <tree editable="bottom" decoration-warning="cola_baja">
+                                    <field name="sequence" widget="handle"/>
+                                    <field name="employee_id" options="{'no_create': True}"/>
+                                    <field name="lineal_desde"/>
+                                    <field name="lineal_hasta"/>
+                                    <field name="pendientes"/>
+                                    <field name="cola_baja" invisible="1"/>
+                                    <button name="action_dar_bloque" type="object" string="Dar bloque"
+                                            icon="fa-plus-square"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">Desde / hasta lineal solo cuenta en el modo por pasillos (L40 = 40;
+                                0 - 0 = sin tramo). «Le quedan» cuenta el que está haciendo.</p>
+                        </page>
+                        <page string="Colas ahora" name="colas">
+                            <field name="asignacion_ids" readonly="1">
+                                <tree decoration-success="estado == 'curso'">
+                                    <field name="employee_id"/>
+                                    <field name="secuencia"/>
+                                    <field name="name"/>
+                                    <field name="tienda"/>
+                                    <field name="estado"/>
+                                    <field name="origen"/>
+                                </tree>
+                            </field>
+                        </page>
+                        <page string="En expediciones" name="oficina">
+                            <field name="oficina_ids" readonly="1">
+                                <tree decoration-warning="True">
+                                    <field name="name"/>
+                                    <field name="employee_id"/>
+                                    <field name="motivo_id"/>
+                                    <field name="nota"/>
+                                    <field name="fecha_salto"/>
+                                </tree>
+                            </field>
+                            <p class="text-muted">Para liberarlas o pasarlas a otro operario: menú Colas, filtro
+                                «En expediciones».</p>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <record id="view_tuctuc_operario_dia_tree" model="ir.ui.view">
+        <field name="name">tuctuc.operario.dia.tree</field>
+        <field name="model">tuctuc.operario.dia</field>
+        <field name="arch" type="xml">
+            <tree>
+                <field name="fecha"/>
+                <field name="modo"/>
+                <field name="bloque"/>
+                <field name="agrupaciones"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_operario_reparto_hoy" model="ir.actions.server">
+        <field name="name">Reparto de hoy</field>
+        <field name="model_id" ref="model_tuctuc_operario_dia"/>
+        <field name="groups_id" eval="[(4, ref('tuctuc_operarios.grupo_productividad'))]"/>
+        <field name="state">code</field>
+        <field name="code">action = model.action_abrir_hoy()</field>
+    </record>
+
+    <!-- Motivos para saltar -->
+    <record id="view_tuctuc_operario_motivo_tree" model="ir.ui.view">
+        <field name="name">tuctuc.operario.motivo.tree</field>
+        <field name="model">tuctuc.operario.motivo</field>
+        <field name="arch" type="xml">
+            <tree editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="name"/>
+                <field name="destino"/>
+                <field name="pide_nota"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_operario_motivos" model="ir.actions.act_window">
+        <field name="name">Motivos para saltar</field>
+        <field name="res_model">tuctuc.operario.motivo</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <!-- Asignar a operario (Accion en albaranes y agrupaciones) -->
+    <record id="view_tuctuc_operario_asignar_form" model="ir.ui.view">
+        <field name="name">tuctuc.operario.asignar.form</field>
+        <field name="model">tuctuc.operario.asignar</field>
+        <field name="arch" type="xml">
+            <form string="Asignar a operario">
+                <group>
+                    <field name="employee_id" options="{'no_create': True}"/>
+                    <field name="al_principio"/>
+                </group>
+                <field name="picking_ids" readonly="1" attrs="{'invisible': [('picking_ids', '=', [])]}">
+                    <tree><field name="name"/><field name="partner_id"/><field name="state"/></tree>
+                </field>
+                <field name="batch_ids" readonly="1" attrs="{'invisible': [('batch_ids', '=', [])]}">
+                    <tree><field name="name"/><field name="state"/></tree>
+                </field>
+                <footer>
+                    <button name="action_asignar" type="object" string="Asignar" class="btn-primary"/>
+                    <button string="Cancelar" special="cancel" class="btn-secondary"/>
+                </footer>
+            </form>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_operario_asignar_picking" model="ir.actions.act_window">
+        <field name="name">Asignar a operario</field>
+        <field name="res_model">tuctuc.operario.asignar</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="stock.model_stock_picking"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('tuctuc_operarios.grupo_productividad'))]"/>
+    </record>
+
+    <record id="action_tuctuc_operario_asignar_batch" model="ir.actions.act_window">
+        <field name="name">Asignar a operario</field>
+        <field name="res_model">tuctuc.operario.asignar</field>
+        <field name="view_mode">form</field>
+        <field name="target">new</field>
+        <field name="binding_model_id" ref="stock_picking_batch.model_stock_picking_batch"/>
+        <field name="binding_view_types">list</field>
+        <field name="groups_id" eval="[(4, ref('tuctuc_operarios.grupo_productividad'))]"/>
+    </record>
+</odoo>

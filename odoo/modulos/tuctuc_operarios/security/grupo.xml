@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Quien ve los nombres con la productividad y reparte (Reparto de hoy, Colas, Tareas, Crear operarios).
+         Al instalar solo lo tiene el administrador; se da a quien haga falta en Ajustes > Usuarios. -->
+    <record id="grupo_productividad" model="res.groups">
+        <field name="name">TUCTUC Operarios: ver productividad y repartir</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+        <field name="users" eval="[(4, ref('base.user_root')), (4, ref('base.user_admin'))]"/>
+    </record>
+
+    <!-- Usuarios que no pueden abrir pedidos en Lecturas (PDA) sin leer antes la tarjeta del operario.
+         Al instalar NO tiene a nadie: se pone el usuario de las PDA de Oriola cuando esté probado. -->
+    <record id="grupo_tarjeta_obligatoria" model="res.groups">
+        <field name="name">TUCTUC Operarios: tarjeta obligatoria</field>
+        <field name="category_id" ref="base.module_category_hidden"/>
+    </record>
+</odoo>

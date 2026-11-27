@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Lecturas (PDA) como app en la pantalla de inicio de Odoo, para todos (sin grupos). «Salir» lleva a la
+         pantalla de inicio y desde aquí se vuelve a entrar. -->
+    <menuitem id="menu_tuctuc_lecturas_app" name="Lecturas (PDA)" action="action_tuctuc_operarios_pantalla"
+              web_icon="tuctuc_operarios,static/description/icon.png" sequence="1"/>
+    <menuitem id="menu_tuctuc_operarios_root" name="TUCTUC Operarios" parent="stock.menu_stock_root"
+              sequence="91" groups="stock.group_stock_user"/>
+    <menuitem id="menu_tuctuc_operarios_pagina" name="Lecturas (PDA)" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operarios_pantalla" sequence="10"/>
+    <menuitem id="menu_tuctuc_operarios_reparto" name="Reparto de hoy" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operario_reparto_hoy" sequence="12" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_colas" name="Colas" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operario_colas" sequence="14" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_tareas" name="Tareas" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operario_tarea" sequence="20" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_productividad" name="Productividad" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operario_productividad" sequence="30" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_sin" name="OUT validadas hoy sin operario" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_validadas_sin_operario" sequence="40" groups="tuctuc_operarios.grupo_productividad"/>
+    <!-- Operarios = empleados con la etiqueta «Operario TUCTUC» (misma tarjeta OP que en NATH) -->
+    <menuitem id="menu_tuctuc_operarios_empleados" name="Operarios" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operarios_empleados" sequence="50" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_crear" name="Crear operarios" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_crear_operarios" sequence="60" groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_operarios_motivos" name="Motivos para saltar" parent="menu_tuctuc_operarios_root"
+              action="action_tuctuc_operario_motivos" sequence="80" groups="tuctuc_operarios.grupo_productividad"/>
+</odoo>

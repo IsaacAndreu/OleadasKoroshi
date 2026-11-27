@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- A los usuarios del parámetro tuctuc_pda_app.usuarios se les pone el manifiesto de la app en las páginas de
+         Odoo: Chrome ofrece entonces «Instalar aplicación». El service worker (vacío, sin caché) solo se registra en
+         Android (las PDA). Al resto de usuarios no les cambia nada. -->
+    <template id="layout_pda_app" inherit_id="web.layout" name="TUCTUC Lecturas PDA: app instalable">
+        <xpath expr="//head" position="inside">
+            <t t-if="request and request.session.uid and request.env.user.tuctuc_pda_app_activa()">
+                <link rel="manifest" href="/tuctuc_pda/manifest.webmanifest"/>
+                <meta name="theme-color" content="#14243b"/>
+                <meta name="mobile-web-app-capable" content="yes"/>
+                <link rel="apple-touch-icon" href="/tuctuc_pda_app/static/img/icon-192.png"/>
+                <script type="text/javascript">
+                    if ('serviceWorker' in navigator) {
+                        if (/Android/i.test(navigator.userAgent)) {
+                            navigator.serviceWorker.register('/tuctuc_pda/sw.js', {scope: '/'}).catch(function () {});
+                        }
+                    }
+                </script>
+            </t>
+        </xpath>
+    </template>
+</odoo>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v2.2.1 (10/11/2026): al saltar solo salen "No hay stock" y "Fin de turno". Los otros 3 se ARCHIVAN
+         (no se borran: las asignaciones que ya los usan los siguen teniendo). Para volver a usarlos hay que
+         quitar este fichero del manifiesto: cada vez que se actualiza el modulo se vuelven a archivar. -->
+    <function model="tuctuc.operario.motivo" name="write"
+              eval="[[ref('motivo_material'), ref('motivo_grande'), ref('motivo_otro')], {'active': False}]"/>
+</odoo>

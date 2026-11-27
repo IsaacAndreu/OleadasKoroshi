@@ -1,0 +1,388 @@
+/* TUCTUC Operarios v2.3.0 - pantalla de la PDA (letra grande, contraste alto). Todo dentro de .o_tuctuc_operarios
+   para no tocar el resto de Odoo (salvo body.o_ko_bloqueado, al final). Sin librerias externas. */
+.o_tuctuc_operarios {
+    --ko-fondo: #eef1f4;
+    --ko-texto: #111827;
+    --ko-suave: #4b5563;
+    --ko-borde: #c4cbd3;
+    --ko-verde: #1e7b34;
+    --ko-verde-claro: #d3f4dc;
+    --ko-naranja: #c25e00;
+    --ko-gris: #3f4954;
+    --ko-rojo: #b3171c;
+    --ko-rojo-claro: #ffe1e1;
+    --ko-azul: #0b4f9c;
+    --ko-azul-claro: #dcebfb;
+    --ko-ambar: #8a5300;
+    --ko-ambar-claro: #fff1c7;
+    background: var(--ko-fondo);
+    color: var(--ko-texto);
+    min-height: 100%;
+    font-family: Arial, Helvetica, sans-serif;
+    position: relative;
+}
+.o_tuctuc_operarios * { box-sizing: border-box; }
+.o_tuctuc_operarios .o_ko_app { max-width: 640px; margin: 0 auto; padding: 10px 12px 16px; }
+.o_tuctuc_operarios .o_ko_icono { display: inline-block; min-width: 1.1em; text-align: center; }
+
+/* ---------------------------------------------------------------- botones grandes */
+.o_tuctuc_operarios .o_ko_boton {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: 100%; min-height: 58px; padding: 12px 14px; margin: 0 0 10px;
+    border: 0; border-radius: 12px; font-size: 22px; font-weight: bold; line-height: 1.15;
+    color: #fff; background: var(--ko-verde); cursor: pointer; -webkit-tap-highlight-color: transparent;
+}
+.o_tuctuc_operarios .o_ko_boton:active { filter: brightness(0.88); }
+.o_tuctuc_operarios .o_ko_boton:focus-visible { outline: 4px solid #111827; outline-offset: 2px; }
+.o_tuctuc_operarios .o_ko_boton:disabled { background: #c4cbd3; color: #4b5563; cursor: default; filter: none; }
+.o_tuctuc_operarios .o_ko_gris { background: var(--ko-gris); }
+.o_tuctuc_operarios .o_ko_naranja { background: var(--ko-naranja); }
+.o_tuctuc_operarios .o_ko_rojo { background: var(--ko-rojo); }
+
+/* ---------------------------------------------------------------- cabecera "quien soy" */
+.o_tuctuc_operarios .o_ko_cabecera {
+    display: flex; align-items: center; gap: 12px;
+    background: #fff; border: 2px solid var(--ko-borde); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px;
+}
+.o_tuctuc_operarios .o_ko_avatar {
+    flex: 0 0 52px; width: 52px; height: 52px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: #9aa5b1; color: #fff; font-size: 22px; font-weight: bold; letter-spacing: 0.5px;
+}
+.o_tuctuc_operarios .o_ko_cabecera_texto { flex: 1 1 auto; min-width: 0; }
+.o_tuctuc_operarios .o_ko_quien { font-size: 26px; font-weight: bold; line-height: 1.15; overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_quien.o_ko_vacio { font-size: 18px; font-weight: normal; color: var(--ko-suave); }
+.o_tuctuc_operarios .o_ko_dia { font-size: 15px; color: var(--ko-suave); margin-top: 2px; }
+.o_tuctuc_operarios .o_ko_dia b { color: var(--ko-texto); }
+.o_tuctuc_operarios .o_ko_salir {
+    flex: 0 0 auto; min-height: 48px; padding: 8px 12px; border: 2px solid var(--ko-gris); border-radius: 10px;
+    background: #fff; color: var(--ko-gris); font-size: 17px; font-weight: bold; cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- avisos (ok / info / warn / mal) */
+.o_tuctuc_operarios .o_ko_aviso { display: none; }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_ok,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_info,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_warn,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_mal {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; font-size: 20px; font-weight: bold; line-height: 1.25;
+    border-left: 8px solid transparent;
+}
+.o_tuctuc_operarios .o_ko_aviso .o_ko_aviso_icono { font-size: 24px; flex: 0 0 auto; }
+.o_tuctuc_operarios .o_ko_aviso .o_ko_aviso_texto { flex: 1 1 160px; min-width: 0; }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_ok { background: var(--ko-verde-claro); color: #0f4d20; border-left-color: var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_info { background: var(--ko-azul-claro); color: #082f5e; border-left-color: var(--ko-azul); }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_warn { background: var(--ko-ambar-claro); color: #5c3700; border-left-color: #d98e04; }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_mal { background: var(--ko-rojo-claro); color: #7f0d10; border-left-color: var(--ko-rojo); }
+.o_tuctuc_operarios .o_ko_aviso_accion {
+    flex: 0 0 auto; min-height: 44px; padding: 6px 14px; border: 2px solid currentColor; border-radius: 10px;
+    background: #fff; color: inherit; font-size: 17px; font-weight: bold; cursor: pointer;
+}
+
+/* ---------------------------------------------------------------- pedido actual */
+.o_tuctuc_operarios .o_ko_caja { border-radius: 14px; padding: 14px; margin-bottom: 10px; }
+.o_tuctuc_operarios .o_ko_actual { background: #fff; border: 3px solid var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_sub { display: block; font-size: 16px; color: var(--ko-suave); }
+.o_tuctuc_operarios .o_ko_actual_ref { font-size: 30px; font-weight: bold; line-height: 1.1; margin: 2px 0 4px; overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_actual_tienda { font-size: 20px; font-weight: bold; color: #1f2937; margin-bottom: 8px; overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_datos { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.o_tuctuc_operarios .o_ko_dato {
+    display: inline-block; padding: 4px 10px; border-radius: 999px; background: #e5e9ee; color: #1f2937;
+    font-size: 16px; font-weight: bold;
+}
+.o_tuctuc_operarios .o_ko_dato.o_ko_zona { background: #1f2937; color: #fff; }
+.o_tuctuc_operarios .o_ko_progreso { margin-bottom: 12px; }
+.o_tuctuc_operarios .o_ko_barra { height: 14px; border-radius: 7px; background: #e5e9ee; overflow: hidden; border: 1px solid var(--ko-borde); }
+.o_tuctuc_operarios .o_ko_barra_lleno { display: block; height: 100%; width: 0; background: var(--ko-verde); transition: width 0.4s ease; }
+.o_tuctuc_operarios .o_ko_progreso_texto { font-size: 15px; color: var(--ko-suave); margin-top: 4px; }
+.o_tuctuc_operarios .o_ko_continuar { background: var(--ko-verde); font-size: 24px; min-height: 64px; }
+/* Faltante (de koroshi_faltantes, detras de .o_ko_dejar) y Saltar en la misma fila: Faltante naranja delante */
+.o_tuctuc_operarios .o_ko_botonera { display: flex; gap: 10px; }
+.o_tuctuc_operarios .o_ko_botonera > .o_ko_boton,
+.o_tuctuc_operarios .o_ko_botonera > button { flex: 1 1 0; margin: 0; min-width: 0; }
+.o_tuctuc_operarios .o_ko_saltar { background: var(--ko-gris); }
+.o_tuctuc_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante {
+    order: -1; display: flex; align-items: center; justify-content: center; gap: 8px;
+    width: auto; min-height: 58px; padding: 12px 14px; margin: 0; border: 0; border-radius: 12px;
+    background: var(--ko-naranja); color: #fff; font-size: 22px; font-weight: bold; cursor: pointer;
+}
+.o_tuctuc_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante::before { content: "\26A0"; font-size: 20px; }
+
+/* ---------------------------------------------------------------- entrada y lector */
+.o_tuctuc_operarios .o_ko_entrada { margin: 6px 0 4px; }
+.o_tuctuc_operarios .o_ko_codigo {
+    width: 100%; font-size: 18px; padding: 12px; min-height: 52px;
+    border: 2px solid #8792a0; border-radius: 12px; background: #fff; color: var(--ko-texto);
+}
+.o_tuctuc_operarios .o_ko_codigo:focus { border-color: var(--ko-verde); outline: none; box-shadow: 0 0 0 3px rgba(30, 123, 52, 0.25); }
+.o_tuctuc_operarios .o_ko_lector { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--ko-suave); margin: 6px 2px 0; cursor: pointer; }
+.o_tuctuc_operarios .o_ko_punto { width: 14px; height: 14px; border-radius: 50%; background: #8792a0; flex: 0 0 14px; }
+.o_tuctuc_operarios .o_ko_lector.o_ko_listo { color: var(--ko-verde); font-weight: bold; }
+.o_tuctuc_operarios .o_ko_lector.o_ko_listo .o_ko_punto { background: #22a447; animation: o_ko_latido 1.4s ease-in-out infinite; }
+@keyframes o_ko_latido {
+    0% { box-shadow: 0 0 0 0 rgba(34, 164, 71, 0.6); }
+    70% { box-shadow: 0 0 0 10px rgba(34, 164, 71, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(34, 164, 71, 0); }
+}
+
+/* ---------------------------------------------------------------- cola y "cogiendo ahora" */
+.o_tuctuc_operarios .o_ko_titulo { margin: 16px 0 6px; font-size: 16px; font-weight: bold; color: var(--ko-suave); }
+.o_tuctuc_operarios .o_ko_cola { list-style: none; margin: 0; padding: 0; counter-reset: o_ko_n; }
+.o_tuctuc_operarios .o_ko_cola > li {
+    counter-increment: o_ko_n; display: flex; align-items: center; gap: 10px;
+    background: #fff; border: 1px solid var(--ko-borde); border-radius: 10px; padding: 8px 10px; margin-bottom: 6px;
+}
+.o_tuctuc_operarios .o_ko_cola > li::before {
+    content: counter(o_ko_n); flex: 0 0 30px; height: 30px; border-radius: 50%; background: #1f2937; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px;
+}
+.o_tuctuc_operarios .o_ko_cola_txt { flex: 1 1 auto; min-width: 0; }
+.o_tuctuc_operarios .o_ko_cola_ref { display: block; font-size: 18px; font-weight: bold; overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_cola_tienda { display: block; font-size: 15px; color: var(--ko-suave); overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_cola_extra { flex: 0 0 auto; text-align: right; font-size: 15px; font-weight: bold; }
+.o_tuctuc_operarios .o_ko_cola_extra .o_ko_dato { font-size: 13px; padding: 2px 8px; }
+.o_tuctuc_operarios .o_ko_ahora { margin-top: 14px; }
+.o_tuctuc_operarios .o_ko_ahora > summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; gap: 6px; margin: 0; }
+.o_tuctuc_operarios .o_ko_n_operarios {
+    display: inline-block; min-width: 26px; padding: 1px 8px; border-radius: 999px; background: #1f2937; color: #fff; font-size: 14px; text-align: center;
+}
+.o_tuctuc_operarios .o_ko_fila { background: #fff; border-radius: 8px; padding: 8px 10px; margin-bottom: 6px; font-size: 16px; display: flex; justify-content: space-between; gap: 8px; }
+
+/* ---------------------------------------------------------------- pie: menu discreto, reloj, sonido */
+.o_tuctuc_operarios .o_ko_pie { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; color: var(--ko-suave); font-size: 16px; }
+.o_tuctuc_operarios .o_ko_menu,
+.o_tuctuc_operarios .o_ko_sonido {
+    width: 48px; height: 48px; border: 1px solid var(--ko-borde); border-radius: 10px; background: #fff;
+    color: var(--ko-suave); font-size: 22px; cursor: pointer; position: relative; overflow: hidden;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; touch-action: manipulation;
+}
+.o_tuctuc_operarios .o_ko_sonido.o_ko_mudo { opacity: 0.55; }
+/* pulsacion larga (2 s) en modo tarjeta obligatoria: se llena de abajo arriba */
+.o_tuctuc_operarios .o_ko_menu::after {
+    content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 0; background: rgba(30, 123, 52, 0.35);
+}
+.o_tuctuc_operarios .o_ko_menu.o_ko_cargando::after { height: 100%; transition: height 2s linear; }
+
+/* ---------------------------------------------------------------- sin conexion */
+.o_tuctuc_operarios .o_ko_offline {
+    position: sticky; top: 0; z-index: 1060; display: flex; align-items: center; gap: 10px;
+    background: var(--ko-rojo); color: #fff; font-size: 18px; font-weight: bold; padding: 12px 14px;
+}
+.o_tuctuc_operarios.o_ko_sin_red .o_ko_codigo { background: #f3f4f6; }
+
+/* ---------------------------------------------------------------- pantalla bloqueada "Lee tu tarjeta" */
+.o_tuctuc_operarios .o_ko_bloqueo {
+    position: fixed; inset: 0; z-index: 1040; background: #10233a; color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px 20px;
+    text-align: center; cursor: pointer;
+}
+.o_tuctuc_operarios .o_ko_bloqueo_centro { flex: 1 1 auto; display: flex; flex-direction: column; align-items: center; justify-content: center; max-width: 420px; width: 100%; }
+.o_tuctuc_operarios .o_ko_bloqueo_tarjeta {
+    width: 150px; height: 96px; border-radius: 12px; background: #fff; position: relative; margin-bottom: 26px;
+    box-shadow: 0 8px 22px rgba(0, 0, 0, 0.35);
+}
+.o_tuctuc_operarios .o_ko_bloqueo_banda { position: absolute; left: 0; right: 0; top: 14px; height: 16px; background: #1f2937; }
+.o_tuctuc_operarios .o_ko_bloqueo_linea { position: absolute; left: 14px; right: 14px; bottom: 30px; height: 8px; border-radius: 4px; background: #c4cbd3; }
+.o_tuctuc_operarios .o_ko_bloqueo_linea.o_ko_corta { right: 60px; bottom: 14px; }
+.o_tuctuc_operarios .o_ko_bloqueo_titulo { font-size: 40px; font-weight: bold; margin: 0 0 10px; color: #fff; }
+.o_tuctuc_operarios .o_ko_bloqueo_texto { font-size: 20px; line-height: 1.3; margin: 0 0 22px; color: #dbe4ee; }
+.o_tuctuc_operarios .o_ko_lector_grande { font-size: 20px; color: #dbe4ee; justify-content: center; margin: 0; }
+.o_tuctuc_operarios .o_ko_lector_grande .o_ko_punto { width: 20px; height: 20px; flex-basis: 20px; }
+.o_tuctuc_operarios .o_ko_lector_grande.o_ko_listo { color: #8ff0a8; }
+.o_tuctuc_operarios .o_ko_bloqueo_aviso { display: none; margin-top: 22px; padding: 14px 16px; border-radius: 12px; font-size: 20px; font-weight: bold; width: 100%; }
+.o_tuctuc_operarios .o_ko_bloqueo_aviso.o_ko_mal { display: block; background: var(--ko-rojo); color: #fff; }
+.o_tuctuc_operarios .o_ko_bloqueo_aviso.o_ko_ok { display: block; background: var(--ko-verde); color: #fff; }
+.o_tuctuc_operarios .o_ko_bloqueo_pie { flex: 0 0 auto; font-size: 18px; color: #9fb3c8; }
+/* en bloqueo el campo sigue con foco (el lector escribe en el) pero no se ve ni saca el teclado */
+.o_tuctuc_operarios.o_ko_modo_bloqueo .o_ko_app { visibility: hidden; }
+.o_tuctuc_operarios.o_ko_modo_bloqueo .o_ko_codigo {
+    visibility: visible; position: fixed; top: 0; left: 0; width: 2px; height: 2px; min-height: 0; padding: 0;
+    border: 0; opacity: 0; z-index: 1041;
+}
+
+/* ---------------------------------------------------------------- capa: abriendo / hecho */
+.o_tuctuc_operarios .o_ko_capa {
+    position: fixed; inset: 0; z-index: 1050; display: flex; align-items: center; justify-content: center;
+    padding: 24px 20px; text-align: center; background: #10233a; color: #fff;
+}
+.o_tuctuc_operarios .o_ko_capa.o_ko_capa_hecho { background: var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_abriendo,
+.o_tuctuc_operarios .o_ko_hecho { width: 100%; max-width: 420px; }
+.o_tuctuc_operarios .o_ko_spinner {
+    width: 72px; height: 72px; margin: 0 auto 24px; border-radius: 50%;
+    border: 8px solid rgba(255, 255, 255, 0.25); border-top-color: #fff; animation: o_ko_gira 0.9s linear infinite;
+}
+@keyframes o_ko_gira { to { transform: rotate(360deg); } }
+.o_tuctuc_operarios .o_ko_capa_sub { font-size: 20px; color: #e3ebf3; margin: 4px 0; }
+.o_tuctuc_operarios .o_ko_capa_ref { font-size: 38px; font-weight: bold; line-height: 1.1; margin: 6px 0; overflow-wrap: anywhere; }
+.o_tuctuc_operarios .o_ko_capa_nota { margin-top: 26px; font-size: 17px; color: #ffd8a8; font-weight: bold; }
+.o_tuctuc_operarios .o_ko_hecho_check {
+    width: 96px; height: 96px; margin: 0 auto 12px; border-radius: 50%; background: #fff; color: var(--ko-verde);
+    font-size: 64px; line-height: 96px; font-weight: bold;
+}
+.o_tuctuc_operarios .o_ko_hecho_titulo { font-size: 42px; font-weight: bold; margin-bottom: 4px; }
+.o_tuctuc_operarios .o_ko_hecho_siguiente { margin: 22px 0 18px; padding: 14px; border-radius: 14px; background: rgba(0, 0, 0, 0.22); }
+.o_tuctuc_operarios .o_ko_cuenta { font-size: 22px; margin-top: 10px; }
+.o_tuctuc_operarios .o_ko_cuenta_n { font-size: 32px; }
+.o_tuctuc_operarios .o_ko_hecho_fin { margin: 22px 0 18px; font-size: 22px; font-weight: bold; }
+.o_tuctuc_operarios .o_ko_capa .o_ko_parar { background: #fff; color: var(--ko-texto); }
+
+/* ---------------------------------------------------------------- hoja inferior (saltar / confirmar) */
+.o_tuctuc_operarios .o_ko_hoja { position: fixed; inset: 0; z-index: 1055; }
+.o_tuctuc_operarios .o_ko_hoja_fondo { position: absolute; inset: 0; background: rgba(17, 24, 39, 0.6); }
+.o_tuctuc_operarios .o_ko_hoja_panel {
+    position: absolute; left: 0; right: 0; bottom: 0; max-height: 92vh; overflow-y: auto;
+    max-width: 640px; margin: 0 auto; background: #fff; border-radius: 18px 18px 0 0; padding: 10px 16px 18px;
+    animation: o_ko_sube 0.18s ease-out;
+}
+@keyframes o_ko_sube { from { transform: translateY(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+.o_tuctuc_operarios .o_ko_hoja_asa { width: 46px; height: 5px; border-radius: 3px; background: #c4cbd3; margin: 0 auto 12px; }
+.o_tuctuc_operarios .o_ko_hoja_titulo { font-size: 24px; font-weight: bold; margin-bottom: 12px; line-height: 1.2; }
+.o_tuctuc_operarios .o_ko_salto_motivos { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+.o_tuctuc_operarios .o_ko_motivo {
+    display: flex; align-items: center; gap: 12px; width: 100%; min-height: 64px; padding: 12px 14px; text-align: left;
+    border: 3px solid var(--ko-borde); border-radius: 14px; background: #fff; color: var(--ko-texto);
+    font-size: 20px; font-weight: bold; cursor: pointer;
+}
+.o_tuctuc_operarios .o_ko_motivo .o_ko_motivo_txt { flex: 1 1 auto; }
+.o_tuctuc_operarios .o_ko_motivo .o_ko_motivo_destino { display: block; font-size: 15px; font-weight: normal; color: var(--ko-suave); margin-top: 2px; }
+.o_tuctuc_operarios .o_ko_motivo .o_ko_marca {
+    flex: 0 0 30px; width: 30px; height: 30px; border-radius: 50%; border: 3px solid var(--ko-borde);
+}
+.o_tuctuc_operarios .o_ko_motivo.o_ko_elegido { border-color: var(--ko-naranja); background: #fff4e6; }
+.o_tuctuc_operarios .o_ko_motivo.o_ko_elegido .o_ko_marca { border-color: var(--ko-naranja); background: var(--ko-naranja); box-shadow: inset 0 0 0 4px #fff; }
+.o_tuctuc_operarios .o_ko_nota_caja { margin-bottom: 14px; }
+.o_tuctuc_operarios .o_ko_nota_label { display: block; font-size: 17px; font-weight: bold; margin-bottom: 6px; }
+.o_tuctuc_operarios .o_ko_nota { width: 100%; min-height: 52px; font-size: 20px; padding: 10px 12px; border: 2px solid var(--ko-naranja); border-radius: 12px; }
+.o_tuctuc_operarios .o_ko_confirmar_texto { font-size: 19px; line-height: 1.35; margin-bottom: 16px; color: #1f2937; }
+.o_tuctuc_operarios .o_ko_confirmar_texto .o_ko_warn_txt { display: block; margin-top: 8px; padding: 10px 12px; border-radius: 10px; background: var(--ko-ambar-claro); color: #5c3700; font-weight: bold; }
+
+/* ---------------------------------------------------------------- movimiento reducido */
+@media (prefers-reduced-motion: reduce) {
+    .o_tuctuc_operarios *,
+    .o_tuctuc_operarios *::before,
+    .o_tuctuc_operarios *::after { animation: none !important; transition: none !important; }
+    .o_tuctuc_operarios .o_ko_spinner { border-top-color: rgba(255, 255, 255, 0.25); border-left-color: #fff; border-right-color: #fff; }
+    .o_tuctuc_operarios .o_ko_lector.o_ko_listo .o_ko_punto { box-shadow: 0 0 0 4px rgba(34, 164, 71, 0.45); }
+    .o_tuctuc_operarios .o_ko_menu.o_ko_cargando::after { height: 100%; }
+}
+
+/* v2.2.2: grupo "tarjeta obligatoria" sin tarjeta: sin barra de Odoo (menu de aplicaciones y de usuario).
+   La clase solo se pone en body mientras se ve Lecturas sin operario. */
+body.o_ko_bloqueado .o_main_navbar { display: none !important; }
+
+/* v2.18.1: error de Odoo 13 «Cannot read properties of undefined (reading 'getBoundingClientRect')» en los menus sin
+   submenus (p. ej. Lecturas (PDA)) con la ventana estrecha: los iconos de la derecha no dejan sitio, Odoo intenta pasar
+   los submenus al desplegable «+» y no hay ninguno. Con la barra de submenus vacia oculta, Odoo no la recoloca. */
+.o_main_navbar .o_menu_sections:empty { display: none !important; }
+
+/* ================================================================ v2.6: mismo aspecto que Preparación en Lecturas v3.11
+   («etiqueta de estantería»): plano, negro sobre blanco, sin sombras; cabecera negra; botones planos. */
+.o_tuctuc_operarios {
+    --ko-fondo: #f2f2f0; --ko-negro: #111111; --ko-linea: #c9c9c6;
+    --ko-verde: #16a34a; --ko-naranja: #c2410c;
+    font-family: Roboto, "Segoe UI", Arial, Helvetica, sans-serif;
+}
+/* en la PDA (pantalla estrecha) sin la barra de menús de Odoo, como en Preparación */
+@media (max-width: 600px) {
+    body.o_ko_en_lecturas .o_main_navbar { display: none; }
+}
+.o_tuctuc_operarios .o_ko_app { padding-top: 0; }
+
+/* cabecera negra a todo el ancho */
+.o_tuctuc_operarios .o_ko_cabecera {
+    background: var(--ko-negro); color: #fff; border: 0; border-radius: 0; margin: 0 -12px 10px; padding: 8px 12px;
+}
+.o_tuctuc_operarios .o_ko_avatar {
+    flex: 0 0 44px; width: 44px; height: 44px; border-radius: 4px; font-size: 18px; border: 2px solid #fff;
+}
+.o_tuctuc_operarios .o_ko_quien { font-size: 22px; color: #fff; }
+.o_tuctuc_operarios .o_ko_quien.o_ko_vacio { font-size: 16px; color: #d4d4d4; }
+.o_tuctuc_operarios .o_ko_dia { color: #a3a3a3; }
+.o_tuctuc_operarios .o_ko_dia b { color: #fff; }
+.o_tuctuc_operarios .o_ko_salir {
+    min-height: 42px; border: 2px solid #fff; border-radius: 4px; background: transparent; color: #fff; font-size: 16px;
+}
+
+/* avisos: banda plana con franja */
+.o_tuctuc_operarios .o_ko_aviso.o_ko_ok,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_info,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_warn,
+.o_tuctuc_operarios .o_ko_aviso.o_ko_mal { border-radius: 0; font-size: 18px; padding: 10px 12px; }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_ok { background: #dcfce7; color: #14532d; border-left-color: var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_aviso.o_ko_mal { background: #fee2e2; color: #7f1d1d; border-left-color: #b91c1c; }
+.o_tuctuc_operarios .o_ko_aviso_accion { border-radius: 4px; }
+
+/* botones planos */
+.o_tuctuc_operarios .o_ko_boton { border-radius: 4px; min-height: 54px; font-size: 21px; }
+.o_tuctuc_operarios .o_ko_boton:disabled { background: #e4e4e0; color: #8a8a86; }
+.o_tuctuc_operarios .o_ko_gris { background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_naranja { background: var(--ko-naranja); }
+
+/* pedido que está haciendo: tarjeta con borde negro */
+.o_tuctuc_operarios .o_ko_caja { border-radius: 4px; padding: 10px 12px 12px; }
+.o_tuctuc_operarios .o_ko_actual { background: #fff; border: 2px solid var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_sub { font-size: 13px; font-weight: bold; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+.o_tuctuc_operarios .o_ko_actual_ref {
+    font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 26px; letter-spacing: 0;
+    background: var(--ko-negro); color: #fff; margin: 4px -12px 6px; padding: 6px 12px;
+}
+.o_tuctuc_operarios .o_ko_actual_tienda { font-size: 18px; color: var(--ko-negro); margin-bottom: 6px; }
+.o_tuctuc_operarios .o_ko_dato {
+    border-radius: 3px; background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); font-size: 15px;
+    padding: 2px 8px;
+}
+.o_tuctuc_operarios .o_ko_dato.o_ko_zona { background: var(--ko-negro); color: #fff; }
+.o_tuctuc_operarios .o_ko_barra { height: 12px; border-radius: 0; background: #deded9; border: 0; }
+.o_tuctuc_operarios .o_ko_barra_lleno { background: var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_progreso_texto { font-size: 14px; }
+.o_tuctuc_operarios .o_ko_continuar { background: var(--ko-verde); font-size: 22px; min-height: 58px; }
+.o_tuctuc_operarios .o_ko_saltar { background: #fff; color: var(--ko-negro); border: 2px solid var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_actual .o_ko_botonera .o_kf_abrir_faltante {
+    border-radius: 4px; background: var(--ko-naranja); min-height: 54px; font-size: 21px;
+}
+
+/* campo del código */
+.o_tuctuc_operarios .o_ko_codigo { border-radius: 4px; border: 2px solid #8a8a86; min-height: 48px; }
+.o_tuctuc_operarios .o_ko_codigo:focus { border-color: var(--ko-negro); box-shadow: none; }
+
+/* cola «Después te tocan» y «Cogiendo ahora»: lista con separadores */
+.o_tuctuc_operarios .o_ko_titulo { font-size: 13px; letter-spacing: 1px; text-transform: uppercase; color: #555; }
+.o_tuctuc_operarios .o_ko_cola { border: 1px solid var(--ko-linea); background: #fff; }
+.o_tuctuc_operarios .o_ko_cola > li {
+    border: 0; border-bottom: 1px solid #e6e6e3; border-radius: 0; margin: 0; padding: 8px 10px; background: #fff;
+}
+.o_tuctuc_operarios .o_ko_cola > li:last-child { border-bottom: 0; }
+.o_tuctuc_operarios .o_ko_cola > li::before { border-radius: 3px; background: var(--ko-negro); flex-basis: 28px; height: 28px; }
+.o_tuctuc_operarios .o_ko_cola_ref { font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 17px; }
+.o_tuctuc_operarios .o_ko_cola_extra .o_ko_dato { border-width: 1px; }
+.o_tuctuc_operarios .o_ko_n_operarios { border-radius: 3px; background: var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_fila { border-radius: 0; border-bottom: 1px solid #e6e6e3; margin: 0; }
+
+/* pie */
+.o_tuctuc_operarios .o_ko_menu,
+.o_tuctuc_operarios .o_ko_sonido { border-radius: 4px; border: 2px solid var(--ko-negro); color: var(--ko-negro); }
+
+/* «Lee tu tarjeta», «Abriendo» y «¡Hecho!»: fondo negro / verde planos */
+.o_tuctuc_operarios .o_ko_bloqueo { background: var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_bloqueo_tarjeta { border-radius: 6px; box-shadow: none; border: 3px solid #fff; }
+.o_tuctuc_operarios .o_ko_bloqueo_aviso { border-radius: 4px; }
+.o_tuctuc_operarios .o_ko_capa { background: var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_capa.o_ko_capa_hecho { background: var(--ko-verde); }
+.o_tuctuc_operarios .o_ko_capa_ref { font-family: "Roboto Mono", Consolas, "Courier New", monospace; font-size: 32px; }
+.o_tuctuc_operarios .o_ko_hecho_check { border-radius: 6px; }
+.o_tuctuc_operarios .o_ko_hecho_siguiente { border-radius: 4px; background: rgba(0, 0, 0, 0.25); }
+.o_tuctuc_operarios .o_ko_capa .o_ko_parar { background: #fff; color: var(--ko-negro); border: 0; }
+
+/* hoja inferior (saltar / confirmar) */
+.o_tuctuc_operarios .o_ko_hoja_panel { border-radius: 6px 6px 0 0; border-top: 4px solid var(--ko-negro); }
+.o_tuctuc_operarios .o_ko_hoja_asa { display: none; }
+.o_tuctuc_operarios .o_ko_motivo { border-radius: 4px; border: 2px solid var(--ko-linea); min-height: 58px; font-size: 19px; }
+.o_tuctuc_operarios .o_ko_motivo .o_ko_marca { border-radius: 3px; }
+.o_tuctuc_operarios .o_ko_motivo.o_ko_elegido { border-color: var(--ko-naranja); }
+.o_tuctuc_operarios .o_ko_nota { border-radius: 4px; }
+.o_tuctuc_operarios .o_ko_confirmar_texto .o_ko_warn_txt { border-radius: 0; border-left: 6px solid #e0a800; }
+
+/* v2.10: botón de pausa, debajo de Faltante / Saltar */
+.o_tuctuc_operarios .o_ko_pausa { width: 100%; margin-top: 10px; min-height: 52px; font-size: 19px; }

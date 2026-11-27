@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tuctuc_operario_tarea_productividad,tuctuc.operario.tarea productividad,model_tuctuc_operario_tarea,grupo_productividad,1,1,0,0
+access_tuctuc_crear_operarios_productividad,tuctuc.crear.operarios productividad,model_tuctuc_crear_operarios,grupo_productividad,1,1,1,1
+access_tuctuc_operario_asignacion_productividad,tuctuc.operario.asignacion productividad,model_tuctuc_operario_asignacion,grupo_productividad,1,1,1,0
+access_tuctuc_operario_dia_productividad,tuctuc.operario.dia productividad,model_tuctuc_operario_dia,grupo_productividad,1,1,1,0
+access_tuctuc_operario_tramo_productividad,tuctuc.operario.tramo productividad,model_tuctuc_operario_tramo,grupo_productividad,1,1,1,1
+access_tuctuc_operario_motivo_productividad,tuctuc.operario.motivo productividad,model_tuctuc_operario_motivo,grupo_productividad,1,1,1,0
+access_tuctuc_operario_asignar_productividad,tuctuc.operario.asignar productividad,model_tuctuc_operario_asignar,grupo_productividad,1,1,1,1

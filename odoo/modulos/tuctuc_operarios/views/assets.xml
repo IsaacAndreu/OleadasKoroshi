@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <template id="assets_backend" name="TUCTUC Operarios assets" inherit_id="web.assets_backend">
+        <xpath expr="." position="inside">
+            <link rel="stylesheet" type="text/css" href="/tuctuc_operarios/static/src/css/operarios.css"/>
+            <script type="text/javascript" src="/tuctuc_operarios/static/src/js/operarios_pantalla.js"/>
+            <!-- sin la ventana «Error de CORS desconocido» en las PDA -->
+            <script type="text/javascript" src="/tuctuc_operarios/static/src/js/sin_error_cors.js"/>
+        </xpath>
+    </template>
+</odoo>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <record id="categoria_operario_tuctuc" model="hr.employee.category">
+        <field name="name">Operario TUCTUC</field>
+    </record>
+</odoo>

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- v1.0.0: vacío = a nadie. Se pone a mano (Ajustes > Técnico > Parámetros del sistema) el id del usuario de
+         prueba y, cuando esté probado, el de las PDA de Oriola (o * para todos). -->
+    <data noupdate="1">
+        <record id="param_usuarios" model="ir.config_parameter">
+            <field name="key">tuctuc_pda_app.usuarios</field>
+            <field name="value"> </field>
+        </record>
+    </data>
+</odoo>
