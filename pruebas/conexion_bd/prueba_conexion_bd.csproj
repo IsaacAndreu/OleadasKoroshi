@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Prueba de la conexion de PedidosMultiples a PostgreSQL (host, puerto y SSL desde el .config).
+       Usa el ConnectionSQL.cs del programa (enlazado, no copiado) y el Npgsql de lib\. Ver LEEME.md. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>7.3</LangVersion>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AutoGenerateBindingRedirects>false</AutoGenerateBindingRedirects>
+    <AssemblyName>prueba_conexion_bd</AssemblyName>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\PedidosMultiples\ConnectionSQL.cs" Link="ConnectionSQL.cs" />
+    <Reference Include="System.Configuration" />
+    <Reference Include="Npgsql"><HintPath>..\..\lib\Npgsql.dll</HintPath></Reference>
+    <None Include="..\..\lib\*.dll" CopyToOutputDirectory="PreserveNewest" LinkBase="." />
+  </ItemGroup>
+</Project>
