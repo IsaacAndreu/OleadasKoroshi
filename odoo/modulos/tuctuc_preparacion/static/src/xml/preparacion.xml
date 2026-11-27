@@ -1,0 +1,267 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <!-- TUCTUC Preparación en Lecturas v3.0.0: pantalla para preparar una OUT suelta en la PDA. -->
+    <t t-name="tuctuc_preparacion.Pantalla">
+        <div class="o_tuctuc_preparacion">
+            <div class="o_kp_offline" role="alert" style="display: none;">
+                <span role="presentation">⚠</span>
+                <span>Sin conexión · se guarda en la PDA</span>
+            </div>
+            <!-- v3.22: alarma de parado (no tapa los toques: ← y los botones siguen funcionando) -->
+            <div class="o_kp_alarma_aviso" role="alert" style="display: none;">
+                <div class="o_kp_alarma_titulo">¡LLEVAS <span class="o_kp_alarma_min"/> MIN SIN LEER!</div>
+                <div class="o_kp_alarma_texto">Lee una prenda para pararla, o pulsa ← para dejar la OUT aquí.</div>
+            </div>
+            <!-- v3.30: en pausa: tapa la pantalla hasta pulsar ▶ Seguir -->
+            <div class="o_kp_pausa_capa" style="display: none;">
+                <div class="o_kp_pausa_titulo">⏸ EN PAUSA</div>
+                <div class="o_kp_pausa_texto"/>
+                <button type="button" class="o_kp_seguir">▶ Seguir</button>
+                <div class="o_kp_pausa_nota">Tu tiempo está parado. La OUT sigue siendo tuya.</div>
+                <button type="button" class="o_kp_soltar">Dejar este pedido (que lo haga otro)</button>
+            </div>
+            <div class="o_kp_app">
+                <!-- cabecera: volver, OUT, tienda, operario -->
+                <div class="o_kp_cabecera">
+                    <button type="button" class="o_kp_volver" aria-label="Volver a Lecturas">←</button>
+                    <div class="o_kp_cabecera_texto">
+                        <div class="o_kp_ref"/>
+                        <div class="o_kp_tienda"/>
+                    </div>
+                    <div class="o_kp_operario"/>
+                    <!-- v3.30: pausa arriba, al lado del menú: ⏸ para parar, ▶ para seguir -->
+                    <button type="button" class="o_kp_pausa_btn" aria-label="Pausa (comer, café)" style="display: none;">⏸</button>
+                    <!-- v3.11: Ver líneas e Imprimir van en este menú (abajo solo queda el campo del código) -->
+                    <button type="button" class="o_kp_menu_btn" aria-label="Más: ver líneas, imprimir">☰</button>
+                </div>
+
+                <!-- progreso -->
+                <!-- v3.1: barra gruesa con el número dentro -->
+                <div class="o_kp_progreso">
+                    <div class="o_kp_barra"><div class="o_kp_barra_lleno"/><span class="o_kp_progreso_texto"/></div>
+                    <div class="o_kp_progreso_fila">
+                        <span class="o_kp_cajas_resumen"/>
+                        <span class="o_kp_sin_caja"/>
+                    </div>
+                    <!-- v3.36: «Caja llena» por volumen: lo leído sin caja frente a lo que cabe en la caja -->
+                    <div class="o_kp_cl" style="display: none;">
+                        <div class="o_kp_cl_barra"><div class="o_kp_cl_lleno"/><span class="o_kp_cl_texto"/></div>
+                    </div>
+                    <div class="o_kp_cl_pregunta" style="display: none;">
+                        <div class="o_kp_cl_msg"/>
+                        <div class="o_kp_cl_botones">
+                            <button type="button" class="o_kp_cl_cerrar">Caja llena: cerrar</button>
+                            <button type="button" class="o_kp_cl_cabe">Aún cabe más</button>
+                        </div>
+                    </div>
+                </div>
+                <!-- v3.7: notas de la OUT (avisos de la oficina); v3.9: debajo de la barra -->
+                <div class="o_kp_nota" style="display: none;"/>
+
+                <!-- lo siguiente que hay que coger -->
+                <div class="o_kp_siguiente">
+                    <!-- v3.0.1: flechas para ver la línea de antes / la siguiente y foto del producto -->
+                    <div class="o_kp_nav">
+                        <button type="button" class="o_kp_anterior" aria-label="Línea anterior">◀</button>
+                        <div class="o_kp_nav_centro">
+                            <div class="o_kp_etiqueta">Ve a</div>
+                            <div class="o_kp_posicion"/>
+                        </div>
+                        <button type="button" class="o_kp_posterior" aria-label="Línea siguiente">▶</button>
+                    </div>
+                    <!-- v3.15: agrupación Z-: a qué caja de tienda va esta pieza («CAJA 05 · K34 ...») -->
+                    <div class="o_kp_destino" style="display: none;"/>
+                    <!-- v3.9: la ubicación como la etiqueta del rack (zona / hueco arriba, código grande) -->
+                    <div class="o_kp_ubi_detalle"/>
+                    <div class="o_kp_ubicacion"/>
+                    <div class="o_kp_articulo">
+                        <img class="o_kp_foto" alt=""/>
+                        <div class="o_kp_articulo_texto">
+                            <div class="o_kp_producto_ref"/>
+                            <div class="o_kp_talla_fila"><span class="o_kp_talla_etq">Talla</span> <span class="o_kp_talla"/></div>
+                            <div class="o_kp_producto"/>
+                            <!-- v3.10: cantidad al lado de la foto (no debajo): cabe todo sin mover la pantalla -->
+                            <div class="o_kp_cuantas"/>
+                            <div class="o_kp_segmentos" role="presentation"/>
+                            <!-- v3.7: varias uds de golpe (tras leer una con la pistola) -->
+                            <button type="button" class="o_kp_cantidad_btn" style="display: none;">✎ Poner cantidad</button>
+                        </div>
+                    </div>
+                    <button type="button" class="o_kp_ir_pendiente" style="display: none;">Ir a la que toca ▸</button>
+                </div>
+                <div class="o_kp_completa" style="display: none;">
+                    <div class="o_kp_completa_titulo">✓ Todo leído</div>
+                    <div class="o_kp_completa_texto"/>
+                </div>
+
+                <div class="o_kp_aviso" role="status" aria-live="polite"/>
+
+                <!-- botones -->
+                <!-- v3.10: Caja y Validar en la misma fila -->
+                <div class="o_kp_fila_botones o_kp_fila_principal">
+                    <button type="button" class="o_kp_boton o_kp_caja">Caja</button>
+                    <button type="button" class="o_kp_boton o_kp_validar">✓ Validar</button>
+                </div>
+                <div class="o_kp_fila_botones">
+                    <button type="button" class="o_kp_boton o_kp_faltante">Faltante</button>
+                    <button type="button" class="o_kp_boton o_kp_deshacer">↶ Deshacer</button>
+                </div>
+                <!-- v3.33: ronda de faltantes (tuctuc_faltantes 1.7): si está, se lee la prenda; si no, uno de estos -->
+                <div class="o_kp_fila_botones o_kp_fila_ronda" style="display: none;">
+                    <button type="button" class="o_kp_boton o_kp_rojo o_kp_ronda_no_esta">No está</button>
+                    <button type="button" class="o_kp_boton o_kp_gris o_kp_ronda_no_existe">La ubicación no existe</button>
+                </div>
+
+                <input class="o_kp_codigo" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+                       placeholder="Leer producto o escribir EAN y Enter"/>
+                <div class="o_kp_pie">
+                    <span class="o_kp_lector"><span class="o_kp_punto"/><span class="o_kp_lector_texto">Lector preparado</span></span>
+                </div>
+
+                <!-- lineas (se abren desde el menú ☰) -->
+                <ol class="o_kp_lineas" style="display: none;"/>
+                <div class="o_kp_cajas"/>
+            </div>
+
+            <!-- hoja: escanea la caja -->
+            <div class="o_kp_hoja" style="display: none;">
+                <div class="o_kp_hoja_fondo"/>
+                <div class="o_kp_hoja_panel" role="dialog" aria-modal="true">
+                    <div class="o_kp_hoja_caja">
+                        <div class="o_kp_hoja_icono" role="presentation">📦</div>
+                        <h2 class="o_kp_hoja_titulo">Escanea la caja</h2>
+                        <p class="o_kp_hoja_texto"/>
+                        <!-- v3.15: agrupación Z-: las tiendas con algo leído fuera de caja -->
+                        <ul class="o_kp_hoja_tiendas" style="display: none;"/>
+                        <!-- v3.24: tipo de caja (Consumibles) -->
+                        <div class="o_kp_tipos_titulo" style="display: none;"/>
+                        <div class="o_kp_tipos_caja" style="display: none;"/>
+                        <div class="o_kp_hoja_aviso" role="alert"/>
+                        <!-- v3.29: caja cerrada sin conexión que Odoo no acepta: la cola se para hasta decidir -->
+                        <div class="o_kp_rechazada_botones" style="display: none;">
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_rech_reintentar">↻ Probar otra vez con la misma</button>
+                            <button type="button" class="o_kp_boton o_kp_rojo o_kp_rech_fuera">Dejar lo leído fuera de caja</button>
+                        </div>
+                        <!-- v3.32: OUT pequeña en bolsa: no se valida, queda en expediciones (tuctuc_operarios 2.17) -->
+                        <button type="button" class="o_kp_boton o_kp_rojo o_kp_sin_caja_btn" style="display: none;">Sin caja (bolsa) → expediciones</button>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_cancelar_caja">Cancelar</button>
+                    </div>
+                    <!-- v3.21: mover uds de una caja cerrada a otra (✎ en la lista de líneas) -->
+                    <div class="o_kp_hoja_mover" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Cambiar de caja</h2>
+                        <div class="o_kp_mv_producto"/>
+                        <div class="o_kp_mv_ahora"/>
+                        <div class="o_kp_mv_cant_fila">
+                            <span>Uds a mover</span>
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_menos" aria-label="Una menos">−</button>
+                            <span class="o_kp_mv_cant"/>
+                            <button type="button" class="o_kp_boton o_kp_blanco o_kp_mv_mas" aria-label="Una más">+</button>
+                        </div>
+                        <div class="o_kp_mv_etq">¿Dónde va?</div>
+                        <div class="o_kp_mv_destinos"/>
+                        <p class="o_kp_mv_cj">O lee la etiqueta CJ de otra caja.</p>
+                        <div class="o_kp_hoja_aviso o_kp_mv_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_mv_cancelar">Cancelar</button>
+                    </div>
+                    <!-- v3.20: Zalando / About You: el número del paquete (PACK...) en grande y las cajas de la OUT -->
+                    <div class="o_kp_hoja_pack" style="display: none;">
+                        <div class="o_kp_pack_titulo"/>
+                        <div class="o_kp_pack_numero"/>
+                        <div class="o_kp_pack_uds"/>
+                        <p class="o_kp_pack_nota">Apunta este número en la caja.</p>
+                        <div class="o_kp_pack_lista_titulo"/>
+                        <ol class="o_kp_pack_lista"/>
+                        <button type="button" class="o_kp_boton o_kp_pack_seguir">Seguir leyendo</button>
+                    </div>
+                    <!-- v3.2: Faltante de la línea que se ve, sin lista: dónde probar y leer la ubicación -->
+                    <div class="o_kp_hoja_faltante" style="display: none;">
+                        <div class="o_kp_f_cabecera">
+                            <img class="o_kp_f_foto" alt=""/>
+                            <div>
+                                <div class="o_kp_f_producto"/>
+                                <div class="o_kp_f_no_esta"/>
+                            </div>
+                        </div>
+                        <div class="o_kp_f_cargando">Buscando dónde hay más…</div>
+                        <div class="o_kp_f_prueba">
+                            <div class="o_kp_f_etq">Prueba en</div>
+                            <ol class="o_kp_f_alternativas"/>
+                            <!-- v3.12: los pasos, claros: primero la UBICACIÓN, después la prenda -->
+                            <ol class="o_kp_f_pasos">
+                                <li>Ve a la ubicación y coge la pieza.</li>
+                                <li>Lee la etiqueta de la <b>UBICACIÓN</b> (no la prenda).</li>
+                                <li>Después lee la <b>prenda</b>, como siempre.</li>
+                            </ol>
+                            <input class="o_kp_f_codigo" type="text" autocomplete="off" autocapitalize="off"
+                                   spellcheck="false" placeholder="Leer ubicación y Enter"/>
+                        </div>
+                        <div class="o_kp_f_sin_alt">No queda en ninguna otra ubicación.</div>
+                        <div class="o_kp_hoja_aviso o_kp_f_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_rojo o_kp_f_nada">Tampoco está aquí</button>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_f_cancelar">Cancelar</button>
+                        <button type="button" class="o_kp_f_lista">Marcar varias a la vez</button>
+                    </div>
+                    <!-- v3.11: menú ☰ de la cabecera -->
+                    <div class="o_kp_hoja_menu" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Más</h2>
+                        <button type="button" class="o_kp_ver_lineas" aria-expanded="false">Ver líneas</button>
+                        <!-- v3.7: volver a imprimir etiqueta de caja, del transportista o albarán -->
+                        <button type="button" class="o_kp_imprimir">Imprimir etiqueta o albarán</button>
+                        <!-- v3.21: cada operario elige el color de la franja de la ubicación -->
+                        <button type="button" class="o_kp_menu_color">Color de la ubicación</button>
+                        <!-- v3.26: pausa (comer, café) sin salir antes a Lecturas -->
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_menu_cerrar">Cerrar</button>
+                    </div>
+                    <div class="o_kp_hoja_color" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Color de la ubicación</h2>
+                        <p class="o_kp_color_texto">Elige el que mejor veas. Se guarda para ti en todas las PDA.</p>
+                        <div class="o_kp_colores">
+                            <button type="button" class="o_kp_color_op" data-color="a"><span class="o_kp_muestra o_kp_m_a">L24 P19</span>A · Negra</button>
+                            <button type="button" class="o_kp_color_op" data-color="b"><span class="o_kp_muestra o_kp_m_b">L24 P19</span>B · Blanca</button>
+                            <button type="button" class="o_kp_color_op" data-color="c"><span class="o_kp_muestra o_kp_m_c">L24 P19</span>C · Amarilla</button>
+                            <button type="button" class="o_kp_color_op" data-color="d"><span class="o_kp_muestra o_kp_m_d">L24 P19</span>D · Azul</button>
+                            <button type="button" class="o_kp_color_op" data-color="e"><span class="o_kp_muestra o_kp_m_e">L|24 P|19</span>E · Casillas</button>
+                            <button type="button" class="o_kp_color_op" data-color="f"><span class="o_kp_muestra o_kp_m_f">L24 P19</span>F · Amarilla grande</button>
+                        </div>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_color_cerrar">Cerrar</button>
+                    </div>
+                    <!-- v3.7: cantidad a mano -->
+                    <div class="o_kp_hoja_cantidad" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">¿Cuántas más has cogido?</h2>
+                        <p class="o_kp_cant_texto"/>
+                        <input class="o_kp_cant_input" type="number" inputmode="numeric" min="1" step="1"
+                               autocomplete="off"/>
+                        <button type="button" class="o_kp_boton o_kp_cant_todas"/>
+                        <div class="o_kp_hoja_aviso o_kp_cant_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_cant_ok">Confirmar</button>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_cant_cancelar">Cancelar</button>
+                    </div>
+                    <!-- v3.7: imprimir -->
+                    <div class="o_kp_hoja_imprimir" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Imprimir</h2>
+                        <p class="o_kp_imp_texto">Se abre el PDF: imprímelo desde ahí.</p>
+                        <div class="o_kp_imp_lista"/>
+                        <div class="o_kp_hoja_aviso o_kp_imp_aviso" role="alert"/>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_imp_cerrar">Cerrar</button>
+                    </div>
+                    <div class="o_kp_hoja_pregunta" style="display: none;">
+                        <h2 class="o_kp_hoja_titulo">Faltan uds</h2>
+                        <p>¿Crear un pedido pendiente con lo que falta?
+                            <b>Sí</b> = saldrá otro día. <b>No</b> = la OUT sale sin esas piezas.</p>
+                        <button type="button" class="o_kp_boton o_kp_pendiente_si">Sí, pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_gris o_kp_pendiente_no">No, sin pedido pendiente</button>
+                        <button type="button" class="o_kp_boton o_kp_blanco o_kp_pendiente_cancelar">Cancelar</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- capa: validando / validada -->
+            <div class="o_kp_capa" style="display: none;">
+                <div class="o_kp_capa_centro">
+                    <div class="o_kp_rueda" role="presentation"/>
+                    <div class="o_kp_capa_texto"/>
+                </div>
+            </div>
+        </div>
+    </t>
+</templates>

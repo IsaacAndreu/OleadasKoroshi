@@ -1,0 +1,1483 @@
+# -*- coding: utf-8 -*-
+# =============================================================================
+# TUCTUC Preparación en Lecturas - lógica del servidor. Clon de koroshi_preparacion 3.38.1 para odoo.tuctuc.com
+# (nave de Oriola - Amposta; decisión de Isaac del 27/11/2026: módulos nuevos tuctuc_*, los koroshi_* no se tocan).
+# Diseño: bin/versiones/tuctuc_pda/20261127_diseno-clon-tuctuc-pda_v1.md.
+#
+# Diferencias con KOROSHI:
+#   - Multicompañía: se prepara la OUT / INT de las compañías y almacenes de la PDA (tuctuc.almacen), no solo de la 8.
+#     Las rutas llaman con la compañía de la OUT como compañía activa (controllers/main.py, pda.con_compania).
+#   - Qué se prepara: OUT de salida CON caja y la INT de la estantería al SORTER de su almacén SIN caja (oleadas WEB,
+#     WEB B&B, PED. INICIAL; después las reparte PedidosMultiples). Y la ronda de faltantes (tuctuc_faltantes).
+#   - La caja la crea Odoo en TODAS las OUT («Put in pack»: BOX + 7 cifras de la secuencia «Packages»), como hacía
+#     KOROSHI solo con Zalando / About You (_pack_auto). No hay etiquetas CJ preimpresas.
+#   - Tipo de caja = product.packaging (los embalajes que ya usa Oriola), sin Consumibles; sin «Caja llena».
+#   - Sin agrupaciones Z- (en Oriola no hay: las OUT de un lote se preparan una a una) ni ruta óptima por la nave
+#     (ruta.py era la geometría de NAU-2): orden de la app de código de barras.
+#   - Prefijos EAN de los parámetros de tuctuc_base; modelo = plantilla del artículo; talla = atributo de talla.
+#
+# La app de código de barras (stock_barcode + stock_barcode_optimization de Brain Station) solo hace en el servidor:
+#   1) guardar qty_done de las move.line,
+#   2) put_in_pack() («Put in pack», nombre de la secuencia de Odoo),
+#   3) button_validate.
+# Esta pantalla hace exactamente lo mismo, una lectura cada vez, y apunta cada lectura en tuctuc.preparacion.lectura.
+# Sin campos nuevos en las tablas de stock. Nunca escribe stock.quant ni fuerza disponibilidad.
+# =============================================================================
+import logging
+import re
+import time
+
+import json
+from datetime import timedelta
+
+import psycopg2
+from werkzeug.urls import url_quote
+from odoo import _, api, fields, models
+from odoo.exceptions import UserError, ValidationError
+from odoo.tools import float_compare, float_is_zero, html2plaintext, html_escape
+from odoo.addons.tuctuc_base import comun, pda
+
+_logger = logging.getLogger(__name__)
+
+# v3.18: código de barras de producto (EAN/UPC) que no está en Odoo = otro código de la bolsa o de la etiqueta del
+# proveedor. Los de Oriola empiezan por los prefijos del parámetro tuctuc_base.prefijos_ean (8447333, 8435689).
+RE_EAN = re.compile(r'^\d{8,14}$')
+PREFIJOS_ZONA = ()                  # agrupaciones que se preparan enteras: en Oriola, ninguna
+PALABRAS_TALLA = ('TALLA', 'SIZE')  # «Talla MI», «Talla TucTuc», «HUE_Tallaje», «MUNICH TALLA», «OBU talla»...
+PALABRAS_COLOR = ('COLOR', 'COLOUR')
+DIAS_EMBALAJES = 30                 # embalajes de la PDA: los más usados en las cajas BOX de estos días
+MAX_EMBALAJES = 12
+PARAM_EMBALAJES = 'tuctuc_preparacion.embalajes'   # ids de product.packaging separados por comas: si tiene, manda
+PARAM_ACTIVA = 'tuctuc_preparacion.activa'
+PARAM_EMPLEADOS = 'tuctuc_preparacion.empleados'
+PARAM_AGRUPACIONES = 'tuctuc_preparacion.agrupaciones'   # sin agrupaciones Z- en Oriola: siempre la app de siempre
+PARAM_ALARMA = 'tuctuc_preparacion.minutos_alarma'   # v3.22: minutos sin leer con la OUT abierta -> alarma; 0 = sin
+ALARMA_DEFECTO = '4'
+PARAM_HORARIO_ALARMA = 'tuctuc_preparacion.horario_alarma'   # v3.23: tramos HH:MM-HH:MM separados por comas
+HORARIO_DEFECTO = '06:00-10:00,10:15-13:00,14:00-17:00'
+PARAM_REFRESCO_SOLO = 'tuctuc_preparacion.refresco_solo_s'   # v3.34 (R7): segundos entre refrescos yendo solo; 0 = no
+REFRESCO_SOLO_DEFECTO = '30'   # sin la pausa de 10:00-10:15 ni la comida de 13 a 14
+# v3.36: «Caja llena» por volumen (diseño 25/11). '0' = sin barra ni avisos (como antes)
+PARAM_CAJA_LLENA = 'tuctuc_preparacion.caja_llena_activa'
+# capacidad en m3 de cada tipo de caja: «texto del nombre o de las medidas=m3», separados por ';'. El primero es el
+# tipo que cuenta si la persona aún no ha elegido ninguno en esta PDA (V1)
+PARAM_CAJA_CAPACIDADES = 'tuctuc_preparacion.caja_llena_capacidades'
+# v3.36.1: p90 de las cajas cerradas en 7 días (Monitor 25/11): 600X400X400 0,102 y MEDIANA 0,067
+CAPACIDADES_DEFECTO = '600X400X400=0.100;MEDIANA=0.075'
+CAPACIDAD_DEFECTO = 0.100      # un tipo de caja que no sale en el parámetro
+# % de la barra: naranja «Casi llena», pregunta «¿Caja llena?» y aviso rojo «¿Son dos cajas?» (V2)
+PARAM_CAJA_UMBRALES = 'tuctuc_preparacion.caja_llena_umbrales'
+UMBRALES_DEFECTO = (90, 100, 115)
+VOL_UD_DEFECTO = 0.0084        # m3 por ud si ningún artículo tiene volumen (caja llena ~0,084 m3 con ~10 uds)
+# m3 por ud de cada OUT / agrupación, guardados en memoria: leer el volumen de 207 artículos costaba ~25 ms en cada
+# lectura (medido el 25/11 en la OUT/27651). Un volumen cambiado en Odoo se ve como mucho a los VOL_CACHE_SEG
+VOL_CACHE_SEG = 600
+# v3.38: OUT de tienda (y demás OUT con caja CJ) «Validar incompleto»: se valida lo leído y el resto queda en un pedido
+# pendiente, como Validar -> «Crear pedido pendiente» en el ordenador (Isaac, 26/11). '0' = como antes (leer o Faltante)
+PARAM_PARCIAL = 'tuctuc_preparacion.validar_parcial'
+_vol_cache = {}                # (bd, clave) -> (momento, {product_id: m3 por ud})
+
+
+class Ocupada(UserError):
+    """v3.6: la OUT la está guardando otra petición (otra PDA o un reintento de esta). La PDA vuelve a probar en un
+    momento con el mismo id_lectura, sin perder la lectura."""
+
+
+class Lectura(models.Model):
+    _name = 'tuctuc.preparacion.lectura'
+    _description = 'TUCTUC Preparación: lectura en la PDA'
+    _order = 'id desc'
+
+    fecha = fields.Datetime('Fecha', required=True, default=fields.Datetime.now, index=True)
+    picking_id = fields.Many2one('stock.picking', 'OUT', index=True, ondelete='cascade')
+    move_line_id = fields.Many2one('stock.move.line', 'Línea', ondelete='set null')
+    employee_id = fields.Many2one('hr.employee', 'Operario', index=True, ondelete='set null')
+    user_id = fields.Many2one('res.users', 'Usuario', default=lambda s: s.env.uid)
+    tipo = fields.Selection([('leer', 'Leer'), ('deshacer', 'Deshacer'), ('caja', 'Caja'), ('validar', 'Validar'),
+                             ('mover', 'Mover de caja')],
+                            'Tipo', required=True)
+    codigo = fields.Char('Código leído')
+    producto = fields.Char('Producto')
+    cantidad = fields.Float('Cantidad', digits=(16, 0))
+    resultado = fields.Selection([('ok', 'Bien'), ('error', 'Error')], 'Resultado', required=True, default='ok')
+    mensaje = fields.Char('Mensaje')
+    id_lectura = fields.Char('Id de la lectura', index=True, help='La pone la PDA: si reintenta, no cuenta dos veces')
+    deshecha = fields.Boolean('Deshecha')
+    en_caja = fields.Char('Cerrada en la caja', index=True,
+                          help='v3.3: la caja CJ donde ha ido esta lectura. Vacío = leída y aún fuera de caja.')
+    diferida = fields.Boolean('De la cola de la PDA', index=True,
+                              help='v3.29: llegó de la memoria de la PDA (leída sin conexión o guardada al volver a '
+                                   'abrir), no en el momento. Si es un error, el operario no lo vio: lo revisa el '
+                                   'encargado en «Lecturas rechazadas de cola».')
+
+    # ------------------------------------------------------------------ parámetros
+    @api.model
+    def _param(self, clave, defecto=''):
+        return self.env['ir.config_parameter'].sudo().get_param(clave, defecto) or defecto
+
+    # ------------------------------------------------------------------ v3.36: «Caja llena» por volumen
+    @api.model
+    def caja_llena_config(self):
+        """Lo que la PDA necesita para la barra: si está activa, los tres % y la capacidad por defecto."""
+        try:
+            u = [float(x.strip()) for x in self._param(PARAM_CAJA_UMBRALES, '').split(',') if x.strip()]
+            if len(u) != 3 or not 0 < u[0] <= u[1] <= u[2]:
+                raise ValueError(u)
+        except (TypeError, ValueError):
+            u = list(UMBRALES_DEFECTO)
+        return {'activa': self._param(PARAM_CAJA_LLENA, '0').strip() not in ('0', ''),   # TUCTUC: apagada
+                'casi': u[0], 'llena': u[1], 'dos': u[2], 'capacidad': CAPACIDAD_DEFECTO}
+
+    @api.model
+    def _capacidades(self):
+        """[(TEXTO, m3)] del parámetro, en su orden. Mal escrito = el de por defecto."""
+        for texto in (self._param(PARAM_CAJA_CAPACIDADES, CAPACIDADES_DEFECTO), CAPACIDADES_DEFECTO):
+            res = []
+            for trozo in texto.split(';'):
+                if '=' not in trozo:
+                    continue
+                clave, valor = trozo.rsplit('=', 1)
+                clave = re.sub(r'\s', '', clave).upper()
+                try:
+                    m3 = float(valor.strip().replace(',', '.'))
+                except ValueError:
+                    continue
+                if clave and m3 > 0:
+                    res.append((clave, m3))
+            if res:
+                return res
+        return []
+
+    @api.model
+    def _volumenes(self, productos, clave=None):
+        """{product_id: m3 por ud}. Sin volumen en Odoo = la media de los que tienen de esa lista (la OUT o la
+        agrupación); si ninguno tiene, VOL_UD_DEFECTO. Con clave (('out', id) o ('lote', id)) se guarda en memoria
+        VOL_CACHE_SEG: las lecturas siguientes de esa OUT no vuelven a leer productos (salvo un artículo nuevo)."""
+        k = (self.env.cr.dbname, clave) if clave else None
+        ahora = time.time()
+        if k:
+            g = _vol_cache.get(k)
+            if g and ahora - g[0] < VOL_CACHE_SEG and set(productos.ids) <= set(g[1]):
+                return g[1]
+        vols = dict((p.id, p.volume or 0.0) for p in productos)
+        con = [v for v in vols.values() if v > 0]
+        media = sum(con) / len(con) if con else VOL_UD_DEFECTO
+        res = dict((pid, v if v > 0 else media) for pid, v in vols.items())
+        if k:
+            for viejo in [x for x, v in list(_vol_cache.items()) if ahora - v[0] > VOL_CACHE_SEG]:
+                _vol_cache.pop(viejo, None)
+            _vol_cache[k] = (ahora, res)
+        return res
+
+    @api.model
+    def _m3(self, reparto, vols, cual=0):
+        """m3 de las uds de _reparto_sin_caja (cual=0: las mías; 1: las de los demás)."""
+        if not reparto:
+            return 0.0
+        mls = self.env['stock.move.line'].browse(list(reparto))
+        return sum(reparto[ml.id][cual] * vols.get(ml.product_id.id, VOL_UD_DEFECTO) for ml in mls)
+
+    @api.model
+    def _caja_llena_cierre(self, picking, employee, codigo, m3):
+        """Caja cerrada: las respuestas a «¿Caja llena?» de esa persona en esa OUT que aún no tenían caja se quedan con
+        la caja y el volumen con que se ha cerrado. TUCTUC: sin el modelo de «Caja llena», no hace nada."""
+        if 'tuctuc.preparacion.caja_llena' not in self.env:
+            return
+        try:
+            with self.env.cr.savepoint():
+                filas = self.env['tuctuc.preparacion.caja_llena'].sudo().search([
+                    ('picking_id', '=', picking.id), ('employee_id', '=', employee.id if employee else False),
+                    ('caja', '=', False)])
+                for f in filas:
+                    f.write({'caja': codigo, 'm3_cierre': m3, 'fecha_cierre': fields.Datetime.now(),
+                             'pct_cierre': int(round(100 * m3 / f.capacidad)) if f.capacidad else 0})
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se ha podido apuntar la caja %s en «Caja llena»', codigo)
+
+    @api.model
+    def segundos_refresco(self):
+        """v3.34 (R7): cada cuántos segundos la PDA vuelve a pedir el estado (ligero) yendo solo, sin leer nada, para
+        ver lo que han cambiado otros (Contenedores, Faltantes). 0 = nunca (como antes). Mínimo 10."""
+        try:
+            n = int(float(self._param(PARAM_REFRESCO_SOLO, REFRESCO_SOLO_DEFECTO)))
+        except (TypeError, ValueError):
+            n = int(REFRESCO_SOLO_DEFECTO)
+        return 0 if n <= 0 else max(n, 10)
+
+    @api.model
+    def minutos_alarma(self):
+        """v3.22: minutos con la OUT abierta sin leer nada hasta que la PDA pita sin parar (0 = sin alarma)."""
+        try:
+            return max(0, int(float(self._param(PARAM_ALARMA, ALARMA_DEFECTO))))
+        except (TypeError, ValueError):
+            return int(ALARMA_DEFECTO)
+
+    @api.model
+    def horario_alarma(self):
+        """v3.23: tramos en que puede sonar la alarma, en minutos desde las 00:00: [[360, 600], [615, 780], [840, 1020]].
+        Vacío o mal escrito = el de por defecto."""
+        def leer(texto):
+            tramos = []
+            for t in (texto or '').split(','):
+                t = t.strip()
+                if not t:
+                    continue
+                ini, fin = t.split('-')
+                h1, m1 = [int(x) for x in ini.strip().split(':')]
+                h2, m2 = [int(x) for x in fin.strip().split(':')]
+                a, b = h1 * 60 + m1, h2 * 60 + m2
+                if not (0 <= a < b <= 24 * 60):
+                    raise ValueError(t)
+                tramos.append([a, b])
+            return tramos
+        try:
+            return leer(self._param(PARAM_HORARIO_ALARMA, HORARIO_DEFECTO)) or leer(HORARIO_DEFECTO)
+        except (TypeError, ValueError):
+            return leer(HORARIO_DEFECTO)
+
+    @api.model
+    def empleado_activo(self, employee):
+        """La pantalla nueva se usa si el módulo está activo y el operario está en la lista (o la lista es '*')."""
+        if not employee or self._param(PARAM_ACTIVA, '1') in ('0', 'False', 'false', ''):
+            return False
+        lista = [x.strip().upper() for x in re.split(r'[,;\s]+', self._param(PARAM_EMPLEADOS, '')) if x.strip()]
+        if '*' in lista:
+            return True
+        return (employee.barcode or '').upper() in lista or str(employee.id) in lista
+
+    @api.model
+    def agrupaciones_activas(self):
+        """TUCTUC: sin agrupaciones Z- (en Oriola no hay); siempre False."""
+        return False
+
+    @api.model
+    def picking_propio(self, picking, en_lote=False):
+        """OUT que se puede preparar aquí: de un almacén de la PDA (tuctuc.almacen: WH-OR, MODAI, UBRAN, con su
+        compañía), ni hecha, ni cancelada, ni en borrador.
+        - OUT de salida (las directas que reparte tuctuc_operarios), con caja.
+        - INT de la estantería al SORTER de su almacén (oleadas), sin caja. Las demás INT, en la app de código de barras.
+        - v3.33: la ronda de faltantes (tuctuc_faltantes): se va a la ubicación DESTINO de cada línea."""
+        if not picking:
+            return False
+        picking = picking.sudo()
+        almacen = self.env['tuctuc.almacen'].de_picking(picking)
+        if not almacen or picking.company_id not in self.env['tuctuc.almacen'].companias():
+            return False
+        if picking.picking_type_code == 'internal':
+            if self._es_ronda(picking):
+                pass   # v3.33: la ronda de faltantes (sale de FALTANTE o de pérdidas) también se hace aquí
+            else:
+                sorter = almacen.sorter_id
+                stock = almacen.warehouse_id.lot_stock_id
+                if not sorter or not (picking.location_dest_id.parent_path or '').startswith(sorter.parent_path or '-'):
+                    return False
+                if not stock or not (picking.location_id.parent_path or '').startswith(stock.parent_path or '-'):
+                    return False
+        elif picking.picking_type_code != 'outgoing':
+            return False
+        else:
+            # las OUT que salen del SORTER las reparte y embala PedidosMultiples: aquí no (app de código de barras)
+            sorter = almacen.sorter_id
+            if sorter and (picking.location_id.parent_path or '').startswith(sorter.parent_path or '-'):
+                return False
+        if picking.state in ('done', 'cancel', 'draft'):
+            return False
+        if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+            return picking.picking_type_code == 'outgoing'   # v3.25: sola o con la zona entera
+        return True
+
+    # ------------------------------------------------------------------ estado de la OUT
+    @api.model
+    def _es_ronda(self, picking):
+        """v3.33: INT de una ronda de faltantes (tuctuc_faltantes 1.7)."""
+        return self.env['tuctuc.faltante'].es_ronda(picking)
+
+    @api.model
+    def _ubi(self, ml):
+        """v3.33: la ubicación donde se va: la de origen; en la ronda de faltantes, la de destino (la línea sale de
+        FALTANTE o de pérdidas y vuelve a su sitio)."""
+        return ml.location_dest_id if self._es_ronda(ml.picking_id) else ml.location_id
+
+    @api.model
+    def _lineas(self, picking):
+        """v3.13: en el orden de la RUTA ÓPTIMA (models/ruta.py: menos metros, saliendo de los muelles y volviendo).
+        En la misma parada: de abajo arriba (C1, C2...) y por referencia. Lo que no es un lineal (L.. P..), al final."""
+        return self._ordenar(picking.move_line_ids)
+
+    @api.model
+    def _ordenar(self, mls):
+        """v3.15: el orden de la ruta para cualquier conjunto de líneas (una OUT o todas las de una agrupación).
+        v3.17: por defecto, el de la app de código de barras (parámetro tuctuc_preparacion.orden).
+        v3.16: sin las líneas vacías (0 pedidas y 0 leídas, sin caja). Las deja la app de código de barras de Odoo al
+        leer en otra ubicación y deshacer: salían «0 de 0», contaban como pendientes y «la que toca» volvía siempre a
+        ellas (EFFEC/INT/67365, 12/11). No se borran: solo no se enseñan ni cuentan."""
+        mls = mls.filtered(lambda ml: ml.result_package_id or not float_is_zero(
+            ml.product_uom_qty + ml.qty_done, precision_digits=3))
+        # v3.17: el orden de la app de código de barras de Odoo: por el nombre completo de la ubicación
+        # (WH-OR/Stock/N1/06298 - L75 P38 C2/KO_...); en la misma ubicación, por referencia. TUCTUC: sin ruta.py.
+        return mls.sorted(lambda ml: (self._ubi(ml).complete_name or '', ml.product_id.default_code or '', ml.id))
+
+    @api.model
+    def _parada(self, ml):
+        """v3.13: la parada para «Aquí mismo»: la misma ubicación (sin la caja de dentro). TUCTUC: sin la geometría
+        de NAU-2, «aquí mismo» = el mismo hueco."""
+        ubi = self._ubi(ml)
+        hueco = ubi.location_id if comun.empieza_por(ubi.name, pda.prefijos_contenedor(self.env)) else ubi
+        return 'h:%s' % hueco.id if hueco else ''
+
+    @api.model
+    def _modelo(self, product):
+        """El modelo sin la talla: la plantilla del artículo (en Oriola el nombre no es MODELO-COLOR-TALLA). '' si el
+        artículo no tiene talla (sin talla no hay «talla hermana»)."""
+        if not self._talla(product):
+            return ''
+        return product.product_tmpl_id.name or ''
+
+    @api.model
+    def _hermanas(self, picking, producto):
+        """v3.13: líneas pendientes de la OUT del MISMO modelo y otra talla (la talla «hermana»)."""
+        return self._hermanas_en(self._lineas(picking), producto)
+
+    @api.model
+    def _hermanas_en(self, ordenadas, producto):
+        """v3.15: lo mismo sobre unas líneas ya ordenadas (las de una agrupación)."""
+        modelo = self._modelo(producto)
+        if not modelo:
+            return self.env['stock.move.line']
+        return ordenadas.filtered(
+            lambda l: l.product_id != producto and not l.result_package_id
+            and float_compare(l.qty_done, l.product_uom_qty, precision_digits=3) < 0
+            and self._modelo(l.product_id) == modelo)
+
+    @api.model
+    def _tallas_texto(self, lineas):
+        """['M', 'XL'] -> 'la M o la XL'."""
+        tallas = []
+        for l in lineas:
+            t = self._talla(l.product_id)
+            if t and t not in tallas:
+                tallas.append(t)
+        return _(' o ').join(['la ' + t for t in tallas])
+
+    @api.model
+    def _nombre(self, product):
+        """v3.1: el nombre del producto sin repetir la referencia («[X] X» -> «X»)."""
+        return product.name or product.display_name or ''
+
+    @api.model
+    def _talla(self, product):
+        """Talla del artículo, por orden: el atributo «Size grouping» de la plantilla (model_size_attribute, de
+        style_management), un atributo con TALLA o SIZE en el nombre y, si el artículo solo tiene otro atributo además
+        del color, ese (en Oriola muchas tallas se llaman «T_17-18», «M-XL», «MU_3-16»...). '' si no se sabe."""
+        valores = product.product_template_attribute_value_ids
+        tmpl = product.product_tmpl_id
+        agrupa = tmpl.model_size_attribute if 'model_size_attribute' in tmpl._fields else False
+        if agrupa:
+            for v in valores:
+                if v.attribute_id == agrupa:
+                    return v.name or ''
+        for v in valores:
+            nombre = (v.attribute_id.name or '').upper()
+            if any(p in nombre for p in PALABRAS_TALLA):
+                return v.name or ''
+        color = tmpl.model_color_attribute if 'model_color_attribute' in tmpl._fields else False
+        resto = valores.filtered(lambda v: v.attribute_id != color and not any(
+            p in (v.attribute_id.name or '').upper() for p in PALABRAS_COLOR))
+        if len(resto) == 1 and len(valores) <= 2:
+            return resto.name or ''
+        return ''
+
+    @api.model
+    def _corto(self, product):
+        return self._nombre(product)
+
+    @api.model
+    def _con_caja(self, picking):
+        """v3.14: las OUT van en cajas; las INT (al SORTER) no: se lee y se valida."""
+        return picking.picking_type_code == 'outgoing'
+
+    @api.model
+    def _pack_auto(self, picking):
+        """TUCTUC: en TODAS las OUT la caja la crea Odoo (en KOROSHI solo Zalando / About You): «Caja» hace «Put in
+        pack» sin leer nada (BOX + 7 cifras, secuencia «Packages») y «Validar» cierra solo lo que quede fuera de caja.
+        Lo de validar incompleta de los marketplaces de KOROSHI NO va con esto: va por _parcial (validar_parcial)."""
+        return picking.picking_type_code == 'outgoing'
+
+    @api.model
+    def _parcial(self, picking):
+        """v3.38: OUT que se puede validar a medias con «Validar incompleto» (el resto, a un pedido pendiente): OUT con
+        caja, que no es la ronda de faltantes, preparada por una sola persona (a dos, cada uno espera al otro) y con el
+        parámetro tuctuc_preparacion.validar_parcial encendido."""
+        if not self._con_caja(picking) or self._es_ronda(picking):
+            return False
+        if picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+            return False
+        if len(self._equipo(picking)) > 1:
+            return False
+        return self._param(PARAM_PARCIAL, '1') not in ('0', 'False', 'false', '')
+
+    @api.model
+    def _sin_caja(self, picking):
+        return picking.move_line_ids.filtered(
+            lambda l: not l.result_package_id and float_compare(l.qty_done, 0, precision_digits=3) > 0)
+
+    # ------------------------------------------------------------------ v3.3: preparar a dos
+    @api.model
+    def _clave(self, ml):
+        """Orden de la ruta (el mismo de _lineas)."""
+        return (self._ubi(ml).complete_name or '', ml.product_id.default_code or '', ml.id)
+
+    @api.model
+    def _grupo(self, picking, equipo):
+        """v3.4: el registro del trabajo a dos (corte por la mitad y avisos). Se crea la primera vez que hay dos."""
+        if len(equipo) < 2:
+            return self.env['tuctuc.preparacion.equipo']
+        Equipo = self.env['tuctuc.preparacion.equipo'].sudo()
+        g = Equipo.search([('picking_id', '=', picking.id), ('titular_id', '=', equipo[0].id),
+                           ('ayudante_id', '=', equipo[1].id)], limit=1)
+        if g:
+            return g
+        # las líneas que quedan por coger, en el orden de la ruta: el ayudante empieza en la mitad
+        pendientes = [ml for ml in self._lineas(picking) if not ml.result_package_id and float_compare(
+            ml.qty_done, ml.product_uom_qty, precision_digits=3) < 0]
+        corte = pendientes[len(pendientes) // 2] if pendientes else False
+        clave = self._clave(corte) if corte else (u'￿', '', 0)
+        vals = {'picking_id': picking.id, 'titular_id': equipo[0].id, 'ayudante_id': equipo[1].id,
+                'corte_ubicacion': clave[0], 'corte_ref': clave[1], 'corte_id': clave[2],
+                'lineas_pendientes': len(pendientes)}
+        try:
+            # v3.29: las dos PDA piden el estado a la vez y las dos crean el registro (EFFEC/OUT/24410, 11/11, dos
+            # iguales en el mismo segundo). Con la restricción única la segunda falla aquí y usa el de la primera.
+            with self.env.cr.savepoint():
+                return Equipo.create(vals)
+        except psycopg2.Error:
+            # la otra petición lo acaba de crear. Si esta ya lo ve, ese; si no (empezó antes de que se guardara), uno
+            # sin guardar con el mismo corte para pintar esta vez: la próxima petición ya lee el bueno.
+            Equipo.invalidate_cache()
+            g = Equipo.search([('picking_id', '=', picking.id), ('titular_id', '=', equipo[0].id),
+                               ('ayudante_id', '=', equipo[1].id)], limit=1)
+            return g or Equipo.new(vals)
+
+    @api.model
+    def _equipo(self, picking):
+        """Operarios con la OUT empezada (tareas en curso de tuctuc_operarios), el primero que empezó delante.
+        El primero es el titular (va en el orden de la ruta); los demás, ayudantes (van desde el final)."""
+        tareas = self.env['tuctuc.operario.tarea'].sudo().search(
+            [('picking_id', '=', picking.id), ('tipo', '=', 'out'), ('estado', '=', 'curso')], order='inicio asc, id asc')
+        equipo = self.env['hr.employee'].sudo()
+        for t in tareas:
+            if t.employee_id not in equipo:
+                equipo |= t.employee_id
+        return equipo
+
+    @api.model
+    def _faltantes_companero(self, picking, employee, grupo):
+        """v3.4: lo que el compañero ha mandado a faltantes o cambiado de ubicación desde que trabajan a dos.
+        La PDA avisa una vez de cada uno (para no ir a buscar algo que ya no está)."""
+        if not grupo or not employee or 'tuctuc.faltante' not in self.env or not grupo.create_date:
+            return []   # v3.29: sin create_date = el de _grupo sin guardar (lo creó otra PDA a la vez)
+        otro = grupo.ayudante_id if employee == grupo.titular_id else grupo.titular_id
+        res = []
+        for f in self.env['tuctuc.faltante'].sudo().search([('picking_id', '=', picking.id),
+                                                             ('employee_id', '=', otro.id),
+                                                             ('fecha', '>=', grupo.create_date)], order='id'):
+            prod = self._corto(f.product_id)
+            if f.tipo == 'sin_alternativa':
+                txt = _('%s ha mandado a faltantes %s: no lo busques.') % (otro.name, prod)
+            else:
+                txt = _('%s ha cambiado %s a %s.') % (otro.name, prod, f.ubicacion_nueva_id.name or '')
+            res.append({'id': f.id, 'texto': txt})
+        return res
+
+    @api.model
+    def _lecturas_fuera_de_caja(self, picking):
+        """{(move_line_id, employee_id): uds} leídas en esta pantalla y aún sin caja."""
+        res = {}
+        for l in self.sudo().search([('picking_id', '=', picking.id), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
+                                     ('deshecha', '=', False), ('en_caja', '=', False), ('move_line_id', '!=', False)]):
+            k = (l.move_line_id.id, l.employee_id.id or False)
+            res[k] = res.get(k, 0) + (l.cantidad or 0)
+        return res
+
+    @api.model
+    def _reparto_sin_caja(self, picking, employee):
+        """Uds fuera de caja de cada línea: (mias, de_otros) por move_line.id.
+        Ayudante: mías = lo que ha leído él. Titular (o sin equipo): mías = todo lo que no es de los ayudantes, así lo
+        leído en la app de código de barras o sin tarjeta sigue siendo del titular, como antes de la v3.3."""
+        equipo = self._equipo(picking)
+        res = {}
+        if len(equipo) < 2:
+            # solo (o el compañero ya se fue): todo lo leído es suyo y va a la caja, como antes de la v3.3
+            for ml in self._sin_caja(picking):
+                res[ml.id] = (ml.qty_done, 0.0)
+            return res
+        titular = equipo[0]
+        es_titular = not employee or employee == titular or employee not in equipo
+        por_linea = self._lecturas_fuera_de_caja(picking)
+        for ml in self._sin_caja(picking):
+            hechas = ml.qty_done
+            if es_titular:
+                otros = sum(v for (lid, eid), v in por_linea.items() if lid == ml.id and eid and eid != titular.id)
+                otros = min(otros, hechas)
+                mias = hechas - otros
+            else:
+                mias = min(por_linea.get((ml.id, employee.id), 0), hechas)
+                otros = hechas - mias
+            res[ml.id] = (mias, otros)
+        return res
+
+    @api.model
+    def _completa(self, ml):
+        return float_compare(ml.qty_done, ml.product_uom_qty, precision_digits=3) >= 0 and not float_is_zero(
+            ml.product_uom_qty + ml.qty_done, precision_digits=3)
+
+    @api.model
+    def estado(self, picking, employee=None, ligero=False):
+        """El estado de la OUT para pintar la pantalla.
+        v3.5 ligero=True (tras leer / deshacer / refresco a dos): sin lo fijo de cada línea (nombre, talla, foto, EAN,
+        ubicación), solo [id, pedidas, leídas, caja, completa] en el orden de la ruta y los totales. En una OUT de 141
+        líneas pasa de ~46 KB a ~4 KB y el servidor no lee productos ni fotos. Si el cliente ve una línea que no
+        conoce (put_in_pack del compañero parte líneas), pide /cargar entero."""
+        lineas = []
+        siguiente = False
+        fotos = {}
+        # v3.4: preparar a dos -> la OUT se parte por la mitad (en el orden de la ruta) cuando entra el ayudante.
+        # Cada uno ve primero su mitad, de delante hacia atrás, y después lo que quede de la del otro desde el
+        # extremo más lejano (así se encuentran en medio y no van a la misma ubicación).
+        equipo = self._equipo(picking)
+        ayudante = bool(employee) and len(equipo) > 1 and employee in equipo and employee != equipo[0]
+        grupo = self._grupo(picking, equipo)
+        ordenadas = self._lineas(picking)
+        aviso = ''
+        if grupo:
+            # v3.13: la mitad se corta por el puesto en la ruta: la línea del corte o, si ya no existe (la caja parte
+            # líneas), la primera de su ubicación; si tampoco, por la mitad
+            lista = list(ordenadas)
+            idx = next((i for i, l in enumerate(lista) if l.id == grupo.corte_id), None)
+            if idx is None:
+                idx = next((i for i, l in enumerate(lista)
+                            if (self._ubi(l).complete_name or '') == grupo.corte_ubicacion), None)
+            if idx is None:
+                idx = len(lista) if (grupo.corte_ubicacion or '').startswith(u'\uffff') else len(lista) // 2
+            primera = self.env['stock.move.line'].browse([l.id for l in lista[:idx]])
+            segunda = self.env['stock.move.line'].browse([l.id for l in lista[idx:]])
+            vuelta = lambda rs: self.env['stock.move.line'].browse(list(reversed(rs.ids)))
+            if ayudante:
+                ordenadas = segunda + vuelta(primera)
+            else:
+                ordenadas = primera + vuelta(segunda)
+            if employee and employee == grupo.titular_id and not grupo.avisado_titular:
+                aviso = _('%s se ha unido: hace la segunda mitad (desde %s).') % (
+                    grupo.ayudante_id.name, grupo.corte_nombre())
+                grupo.avisado_titular = True
+        alternativos = {} if ligero else self._codigos_alternativos(ordenadas.mapped('product_id'))   # v3.7
+        if not ligero:
+            # v3.14: si tiene foto, de todos los artículos de una vez (antes una consulta por artículo: en una OUT de
+            # 189 líneas era lo que más tardaba). bin_size: solo el tamaño, sin bajar la imagen
+            fotos = self._fotos(ordenadas.mapped('product_id'))
+        for ml in ordenadas:
+            pedidas = ml.product_uom_qty
+            leidas = ml.qty_done
+            completa = self._completa(ml)
+            if ligero:
+                # v3.34 (R7): sexto dato, la ubicación: si ha cambiado (Contenedores, Faltantes), la PDA carga entera
+                lineas.append([ml.id, round(pedidas), round(leidas), ml.result_package_id.name or '', completa,
+                               self._ubi(ml).id])
+                if not siguiente and not completa and not ml.result_package_id:
+                    siguiente = ml.id
+                continue
+            lineas.append(self._linea_json(ml, fotos, alternativos))
+            if not siguiente and not completa and not ml.result_package_id:
+                siguiente = ml.id
+        cajas = {}
+        for ml in picking.move_line_ids.filtered('result_package_id'):
+            cajas.setdefault(ml.result_package_id.name, 0)
+            cajas[ml.result_package_id.name] += ml.qty_done
+        tipos = self._tipos_de_paquetes(picking.move_line_ids.mapped('result_package_id'))   # v3.24
+        con_caja = self._con_caja(picking)   # v3.14: INT sin caja
+        sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if con_caja else 0
+        pedidas = sum(picking.move_line_ids.mapped('product_uom_qty'))
+        leidas = sum(picking.move_line_ids.mapped('qty_done'))
+        # v3.3: preparar a dos -> cada uno ve lo suyo fuera de caja y lo que le falta al compañero
+        reparto = self._reparto_sin_caja(picking, employee) if con_caja else {}
+        mias_sin_caja = sum(v[0] for v in reparto.values())
+        # v3.36: «Caja llena»: m3 de mis uds sin caja (lo que irá en mi próxima CJ). Una sola lectura del volumen de
+        # los artículos de la OUT (la media de los que tienen vale para los que no)
+        vols = {}
+        if con_caja and (not ligero or reparto):
+            vols = self._volumenes(picking.move_line_ids.mapped('product_id'), ('out', picking.id))
+        mias_m3 = self._m3(reparto, vols)
+        otros_sin_caja = sum(v[1] for v in reparto.values())
+        companeros = [e.name for e in equipo if not employee or e != employee]
+        # v3.33: en la ronda de faltantes, con todo marcado («No está» / «No existe») no queda ninguna línea: hecho
+        todo_leido = (bool(lineas) or self._es_ronda(picking)) and all(
+            (l[4] if ligero else l['completa']) for l in lineas)
+        res = {
+            'ligero': ligero,
+            'out_estado': picking.state,   # v3.29: el ligero no trae 'out'; la PDA mira si ya está hecha
+            'lineas': lineas,
+            'siguiente_id': siguiente,
+            'sin_caja': round(sin_caja),
+            'cajas': [{'nombre': k, 'uds': round(v), 'tipo': tipos.get(k, '')} for k, v in sorted(cajas.items())],
+            'pedidas': round(pedidas),
+            'leidas': round(leidas),
+            'todo_leido': todo_leido,
+            # v3.3: preparar a dos
+            'a_dos': len(equipo) > 1,
+            'rol': 'ayudante' if ayudante else ('titular' if len(equipo) > 1 else 'solo'),
+            'companeros': companeros,
+            'mitad': grupo.corte_nombre() if grupo else '',
+            'aviso_equipo': aviso,
+            'faltantes_companero': self._faltantes_companero(picking, employee, grupo),
+            'mias_sin_caja': round(mias_sin_caja),
+            'otros_sin_caja': round(otros_sin_caja),
+            'mias_sin_caja_m3': round(mias_m3, 4),   # v3.36
+        }
+        if ligero:
+            # v3.29: tras cada lectura y en el refresco a dos, solo lo que cambia (líneas, totales y lo de a dos). Lo
+            # fijo (datos de la OUT, notas, tipos de caja, alarma) va solo en /cargar entero: la PDA se lo queda.
+            return res
+        res.update({
+            'out': {
+                'id': picking.id,
+                'name': picking.name,
+                'con_caja': con_caja,   # v3.14: False en las INT (sin botón Caja)
+                'pack_auto': con_caja and self._pack_auto(picking),   # TUCTUC: todas las OUT
+                'tipo': 'INT' if picking.picking_type_code == 'internal' else 'OUT',
+                'tienda': picking.partner_id.name or '',
+                'origen': picking.origin or '',
+                'estado': picking.state,
+                'agrupacion': picking.batch_id.name or '',   # v3.25: también la Z- (la OUT de una zona hecha sola)
+                'propia': self.picking_propio(picking),
+                'ronda': self._es_ronda(picking),   # v3.33: ronda de faltantes («No está» / «No existe»)
+                'nota': self._nota(picking),   # v3.7: las notas de la OUT, arriba
+            },
+            'tipos_caja': self.tipos_caja(picking.company_id),   # v3.24: para elegir al cerrar una caja
+            'alarma_min': self.minutos_alarma(),   # v3.22
+            'alarma_horario': self.horario_alarma(),   # v3.23
+            'refresco_solo_s': self.segundos_refresco(),   # v3.34 (R7)
+            'caja_llena': self.caja_llena_config(),   # v3.36
+        })
+        for l in lineas:   # v3.36: m3 por ud, para que la PDA sume al leer sin esperar a Odoo
+            l['vol'] = round(vols.get(l['producto_id'], 0.0), 5)
+        return res
+
+    @api.model
+    def _fotos(self, productos):
+        """v3.14: si tiene foto, de todos los artículos de una vez (bin_size: solo el tamaño, sin bajar la imagen)."""
+        return dict((p.id, bool(p.image_128)) for p in productos.with_context(bin_size=True))
+
+    @api.model
+    def _linea_json(self, ml, fotos, alternativos):
+        """Lo que la PDA necesita de una línea (estado entero). v3.15: también lo usa la agrupación."""
+        p = ml.product_id
+        return {
+            'id': ml.id,
+            'producto_id': p.id,     # v3.0.1: foto /web/image/product.product/<id>/image_256
+            'producto': p.display_name or '',
+            'nombre': self._nombre(p),
+            'talla': self._talla(p),
+            'tiene_foto': fotos.get(p.id, False),
+            'ref': p.default_code if p.default_code and p.default_code not in (p.barcode, p.name) else '',
+            'ean': ml.product_id.barcode or '',
+            'eans_alt': alternativos.get(p.id, []),     # v3.7: códigos de barras alternativos del producto
+            'ubicacion': self._ubi(ml).name or '',   # v3.33: en la ronda de faltantes, el destino
+            'ubicacion_completa': self._ubi(ml).complete_name or '',
+            'ubicacion_id': self._ubi(ml).id,   # v3.34 (R7): para ver en el estado ligero si ha cambiado
+            # v3.7: al leer una ubicación, la pantalla salta a su línea (la caja KO_ o el hueco que la contiene)
+            'ubicacion_codigos': [c for c in (self._ubi(ml).barcode, self._ubi(ml).location_id.barcode) if c],
+            'parada': self._parada(ml),   # v3.13: misma parada = «Aquí mismo»
+            'pedidas': round(ml.product_uom_qty),
+            'leidas': round(ml.qty_done),
+            'caja': ml.result_package_id.name or '',
+            'completa': self._completa(ml),
+        }
+
+    # ------------------------------------------------------------------ ayudas
+    @api.model
+    def _codigos_alternativos(self, productos):
+        """v3.7: {product_id: [códigos]} de product_multi_barcode (otros EAN del mismo artículo), para que la PDA
+        también cuente al momento si se lee uno de esos."""
+        res = {}
+        if not productos or 'product.barcode' not in self.env:
+            return res
+        for b in self.env['product.barcode'].sudo().search([('product_id', 'in', productos.ids)]):
+            if b.name:
+                res.setdefault(b.product_id.id, []).append(b.name)
+        return res
+
+    @api.model
+    def _nota(self, picking):
+        """v3.7: las notas de la OUT en texto (pueden traer avisos de la oficina)."""
+        nota = picking.note or ''
+        if '<' in nota:
+            nota = html2plaintext(nota)
+        return nota.strip()[:500]
+
+    @api.model
+    def _bloquear(self, picking):
+        """Una sola PDA escribe a la vez en la misma OUT."""
+        try:
+            # v3.6: en un savepoint, para que si no se puede bloquear la transacción siga sana (apuntar, estado)
+            with self.env.cr.savepoint():
+                self.env.cr.execute('SELECT id FROM stock_picking WHERE id = %s FOR UPDATE NOWAIT', (picking.id,))
+        except Exception:
+            # v3.38.1: no siempre es otra PDA (27/11: «Comprobar disponibilidad» desde la oficina la tuvo 7 min)
+            raise Ocupada(_('%s está ocupada en Odoo (otra PDA o una operación de la oficina). '
+                            'Se vuelve a probar sola.') % picking.name)
+
+    @api.model
+    def _variantes(self, codigo):
+        """El código tal cual y la conversión UPC (12) <-> EAN-13 con 0 delante (nomenclatura upc_ean_conv)."""
+        res = [codigo]
+        if codigo.isdigit() and len(codigo) == 12:
+            res.append('0' + codigo)
+        if codigo.isdigit() and len(codigo) == 13 and codigo.startswith('0'):
+            res.append(codigo[1:])
+        return res
+
+    @api.model
+    def _producto_de(self, picking, codigo):
+        """Producto de la OUT con ese código: EAN principal, códigos alternativos (product_multi_barcode) o
+        referencia interna. Devuelve (producto, en_la_out)."""
+        return self._producto_entre(picking.move_line_ids.mapped('product_id'), codigo)
+
+    @api.model
+    def _producto_entre(self, productos, codigo):
+        """v3.15: lo mismo entre unos productos dados (los de todas las OUT de una agrupación)."""
+        variantes = self._variantes(codigo)
+        for p in productos:
+            if p.barcode and p.barcode in variantes:
+                return p, True
+        if 'product.barcode' in self.env:
+            alt = self.env['product.barcode'].sudo().search(
+                [('name', 'in', variantes), ('product_id', 'in', productos.ids)], limit=1)
+            if alt:
+                return alt.product_id, True
+        for p in productos:
+            if p.default_code and p.default_code == codigo:
+                return p, True
+        # no es de la OUT: ¿es un producto?
+        otro = self.env['product.product'].sudo().search([('barcode', 'in', variantes)], limit=1)
+        if not otro and 'product.barcode' in self.env:
+            alt = self.env['product.barcode'].sudo().search([('name', 'in', variantes)], limit=1)
+            otro = alt.product_id
+        return otro, False
+
+    @api.model
+    def _apuntar(self, picking, employee, tipo, codigo, resultado='ok', mensaje='', ml=None, cantidad=0,
+                 id_lectura=False, producto=''):
+        return self.sudo().create({
+            'picking_id': picking.id if picking else False,
+            'move_line_id': ml.id if ml else False,
+            'employee_id': employee.id if employee else False,
+            'tipo': tipo,
+            'codigo': codigo,
+            'producto': producto or (ml.product_id.display_name if ml else ''),
+            'cantidad': cantidad,
+            'resultado': resultado,
+            'mensaje': (mensaje or '')[:250],
+            'id_lectura': id_lectura or False,
+            'diferida': bool(self.env.context.get('kp_diferida')),   # v3.29
+        })
+
+    @api.model
+    def apuntar_rechazo(self, picking, employee, tipo, codigo, mensaje, id_lectura=False, cantidad=0):
+        """v3.29: lo que la PDA mandó y Odoo no aceptó queda SIEMPRE apuntado (antes, si fallaba _comprobar o era una
+        caja o una tarjeta, no quedaba nada y una lectura de la cola se perdía sin rastro). Solo si no está ya (la
+        lógica de leer apunta muchos de sus errores ella misma). Nunca rompe la respuesta."""
+        if id_lectura and self._repetida(id_lectura):
+            return False
+        try:
+            with self.env.cr.savepoint():
+                return self._apuntar(picking if picking and picking.exists() else False, employee, tipo, codigo,
+                                     'error', mensaje, cantidad=cantidad, id_lectura=id_lectura)
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se ha podido apuntar el rechazo de %s (%s)', codigo, tipo)
+            return False
+
+    @api.model
+    def _repetida(self, id_lectura):
+        if not id_lectura:
+            return False
+        return self.sudo().search([('id_lectura', '=', id_lectura)], limit=1)
+
+    @api.model
+    def _respuesta_repetida(self, previa):
+        """v3.29: la respuesta de una petición que ya llegó (la PDA no recibió la respuesta y la vuelve a mandar con el
+        mismo id). Lleva lo que la PDA necesita según el tipo: la caja y sus uds, o que la OUT está validada."""
+        res = {'ok': previa.resultado == 'ok', 'msg': previa.mensaje, 'que': 'repetida',
+               'linea_id': previa.move_line_id.id or False}
+        if previa.tipo == 'caja' and previa.resultado == 'ok':
+            res.update({'caja': previa.codigo, 'uds': round(previa.cantidad or 0)})
+        elif previa.tipo == 'validar' and previa.resultado == 'ok':
+            res['que'] = 'validada'
+        return res
+
+    @api.model
+    def _comprobar(self, picking):
+        if not picking:
+            raise UserError(_('No se encuentra la OUT.'))
+        if picking.state == 'done':
+            raise UserError(_('%s ya está validada.') % picking.name)
+        if picking.state == 'cancel':
+            raise UserError(_('%s está cancelada.') % picking.name)
+        # v3.15: desde la pantalla de la agrupación (contexto preparacion_lote) valen también las OUT de una Z-
+        if not self.picking_propio(picking, en_lote=self.env.context.get('preparacion_lote')):
+            raise UserError(_('%s no se prepara aquí: ábrela en la app de código de barras.') % picking.name)
+
+    # ------------------------------------------------------------------ leer un producto
+    @api.model
+    def leer(self, picking, employee, codigo, id_lectura=False):
+        """Suma 1 ud a la línea del producto leído. Devuelve {'ok', 'msg', 'linea_id', 'que'}."""
+        codigo = (codigo or '').strip()
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)   # v3.29
+        self._comprobar(picking)
+        if comun.es_caja(codigo, pda.patron_caja(self.env)):
+            return {'ok': False, 'que': 'es_caja',
+                    'msg': _('Es una caja (%s): la caja la pone Odoo al pulsar «Caja», no hace falta leerla.') % codigo}
+        tarjeta = self.env['hr.employee'].sudo().search([('barcode', '=', codigo)], limit=1)
+        if tarjeta:
+            return {'ok': False, 'que': 'es_tarjeta',
+                    'msg': _('Es la tarjeta de %s. Para cambiar de operario vuelve a Lecturas (←).') % tarjeta.name}
+        producto, en_la_out = self._producto_de(picking, codigo)
+        if not producto:
+            ubicacion = self.env['stock.location'].sudo().search([('barcode', '=', codigo)], limit=1)
+            if ubicacion:
+                # v3.7: es una ubicación (las de la OUT las resuelve la PDA sola): no hay nada del pedido allí
+                return {'ok': False, 'que': 'ubicacion',
+                        'msg': _('En %s no hay nada de este pedido.') % (ubicacion.name or codigo)}
+            msg = self._msg_desconocido(codigo)
+            self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura)
+            return {'ok': False, 'que': 'desconocido', 'msg': msg}
+        if not en_la_out:
+            hermanas = self._hermanas(picking, producto)   # v3.13: ¿se ha equivocado de talla?
+            if hermanas:
+                msg = _('Has leído la talla %s. Toca %s de %s. No cuenta.') % (
+                    self._talla(producto), self._tallas_texto(hermanas), self._modelo(producto))
+                self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
+                              producto=producto.display_name)
+                return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
+            msg = _('%s no es de este pedido. No cuenta.') % self._corto(producto)
+            self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
+                          producto=producto.display_name)
+            return {'ok': False, 'que': 'no_es_del_pedido', 'msg': msg}
+        self._bloquear(picking)
+        lineas = self._lineas(picking).filtered(
+            lambda l: l.product_id == producto and not l.result_package_id
+            and float_compare(l.qty_done, l.product_uom_qty, precision_digits=3) < 0)
+        if not lineas:
+            total = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('product_uom_qty'))
+            msg = _('Ya tienes todas las uds de %s (%s). No cuenta.') % (self._corto(producto), round(total))
+            hermanas = self._hermanas(picking, producto)   # v3.13
+            if hermanas:
+                msg = _('Ya tienes todas las de la talla %s. Falta %s de %s. No cuenta.') % (
+                    self._talla(producto), self._tallas_texto(hermanas), self._modelo(producto))
+            self._apuntar(picking, employee, 'leer', codigo, 'error', msg, id_lectura=id_lectura,
+                          producto=producto.display_name)
+            if hermanas:
+                return {'ok': False, 'que': 'talla_hermana', 'msg': msg, 'linea_id': hermanas[0].id}
+            return {'ok': False, 'que': 'completo', 'msg': msg}
+        return self._sumar(picking, employee, codigo, lineas[0], id_lectura)
+
+    @api.model
+    def _msg_desconocido(self, codigo):
+        """v3.18: un código numérico que no es de ningún artículo casi siempre es otro código de la bolsa."""
+        prefijos = pda.prefijos_ean(self.env)
+        if RE_EAN.match(codigo or '') and prefijos and not comun.empieza_por(codigo, prefijos):
+            return _('%s no es de ningún artículo: es otro código de la bolsa. Lee el de la etiqueta de la prenda, el '
+                     'que empieza por %s. No cuenta.') % (codigo, ' o '.join(prefijos))
+        return _('Código %s desconocido. No cuenta.') % codigo
+
+    @api.model
+    def _sumar(self, picking, employee, codigo, ml, id_lectura=False):
+        """+1 ud en la línea elegida (ya bloqueada la OUT). v3.15: también lo usa la agrupación."""
+        producto = ml.product_id
+        primera = float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3)
+        ml.write({'qty_done': ml.qty_done + 1})
+        if primera and hasattr(picking, 'set_barcode_start_date'):
+            # lo mismo que la app de Brain Station al primer producto (fecha de inicio de la preparación)
+            try:
+                with self.env.cr.savepoint():
+                    picking.set_barcode_start_date()
+            except Exception as e:  # solo informativo
+                _logger.info('TUCTUC preparacion: set_barcode_start_date %s: %s', picking.name, e)
+        hechas = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('qty_done'))
+        total = sum(picking.move_line_ids.filtered(lambda l: l.product_id == producto).mapped('product_uom_qty'))
+        msg = '%s · %s de %s' % (self._corto(producto), round(hechas), round(total))
+        self._apuntar(picking, employee, 'leer', codigo, 'ok', msg, ml=ml, cantidad=1, id_lectura=id_lectura)
+        return {'ok': True, 'que': 'producto', 'msg': msg, 'linea_id': ml.id}
+
+    # ------------------------------------------------------------------ deshacer la última
+    @api.model
+    def deshacer(self, picking, employee, id_lectura=False):
+        """v3.29: con id_lectura, si la PDA la vuelve a mandar (no le llegó la respuesta) no se deshace otra."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
+        self._comprobar(picking)
+        self._bloquear(picking)
+        dominio = [('picking_id', '=', picking.id), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
+                   ('deshecha', '=', False), ('en_caja', '=', False)]
+        if employee:
+            dominio.append(('employee_id', '=', employee.id))
+        ultima = self.sudo().search(dominio, limit=1)
+        if not ultima or not ultima.move_line_id:
+            return {'ok': False, 'msg': _('No hay ninguna lectura tuya que deshacer en %s.') % picking.name}
+        ml = ultima.move_line_id
+        if ml.result_package_id:
+            return {'ok': False, 'msg': _('%s ya está en la caja %s: no se puede deshacer.')
+                    % (self._corto(ml.product_id), ml.result_package_id.name)}
+        if float_compare(ml.qty_done, 1, precision_digits=3) < 0:
+            ultima.deshecha = True
+            return {'ok': False, 'msg': _('Esa línea ya no tiene uds leídas.')}
+        n = min(max(int(round(ultima.cantidad or 1)), 1), int(round(ml.qty_done)))   # v3.7: puesta a mano = n uds
+        ml.write({'qty_done': ml.qty_done - n})
+        ultima.deshecha = True
+        msg = _('Deshecha: %s (−%s)') % (self._corto(ml.product_id), n)
+        self._apuntar(picking, employee, 'deshacer', ultima.codigo, 'ok', msg, ml=ml, cantidad=-n,
+                      id_lectura=id_lectura)
+        return {'ok': True, 'msg': msg, 'linea_id': ml.id}
+
+    # ------------------------------------------------------------------ v3.7: cantidad a mano
+    @api.model
+    def poner_cantidad(self, picking, employee, linea_id, cantidad, id_lectura=False):
+        """Pone n uds de golpe en una línea (como el lápiz de la app de código de barras). Solo si ya se ha leído al
+        menos una ud de esa línea (el producto está comprobado) y sin pasar de lo que falta."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)   # v3.29
+        self._comprobar(picking)
+        try:
+            n = int(cantidad)
+        except (TypeError, ValueError):
+            n = 0
+        if n < 1:
+            return {'ok': False, 'msg': _('Pon una cantidad de 1 o más.')}
+        self._bloquear(picking)
+        ml = picking.move_line_ids.filtered(lambda l: l.id == int(linea_id or 0))
+        if not ml:
+            return {'ok': False, 'msg': _('Esa línea ya no está en %s. Vuelve a cargar la OUT.') % picking.name}
+        if ml.result_package_id:
+            return {'ok': False, 'msg': _('Esa línea ya está en la caja %s.') % ml.result_package_id.name}
+        if float_compare(ml.qty_done, 1, precision_digits=3) < 0:
+            return {'ok': False, 'msg': _('Lee primero una ud de %s con la pistola.') % self._corto(ml.product_id)}
+        falta = int(round(ml.product_uom_qty - ml.qty_done))
+        if n > falta:
+            return {'ok': False, 'msg': _('En esta línea solo faltan %s uds.') % falta}
+        ml.write({'qty_done': ml.qty_done + n})
+        msg = _('%s · %s de %s (+%s a mano)') % (self._corto(ml.product_id), round(ml.qty_done),
+                                                 round(ml.product_uom_qty), n)
+        self._apuntar(picking, employee, 'leer', 'A MANO +%s' % n, 'ok', msg, ml=ml, cantidad=n,
+                      id_lectura=id_lectura)
+        return {'ok': True, 'que': 'cantidad', 'msg': msg, 'linea_id': ml.id}
+
+    # ------------------------------------------------------------------ v3.7: imprimir
+    @api.model
+    def impresos(self, picking):
+        """Lo que se puede volver a imprimir de la OUT, por si falta una etiqueta. Solo lectura: la etiqueta de caja
+        pinta las matrículas que la OUT ya tiene reservadas (no reserva ninguna nueva)."""
+        res = []
+        Informe = self.env['ir.actions.report'].sudo()
+        # v3.7.2: los informes PDF necesitan la empresa de la OUT (si no, Odoo contesta 403 por multiempresa)
+        empresa = '?context=' + url_quote(json.dumps({'allowed_company_ids': [picking.company_id.id or self.env.company.id]}))
+        vistos = set()
+        adjuntos = self.env['ir.attachment'].sudo().search(
+            [('res_model', '=', 'stock.picking'), ('res_id', '=', picking.id), ('mimetype', '=', 'application/pdf'),
+             '|', ('name', 'ilike', 'label'), ('name', 'ilike', 'etiq')], order='id desc')
+        for a in adjuntos:
+            if a.name in vistos:
+                continue
+            vistos.add(a.name)
+            res.append({'nombre': _('Etiqueta del transportista'), 'detalle': a.name,
+                        'url': '/web/content/%d' % a.id})   # v3.7.2: se abre (no se descarga)
+        if Informe.search([('report_name', '=', 'stock.report_deliveryslip')], limit=1):
+            res.append({'nombre': _('Albarán'), 'detalle': picking.name,
+                        'url': '/report/pdf/stock.report_deliveryslip/%d%s' % (picking.id, empresa)})
+        return res
+
+    # ------------------------------------------------------------------ cerrar caja
+    @api.model
+    def caja(self, picking, employee, codigo, id_lectura=False, tipo_caja=False):
+        codigo = (codigo or '').strip().upper()
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)   # v3.29
+        self._comprobar(picking)
+        # TUCTUC: la caja la crea Odoo (BOX + 7 cifras); no se lee ninguna etiqueta
+        if not self._con_caja(picking):
+            return {'ok': False, 'msg': _('%s no va en cajas: lee y valida.') % picking.name}
+        codigo = ''
+        auto = True
+        self._bloquear(picking)
+        sin_caja = self._sin_caja(picking)
+        if not sin_caja:
+            return {'ok': False, 'msg': _('No hay nada leído fuera de caja: lee algún artículo antes de cerrar la caja.')}
+        # v3.3: preparar a dos -> en la caja solo va lo que ha leído este operario
+        reparto = self._reparto_sin_caja(picking, employee)
+        uds = sum(v[0] for v in reparto.values())
+        if float_is_zero(uds, precision_digits=3):
+            return {'ok': False, 'msg': _('No tienes nada tuyo fuera de caja. Lo que queda (%s uds) es de tu compañero.')
+                    % round(sum(v[1] for v in reparto.values()))}
+        apartar = {lid: v[1] for lid, v in reparto.items() if v[1] > 0}
+        # v3.36: el volumen con que se cierra (antes de put_in_pack, que parte las líneas)
+        m3 = self._m3(reparto, self._volumenes(picking.move_line_ids.mapped('product_id'), ('out', picking.id)))
+        try:
+            with self.env.cr.savepoint():
+                # lo del compañero se aparta un momento (qty_done sin lo suyo) para que put_in_pack no lo meta
+                for ml in sin_caja.filtered(lambda l: l.id in apartar):
+                    ml.write({'qty_done': reparto[ml.id][0]})
+                # «Put in pack» de siempre: Odoo le pone BOX0699806 (secuencia «Packages»)
+                antes = picking.move_line_ids.mapped('result_package_id')
+                res = picking.put_in_pack()
+                if isinstance(res, dict) and res.get('res_model'):
+                    raise UserError(_('Odoo pide otra cosa al cerrar la caja (%s). Ciérrala en la app de código de '
+                                      'barras.') % (res.get('name') or res.get('res_model')))
+                # y se devuelve: put_in_pack deja en la línea de siempre lo que quedaba por coger, sin caja
+                for ml in self.env['stock.move.line'].browse(list(apartar)).exists():
+                    if ml.result_package_id or float_compare(ml.product_uom_qty - ml.qty_done, apartar[ml.id],
+                                                             precision_digits=3) < 0:
+                        raise UserError(_('No se ha podido separar lo de tu compañero en %s. Avisa a la oficina.')
+                                        % self._corto(ml.product_id))
+                    ml.write({'qty_done': ml.qty_done + apartar[ml.id]})
+                if auto:
+                    nuevo = picking.move_line_ids.mapped('result_package_id') - antes
+                    if not nuevo:
+                        raise UserError(_('Odoo no ha creado la caja. Ciérrala en la app de código de barras.'))
+                    codigo = nuevo[0].name
+        except (UserError, ValidationError) as e:
+            msg = e.name if hasattr(e, 'name') else str(e)
+            self._apuntar(picking, employee, 'caja', codigo, 'error', msg, id_lectura=id_lectura)
+            return {'ok': False, 'msg': msg}
+        # las lecturas que han ido a esta caja (las de los demás siguen fuera)
+        dominio = [('picking_id', '=', picking.id), ('tipo', '=', 'leer'), ('resultado', '=', 'ok'),
+                   ('deshecha', '=', False), ('en_caja', '=', False)]
+        if apartar:
+            titular = self._equipo(picking)[:1]
+            if employee and employee != titular:
+                dominio.append(('employee_id', '=', employee.id))
+            else:
+                dominio += ['|', ('employee_id', '=', False), ('employee_id', '=', titular.id)]
+        self.sudo().search(dominio).write({'en_caja': codigo})
+        # v3.24: el tipo de caja que ha elegido el operario (product.packaging): se pone a la caja
+        tipo = self._poner_tipo_caja(picking, employee, codigo, tipo_caja)
+        msg = _('Caja %s cerrada con %s uds.') % (codigo, round(uds))
+        if tipo:
+            msg = _('Caja %s (%s) cerrada con %s uds.') % (codigo, tipo, round(uds))
+        self._apuntar(picking, employee, 'caja', codigo, 'ok', msg, cantidad=uds, id_lectura=id_lectura)
+        self._caja_llena_cierre(picking, employee, codigo, round(m3, 4))   # v3.36
+        return {'ok': True, 'msg': msg, 'caja': codigo, 'uds': round(uds)}   # v3.20: la PDA enseña el número
+
+    # ------------------------------------------------------------------ v3.24: tipo de caja
+    @api.model
+    def tipos_caja(self, company=None):
+        """Los tipos de caja para elegir en la PDA: [{id, nombre, medidas, capacidad, defecto_barra}]. TUCTUC: son
+        product.packaging sin artículo (los embalajes que ya usa Oriola: «Sobre 46x35x4(M)», «Generica Grande
+        60x40x33»...): los del parámetro tuctuc_preparacion.embalajes (ids separados por comas) o, si está vacío, los
+        MAX_EMBALAJES más usados en las cajas BOX de los últimos DIAS_EMBALAJES días de las compañías de la PDA."""
+        try:
+            Pack = self.env['product.packaging'].sudo()
+            ids = [int(x) for x in re.findall(r'\d+', self._param(PARAM_EMBALAJES, ''))]
+            if ids:
+                embalajes = Pack.browse(ids).exists()
+            else:
+                desde = fields.Datetime.now() - timedelta(days=DIAS_EMBALAJES)
+                companias = self.env['tuctuc.almacen'].companias().ids
+                grupos = self.env['stock.quant.package'].sudo().read_group(
+                    [('packaging_id', '!=', False), ('create_date', '>=', desde),
+                     '|', ('company_id', '=', False), ('company_id', 'in', companias)],
+                    ['packaging_id'], ['packaging_id'], lazy=False)
+                usados = [g['packaging_id'][0] for g in sorted(grupos, key=lambda g: -g['__count'])]
+                embalajes = Pack.browse(usados).exists().filtered(
+                    lambda p: not p.product_id and (not p.company_id or p.company_id.id in companias))
+            tipos = []
+            for p in embalajes[:MAX_EMBALAJES]:
+                medidas = ''
+                if all(c in p._fields for c in ('length', 'width', 'height')) and p.length and p.width:
+                    medidas = '%sx%sx%s' % (p.length, p.width, p.height or 0)
+                tipos.append({'id': p.id, 'nombre': p.name or '', 'medidas': medidas})
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se han podido leer los tipos de caja')
+            return []
+        caps = self._capacidades()
+        primero = caps[0][0] if caps else ''
+        hay_defecto = False
+        for t in tipos:
+            texto = re.sub(r'\s', '', '%s %s' % (t.get('nombre') or '', t.get('medidas') or '')).upper()
+            clave, m3 = next(((k, c) for k, c in caps if k in texto), ('', CAPACIDAD_DEFECTO))
+            t['capacidad'] = m3
+            t['defecto_barra'] = bool(primero) and clave == primero and not hay_defecto
+            hay_defecto = hay_defecto or t['defecto_barra']
+        return tipos
+
+    @api.model
+    def _tipos_de_paquetes(self, paquetes):
+        """{nombre de la caja: nombre de su embalaje} para la lista de cajas de la PDA."""
+        return dict((p.name, p.packaging_id.name or '') for p in paquetes.filtered('packaging_id'))
+
+    @api.model
+    def _poner_tipo_caja(self, picking, employee, nombre, tipo_caja):
+        """Pone a la caja recién cerrada el embalaje elegido (product.packaging). Nunca para el cierre de la caja.
+        Devuelve el nombre del embalaje ('' si no hay)."""
+        if not tipo_caja or not nombre:
+            return ''
+        embalaje = self.env['product.packaging'].sudo().browse(int(tipo_caja or 0)).exists()
+        if not embalaje:
+            return ''
+        try:
+            with self.env.cr.savepoint():
+                paquetes = picking.move_line_ids.mapped('result_package_id').filtered(lambda p: p.name == nombre)
+                if paquetes:
+                    paquetes.sudo().write({'packaging_id': embalaje.id})
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se ha podido poner el embalaje a la caja %s', nombre)
+            return ''
+        return embalaje.name or ''
+
+    # ------------------------------------------------------------------ v3.21: mover de caja
+    @api.model
+    def mover_caja(self, picking, employee, linea_id, cantidad, destino, id_lectura=False):
+        """Pasa n uds de una línea ya en caja a otra caja de la misma OUT (o a una nueva): «la caja va muy llena,
+        esta chaqueta a la otra». destino = nombre de una caja de la OUT o 'NUEVA' (caja nueva de Odoo, BOX...). Igual que Odoo al cerrar caja: si no se mueve la línea
+        entera, se parte en dos (copia con las uds movidas y la original con el resto).
+        v3.28: destino 'FUERA' = sacar de la caja: las uds vuelven a «por poner» (fuera de caja, del operario que las
+        leyó) y entran en la caja siguiente al cerrarla.
+        v3.29: con id_lectura (la PDA reintenta con el mismo si no le llega la respuesta): no se mueve dos veces."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
+        self._comprobar(picking)
+        if not self._con_caja(picking):
+            return {'ok': False, 'msg': _('Esta OUT no va en cajas.')}
+        ml = self.env['stock.move.line'].sudo().browse(int(linea_id or 0)).exists()
+        if not ml or ml.picking_id != picking or not ml.result_package_id:
+            return {'ok': False, 'msg': _('Esa línea no está en ninguna caja.')}
+        try:
+            n = int(cantidad or 1)
+        except (TypeError, ValueError):
+            n = 0
+        hechas = int(round(ml.qty_done))
+        if n < 1 or n > hechas:
+            return {'ok': False, 'msg': _('Pon entre 1 y %s uds.') % hechas}
+        origen = ml.result_package_id
+        destino = (destino or '').strip().upper()
+        Paquete = self.env['stock.quant.package'].sudo()
+        de_la_out = picking.move_line_ids.mapped('result_package_id')
+        self._bloquear(picking)
+        try:
+            with self.env.cr.savepoint():
+                if destino == 'FUERA':   # v3.28
+                    paquete = Paquete.browse()
+                elif destino == 'NUEVA':
+                    vals = {}
+                    if 'company_id' in Paquete._fields:
+                        vals['company_id'] = picking.company_id.id
+                    paquete = Paquete.create(vals)   # nombre de la secuencia de Odoo: BOX0699806...
+                    if origen.packaging_id:
+                        paquete.packaging_id = origen.packaging_id   # el mismo embalaje que la caja de donde sale
+                else:
+                    paquete = de_la_out.filtered(lambda p: (p.name or '').strip().upper() == destino)[:1]
+                    if not paquete:
+                        raise UserError(_('%s no es una caja de esta OUT. Para una caja nueva, elige «Caja nueva».')
+                                        % destino)
+                if paquete and paquete == origen:
+                    raise UserError(_('Ya está en la caja %s.') % origen.name)
+                nueva = ml
+                if n < hechas or float_compare(ml.qty_done, ml.product_uom_qty, precision_digits=3) != 0:
+                    # lo mismo que put_in_pack de Odoo: copia con 0 pedidas y las hechas, y luego se reparte
+                    nueva = ml.copy({'product_uom_qty': 0, 'qty_done': n, 'result_package_id': paquete.id or False})
+                    ml.write({'product_uom_qty': max(ml.product_uom_qty - n, 0), 'qty_done': ml.qty_done - n})
+                    nueva.write({'product_uom_qty': n})
+                else:
+                    ml.write({'result_package_id': paquete.id or False})
+                # las lecturas de esas uds pasan a la caja nueva (lo de cada operario sigue cuadrando)
+                lecturas = self.sudo().search([('picking_id', '=', picking.id), ('en_caja', '=', origen.name),
+                                               ('move_line_id', '=', ml.id), ('tipo', '=', 'leer'),
+                                               ('resultado', '=', 'ok'), ('deshecha', '=', False)], limit=n)
+                lecturas.write({'en_caja': paquete.name or False, 'move_line_id': nueva.id})
+        except (UserError, ValidationError) as e:
+            msg = e.name if hasattr(e, 'name') else str(e)
+            return {'ok': False, 'msg': msg}
+        if not paquete:   # v3.28: sacada de la caja
+            msg = _('%s %s fuera de %s: van a la caja siguiente.') % (n, n == 1 and _('ud') or _('uds'), origen.name)
+            if not picking.move_line_ids.filtered(lambda l: l.result_package_id == origen):
+                msg += ' ' + _('%s queda vacía.') % origen.name
+        else:
+            msg = _('%s %s: de %s a %s.') % (n, n == 1 and _('ud') or _('uds'), origen.name, paquete.name)
+        msg = '%s · %s' % (self._corto(ml.product_id), msg)
+        self._apuntar(picking, employee, 'mover', paquete.name or _('fuera de caja'), 'ok', msg, ml=nueva, cantidad=n,
+                      id_lectura=id_lectura)
+        return {'ok': True, 'msg': msg, 'caja': paquete.name or False, 'origen': origen.name, 'uds': n}
+
+    # ------------------------------------------------------------------ validar
+    @api.model
+    def _validar_out_de_zona(self, Faltante, picking, pedido_pendiente):
+        """v3.25: OUT de una zona (Z-) hecha sola: la validación de tuctuc_faltantes sin su «se valida desde la
+        agrupación» (lo mismo que hace models/agrupacion.py con cada OUT de la zona)."""
+        pendientes = Faltante.lineas_pendientes(picking)
+        if pendientes:
+            return {'estado': 'pendientes', 'n': len(pendientes)}
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            raise UserError(_('En %s no hay nada leído.') % picking.name)
+        return Faltante._todo_o_nada(Faltante._validar_out, picking, pedido_pendiente)
+
+    @api.model
+    def _validar_incompleta(self, Faltante, picking, employee):
+        """v3.27: Zalando / About You van por bultos: se valida lo leído y lo que falta queda en una OUT pendiente
+        (siempre, aunque tuctuc_faltantes.pedido_pendiente sea 'no'), por si se han hecho menos cajas de las que
+        tocaba y hay que revisarlo. Nota en las dos OUT.
+        v3.38: también las OUT de tienda (_parcial): lo leído, ya en sus cajas CJ, se valida y el resto queda en el pedido
+        pendiente para otro operario. Es el asistente de Odoo de siempre («Crear pedido pendiente»)."""
+        if picking.state in ('done', 'cancel'):
+            raise UserError(_('La OUT %s ya está %s.') % (picking.name, picking.state == 'done' and _('validada')
+                                                            or _('cancelada')))
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            raise UserError(_('En %s no hay nada leído.') % picking.name)
+        pendientes = Faltante.lineas_pendientes(picking)
+        faltan = sum(Faltante.pendiente_de(ml) for ml in pendientes)
+        r = Faltante._todo_o_nada(Faltante._validar_out, picking, 'si')
+        resto = picking.backorder_ids.filtered(lambda b: b.state not in ('done', 'cancel'))
+        quien = employee and employee.name or self.env.user.name
+        marketplace = False   # TUCTUC: sin marketplaces aparte; todas como las OUT de tienda de KOROSHI (v3.38)
+        try:
+            with self.env.cr.savepoint():
+                if marketplace:
+                    nota = _('Validada INCOMPLETA en la PDA por %s: faltaban %s uds (%s líneas). Lo que falta queda en '
+                             '%s. Revisar si se han hecho menos cajas de las que tocaba.')
+                    nota_resto = _('Pendiente de %s, validada incompleta en la PDA por %s. Revisar antes de prepararla.')
+                else:
+                    # v3.38: OUT de tienda validada a medias en la PDA: el resto es trabajo para otro operario
+                    nota = _('Validada A MEDIAS en la PDA por %s: quedaban %s uds (%s líneas) por coger, que siguen '
+                             'reservadas en el pedido pendiente %s.')
+                    nota_resto = _('Resto de %s, validada a medias en la PDA por %s: lo que queda por coger.')
+                picking.message_post(body=html_escape(
+                    nota % (quien, round(faltan), len(pendientes), ', '.join(resto.mapped('name')) or '-')))
+                for b in resto:
+                    b.message_post(body=html_escape(nota_resto % (picking.name, quien)))
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se ha podido poner la nota de validada incompleta en %s',
+                              picking.name)
+        r['resto'] = ', '.join(resto.mapped('name'))
+        r['faltan'] = faltan
+        return r
+
+    @api.model
+    def _validar_ronda(self, Faltante, picking, employee):
+        """v3.33: ronda de faltantes. Todas las líneas leídas (está) o marcadas («No está» / «No existe»). Lo leído se
+        valida y lo no leído se cancela (sin pedido pendiente); sin nada leído, la INT se cancela. Lo demás lo hace
+        tuctuc_faltantes (sincronizar_rondas)."""
+        pendientes = Faltante.lineas_pendientes(picking)
+        if pendientes:
+            return {'estado': 'pendientes', 'n': len(pendientes)}
+        Faltante.ronda_antes_de_validar(picking, employee)
+        if float_is_zero(sum(picking.move_line_ids.mapped('qty_done')), precision_digits=3):
+            return Faltante._todo_o_nada(Faltante.ronda_cerrar_sin_leer, picking)
+        return Faltante._todo_o_nada(Faltante._validar_out, picking, 'no')
+
+    @api.model
+    def ronda_marcar(self, picking, employee, linea_id, resultado, id_lectura=False):
+        """v3.33: «No está» / «La ubicación no existe» en una línea de la ronda de faltantes (tuctuc_faltantes)."""
+        previa = self._repetida(id_lectura)
+        if previa:
+            return {'ok': True, 'que': 'repetida', 'msg': ''}
+        self._comprobar(picking)
+        if not self._es_ronda(picking):
+            raise UserError(_('%s no es una ronda de faltantes.') % picking.name)
+        ml = self.env['stock.move.line'].browse(int(linea_id or 0)).exists()
+        if not ml or ml.picking_id != picking:
+            raise UserError(_('Esa línea ya no está en %s: vuelve a cargar.') % picking.name)
+        self._bloquear(picking)
+        # antes de marcar: la línea se borra si no tenía nada leído
+        ubicacion, producto = self._ubi(ml).name or '', ml.product_id.display_name or ''
+        self.env['tuctuc.faltante'].ronda_marcar(ml, resultado, employee)
+        texto = _('No está') if resultado == 'no_esta' else _('La ubicación no existe')
+        msg = '%s · %s' % (texto, ubicacion)
+        self._apuntar(picking, employee, 'leer', resultado, 'ok', _('Ronda: %s') % msg, id_lectura=id_lectura,
+                      producto=producto)
+        return {'ok': True, 'que': 'ronda', 'msg': msg}
+
+    @api.model
+    def validar(self, picking, employee, pedido_pendiente=None, tipo_caja=False, incompleto=False, id_lectura=False):
+        """Misma validación que tuctuc_faltantes (button_validate, todo o nada). Devuelve
+        {'ok', 'que': 'validada' | 'quedan' | 'preguntar' | 'sin_caja' | 'no_validada', 'msg'}.
+        v3.29: la PDA manda un id_lectura y, si no le llega la respuesta (Odoo tarda), vuelve a mandar el mismo: si ya
+        se validó, contesta «validada» (antes decía «ya está validada» como error y el operario no sabía qué había
+        pasado). Una OUT ya hecha también contesta «validada». La OUT se bloquea: dos validaciones a la vez de la
+        misma OUT no pueden pasar (la segunda espera y vuelve a probar).
+        v3.34 (R6): la respuesta lleva '_tiempos' (ms de cada tramo); la ruta los pone en el log y los quita.
+        v3.38: las OUT de tienda con líneas sin leer también contestan 'quedan' con 'incompleto': True (_parcial) y, con
+        incompleto=True, se valida lo leído y el resto queda en un pedido pendiente (_validar_incompleta)."""
+        t0 = time.monotonic()
+        tiempos = {}
+
+        def con_tiempos(res, tramo=None, desde=None):
+            if tramo:
+                tiempos[tramo] = int((time.monotonic() - desde) * 1000)
+            res['_tiempos'] = tiempos
+            return res
+
+        previa = self._repetida(id_lectura)
+        if previa:
+            return self._respuesta_repetida(previa)
+        if picking and picking.state == 'done':
+            return {'ok': True, 'que': 'validada', 'msg': _('%s ya estaba validada.') % picking.name}
+        self._comprobar(picking)
+        self._bloquear(picking)   # v3.29: Ocupada -> la PDA vuelve a probar con el mismo id
+        Faltante = self.env['tuctuc.faltante']
+        if not (incompleto and self._parcial(picking) and Faltante.lineas_pendientes(picking)):
+            incompleto = False   # v3.38: en las OUT de tienda, solo tras el primer toque (el aviso de «quedan»)
+        caja_auto = {}
+        if self._con_caja(picking) and self._pack_auto(picking) and self._sin_caja(picking):
+            # TUCTUC (v3.19 de KOROSHI): lo leído fuera de caja (lo de este operario) va solo a una caja nueva
+            reparto = self._reparto_sin_caja(picking, employee)
+            if sum(v[0] for v in reparto.values()) > 0:
+                r = self.caja(picking, employee, '', tipo_caja=tipo_caja)   # v3.24: con el tipo elegido
+                if not r.get('ok'):
+                    return {'ok': False, 'que': 'sin_caja', 'msg': r.get('msg')}
+                caja_auto = {'caja_auto': r.get('caja'), 'caja_uds': r.get('uds')}   # v3.20: la PDA la enseña
+        sin_caja = sum(self._sin_caja(picking).mapped('qty_done')) if self._con_caja(picking) else 0   # v3.14
+        if float_compare(sin_caja, 0, precision_digits=3) > 0:
+            reparto = self._reparto_sin_caja(picking, employee)
+            mias = sum(v[0] for v in reparto.values())
+            otros = sum(v[1] for v in reparto.values())
+            if otros and not mias:
+                # v3.3: preparar a dos
+                return {'ok': False, 'que': 'sin_caja',
+                        'msg': _('Falta que tu compañero cierre su caja (%s uds).') % round(otros)}
+            return {'ok': False, 'que': 'sin_caja',
+                    'msg': _('Hay %s uds sin caja: pulsa «Caja» antes de validar.') % round(sin_caja)}
+        a_dos = len(self._equipo(picking)) > 1
+        if pedido_pendiente not in ('si', 'no'):
+            fijo = self._param('tuctuc_faltantes.pedido_pendiente', 'no')
+            pedido_pendiente = fijo if fijo in ('si', 'no') else None
+        ronda = self._es_ronda(picking)   # v3.33
+        tiempos['comprobaciones'] = int((time.monotonic() - t0) * 1000)   # v3.34: incluye la caja automática
+        if caja_auto:
+            tiempos['caja_auto'] = 1
+        t1 = time.monotonic()
+        try:
+            if ronda:
+                r = self._validar_ronda(Faltante, picking, employee)
+            elif incompleto:
+                r = self._validar_incompleta(Faltante, picking, employee)   # v3.27
+            elif picking.batch_id and (picking.batch_id.name or '').startswith(PREFIJOS_ZONA):
+                r = self._validar_out_de_zona(Faltante, picking, pedido_pendiente)   # v3.25
+            else:
+                r = Faltante.validar_out(picking, pedido_pendiente)
+        except (UserError, ValidationError) as e:
+            msg = e.name if hasattr(e, 'name') else str(e)
+            self._apuntar(picking, employee, 'validar', picking.name, 'error', msg)
+            return con_tiempos({'ok': False, 'que': 'no_validada', 'msg': msg}, 'validar', t1)
+        tiempos['validar'] = int((time.monotonic() - t1) * 1000)   # button_validate (+ asistente pedido pendiente)
+        if r['estado'] == 'pendientes':
+            if a_dos:
+                # v3.3: preparar a dos
+                faltan = sum(picking.move_line_ids.mapped('product_uom_qty')) - sum(
+                    picking.move_line_ids.mapped('qty_done'))
+                return {'ok': False, 'que': 'quedan', 'n': r['n'],
+                        'msg': _('Faltan %s uds por leer entre los dos (%s líneas). Si es de tu compañero, espera a '
+                                 'que acabe.') % (round(faltan), r['n'])}
+            if ronda:   # v3.33
+                return {'ok': False, 'que': 'quedan', 'n': r['n'],
+                        'msg': _('Quedan %s líneas: lee la prenda si está o pulsa «No está» / «La ubicación no '
+                                 'existe».') % r['n']}
+            if self._parcial(picking):
+                # v3.38: como Validar -> «Crear pedido pendiente» en el ordenador: segundo toque en «Validar incompleto»
+                faltan = sum(Faltante.pendiente_de(ml) for ml in Faltante.lineas_pendientes(picking))
+                return {'ok': False, 'que': 'quedan', 'incompleto': True, 'n': r['n'],
+                        'msg': _('Quedan %s líneas (%s uds) por coger: léelas o pulsa «Faltante». Para validar lo leído '
+                                 'y dejar el resto en otra OUT (pedido pendiente), pulsa otra vez «Validar '
+                                 'incompleto».') % (r['n'], round(faltan))}
+            return {'ok': False, 'que': 'quedan', 'n': r['n'],
+                    'msg': _('Quedan %s líneas por coger: léelas o pulsa «Faltante».') % r['n']}
+        if r['estado'] == 'preguntar':
+            return con_tiempos({'ok': True, 'que': 'preguntar',
+                                'msg': _('Faltan uds. ¿Crear un pedido pendiente con lo que falta?')})
+        msg = _('%s validada.') % picking.name
+        if ronda:   # v3.33
+            try:
+                with self.env.cr.savepoint():
+                    Faltante.sincronizar_rondas()   # el resultado, ya (sin esperar al cron de 15 min)
+            except Exception:
+                _logger.exception('TUCTUC Preparación: no se ha podido actualizar la ronda %s', picking.name)
+            msg = _('Ronda %s terminada.') % picking.name
+        if incompleto:   # v3.38
+            msg = _('%s validada a medias: el resto (%s uds) queda en %s para otro operario.') % (
+                picking.name, round(r.get('faltan') or 0), r.get('resto') or '-')
+        self._apuntar(picking, employee, 'validar', picking.name, 'ok', msg, id_lectura=id_lectura)
+        t2 = time.monotonic()
+        try:
+            # cierra ya la tarea del operario de esta OUT (v3.34, R6: solo la suya; antes cron_cerrar() de todas las
+            # tareas del almacén dentro de esta transacción)
+            with self.env.cr.savepoint():
+                self.cerrar_tareas_de(picking)
+        except Exception:
+            _logger.exception('TUCTUC Preparación: no se han podido cerrar las tareas tras validar %s', picking.name)
+        res = {'ok': True, 'que': 'validada', 'msg': msg, 'incompleta': bool(incompleto)}
+        res.update(caja_auto)
+        return con_tiempos(res, 'tarea', t2)
+
+    @api.model
+    def cerrar_tareas_de(self, pickings):
+        """v3.34 (R6): lo mismo que tuctuc.operario.tarea.cron_cerrar() pero solo con las tareas y asignaciones de
+        estas OUT (o de su agrupación), que acaban de validarse. Antes reabre las cerradas por inactividad en las que el
+        operario volvió a leer (como cron_cerrar, para no perder esas uds). Lo demás lo sigue haciendo el cron cada
+        5 min. Devuelve cuántas tareas ha cerrado."""
+        if 'tuctuc.operario.tarea' not in self.env:
+            return 0
+        Tarea = self.env['tuctuc.operario.tarea'].sudo()
+        Tarea._reabrir_inactivas()
+        lotes = pickings.mapped('batch_id')
+        dominio = [('picking_id', 'in', pickings.ids)]
+        if lotes:
+            dominio = ['|', ('picking_id', 'in', pickings.ids), ('batch_id', 'in', lotes.ids)]
+        n = 0
+        for t in Tarea.search([('estado', '=', 'curso')] + dominio):
+            propias = t._pickings()
+            if propias and Tarea._validado(propias):
+                fin = Tarea._hora_validacion(propias)
+                t._cerrar('acabada', 'validada', fin if fin >= t.inicio else t.inicio)
+                n += 1
+        if 'tuctuc.operario.asignacion' in self.env:
+            Asig = self.env['tuctuc.operario.asignacion'].sudo()
+            for a in Asig.search([('estado', 'in', ('cola', 'curso', 'oficina'))] + dominio):
+                if a._terminada():
+                    a._cerrar_hecha()
+        return n
+
+
+class Equipo(models.Model):
+    """v3.4: una OUT preparada a dos. Guarda dónde se partió (la primera línea de la segunda mitad) y los avisos."""
+    _name = 'tuctuc.preparacion.equipo'
+    _description = 'TUCTUC Preparación: OUT a dos'
+    _order = 'id desc'
+
+    picking_id = fields.Many2one('stock.picking', 'OUT', required=True, index=True, ondelete='cascade')
+    titular_id = fields.Many2one('hr.employee', 'Titular (primera mitad)', required=True, ondelete='cascade')
+    ayudante_id = fields.Many2one('hr.employee', 'Ayudante (segunda mitad)', required=True, ondelete='cascade')
+    corte_ubicacion = fields.Char('Empieza la segunda mitad en')
+    corte_ref = fields.Char('Referencia del corte')
+    corte_id = fields.Integer('Línea del corte')
+    lineas_pendientes = fields.Integer('Líneas pendientes al unirse')
+    avisado_titular = fields.Boolean('Titular avisado')
+
+    # v3.29: una sola pareja por OUT (la misma OUT puede tener otra pareja más tarde: entra otro ayudante). Los
+    # duplicados que ya había los quita migrations/13.0.3.29.0/pre-migrate.py antes de crear la restricción.
+    _sql_constraints = [
+        ('pareja_unica', 'unique(picking_id, titular_id, ayudante_id)',
+         'Esta OUT ya tiene registrada esta pareja de titular y ayudante.'),
+    ]
+
+    def _clave_corte(self):
+        self.ensure_one()
+        return (self.corte_ubicacion or '', self.corte_ref or '', self.corte_id or 0)
+
+    def corte_nombre(self):
+        """La ubicación corta (la última parte del nombre completo), para los avisos."""
+        self.ensure_one()
+        nombre = self.corte_ubicacion or ''
+        if nombre.startswith(u'￿'):
+            return _('el final')
+        return nombre.rsplit('/', 2)[-2] if nombre.count('/') >= 2 else nombre

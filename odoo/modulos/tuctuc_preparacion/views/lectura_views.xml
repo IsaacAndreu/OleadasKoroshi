@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tuctuc_preparacion_lectura_tree" model="ir.ui.view">
+        <field name="name">tuctuc.preparacion.lectura.tree</field>
+        <field name="model">tuctuc.preparacion.lectura</field>
+        <field name="arch" type="xml">
+            <tree create="0" edit="0" decoration-danger="resultado == 'error'" decoration-muted="deshecha">
+                <field name="fecha"/>
+                <field name="employee_id"/>
+                <field name="picking_id"/>
+                <field name="tipo"/>
+                <field name="codigo"/>
+                <field name="producto"/>
+                <field name="cantidad" sum="Uds"/>
+                <field name="resultado"/>
+                <field name="mensaje"/>
+                <field name="deshecha"/>
+                <field name="diferida" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="view_tuctuc_preparacion_lectura_search" model="ir.ui.view">
+        <field name="name">tuctuc.preparacion.lectura.search</field>
+        <field name="model">tuctuc.preparacion.lectura</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="picking_id"/>
+                <field name="employee_id"/>
+                <field name="codigo"/>
+                <filter name="hoy" string="Hoy" domain="[('fecha', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <filter name="errores" string="Errores" domain="[('resultado', '=', 'error')]"/>
+                <filter name="diferidas" string="De la cola de la PDA" domain="[('diferida', '=', True)]"/>
+                <separator/>
+                <filter name="g_operario" string="Operario" context="{'group_by': 'employee_id'}"/>
+                <filter name="g_out" string="OUT" context="{'group_by': 'picking_id'}"/>
+                <filter name="g_tipo" string="Tipo" context="{'group_by': 'tipo'}"/>
+            </search>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_preparacion_lectura" model="ir.actions.act_window">
+        <field name="name">Lecturas de preparación</field>
+        <field name="res_model">tuctuc.preparacion.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_hoy': 1}</field>
+    </record>
+
+    <!-- v3.29: lo que la PDA mandó desde su cola (sin conexión o al volver a abrir) y Odoo no aplicó. El operario no
+         lo vio en el momento: lo revisa el encargado (caja sin cerrar, lectura de una OUT ya validada, caducada...). -->
+    <record id="action_tuctuc_preparacion_rechazadas_cola" model="ir.actions.act_window">
+        <field name="name">Lecturas rechazadas de cola</field>
+        <field name="res_model">tuctuc.preparacion.lectura</field>
+        <field name="view_mode">tree</field>
+        <field name="domain">[('diferida', '=', True), ('resultado', '=', 'error')]</field>
+        <field name="context">{}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Ninguna lectura de la cola de la PDA rechazada.</p>
+            <p>Aquí sale lo que una PDA guardó sin conexión (o al volver a abrir una OUT) y Odoo no aplicó: el operario
+               no lo vio en el momento.</p>
+        </field>
+    </record>
+
+    <!-- pantalla de preparación (la abre Lecturas; no tiene menú propio) -->
+    <record id="action_tuctuc_preparacion_pantalla" model="ir.actions.client">
+        <field name="name">Preparar</field>
+        <field name="tag">tuctuc_preparacion_pantalla</field>
+    </record>
+
+    <menuitem id="menu_tuctuc_preparacion_lecturas" name="Lecturas de preparación"
+              parent="tuctuc_operarios.menu_tuctuc_operarios_root"
+              action="action_tuctuc_preparacion_lectura" sequence="90"
+              groups="tuctuc_operarios.grupo_productividad"/>
+    <menuitem id="menu_tuctuc_preparacion_rechazadas_cola" name="Lecturas rechazadas de cola"
+              parent="tuctuc_operarios.menu_tuctuc_operarios_root"
+              action="action_tuctuc_preparacion_rechazadas_cola" sequence="91"
+              groups="tuctuc_operarios.grupo_productividad"/>
+</odoo>

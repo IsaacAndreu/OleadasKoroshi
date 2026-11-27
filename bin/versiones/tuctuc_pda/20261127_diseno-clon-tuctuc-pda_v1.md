@@ -115,8 +115,8 @@ Datos del 13 al 27/11 (OUT hechas):
 ## 6. Preguntas abiertas para Isaac
 
 1. ~~¿Qué OUT van por la PDA y cuáles por el sorter?~~ Resuelta el 27/11: ver 1 bis. Las oleadas van por INT al SORTER y el resto por OUT directa.
-2. ¿El operario elige el tipo de embalaje en cada caja, o hay uno por defecto?
-3. ¿Validar a medias (dejar pendiente lo que falta) sí o no en Oriola?
+2. ~~¿El operario elige el tipo de embalaje en cada caja, o hay uno por defecto?~~ Fase 4: lo elige entre los más usados de los últimos 30 días (o la lista del parámetro tuctuc_preparacion.embalajes); la PDA recuerda el último de cada operario.
+3. ~~¿Validar a medias (dejar pendiente lo que falta) sí o no en Oriola?~~ Resuelta el 28/11: sí, como en NATH (tuctuc_preparacion.validar_parcial = 1).
 4. ~~¿Alta de operarios: se usan los 61 empleados con tarjeta que ya hay?~~ Resuelta el 27/11 (opción A de Isaac):
    **la misma tarjeta vale en los dos servidores**, porque son los mismos operarios.
    - Los 61 empleados con tarjeta de tuctuc son de tienda (RETAIL, códigos de 13 cifras): no se tocan.

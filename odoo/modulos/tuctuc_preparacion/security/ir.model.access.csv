@@ -1,0 +1,7 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tuctuc_preparacion_lectura_user,tuctuc.preparacion.lectura usuario stock,model_tuctuc_preparacion_lectura,stock.group_stock_user,1,1,1,0
+access_tuctuc_preparacion_lectura_manager,tuctuc.preparacion.lectura responsable stock,model_tuctuc_preparacion_lectura,stock.group_stock_manager,1,1,1,1
+access_tuctuc_preparacion_equipo_user,tuctuc.preparacion.equipo usuario stock,model_tuctuc_preparacion_equipo,stock.group_stock_user,1,1,1,0
+access_tuctuc_preparacion_equipo_manager,tuctuc.preparacion.equipo responsable stock,model_tuctuc_preparacion_equipo,stock.group_stock_manager,1,1,1,1
+access_tuctuc_preparacion_preferencia_user,tuctuc.preparacion.preferencia usuario stock,model_tuctuc_preparacion_preferencia,stock.group_stock_user,1,1,1,0
+access_tuctuc_preparacion_preferencia_manager,tuctuc.preparacion.preferencia responsable stock,model_tuctuc_preparacion_preferencia,stock.group_stock_manager,1,1,1,1

@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- noupdate: lo que se cambie a mano en Parámetros del sistema no se pisa al actualizar -->
+    <data noupdate="1">
+        <!-- '1' = la pantalla de preparar funciona para los operarios de la lista; '0' = todo a la app de código de
+             barras (vuelta atrás sin desinstalar) -->
+        <record id="param_activa" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.activa</field>
+            <field name="value">1</field>
+        </record>
+        <!-- códigos de tarjeta (ID de credencial) separados por comas; '*' = todos los operarios. Para probar con
+             unos pocos: poner sus códigos OP. -->
+        <record id="param_empleados" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.empleados</field>
+            <field name="value">*</field>
+        </record>
+        <!-- sin agrupaciones Z- en Oriola: las OUT de un lote (B-ECI_, WEB_...) se preparan una a una -->
+        <record id="param_agrupaciones" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.agrupaciones</field>
+            <field name="value">0</field>
+        </record>
+        <!-- alarma de parado: minutos con la OUT abierta sin leer nada hasta que la PDA pita. 0 = sin alarma -->
+        <record id="param_minutos_alarma" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.minutos_alarma</field>
+            <field name="value">4</field>
+        </record>
+        <!-- tramos (hora de la PDA) en que puede sonar la alarma: los mismos turnos que NATH (Isaac, 27/11) -->
+        <record id="param_horario_alarma" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.horario_alarma</field>
+            <field name="value">06:00-10:00,10:15-13:00,14:00-17:00</field>
+        </record>
+        <!-- segundos entre refrescos de la pantalla yendo solo y sin leer (ve lo que cambian Faltantes). 0 = no -->
+        <record id="param_refresco_solo" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.refresco_solo_s</field>
+            <field name="value">30</field>
+        </record>
+        <!-- «Validar incompleto»: se valida lo leído y el resto queda en un pedido pendiente. '1' como en NATH
+             (pendiente de confirmar por Isaac para Oriola); '0' = solo leer o Faltante -->
+        <record id="param_validar_parcial" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.validar_parcial</field>
+            <field name="value">1</field>
+        </record>
+        <!-- embalajes (product.packaging) de la PDA: ids separados por comas. Vacío = los más usados en 30 días -->
+        <record id="param_embalajes" model="ir.config_parameter">
+            <field name="key">tuctuc_preparacion.embalajes</field>
+            <field name="value"> </field>
+        </record>
+    </data>
+</odoo>
