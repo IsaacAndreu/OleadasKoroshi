@@ -238,8 +238,12 @@ v1.47.0 (27/11/2026): GLS SIN TOPE DE 5 ETIQUETAS (Isaac, 27/11: «ara ja no ten
 correo de Tiendas GLS, «Etiquetas GLS» = suma de los bultos de las OUT (GLS ya saca una etiqueta por bulto: 26/11, 12
 paginas en K48 y K34 y 11 en K22) y «Coincide» compara con todas las cajas preparadas. Antes se contaban como maximo 5
 por pedido y no cuadraba (lo pregunto KOROSHI). Cambia la nota del Excel. Lo del v1.19.5 queda sustituido.
+v1.48.0 (27/11/2026): CORREO GLS SOLO CON CAJAS (Erika, expediciones@koroshi.tv, 27/11: «Para que no haya malos
+entendidos, indicar solo la columna con cajas preparadas»). El correo GLS de tiendas (tabla y Excel adjunto) ya no lleva
+«Etiquetas GLS» ni «Coincide»: solo «Cajas preparadas». El Excel de descarga de Consulta de envios y el resumen en
+pantalla siguen con todas las columnas, para comprobar aqui. Lleva tambien la 1.47.0 (sin tope de 5).
 """,
-    'version': '13.0.1.47.0',
+    'version': '13.0.1.48.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

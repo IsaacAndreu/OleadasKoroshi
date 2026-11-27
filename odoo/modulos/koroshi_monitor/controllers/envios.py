@@ -259,9 +259,11 @@ class KoroshiConsultaEnvios(http.Controller):
         }
 
     def _excel_tiendas(self, env, picks, etiqueta, dia_desde, dia_hasta, fechas=None, manuales=None, avisos=None,
-                       tabla=None):
+                       tabla=None, solo_cajas=False):
         """v1.43.0: con tabla={} la rellena con lo mismo que el Excel ({cab, filas, total, coincide}) para el
-        cuerpo del correo GLS."""
+        cuerpo del correo GLS.
+        v1.48.0: solo_cajas=True quita «Etiquetas GLS»/«Bultos Odoo» y «Coincide» (el correo GLS a KOROSHI: Erika,
+        27/11, «indicar solo la columna con cajas preparadas»). El Excel de descarga sigue con todas."""
         salida = io.BytesIO()
         libro = xlsxwriter.Workbook(salida, {'in_memory': True})
         f = self._formatos_excel(libro)
@@ -326,6 +328,10 @@ class KoroshiConsultaEnvios(http.Controller):
         cab = ['Tienda', 'Pedidos', 'OUT', 'Fecha validación' if todos else 'Fecha etiqueta', 'Transportista',
                'Nº expedición', 'Etiquetas GLS' if es_gls else 'Bultos Odoo', 'Cajas preparadas', 'Coincide',
                'Uds pedidas', 'Done Quantity', 'Cajas por pedido (expedición)', 'Observación']
+        # v1.48.0: columnas que salen (sin la 6, etiquetas/bultos, ni la 8, coincide, si solo_cajas)
+        cols = [i for i in range(len(cab)) if not (solo_cajas and i in (6, 8))]
+        cab_todas = cab
+        cab = [cab_todas[i] for i in cols]
         hoja.merge_range(0, 0, 0, len(cab) - 1,
                          'PEDIDOS DE TIENDA · %s · %s' % (
                              'TODOS (con y sin transportista)' if todos else etiqueta, dia_desde.strftime('%d/%m/%Y') if dia_desde == dia_hasta else
@@ -353,6 +359,8 @@ class KoroshiConsultaEnvios(http.Controller):
             formatos = [f['wrap'], f['wrap'], f['wrap'], f['fecha'], f['wrap'], f['wrap'],
                         f['num'], f['num'], f['ok'] if coincide else f['mal'], f['num'], f['num'], f['wrap'],
                         f['wrap']]
+            valores = [valores[i] for i in cols]
+            formatos = [formatos[i] for i in cols]
             if tabla is not None:
                 tabla.setdefault('filas', []).append(
                     [v.strftime('%d/%m/%Y %H:%M') if isinstance(v, datetime.datetime) else ('' if v is None else v)
@@ -364,27 +372,25 @@ class KoroshiConsultaEnvios(http.Controller):
                 else:
                     hoja.write(fila, col, valor, formatos[col])
         total = 3 + len(nombres)
+        fila_total = ['TOTAL %d tiendas' % len(nombres), '%d pedidos' % len(grupos),
+                      '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), '', '', '',
+                      sum([t['bultos'] for t in tiendas.values()]), sum([t['cajas'] for t in tiendas.values()]),
+                      '', sum([t['pedidas'] for t in tiendas.values()]),
+                      sum([t['hechas'] for t in tiendas.values()]), '', '']
+        fila_total = [fila_total[i] for i in cols]
         if tabla is not None:
             tabla['cab'] = cab
-            tabla['total'] = ['TOTAL %d tiendas' % len(nombres), '%d pedidos' % len(grupos),
-                              '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), '', '', '',
-                              sum([t['bultos'] for t in tiendas.values()]), sum([t['cajas'] for t in tiendas.values()]),
-                              '', sum([t['pedidas'] for t in tiendas.values()]),
-                              sum([t['hechas'] for t in tiendas.values()]), '', '']
+            tabla['total'] = fila_total
             tabla.setdefault('filas', [])
-        hoja.write(total, 0, 'TOTAL %d tiendas' % len(nombres), f['total'])
-        hoja.write(total, 1, '%d pedidos' % len(grupos), f['total'])
-        hoja.write(total, 2, '%d OUT' % sum([len(t['outs']) for t in tiendas.values()]), f['total'])
-        for col in range(3, 6):
-            hoja.write_blank(total, col, None, f['total'])
-        hoja.write(total, 6, sum([t['bultos'] for t in tiendas.values()]), f['total_num'])
-        hoja.write(total, 7, sum([t['cajas'] for t in tiendas.values()]), f['total_num'])
-        hoja.write_blank(total, 8, None, f['total'])
-        hoja.write(total, 9, sum([t['pedidas'] for t in tiendas.values()]), f['total_num'])
-        hoja.write(total, 10, sum([t['hechas'] for t in tiendas.values()]), f['total_num'])
-        hoja.write_blank(total, 11, None, f['total'])
-        hoja.write_blank(total, 12, None, f['total'])
-        nota = ('Etiquetas GLS = bultos de las OUT con la etiqueta GLS generada (una etiqueta por bulto). '
+        for col, valor in enumerate(fila_total):
+            if valor == '':
+                hoja.write_blank(total, col, None, f['total'])
+            elif isinstance(valor, (int, float)):
+                hoja.write(total, col, valor, f['total_num'])
+            else:
+                hoja.write(total, col, valor, f['total'])
+        nota = ('Cajas preparadas = matrículas CJ distintas.' if solo_cajas else
+                'Etiquetas GLS = bultos de las OUT con la etiqueta GLS generada (una etiqueta por bulto). '
                 'Cajas preparadas = matrículas CJ distintas.' if es_gls else
                 'Bultos Odoo = lo declarado al transportista (en XPO, la nota «XPO: declarados N bultos» de la '
                 'etiqueta; sin nota, los bultos de las OUT). Cajas preparadas = matrículas CJ distintas.')
@@ -398,7 +404,8 @@ class KoroshiConsultaEnvios(http.Controller):
         else:
             hoja.write(total + 3, 0, 'Salen los pedidos con la etiqueta del transportista creada en estas fechas, '
                        'aunque se validaran días antes, más los añadidos a mano en Consulta de envíos.', f['nota'])
-        for col, ancho in enumerate([26, 22, 22, 17, 16, 18, 11, 11, 10, 11, 12, 34, 20]):
+        anchos = [26, 22, 22, 17, 16, 18, 11, 11, 10, 11, 12, 34, 20]
+        for col, ancho in enumerate([anchos[i] for i in cols]):
             hoja.set_column(col, col, ancho)
         hoja.freeze_panes(3, 1)
         hoja.autofilter(2, 0, max(2, total - 1), len(cab) - 1)
@@ -873,12 +880,12 @@ class KoroshiConsultaEnvios(http.Controller):
             ('subject', '=like', self._asunto_gls(dia_fecha) + '%'),
             ('state', 'in', ('outgoing', 'sent', 'received'))], order='id desc')
 
-    def _datos_gls(self, env, dia):
+    def _datos_gls(self, env, dia, solo_cajas=False):
         dia_desde, _dia_hasta, inicio, fin = self._rango_utc(dia, dia)
         picks, fechas, manuales, avisos = self._datos_excel(env, 'tiendas', 'gls', dia_desde, dia_desde, inicio, fin)
         tabla = {}
         contenido, _n = self._excel_tiendas(env, picks, 'GLS', dia_desde, dia_desde, fechas, manuales, avisos,
-                                            tabla=tabla)
+                                            tabla=tabla, solo_cajas=solo_cajas)
         return dia_desde, picks, contenido, tabla
 
     def _info_gls(self, env, dia_fecha):
@@ -896,11 +903,12 @@ class KoroshiConsultaEnvios(http.Controller):
              '<table style="border-collapse:collapse;">',
              '<tr>%s</tr>' % ''.join(['<th style="%sbackground:#315B85;color:#fff;">%s</th>' % (celda, escape(c))
                                       for c in tabla.get('cab', [])])]
+        col_coincide = 'Coincide' in tabla.get('cab', []) and tabla['cab'].index('Coincide') or -1
         for fila, ok in zip(tabla.get('filas', []), tabla.get('coincide', [])):
             tds = []
             for col, valor in enumerate(fila):
                 extra = ''
-                if col == 8:
+                if col == col_coincide:
                     extra = ok and 'background:#ECFDF3;color:#067647;font-weight:bold;' or \
                         'background:#FFF0EE;color:#B42318;font-weight:bold;'
                 elif isinstance(valor, (int, float)):
@@ -939,7 +947,8 @@ class KoroshiConsultaEnvios(http.Controller):
         """Manda el Excel de Tiendas GLS del día (para/cc en parámetros). No sale nada si no se pulsa."""
         _comprobar_jefe()
         env = self._env()
-        dia_fecha, picks, contenido, tabla = self._datos_gls(env, dia)
+        # v1.48.0: a KOROSHI solo «Cajas preparadas» (sin «Etiquetas GLS» ni «Coincide»)
+        dia_fecha, picks, contenido, tabla = self._datos_gls(env, dia, solo_cajas=True)
         texto_dia = dia_fecha.strftime('%d/%m/%Y')
         if not picks:
             return {'error': 'El %s no hay ningún pedido de tienda con etiqueta GLS: no hay nada que enviar.'
