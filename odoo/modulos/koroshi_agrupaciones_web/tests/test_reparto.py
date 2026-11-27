@@ -22,6 +22,20 @@ class TestReparto(unittest.TestCase):
         self.assertEqual(reparto.cortes(''), [])
         self.assertEqual(reparto.cortes(None), [])
 
+    def test_limitar(self):
+        # v1.2.0: maximo de pedidos por corte; esperan las mas nuevas (las del final)
+        self.assertEqual(reparto.limitar(range(1, 6), 3), ([1, 2, 3], [4, 5]))
+        self.assertEqual(reparto.limitar([1, 2], 180), ([1, 2], []))
+        self.assertEqual(reparto.limitar([1, 2, 3], 0), ([1, 2, 3], []))
+        self.assertEqual(reparto.limitar([1, 2, 3], -1), ([1, 2, 3], []))
+        self.assertEqual(reparto.limitar([], 180), ([], []))
+        self.assertEqual(reparto.limitar(range(200), 180)[1], list(range(180, 200)))
+
+    def test_un_solo_corte(self):
+        # v1.2.0: solo el de las 06:00
+        self.assertEqual(reparto.cortes('06:00'), [(6, 0)])
+        self.assertIsNone(reparto.corte_pendiente(DT(2026, 11, 28, 12, 5), [(6, 0)], '2026-11-28 06:00', 120))
+
     def test_corte_pendiente(self):
         c = [(6, 0), (11, 0)]
         self.assertIsNone(reparto.corte_pendiente(DT(2026, 11, 18, 5, 59), c, '', 120))

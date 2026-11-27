@@ -3,6 +3,7 @@
 # KOROSHI Agrupaciones web: lo que se puede probar sin Odoo (tests/test_reparto.py).
 #   cortes(texto)                   '06:00,11:00' -> [(6, 0), (11, 0)]
 #   corte_pendiente(ahora, ...)     que corte de hoy toca hacer (o None)
+#   limitar(ids, maximo)            v1.2.0: las 'maximo' primeras entran en el corte; el resto espera
 #   repartir(outs, tope)            OUT en orden de llegada en grupos de hasta 'tope' uds (nunca se parte una OUT)
 #   siguiente_numero(nombres, pre)  WEB_ddmmaa_NN: el siguiente NN libre del dia
 # =============================================================================
@@ -43,6 +44,15 @@ def corte_pendiente(ahora, lista_cortes, ultimo, margen_min):
     hora = datetime.datetime.combine(hoy, datetime.time(hhmm[0], hhmm[1]))
     minutos = (ahora.replace(tzinfo=None) - hora).total_seconds() / 60.0
     return clave, hhmm, minutos > margen_min
+
+
+def limitar(ids, maximo):
+    """v1.2.0: ids YA en orden de llegada. Devuelve (entran, esperan): las 'maximo' primeras y el resto.
+    maximo <= 0 = sin maximo (entran todas)."""
+    ids = list(ids)
+    if maximo <= 0:
+        return ids, []
+    return ids[:maximo], ids[maximo:]
 
 
 def repartir(outs, tope):

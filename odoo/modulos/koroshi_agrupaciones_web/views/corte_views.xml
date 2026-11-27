@@ -12,6 +12,7 @@
                 <field name="n_agrupadas"/>
                 <field name="uds_agrupadas"/>
                 <field name="n_canceladas"/>
+                <field name="n_esperan"/>
                 <field name="batch_ids" widget="many2many_tags"/>
             </tree>
         </field>
@@ -39,6 +40,7 @@
                             <field name="n_agrupadas"/>
                             <field name="uds_agrupadas"/>
                             <field name="n_canceladas"/>
+                            <field name="n_esperan"/>
                             <field name="batch_ids" widget="many2many_tags"/>
                             <field name="mail_id"/>
                         </group>
@@ -46,7 +48,8 @@
                     <field name="resumen"/>
                     <field name="linea_ids">
                         <tree decoration-danger="accion in ('cancelada', 'cancelaria')"
-                              decoration-warning="accion in ('leida', 'error')">
+                              decoration-warning="accion in ('leida', 'error')"
+                              decoration-info="accion == 'espera'">
                             <field name="accion"/>
                             <field name="agrupacion"/>
                             <field name="pedido"/>

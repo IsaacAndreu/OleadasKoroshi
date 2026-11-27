@@ -14,11 +14,16 @@
         </record>
         <record id="param_cortes" model="ir.config_parameter">
             <field name="key">koroshi_agrupaciones_web.cortes</field>
-            <field name="value">06:00,11:00</field>
+            <field name="value">06:00</field>
         </record>
         <record id="param_tope_uds" model="ir.config_parameter">
             <field name="key">koroshi_agrupaciones_web.tope_uds</field>
             <field name="value">100</field>
+        </record>
+        <!-- v1.2.0 (27/11): pedidos (OUT) como mucho por corte; el resto espera al siguiente. 0 = sin maximo -->
+        <record id="param_max_pedidos" model="ir.config_parameter">
+            <field name="key">koroshi_agrupaciones_web.max_pedidos</field>
+            <field name="value">180</field>
         </record>
         <record id="param_correo_canceladas" model="ir.config_parameter">
             <field name="key">koroshi_agrupaciones_web.correo_canceladas</field>

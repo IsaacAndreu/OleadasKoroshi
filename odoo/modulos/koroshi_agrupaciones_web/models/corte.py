@@ -2,13 +2,15 @@
 # =============================================================================
 # KOROSHI Agrupaciones web por corte horario (Isaac, 13/11 y 18/11/2026).
 #
-# En cada corte (parametro koroshi_agrupaciones_web.cortes, hora del almacen; por defecto 06:00 y 11:00):
+# En cada corte (parametro koroshi_agrupaciones_web.cortes, hora del almacen; por defecto 06:00 desde la 1.2.0):
 #   1. CANCELA las OUT web creadas antes del corte que no estan al 100 % reservadas (sin agrupacion y sin nada
 #      leido) y manda a Betty la lista, para que las cancele en el TPV de KOROSHI y rehagan el pedido con el stock
 #      que si hay. Con koroshi_agrupaciones_web.cancelar = 0 solo apunta cuales cancelaria.
 #   2. AGRUPA las OUT web 100 % reservadas sin agrupacion, en orden de llegada, en agrupaciones WEB_ddmmaa_NN de
 #      hasta koroshi_agrupaciones_web.tope_uds uds (100). Una OUT nunca se parte. Quedan En curso, como las de la
 #      oficina, y se preparan con PedidosMultiples (que coge los lotes WEB_).
+#      v1.2.0 (27/11): como mucho koroshi_agrupaciones_web.max_pedidos OUT por corte (180; 0 = sin maximo). Las que
+#      pasan, las mas nuevas, se quedan reservadas y sin agrupar para el corte siguiente (linea «Espera»).
 #
 # OUT web = salida de la compania 8, origen 'W-', tipo de pedido que no es MARKETPLACE ni TIENDAS y direccion que no
 # es Zalando ni About You. Zalando y las tiendas no entran nunca.
@@ -59,6 +61,9 @@ class KoroshiWebCorte(models.Model):
     n_agrupadas = fields.Integer('OUT agrupadas', readonly=True)
     uds_agrupadas = fields.Integer('Uds agrupadas', readonly=True)
     n_canceladas = fields.Integer('OUT canceladas', readonly=True)
+    n_esperan = fields.Integer('OUT que esperan', readonly=True,
+                               help='Reservadas del todo, pero pasan del máximo de pedidos por corte: van al '
+                                    'corte siguiente.')   # v1.2.0
     resumen = fields.Text('Resumen', readonly=True)
     mail_id = fields.Many2one('mail.mail', 'Correo a Betty', readonly=True)
 
@@ -196,11 +201,19 @@ class KoroshiWebCorte(models.Model):
 
         # 2. Agrupar las completas en orden de llegada
         completas = outs.filtered(self._reserva_completa)
+        # v1.2.0 (27/11, Isaac): como mucho max_pedidos por corte. Las mas nuevas esperan al corte siguiente,
+        # reservadas y sin agrupar (al siguiente entran las primeras, porque van por orden de llegada)
+        maximo = self._entero('max_pedidos', 180)
+        Picking = self.env['stock.picking'].sudo()
+        entran, quedan = reparto.limitar(completas.ids, maximo)
+        completas, esperan = Picking.browse(entran), Picking.browse(quedan)
+        for p in esperan:
+            Linea.create({'corte_id': corte.id, 'picking_id': p.id, 'pedido': p.origin, 'uds': self._uds(p),
+                          'accion': 'espera', 'creada': p.create_date})
         grupos = reparto.repartir([(p.id, self._uds(p)) for p in completas], tope)
         Batch = self.env['stock.picking.batch'].sudo()
         prefijo = 'WEB_%s_' % hora_local.strftime('%d%m%y')
         numero = reparto.siguiente_numero(Batch.search([('name', '=like', prefijo + '%')]).mapped('name'), prefijo)
-        Picking = self.env['stock.picking'].sudo()
         uds_total = 0
         for ids in grupos:
             nombre = '%s%02d' % (prefijo, numero)
@@ -223,10 +236,14 @@ class KoroshiWebCorte(models.Model):
             corte.batch_ids = [(4, b.id)]
         if not grupos:
             texto.append('No hay OUT web reservadas del todo para agrupar.')
+        if esperan:
+            texto.append('Esperan al corte siguiente %d OUT web reservadas del todo (máximo %d pedidos por corte: '
+                         'koroshi_agrupaciones_web.max_pedidos).' % (len(esperan), maximo))
 
         corte.write({
             'n_agrupadas': len(completas), 'uds_agrupadas': uds_total,
             'n_canceladas': len(canceladas) if cancelar else 0,
+            'n_esperan': len(esperan),
             'resumen': '\n'.join(texto),
         })
         if cancelar and canceladas:
@@ -288,7 +305,7 @@ class KoroshiWebCorte(models.Model):
         if not self._si('activo'):
             return True
         ahora = comun.ahora_local()
-        pendiente = reparto.corte_pendiente(ahora, reparto.cortes(self._param('cortes', '06:00,11:00')),
+        pendiente = reparto.corte_pendiente(ahora, reparto.cortes(self._param('cortes', '06:00')),
                                             self._param('ultimo_corte'), self._entero('margen_minutos', 120))
         if not pendiente:
             return True
@@ -397,6 +414,7 @@ class KoroshiWebCorteLinea(models.Model):
         ('cancelada', 'Cancelada'), ('cancelaria', 'Se cancelaría'),
         ('leida', 'Sin reserva completa, pero ya tiene algo leído: no se toca'),
         ('error', 'No se ha podido cancelar (sigue como estaba)'),   # v1.1.0 (R10)
+        ('espera', 'Reservada: espera al corte siguiente (máximo de pedidos)'),   # v1.2.0
     ], 'Qué se ha hecho')
     agrupacion = fields.Char('Agrupación')
     falta = fields.Text('Falta (reservado de pedido)')
