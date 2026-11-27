@@ -138,8 +138,19 @@ v1.16.0 (26/11/2026): «Retirar cajas a 0» (diseño v2 aprobado por Isaac el 26
   (IN, INT u OUT que salen de ella o van a ella; antes no se miraba) ni una marcada «Tiene prendas». /mover y /limpiar
   piden tarjeta válida (activo y de la compañía), como las demás rutas. Sin campos en tablas de Odoo; parámetros
   nuevos (noupdate, los de tarjetas los pone IT con ids de empleado).
+v1.17.0 (26/11/2026): «Compactar», fase 1 (diseño v6 aprobado por Isaac el 26/11:
+  bin/versiones/diseno-compactacion-odoo-retirar-vacias-juntar-cajas_2026-11-26_v6.md). Botón nuevo en la PDA: por
+  lineal, «Calcular» hace el plan (qué columnas con menos de 4 cajas se vacían y adónde va cada KO entera: mismo lineal
+  o ±2, sin pasar de 8 cajas por columna, sin dos colores del mismo modelo, el mismo modelo-color junto, la clase A más
+  cerca del muelle; nunca a la zona Z ni a columnas vacías). Se leen las cajas del paso y la columna de destino: la KO
+  se mueve como en «Mover» (prendas y reservas van con ella) y la PDA dice ABAJO o ARRIBA (la talla principal de la
+  caja: las más pedidas en 28 días, abajo; los restos, arriba). Otra columna que no es la del plan: avisa y pide «Sí,
+  aquí». «No está» y «Saltar» por caja. Tablas nuevas propias koroshi.compactacion.paso y koroshi.contenedor.banda
+  (alturas: C1–C4 son columnas, en Odoo no hay alturas) y campo paso_id en koroshi.contenedor.movimiento; menús
+  «Compactar: pasos» y «Altura de las KO». Parámetros nuevos cajas_columna (8), cajas_vaciar (4), lineales_distancia
+  (2) y temporadas_zona0 (I27,V27). Sin campos en tablas de Odoo.
 """,
-    'version': '13.0.1.16.0',
+    'version': '13.0.1.17.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

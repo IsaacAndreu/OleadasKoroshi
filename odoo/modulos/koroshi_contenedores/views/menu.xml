@@ -8,4 +8,8 @@
               parent="menu_koroshi_contenedores_root" action="action_koroshi_contenedores_pantalla" sequence="10"/>
     <menuitem id="menu_koroshi_contenedores_mov" name="Movimientos hechos"
               parent="menu_koroshi_contenedores_root" action="action_koroshi_contenedor_mov" sequence="20"/>
+    <menuitem id="menu_koroshi_compactacion_paso" name="Compactar: pasos"
+              parent="menu_koroshi_contenedores_root" action="action_koroshi_compactacion_paso" sequence="30"/>
+    <menuitem id="menu_koroshi_contenedor_banda" name="Altura de las KO"
+              parent="menu_koroshi_contenedores_root" action="action_koroshi_contenedor_banda" sequence="40"/>
 </odoo>

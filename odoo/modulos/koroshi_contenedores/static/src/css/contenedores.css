@@ -100,3 +100,10 @@
 .o_koroshi_contenedores .o_kc_r_prendas { padding: 6px 10px; font-size: 15px; border: 1px solid #b86e00; background: #fff; color: #7a4a00; border-radius: 6px; }
 .o_koroshi_contenedores .o_kc_acciones .o_kc_r_retirar { background: #1e7b34; border-color: #1e7b34; color: #fff; }
 .o_koroshi_contenedores .o_kc_card tr.o_kc_marcado { background: #e6f0fb; }
+/* v1.17: compactar (fase 1) */
+.o_koroshi_contenedores .o_kc_compactar { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 1px solid #0b4f9c; background: #e6f0fb; color: #0b4f9c; border-radius: 8px; margin-left: 8px; }
+.o_koroshi_contenedores .o_kc_c_btn_si { background: #1e7b34; color: #fff; }
+.o_koroshi_contenedores .o_kc_c_btn_no { background: #e3e7ec; color: #111827; }
+.o_koroshi_contenedores .o_kc_c_marcar, .o_koroshi_contenedores .o_kc_c_soltar { padding: 6px 10px; margin: 4px 0 0 4px; font-size: 15px; border: 1px solid #6b7280; background: #fff; border-radius: 6px; }
+.o_koroshi_contenedores .o_kc_banda_abajo { font-size: 20px; color: #fff; background: #0b4f9c; padding: 2px 8px; border-radius: 4px; }
+.o_koroshi_contenedores .o_kc_banda_arriba { font-size: 20px; color: #fff; background: #b86e00; padding: 2px 8px; border-radius: 4px; }

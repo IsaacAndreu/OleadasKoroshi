@@ -1,2 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
 access_koroshi_contenedor_mov_usuario,koroshi.contenedor.movimiento usuario,model_koroshi_contenedor_movimiento,stock.group_stock_user,1,0,0,0
+access_koroshi_compactacion_paso_usuario,koroshi.compactacion.paso usuario,model_koroshi_compactacion_paso,stock.group_stock_user,1,0,0,0
+access_koroshi_contenedor_banda_usuario,koroshi.contenedor.banda usuario,model_koroshi_contenedor_banda,stock.group_stock_user,1,0,0,0

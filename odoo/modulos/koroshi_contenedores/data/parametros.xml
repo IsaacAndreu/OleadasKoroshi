@@ -18,5 +18,26 @@
             <field name="key">koroshi_contenedores.tarjetas_con_prendas</field>
             <field name="value">0</field>
         </record>
+        <!-- v1.17.0: «Compactar» (fase 1, diseño v6 del 26/11). Columna = hueco de Odoo = medio palé.
+             - cajas_columna: cajas que caben en una columna (8 = 4 de alto × 2 de fondo; si Isaac decide 7, aquí).
+             - cajas_vaciar: se vacían las columnas con menos cajas que esto.
+             - lineales_distancia: el destino, en el mismo lineal o hasta ± estos lineales.
+             - temporadas_zona0: temporadas de la zona 0 (para las tallas por altura). -->
+        <record id="parametro_cajas_columna" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.cajas_columna</field>
+            <field name="value">8</field>
+        </record>
+        <record id="parametro_cajas_vaciar" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.cajas_vaciar</field>
+            <field name="value">4</field>
+        </record>
+        <record id="parametro_lineales_distancia" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.lineales_distancia</field>
+            <field name="value">2</field>
+        </record>
+        <record id="parametro_temporadas_zona0" model="ir.config_parameter">
+            <field name="key">koroshi_contenedores.temporadas_zona0</field>
+            <field name="value">I27,V27</field>
+        </record>
     </data>
 </odoo>

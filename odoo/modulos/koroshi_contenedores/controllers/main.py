@@ -21,7 +21,7 @@
 # =============================================================================
 import re
 
-from odoo import http
+from odoo import fields, http
 from odoo.exceptions import UserError
 from odoo.http import request
 from odoo.tools import float_compare, float_is_zero
@@ -52,6 +52,11 @@ PARAM_LINEALES = 'koroshi_contenedores.cajas_cero_lineales'     # «44-136»: li
 PARAM_REVISAR = 'koroshi_contenedores.tarjetas_revisar'         # ids de empleado: stock negativo y descuadres
 PARAM_CON_PRENDAS = 'koroshi_contenedores.tarjetas_con_prendas'  # ids de empleado: cajas a 0 con prendas
 GRUPO_REVISAR = 'koroshi_contenedores.group_revisar'            # usuarios de Odoo que revisan sin tarjeta
+# v1.17.0: «Compactar» (fase 1). Parámetros del sistema; si no están, los valores de aquí
+PARAM_CAJAS_COLUMNA = 'koroshi_contenedores.cajas_columna'   # 8: cajas que caben en una columna (medio palé)
+PARAM_CAJAS_VACIAR = 'koroshi_contenedores.cajas_vaciar'     # 4: se vacían las columnas con menos cajas que esto
+PARAM_DISTANCIA = 'koroshi_contenedores.lineales_distancia'  # 2: destino en el mismo lineal o hasta ±2
+PARAM_TEMPORADAS = 'koroshi_contenedores.temporadas_zona0'   # «I27,V27»: zona 0
 
 
 def _lineal(texto):
@@ -103,6 +108,7 @@ class KoroshiContenedores(http.Controller):
             'lineas': lineas,
             'mas': max(0, len(quants) - MAX_LINEAS),
             'con_prendas': loc.name in self._marcas_con_prendas(),     # v1.16.0
+            'banda': self._banda(loc),                                  # v1.17.0
             'revisar': bool(quants.filtered(lambda q: q.quantity < 0 or (q.reserved_quantity > 0 and
                                                                         q.reserved_quantity > q.quantity))),
         }
@@ -117,6 +123,8 @@ class KoroshiContenedores(http.Controller):
         Quant = request.env['stock.quant'].sudo()
         hijos = self._hijos_contenedor(hueco)
         quants = Quant.search([('location_id', 'in', hijos.ids + [hueco.id]), ('quantity', '!=', 0)])
+        bandas = {b.contenedor_id.id: b.banda for b in request.env['koroshi.contenedor.banda'].sudo().search(
+            [('contenedor_id', 'in', hijos.ids)])}                      # v1.17.0
         por_loc = {}
         for q in quants:
             d = por_loc.setdefault(q.location_id.id, {'uds': 0.0, 'res': 0.0, 'n': 0})
@@ -127,7 +135,7 @@ class KoroshiContenedores(http.Controller):
         for h in hijos:
             d = por_loc.get(h.id, {'uds': 0.0, 'res': 0.0, 'n': 0})
             conts.append({'id': h.id, 'nombre': h.name, 'uds': d['uds'], 'reservadas': d['res'], 'n_lineas': d['n'],
-                          'vacio': d['n'] == 0 and not d['res']})
+                          'vacio': d['n'] == 0 and not d['res'], 'banda': bandas.get(h.id, '')})   # v1.17: altura
         directo = por_loc.get(hueco.id, {'uds': 0.0, 'n': 0})
         return {'id': hueco.id, 'nombre': hueco.complete_name, 'contenedores': conts,
                 'directo_uds': directo['uds'], 'directo_n': directo['n']}
@@ -1319,3 +1327,384 @@ class KoroshiContenedores(http.Controller):
             textos.append('hay %d faltante(s) de %s pendiente(s) de otros huecos: no se tocan (míralo en Faltantes)'
                           % (otros, producto.display_name))
         return max(0.0, resto), textos
+
+    # ================================================================== v1.17.0: «Compactar» (fase 1)
+    # Diseño v6 (bin/versiones/diseno-compactacion-odoo-retirar-vacias-juntar-cajas_2026-11-26_v6.md). Plan por
+    # lineal, calculado en vivo («Calcular L67»): vaciar las columnas de zona 0 con pocas cajas moviendo KO ENTERAS (se
+    # llevan sus prendas y reservas, como /mover) a columnas del mismo lineal o de ±2, sin pasar de 8 cajas ni mezclar
+    # colores de un modelo; cada KO lleva su altura (abajo / arriba) en koroshi.contenedor.banda. No toca reservas ni
+    # crea ubicaciones. Las reglas están en logica.plan_lineal (pruebas sin Odoo).
+    def _param_int(self, clave, defecto):
+        try:
+            return int(self._param(clave) or defecto)
+        except ValueError:
+            return defecto
+
+    def _reglas_compactar(self):
+        return {'capacidad': self._param_int(PARAM_CAJAS_COLUMNA, 8), 'vaciar': self._param_int(PARAM_CAJAS_VACIAR, 4),
+                'distancia': self._param_int(PARAM_DISTANCIA, 2)}
+
+    def _temporadas_zona0(self):
+        return {t.strip().upper() for t in (self._param(PARAM_TEMPORADAS) or 'I27,V27').split(',') if t.strip()}
+
+    def _lineas_28(self):
+        """Líneas de salida de 28 días (OUT hechas: albarán + artículo) por modelo-color y por (modelo-color, talla).
+        Una consulta para toda la nave (unas decenas de miles de líneas)."""
+        desde = fields.Datetime.subtract(fields.Datetime.now(), days=28)
+        cr = request.env.cr
+        cr.execute("""
+            SELECT pp.default_code, pt.name, COUNT(DISTINCT ml.picking_id)
+              FROM stock_move_line ml
+              JOIN stock_picking p ON p.id = ml.picking_id
+              JOIN stock_picking_type t ON t.id = p.picking_type_id
+              JOIN product_product pp ON pp.id = ml.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+             WHERE ml.state = 'done' AND t.code = 'outgoing' AND ml.date >= %s
+               AND (t.company_id = %s OR t.company_id IS NULL)
+             GROUP BY pp.id, pp.default_code, pt.name""", (desde, COMPANY_ID))
+        por_mc, por_talla = {}, {}
+        for codigo, nombre, n in cr.fetchall():
+            modelo, color, talla = logica.partir_codigo(codigo, nombre)
+            mc = logica.mc_de(modelo, color)
+            por_mc[mc] = por_mc.get(mc, 0) + n
+            por_talla[(mc, talla)] = por_talla.get((mc, talla), 0) + n
+        return por_mc, por_talla
+
+    def _stock_tallas(self, mcs):
+        """Uds de cada talla de estos modelos-color en la compañía (ubicaciones internas), para las bandas."""
+        if not mcs:
+            return {}
+        patrones = [_literal(mc) + '-%' for mc in mcs]
+        cr = request.env.cr
+        cr.execute("""
+            SELECT pp.default_code, pt.name, SUM(q.quantity)
+              FROM stock_quant q
+              JOIN stock_location l ON l.id = q.location_id
+              JOIN product_product pp ON pp.id = q.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+             WHERE q.quantity > 0 AND l.usage = 'internal' AND l.company_id = %s
+               AND upper(pp.default_code) LIKE ANY (%s)
+             GROUP BY pp.id, pp.default_code, pt.name""", (COMPANY_ID, patrones))
+        res = {}
+        for codigo, nombre, uds in cr.fetchall():
+            modelo, color, talla = logica.partir_codigo(codigo, nombre)
+            res.setdefault(logica.mc_de(modelo, color), {})[talla] = uds
+        return res
+
+    def _columnas_compactar(self, lineales, bloqueadas=()):
+        """Columnas (huecos) de estos lineales con sus KO con stock, para logica.plan_lineal, y los datos de cada KO
+        (mc, tallas, uds). Una columna con algo de zona Z (o sin temporada) o con prendas sueltas no se toca."""
+        cr = request.env.cr
+        lineales = sorted(set(lineales))
+        conds = ' OR '.join(['h.name ILIKE %s OR h.name ILIKE %s'] * len(lineales))
+        args = [COMPANY_ID]
+        for n in lineales:
+            args += ['%% L%d %%' % n, 'L%d %%' % n]
+        cr.execute("""SELECT h.id, h.name FROM stock_location h
+                       WHERE h.active AND h.usage = 'internal' AND (h.company_id = %s OR h.company_id IS NULL)
+                         AND upper(left(h.name, 3)) NOT IN ('KO_', 'TT_') AND (""" + conds + ")", args)
+        huecos = {hid: nombre for hid, nombre in cr.fetchall() if logica.lineal_de(nombre) in lineales}
+        if not huecos:
+            return [], {}
+        ids = tuple(huecos)
+        cr.execute("""
+            SELECT l.id, l.location_id, l.name, q.product_id, pp.default_code, pt.name, pt.id, SUM(q.quantity)
+              FROM stock_quant q
+              JOIN stock_location l ON l.id = q.location_id
+              JOIN product_product pp ON pp.id = q.product_id
+              JOIN product_template pt ON pt.id = pp.product_tmpl_id
+             WHERE q.quantity > 0 AND l.active AND (l.id IN %s OR l.location_id IN %s)
+             GROUP BY l.id, l.location_id, l.name, q.product_id, pp.default_code, pt.name, pt.id""", (ids, ids))
+        filas = cr.fetchall()
+        # temporada de cada plantilla (zona 0 = I27/V27)
+        tmpl_ids = list({f[6] for f in filas})
+        Tmpl = request.env['product.template'].sudo()
+        temporada = {}
+        if 'season_id' in Tmpl._fields and tmpl_ids:
+            for t in Tmpl.browse(tmpl_ids).read(['season_id']):
+                temporada[t['id']] = (t['season_id'][1] if t['season_id'] else '').strip().upper()
+        zona0 = self._temporadas_zona0()
+        # KO con prendas leídas para una OUT sin validar: se espera
+        kos = list({f[0] for f in filas if f[0] not in huecos})
+        leidas = set()
+        if kos:
+            cr.execute("""SELECT DISTINCT location_id FROM stock_move_line
+                           WHERE state NOT IN ('done', 'cancel') AND qty_done > 0 AND location_id IN %s""",
+                       (tuple(kos),))
+            leidas = {f[0] for f in cr.fetchall()}
+        cols = {hid: {'id': hid, 'nombre': nombre, 'lineal': logica.lineal_de(nombre), 'z': hid in bloqueadas,
+                      'extra': 0, 'cajas': []} for hid, nombre in huecos.items()}
+        info = {}          # KO -> {'nombre', 'mcs', 'tallas': {mc: {talla: uds}}, 'uds', 'hueco'}
+        for lid, padre, nombre, _pid, codigo, pnombre, tid, uds in filas:
+            if temporada.get(tid, '') not in zona0:
+                hid = lid if lid in huecos else padre
+                if hid in cols:
+                    cols[hid]['z'] = True
+            if lid in huecos:                       # prendas sueltas en la columna: no se toca
+                cols[lid]['z'] = True
+                continue
+            if not _es_contenedor_nombre(nombre) or padre not in cols:
+                continue
+            modelo, color, talla = logica.partir_codigo(codigo, pnombre)
+            mc = logica.mc_de(modelo, color)
+            d = info.setdefault(lid, {'nombre': nombre, 'hueco': padre, 'uds': 0.0, 'tallas': {}, 'modelos': {}})
+            d['modelos'][mc] = modelo
+            d['uds'] += uds
+            d['tallas'].setdefault(mc, {})
+            d['tallas'][mc][talla] = d['tallas'][mc].get(talla, 0) + uds
+        for kid, d in info.items():
+            mcs = sorted(d['tallas'], key=lambda m: -sum(d['tallas'][m].values()))
+            d['mc'] = mcs[0]
+            cols[d['hueco']]['cajas'].append({'id': kid, 'mc': d['mc'], 'modelo': d['modelos'][d['mc']],
+                                              'movible': len(mcs) == 1 and kid not in leidas})
+        return list(cols.values()), info
+
+    @http.route('/koroshi/contenedores/compactar/calcular', type='json', auth='user')
+    def compactar_calcular(self, lineal=0, employee_id=False, **kw):
+        """Calcula el plan de un lineal. Lo pendiente de ese lineal queda «sustituido» (lo hecho no se toca)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            try:
+                n = int(lineal or 0)
+            except (TypeError, ValueError):
+                raise UserError('Lineal no válido.')
+            lo, hi = logica.rango_lineales(self._param(PARAM_LINEALES))
+            if not lo <= n <= hi:
+                raise UserError('L%d no es de la zona 0 (L%d–L%d).' % (n, lo, hi))
+            reglas = self._reglas_compactar()
+            Paso = request.env['koroshi.compactacion.paso'].sudo()
+            otros = Paso.search([('estado', '=', 'pendiente'), ('lineal', '!=', n)])
+            lineales = range(n - reglas['distancia'], n + reglas['distancia'] + 1)
+            # las columnas que otro lineal está vaciando no reciben; las que van a recibir cuentan ya esas cajas
+            cols, info = self._columnas_compactar(lineales, bloqueadas=set(otros.mapped('origen_id').ids))
+            if not cols:
+                raise UserError('No encuentro columnas en L%d.' % n)
+            llegan = {}
+            for p in otros:
+                if p.destino_id:
+                    llegan[p.destino_id.id] = llegan.get(p.destino_id.id, 0) + 1
+            for c in cols:
+                c['extra'] = llegan.get(c['id'], 0)
+            lineas_mc, lineas_talla = self._lineas_28()
+            abc = logica.clases_abc({mc: lineas_mc.get(mc, 0) for mc in lineas_mc})
+            pasos, resumen = logica.plan_lineal(n, cols, abc=abc, **reglas)
+            stock = self._stock_tallas({p['mc'] for p in pasos})
+            bandas = {}
+            for mc in {p['mc'] for p in pasos}:
+                tallas = stock.get(mc) or {}
+                bandas[mc] = logica.tallas_por_altura(tallas, {t: lineas_talla.get((mc, t), 0) for t in tallas})
+            calculo = '%s-L%d-%s' % (fields.Datetime.now().strftime('%Y%m%d%H%M%S'), n, emp.id)
+            with request.env.cr.savepoint():
+                Paso.search([('lineal', '=', n), ('estado', '=', 'pendiente')]).write(
+                    {'estado': 'sustituido', 'motivo': 'Recalculado (%s)' % emp.name})
+                for p in pasos:
+                    d = info[p['caja_id']]
+                    Paso.create({
+                        'lineal': n, 'calculo': calculo, 'orden': p['orden'], 'origen_id': p['origen_id'],
+                        'contenedor_id': p['caja_id'], 'contenedor': d['nombre'], 'destino_id': p['destino_id'],
+                        'mc': p['mc'], 'uds': d['uds'],
+                        'banda': logica.banda_caja(d['tallas'].get(p['mc'], {}), bandas.get(p['mc'], {}))})
+            ceros = len([c for c in self._cajas('AND (h.name ILIKE %s OR h.name ILIKE %s)',
+                                                 ('%% L%d %%' % n, 'L%d %%' % n))
+                         if c['lineal'] == n and c['estado'] == 'cero' and not c['con_prendas']])
+            msg = 'L%d: %d columnas se vacían moviendo %d cajas' % (n, resumen['vaciadas'], resumen['cajas'])
+            if resumen['sin_sitio']:
+                msg += ' (%d con pocas cajas no caben en otro sitio)' % resumen['sin_sitio']
+            datos = self._datos_compactar_lineal(n)
+            datos['cajas_cero'] = ceros
+            return {'ok': True, 'msg': msg, 'lineal': datos}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _banda(self, loc):
+        b = request.env['koroshi.contenedor.banda'].sudo().search([('contenedor_id', '=', loc.id)], limit=1)
+        return b.banda or ''
+
+    def _nombre_columna(self, loc):
+        return (loc.name or '').split(' - ', 1)[-1] if loc else ''
+
+    def _datos_compactar_lineal(self, n):
+        Paso = request.env['koroshi.compactacion.paso'].sudo()
+        pasos = Paso.search([('lineal', '=', n), ('estado', '!=', 'sustituido')])
+        grupos = {}
+        for p in pasos:
+            g = grupos.setdefault(p.origen_id.id, {'origen_id': p.origen_id.id,
+                                                   'origen': self._nombre_columna(p.origen_id),
+                                                   'orden': p.orden, 'pasos': []})
+            g['orden'] = min(g['orden'], p.orden)
+            g['pasos'].append({'id': p.id, 'contenedor_id': p.contenedor_id.id, 'contenedor': p.contenedor,
+                               'mc': p.mc, 'uds': p.uds, 'banda': p.banda or 'arriba',
+                               'destino': self._nombre_columna(p.destino_id),
+                               'destino_real': self._nombre_columna(p.destino_real_id), 'estado': p.estado,
+                               'orden': p.orden})
+        lista = sorted(grupos.values(), key=lambda g: (all(x['estado'] != 'pendiente' for x in g['pasos']),
+                                                       g['orden']))
+        for g in lista:
+            g['pasos'].sort(key=lambda x: x['orden'])
+            g['pendientes'] = len([x for x in g['pasos'] if x['estado'] == 'pendiente'])
+            g['libre'] = all(x['estado'] in ('hecho', 'cambiado') for x in g['pasos'])
+        return {'lineal': n, 'codigo': 'L%d' % n, 'grupos': lista, 'total': len(pasos),
+                'hechos': len(pasos.filtered(lambda p: p.estado in ('hecho', 'cambiado'))),
+                'pendientes': len(pasos.filtered(lambda p: p.estado == 'pendiente')),
+                'no_esta': len(pasos.filtered(lambda p: p.estado == 'no_esta')),
+                'columnas': len(lista), 'libres': len([g for g in lista if g['libre']])}
+
+    @http.route('/koroshi/contenedores/compactar/lineal', type='json', auth='user')
+    def compactar_lineal(self, lineal=0, employee_id=False, **kw):
+        try:
+            self._comprobar_usuario()
+            self._empleado(employee_id)
+            try:
+                n = int(lineal or 0)
+            except (TypeError, ValueError):
+                raise UserError('Lineal no válido.')
+            return {'ok': True, 'lineal': self._datos_compactar_lineal(n)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/compactar/resumen', type='json', auth='user')
+    def compactar_resumen(self, employee_id=False, **kw):
+        """Avance por lineal: pasos hechos / total y columnas libres / previstas."""
+        try:
+            self._comprobar_usuario()
+            self._empleado(employee_id)
+            cr = request.env.cr
+            cr.execute("""
+                SELECT lineal, COUNT(*),
+                       COUNT(*) FILTER (WHERE estado IN ('hecho', 'cambiado')),
+                       COUNT(*) FILTER (WHERE estado = 'pendiente'),
+                       COUNT(DISTINCT origen_id),
+                       COUNT(DISTINCT origen_id) FILTER (WHERE estado IN ('pendiente', 'no_esta'))
+                  FROM koroshi_compactacion_paso WHERE estado <> 'sustituido'
+                 GROUP BY lineal ORDER BY lineal""")
+            filas = [{'lineal': l, 'total': t, 'hechos': h, 'pendientes': p, 'columnas': c, 'libres': c - abiertas}
+                     for l, t, h, p, c, abiertas in cr.fetchall()]
+            lo, hi = logica.rango_lineales(self._param(PARAM_LINEALES))
+            return {'ok': True, 'lineales': filas, 'rango': 'L%d–L%d' % (lo, hi),
+                    'capacidad': self._reglas_compactar()['capacidad']}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    def _cajas_columna(self, columna):
+        """(modelo, mc) de las KO con stock de una columna, para avisar al dejar una caja fuera del plan."""
+        res = []
+        for c in self._hijos_contenedor(columna):
+            quants = request.env['stock.quant'].sudo().search([('location_id', '=', c.id), ('quantity', '>', 0)])
+            if not quants:
+                continue
+            q = max(quants, key=lambda x: x.quantity)
+            modelo, color, _t = logica.partir_codigo(q.product_id.default_code, q.product_id.name)
+            res.append((modelo, logica.mc_de(modelo, color)))
+        return res
+
+    @http.route('/koroshi/contenedores/compactar/hacer', type='json', auth='user')
+    def compactar_hacer(self, paso_ids=None, destino_id=False, employee_id=False, confirmado=False, **kw):
+        """Mueve las KO de estos pasos a la columna leída (como /mover: se llevan prendas y reservas) y apunta su
+        altura. Si la columna no es la del plan y hay algo que avisar (otro color del mismo modelo, más de 8 cajas),
+        pide confirmar. Todo o nada."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            Loc = request.env['stock.location'].sudo()
+            destino = Loc.browse(int(destino_id or 0)).exists()
+            if not destino:
+                raise UserError('Lee la columna de destino.')
+            self._validar_destino(destino)
+            Paso = request.env['koroshi.compactacion.paso'].sudo()
+            pasos = Paso.browse([int(i) for i in (paso_ids or [])]).exists()
+            if not pasos:
+                raise UserError('Lee antes las cajas del paso.')
+            for p in pasos:
+                c = p.contenedor_id
+                if p.estado != 'pendiente':
+                    raise UserError('%s ya no está pendiente (%s).' % (p.contenedor, dict(
+                        p._fields['estado'].selection).get(p.estado)))
+                if not c.active:
+                    raise UserError('%s está archivada. Márcala «No está».' % p.contenedor)
+                if c.location_id != p.origen_id and c.location_id != destino:
+                    raise UserError('%s ya no está en %s (está en %s). Márcala «No está» o vuelve a calcular.' % (
+                        p.contenedor, self._nombre_columna(p.origen_id), c.location_id.complete_name))
+                if self._leidas(c):
+                    raise UserError('%s tiene prendas leídas para una OUT sin validar: se espera. Déjala para luego.'
+                                    % p.contenedor)
+            fuera = pasos.filtered(lambda p: p.destino_id != destino)
+            if fuera and not confirmado:
+                ya = self._cajas_columna(destino)
+                avisos = []
+                for mc in set(fuera.mapped('mc')):
+                    modelo = (mc or '').split('-')[0]
+                    a = logica.aviso_destino(ya, mc, modelo, len(fuera.filtered(lambda p: p.mc == mc)),
+                                             self._reglas_compactar()['capacidad'])
+                    if a:
+                        avisos.append(a)
+                return {'ok': False, 'confirmar': True,
+                        'msg': '%s no es la columna del plan (%s).%s ¿La dejas aquí?' % (
+                            self._nombre_columna(destino), ', '.join(sorted(set(
+                                self._nombre_columna(p.destino_id) for p in fuera))),
+                            (' OJO: ' + '; '.join(avisos) + '.') if avisos else '')}
+            Mov = request.env['koroshi.contenedor.movimiento'].sudo()
+            Banda = request.env['koroshi.contenedor.banda'].sudo()
+            textos = []
+            with request.env.cr.savepoint():
+                for p in pasos:
+                    c = p.contenedor_id
+                    origen = c.location_id
+                    if origen != destino:
+                        quants = request.env['stock.quant'].sudo().search(
+                            [('location_id', '=', c.id), ('quantity', '!=', 0)])
+                        c.write({'location_id': destino.id})
+                        mov = Mov.create({
+                            'contenedor': c.name, 'origen_id': origen.id, 'destino_id': destino.id,
+                            'origen': origen.complete_name, 'destino': destino.complete_name,
+                            'uds': sum(quants.mapped('quantity')),
+                            'reservadas': sum(quants.mapped('reserved_quantity')), 'lineas': len(quants),
+                            'employee_id': emp.id, 'paso_id': p.id})
+                    else:
+                        mov = Mov.browse()
+                    banda = p.banda or 'arriba'
+                    b = Banda.search([('contenedor_id', '=', c.id)], limit=1)
+                    if b:
+                        b.write({'banda': banda, 'employee_id': emp.id})
+                    else:
+                        Banda.create({'contenedor_id': c.id, 'banda': banda, 'employee_id': emp.id})
+                    p.write({'estado': 'hecho' if p.destino_id == destino else 'cambiado',
+                             'destino_real_id': destino.id, 'employee_id': emp.id,
+                             'fecha': fields.Datetime.now(), 'movimiento_id': mov.id or False})
+                    textos.append('%s → %s · %s' % (c.name, self._nombre_columna(destino), banda.upper()))
+                request.env['koroshi.contenedor.movimiento'].flush()
+            libres = []
+            for origen in pasos.mapped('origen_id'):
+                resto = Paso.search([('origen_id', '=', origen.id), ('estado', '=', 'pendiente')])
+                if not resto:
+                    libres.append(self._nombre_columna(origen))
+            return {'ok': True, 'msg': '; '.join(textos), 'libres': libres,
+                    'bandas': [{'contenedor': p.contenedor, 'banda': p.banda or 'arriba'} for p in pasos],
+                    'lineal': self._datos_compactar_lineal(pasos[0].lineal)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}
+
+    @http.route('/koroshi/contenedores/compactar/marcar', type='json', auth='user')
+    def compactar_marcar(self, paso_id=False, accion='', employee_id=False, **kw):
+        """«No está» (la KO no está en la columna: queda para revisar, sin cambiar nada en Odoo) o «Saltar» (al
+        final del lineal)."""
+        try:
+            self._comprobar_usuario()
+            emp = self._empleado(employee_id)
+            p = request.env['koroshi.compactacion.paso'].sudo().browse(int(paso_id or 0)).exists()
+            if not p or p.estado != 'pendiente':
+                raise UserError('Ese paso ya no está pendiente. Vuelve a abrir el lineal.')
+            if accion == 'no_esta':
+                p.write({'estado': 'no_esta', 'employee_id': emp.id, 'fecha': fields.Datetime.now(),
+                         'motivo': 'No está en la columna (%s)' % emp.name})
+                msg = '%s marcada «No está».' % p.contenedor
+            elif accion == 'saltar':
+                ultimo = max(request.env['koroshi.compactacion.paso'].sudo().search(
+                    [('lineal', '=', p.lineal), ('estado', '!=', 'sustituido')]).mapped('orden') or [0])
+                p.write({'orden': ultimo + 1})
+                msg = '%s, al final del lineal.' % p.contenedor
+            else:
+                raise UserError('Acción no válida.')
+            return {'ok': True, 'msg': msg, 'lineal': self._datos_compactar_lineal(p.lineal)}
+        except UserError as e:
+            return {'ok': False, 'msg': _msg(e)}

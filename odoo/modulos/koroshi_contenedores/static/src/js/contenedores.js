@@ -1,6 +1,8 @@
 odoo.define('koroshi_contenedores.Pantalla', function (require) {
 'use strict';
 /* KOROSHI Contenedores v1.8.0 - mover contenedores KO_/TT_, compactar huecos y ver inventario por lineal.
+ * v1.17 (26/11): «Compactar» (fase 1): plan por lineal («Calcular»); se leen las cajas del paso y la columna de
+ *   destino, y la KO entera se mueve (como «Mover»). Dice ABAJO o ARRIBA por caja. «No está» y «Saltar» por caja.
  * v1.16 (26/11): «Retirar cajas a 0»: ronda por lineal y hueco; se lee cada caja a 0 y se retiran las vacías (o las
  *   que no están); «Tiene prendas» la marca sin tocar el stock. «Revisar» y «Cajas con prendas», solo para su lista.
  * v1.15 (23/11, O4): la tarjeta y el lector «leer al parar» salen de koroshi_base.comun (los mismos en todas las
@@ -112,6 +114,16 @@ var Pantalla = AbstractAction.extend({
         'click .o_kc_r_no': '_onRondaNo',
         'click .o_kc_r_prendas': '_onRondaPrendas',
         'click .o_kc_r_salir': '_onRondaSalir',
+        // v1.17: compactar (fase 1)
+        'click .o_kc_compactar': '_onCompactar',
+        'click .o_kc_c_lineal': '_onCompLineal',
+        'click .o_kc_c_calcular': '_onCompCalcular',
+        'click .o_kc_c_norecalcular': '_onCompNoRecalcular',
+        'click .o_kc_c_si': '_onCompSi',
+        'click .o_kc_c_no': '_onCompNo',
+        'click .o_kc_c_marcar': '_onCompMarcar',
+        'click .o_kc_c_soltar': '_onCompSoltar',
+        'click .o_kc_c_salir': '_onCompSalir',
     },
 
     init: function () {
@@ -139,6 +151,7 @@ var Pantalla = AbstractAction.extend({
         this.candidatos = null;         // v1.7: contenedores que contienen el trozo escrito
         this.buscarTimer = null;        // v1.7: sugerencias mientras se escribe
         this.ronda = null;              // v1.16: ronda de cajas a 0 {resumen, lineal, hueco, lista, vistas, confirmar}
+        this.compactar = null;          // v1.17: {resumen, lineal, cogidas: {paso_id: true}, confirmar, recalcular}
     },
 
     start: function () {
@@ -231,6 +244,7 @@ var Pantalla = AbstractAction.extend({
         this.otro = null;               // v1.14
         this.candidatos = null;
         this.ronda = null;              // v1.16
+        this.compactar = null;          // v1.17
         if (conPersona) { this.persona = null; }
         this._pintar();
     },
@@ -356,6 +370,13 @@ var Pantalla = AbstractAction.extend({
                     return self._aviso('mal', 'Cierra antes la caja abierta («← Volver»).');
                 }
                 return self._rondaLeido(r);
+            }
+            if (self.compactar) {           // v1.17: en «Compactar», las lecturas son lineales, cajas y columnas
+                if (self.detalle) {
+                    self._pitido(false);
+                    return self._aviso('mal', 'Cierra antes la caja abierta («← Volver»).');
+                }
+                return self._compLeido(r);
             }
             self.confirmando = false;
             self.detalle = null;
@@ -709,6 +730,7 @@ var Pantalla = AbstractAction.extend({
         if (this.otro) { return this._onOtroNo(); }             // v1.14
         if (this.editando) { return this._onEditarNo(); }       // v1.7
         if (this.ronda) { return this._rondaAtras(); }          // v1.16
+        if (this.compactar && !this.detalle) { return this._compAtras(); }   // v1.17
         if (this.detalle) { return this._onVolverHueco(); }
         if (this.conts.length) {
             if (this.origenHueco) {        // venía de «Mover marcados»: vuelve al hueco
@@ -1043,6 +1065,9 @@ var Pantalla = AbstractAction.extend({
         this._sugerencias(null);
         if (this.teclado) { this._ponerTeclado(false); }
         if (this.ronda && tipo === 'hueco') { return this._rondaHueco(id); }   // v1.16
+        if (this.compactar && tipo === 'hueco') {                               // v1.17: columna de destino
+            return this._compLeido({tipo: 'ubicacion', ubicacion: {id: id}});
+        }
         if (tipo === 'hueco') { return this._abrirHueco(id); }
         if (tipo === 'articulo') { return this._abrirArticulo(id); }
         this._leer(codigo, false, 'toque');   // contenedor (a la lista de mover) o lineal
@@ -1657,6 +1682,278 @@ var Pantalla = AbstractAction.extend({
         return html + '</div>';
     },
 
+    // ================================================================== v1.17.0: «Compactar» (fase 1)
+    // Resumen por lineal → lineal (plan): se leen las cajas del paso y después la columna de destino. Se mueven KO
+    // enteras (como «Mover»); la PDA dice ABAJO o ARRIBA para cada caja. «No está» y «Saltar» por caja. «Calcular»
+    // hace (o rehace) el plan del lineal.
+    _compRpc: function (ruta, params, hecho, malo) {
+        var self = this;
+        if (this.ocupado) { return; }
+        this.ocupado = true;
+        params = _.extend({employee_id: this.persona && this.persona.id}, params || {});
+        return this._rpc({route: '/koroshi/contenedores/compactar/' + ruta, params: params}).then(function (r) {
+            self._fin();
+            if (!self.compactar) { return; }
+            if (!r || !r.ok) {
+                if (malo && r && malo(r)) { self._pintar(); return; }
+                self._pitido(false);
+                self._aviso('mal', (r && r.msg) || 'No se ha podido hacer.');
+                self._pintar();
+                return;
+            }
+            hecho(r);
+            self._pintar();
+            self._foco();
+        }, self._sinConexion.bind(self));
+    },
+
+    _onCompactar: function () {
+        if (this.ocupado) { return; }
+        if (!this.persona) { return this._aviso('mal', 'Primero pasa tu tarjeta de operario.'); }
+        if (this.conts.length || (this.anadiendo && this.anadiendo.length)) {
+            return this._aviso('mal', 'Acaba antes lo que tienes a medias (contenedores para mover o prendas leídas).');
+        }
+        this._reiniciar(false);
+        this.compactar = {resumen: null, lineal: null, cogidas: {}, confirmar: null, recalcular: false};
+        this._pintar();
+        return this._compResumen();
+    },
+
+    _compResumen: function () {
+        var self = this;
+        return this._compRpc('resumen', {}, function (r) {
+            self.compactar.resumen = r;
+            self.compactar.lineal = null;
+            self.compactar.cogidas = {};
+            self._aviso('', '');
+        });
+    },
+
+    _compLineal: function (n) {
+        var self = this;
+        if (!n) { return; }
+        return this._compRpc('lineal', {lineal: n}, function (r) {
+            self.compactar.lineal = r.lineal;
+            self.compactar.cogidas = {};
+            self.compactar.confirmar = null;
+            self._aviso(r.lineal.total ? '' : 'info', r.lineal.total ? '' :
+                'L' + n + ' no tiene plan: pulsa «Calcular».');
+        });
+    },
+
+    _onCompCalcular: function () {
+        var self = this;
+        var c = this.compactar;
+        if (!c || !c.lineal) { return; }
+        if (c.lineal.pendientes && !c.recalcular) {
+            c.recalcular = true;
+            return this._pintar();
+        }
+        c.recalcular = false;
+        this._aviso('info', 'Calculando L' + c.lineal.lineal + '…');
+        return this._compRpc('calcular', {lineal: c.lineal.lineal}, function (r) {
+            c.lineal = r.lineal;
+            c.cogidas = {};
+            self._aviso('ok', r.msg + (r.lineal.cajas_cero ? '. OJO: L' + r.lineal.lineal + ' tiene ' +
+                r.lineal.cajas_cero + ' cajas a 0: retíralas primero («Retirar cajas a 0»).' : ''));
+        });
+    },
+
+    _onCompNoRecalcular: function () {
+        if (this.compactar) { this.compactar.recalcular = false; }
+        this._pintar();
+    },
+
+    _compPaso: function (contenedorId) {
+        var l = this.compactar && this.compactar.lineal;
+        if (!l) { return null; }
+        var res = null;
+        _.each(l.grupos, function (g) {
+            _.each(g.pasos, function (p) {
+                if (!res && p.contenedor_id === contenedorId && p.estado === 'pendiente') { res = p; }
+            });
+        });
+        return res;
+    },
+
+    // Lectura en «Compactar» (resultado de /leer): lineal, caja del plan o columna de destino
+    _compLeido: function (r) {
+        var c = this.compactar;
+        if (r.tipo === 'lineal') {
+            var n = parseInt(String(r.lineal.codigo).replace(/\D/g, ''), 10);
+            if (/^L/i.test(r.lineal.codigo) && n) { return this._compLineal(n); }
+            this._pitido(false);
+            return this._aviso('mal', 'Solo lineales L.');
+        }
+        if (!c.lineal) {
+            this._pitido(false);
+            return this._aviso('mal', 'Primero toca o lee un lineal (L67).');
+        }
+        if (r.tipo === 'contenedor') {
+            var p = this._compPaso(r.contenedor.id);
+            if (!p) {
+                this._pitido(false);
+                return this._aviso('mal', r.contenedor.nombre + ' no tiene ningún paso pendiente en L' +
+                    c.lineal.lineal + '.');
+            }
+            c.cogidas[p.id] = true;
+            c.confirmar = null;
+            this._pitido(true);
+            this._aviso('ok', '☑ ' + p.contenedor + ': llévala a ' + p.destino + ' · ' + p.banda.toUpperCase() +
+                '. Lee la columna de destino (o más cajas).');
+            return this._pintar();
+        }
+        if (r.tipo === 'ubicacion') {
+            var ids = _.map(_.keys(c.cogidas), function (x) { return parseInt(x, 10); });
+            if (!ids.length) {
+                this._pitido(false);
+                return this._aviso('mal', 'Lee antes las cajas que llevas.');
+            }
+            return this._compHacer(ids, r.ubicacion.id, false);
+        }
+        this._pitido(false);
+        this._aviso('mal', 'En «Compactar» lee un lineal, las cajas del plan y la columna de destino.');
+    },
+
+    _compHacer: function (ids, destinoId, confirmado) {
+        var self = this;
+        var c = this.compactar;
+        return this._compRpc('hacer', {paso_ids: ids, destino_id: destinoId, confirmado: confirmado}, function (m) {
+            c.lineal = m.lineal;
+            c.cogidas = {};
+            c.confirmar = null;
+            self._pitido(true);
+            self._aviso('ok', '✓ ' + m.msg + (m.libres.length ? '. ✓ ' + m.libres.join(', ') + ' LIBRE' : ''));
+        }, function (m) {
+            if (!m.confirmar) { return false; }
+            self._pitido(false);
+            c.confirmar = {ids: ids, destinoId: destinoId, msg: m.msg};
+            return true;
+        });
+    },
+
+    _onCompSi: function () {
+        var k = this.compactar && this.compactar.confirmar;
+        if (!k) { return; }
+        return this._compHacer(k.ids, k.destinoId, true);
+    },
+
+    _onCompNo: function () {
+        if (this.compactar) { this.compactar.confirmar = null; }
+        this._aviso('', 'No se ha movido nada. Lee otra columna.');
+        this._pintar();
+        this._foco();
+    },
+
+    _onCompMarcar: function (ev) {
+        var self = this;
+        var $b = $(ev.currentTarget);
+        var id = parseInt($b.data('id'), 10);
+        return this._compRpc('marcar', {paso_id: id, accion: String($b.data('accion'))}, function (m) {
+            self.compactar.lineal = m.lineal;
+            delete self.compactar.cogidas[id];
+            self._aviso('ok', m.msg);
+        });
+    },
+
+    _onCompSoltar: function (ev) {
+        var id = parseInt($(ev.currentTarget).data('id'), 10);
+        delete this.compactar.cogidas[id];
+        this._pintar();
+        this._foco();
+    },
+
+    _onCompLineal: function (ev) { return this._compLineal(parseInt($(ev.currentTarget).data('lineal'), 10)); },
+
+    _onCompSalir: function () {
+        this.compactar = null;
+        this._aviso('', '');
+        this._pintar();
+        this._foco();
+    },
+
+    _compAtras: function () {
+        var c = this.compactar;
+        if (c.confirmar) { return this._onCompNo(); }
+        if (c.recalcular) { return this._onCompNoRecalcular(); }
+        if (_.keys(c.cogidas).length) {
+            c.cogidas = {};
+            this._aviso('info', 'Cajas soltadas: no se ha movido nada.');
+            return this._pintar();
+        }
+        if (c.lineal) { return this._compResumen(); }
+        return this._onCompSalir();
+    },
+
+    _pintarCompactar: function () {
+        var c = this.compactar;
+        if (!c || this.detalle) { return ''; }
+        var html;
+        if (!c.lineal) {
+            var r = c.resumen;
+            if (!r) { return '<div class="o_kc_card">Cargando…</div>'; }
+            html = '<div class="o_kc_card"><h3>Compactar (' + _e(r.rango) + ', ' + r.capacidad +
+                ' cajas por columna)</h3><div>Lee un lineal (L67) o toca uno con plan.</div>' +
+                '<div class="o_kc_acciones"><button type="button" class="o_kc_c_salir">Salir</button></div>';
+            if (!r.lineales.length) { return html + '<div class="o_kc_vacio">Aún no hay ningún plan.</div></div>'; }
+            html += '<table>' + r.lineales.map(function (l) {
+                return '<tr class="o_kc_c_lineal o_kc_fila_r" data-lineal="' + l.lineal + '"><td><b>L' + l.lineal +
+                    '</b></td><td class="o_kc_n">' + l.hechos + '/' + l.total + ' cajas · <b class="o_kc_libre">' +
+                    l.libres + '/' + l.columnas + ' columnas libres</b></td></tr>';
+            }).join('') + '</table>';
+            return html + '</div>';
+        }
+        var li = c.lineal;
+        html = '<div class="o_kc_card"><h3>Compactar ' + _e(li.codigo) + '</h3><div>' + li.hechos + '/' + li.total +
+            ' cajas · <b class="o_kc_libre">' + li.libres + '/' + li.columnas + ' columnas libres</b>' +
+            (li.no_esta ? ' · ' + li.no_esta + ' no están' : '') + '</div>';
+        if (c.recalcular) {
+            html += '<div class="o_kc_confirmar"><div><b>Quedan ' + li.pendientes + ' cajas pendientes.</b> Calcular ' +
+                'de nuevo las sustituye (lo hecho se queda).</div>' +
+                '<button type="button" class="o_kc_c_calcular o_kc_c_btn_si">Sí, calcular</button>' +
+                '<button type="button" class="o_kc_c_norecalcular o_kc_c_btn_no">No</button></div>';
+        } else {
+            html += '<div class="o_kc_acciones"><button type="button" class="o_kc_c_calcular">' +
+                (li.total ? 'Calcular de nuevo' : 'Calcular') + '</button></div>';
+        }
+        if (c.confirmar) {
+            html += '<div class="o_kc_confirmar"><div><b>' + _e(c.confirmar.msg) + '</b></div>' +
+                '<button type="button" class="o_kc_c_si o_kc_c_btn_si">Sí, aquí</button>' +
+                '<button type="button" class="o_kc_c_no o_kc_c_btn_no">No</button></div>';
+        }
+        var pend = _.filter(li.grupos, function (g) { return g.pendientes; });
+        if (!pend.length && li.total) {
+            html += '<div class="o_kc_libre_grande">✓ ' + _e(li.codigo) + ' hecho: ' + li.libres + ' columnas libres</div>';
+        }
+        // la primera columna pendiente, entera; las demás, en una línea
+        _.each(pend.slice(0, 1), function (g) {
+            html += '<div class="o_kc_r_titulo">Vaciar ' + _e(g.origen) + ' (' + g.pendientes + ' caja' +
+                (g.pendientes === 1 ? '' : 's') + ')</div><table>' + g.pasos.map(function (p) {
+                    var cogida = !!c.cogidas[p.id];
+                    if (p.estado !== 'pendiente') {
+                        return '<tr class="o_kc_sin"><td>' + _e(p.contenedor) + '</td><td class="o_kc_n">' +
+                            (p.estado === 'no_esta' ? 'no está' : '✓ ' + _e(p.destino_real || p.destino)) + '</td></tr>';
+                    }
+                    return '<tr class="' + (cogida ? 'o_kc_marcado' : '') + '"><td>' + (cogida ? '☑ ' : '☐ ') +
+                        _e(p.contenedor) + ' <small>' + _n(p.uds) + ' uds</small><br/><small>' + _e(p.mc) +
+                        '</small></td><td class="o_kc_n">→ <b>' + _e(p.destino) + '</b><br/><b class="o_kc_banda_' +
+                        p.banda + '">' + p.banda.toUpperCase() + '</b><br/>' +
+                        (cogida ? '<button type="button" class="o_kc_c_soltar" data-id="' + p.id + '">Soltar</button>'
+                            : '<button type="button" class="o_kc_c_marcar" data-accion="no_esta" data-id="' + p.id +
+                              '">No está</button><button type="button" class="o_kc_c_marcar" data-accion="saltar" ' +
+                              'data-id="' + p.id + '">Saltar</button>') + '</td></tr>';
+                }).join('') + '</table>';
+        });
+        if (pend.length > 1) {
+            html += '<div class="o_kc_r_titulo">Después (' + (pend.length - 1) + ' columnas)</div><table>' +
+                pend.slice(1, 15).map(function (g) {
+                    return '<tr class="o_kc_sin"><td>' + _e(g.origen) + '</td><td class="o_kc_n">' + g.pendientes +
+                        ' caja' + (g.pendientes === 1 ? '' : 's') + '</td></tr>';
+                }).join('') + (pend.length > 15 ? '<tr><td colspan="2">…</td></tr>' : '') + '</table>';
+        }
+        return html + '</div>';
+    },
+
     _pintar: function () {
         this.$('.o_kc_persona').html(this.persona
             ? 'Persona: <b>' + _e(this.persona.nombre) + '</b> <button type="button" class="o_kc_cambiar">Cambiar</button>'
@@ -1671,6 +1968,10 @@ var Pantalla = AbstractAction.extend({
         } else if (this.ronda && !this.detalle) {   // v1.16
             paso = this.ronda.hueco ? 'Lee cada caja a 0 del hueco; después «Retirar las vacías»'
                 : (this.ronda.lista ? 'Toca una caja para abrirla' : 'Retirar cajas a 0: toca un lineal o lee un hueco');
+        } else if (this.compactar && !this.detalle) {   // v1.17
+            paso = !this.compactar.lineal ? 'Compactar: lee un lineal (L67) o toca uno'
+                : (_.keys(this.compactar.cogidas).length ? 'Lee la columna de destino (o más cajas del plan)'
+                    : 'Lee una caja de la lista; después, la columna de destino');
         } else if (this.otro) {         // v1.14
             paso = this.otro.b ? 'Es otro: pon cuántas uds son y «Guardar»'
                 : 'Es otro: lee una prenda de las que hay de verdad';
@@ -1707,7 +2008,7 @@ var Pantalla = AbstractAction.extend({
                 _e(c.hueco) + '</div>' + cuerpo + '</div>';
         }).join('');
         this.$('.o_kc_lista').html(html);
-        this.$('.o_kc_hueco_panel').html(this._pintarRonda() + this._pintarCandidatos() + this._pintarArticulo() + this._pintarLineal() +
+        this.$('.o_kc_hueco_panel').html(this._pintarRonda() + this._pintarCompactar() + this._pintarCandidatos() + this._pintarArticulo() + this._pintarLineal() +
             this._pintarHueco() + this._pintarDetalle());
     },
 });

@@ -142,3 +142,172 @@ def repartir_encontrados(uds, faltantes, precision=0.001):
             usados.append(fid)
             queda = round(queda - cant, 6)
     return usados, max(0.0, queda)
+
+
+# -----------------------------------------------------------------------------
+# v1.17.0: «Compactar» (fase 1): juntar cada modelo-color moviendo KO enteras y decir qué caja va abajo o arriba en la
+# columna. Diseño v6 aprobado por Isaac el 26/11: bin/versiones/diseno-compactacion-odoo-retirar-vacias-juntar-cajas_
+# 2026-11-26_v6.md. Hueco de Odoo = columna (C1–C4 son columnas); una columna = medio palé = 8 cajas (4 alto × 2 fondo).
+# Las reglas de tallas por altura son las del programa de redistribución (redistrib/compactar.py, tallas_por_altura).
+# -----------------------------------------------------------------------------
+_RE_COLOR_ANTIGUO = re.compile(r'^\d{6}$')
+RESTO_UDS = 2           # resto de talla: la talla tiene ≤ 2 uds ...
+RESTO_PCT = 0.05        # ... o ≤ 5 % de la talla más fuerte del modelo-color (50 de la L y 2 de la XS)
+MITAD_ABAJO = 0.5       # abajo, las tallas más pedidas hasta más o menos la mitad de las uds del modelo-color
+
+
+def partir_codigo(default_code, nombre):
+    """(modelo, color, talla) en mayúsculas, como el programa (redistrib/productos.py, partir_codigo).
+    «2621JA67-NEGRO-M» -> ('2621JA67', 'NEGRO', 'M'). Referencia vacía o EAN: la primera palabra del nombre.
+    Formato antiguo con color de 6 cifras en penúltimo lugar: «001-3-000003-36» -> ('001-3', '000003', '36')."""
+    codigo = (default_code or '').strip()
+    if not codigo or codigo.isdigit():
+        codigo = (nombre or '').split(' ')[0].strip('[]') if nombre else codigo
+    t = codigo.upper().split('-')
+    if len(t) >= 4 and _RE_COLOR_ANTIGUO.match(t[-2]):
+        return '-'.join(t[:-2]), t[-2], t[-1]
+    return t[0], (t[1] if len(t) > 1 else ''), '-'.join(t[2:])
+
+
+def mc_de(modelo, color):
+    return '%s-%s' % (modelo, color) if color else modelo
+
+
+def tallas_por_altura(stock, lineas):
+    """Bandas de las tallas de UN modelo-color, como el programa. stock = {talla: uds en la zona 0};
+    lineas = {talla: líneas de salida de 28 días}. Orden: por líneas (si no tiene ninguna, por stock). La primera
+    talla, abajo; los restos (≤ 2 uds o ≤ 5 % de la más fuerte), «restos» (arriba del todo); las demás, abajo mientras
+    abajo se acerque más a la mitad de las uds y, desde la primera que no, todo arriba.
+    Devuelve {talla: 'abajo'|'arriba'|'restos'}."""
+    stock = {t: u for t, u in (stock or {}).items() if u > 0}
+    if not stock:
+        return {}
+    lt = {t: (lineas or {}).get(t, 0) for t in stock}
+    por = lt if sum(lt.values()) else stock
+    total = float(sum(stock.values()))
+    fuerte = max(stock.values())
+    orden = sorted(stock, key=lambda t: (-por[t], -stock[t], t))
+    res, acum, lleno = {}, 0.0, False
+    for i, t in enumerate(orden):
+        resto = stock[t] < fuerte and (stock[t] <= RESTO_UDS or stock[t] <= RESTO_PCT * fuerte)
+        if i == 0:
+            a = 'abajo'
+        elif resto:
+            a = 'restos'
+        elif not lleno and abs((acum + stock[t]) / total - MITAD_ABAJO) < abs(acum / total - MITAD_ABAJO):
+            a = 'abajo'
+        else:
+            a, lleno = 'arriba', True
+        if a == 'abajo':
+            acum += stock[t]
+        res[t] = a
+    return res
+
+
+def banda_caja(tallas_caja, bandas):
+    """Banda de una caja: la de su talla principal (la que más uds tiene en la caja). tallas_caja = {talla: uds}.
+    Los restos van arriba. Sin datos: arriba."""
+    if not tallas_caja:
+        return 'arriba'
+    principal = sorted(tallas_caja.items(), key=lambda x: (-x[1], x[0]))[0][0]
+    return 'abajo' if bandas.get(principal) == 'abajo' else 'arriba'
+
+
+def clases_abc(lineas_mc, corte_a=0.8):
+    """{mc: 'A'|'otra'}: A = los modelos-color que suman hasta el 80 % de las líneas (de más a menos)."""
+    total = float(sum(lineas_mc.values()))
+    res, acum = {}, 0.0
+    for mc, n in sorted(lineas_mc.items(), key=lambda x: (-x[1], x[0])):
+        res[mc] = 'A' if total and n > 0 and acum / total < corte_a else 'otra'
+        acum += n
+    return res
+
+
+def plan_lineal(lineal, columnas, abc=None, capacidad=8, vaciar=4, distancia=2):
+    """Plan de la fase 1 para un lineal: qué columnas se vacían y adónde va cada caja (KO entera).
+
+    columnas: [{'id', 'nombre', 'lineal', 'z' (tiene algo de zona Z), 'extra' (cajas que ya llegarán: pasos
+      pendientes de otros lineales), 'cajas': [{'id', 'mc', 'modelo', 'movible'}]}] del lineal y de los de alrededor.
+    abc: {mc: 'A'|'otra'}. Lo de clase A, al destino del lineal con número más bajo (más cerca del muelle, que está
+      antes de L01); lo demás, al más alto.
+    Reglas (Isaac 26/11): se vacía una columna de zona 0 del lineal con menos de `vaciar` cajas solo si caben TODAS sus
+    cajas; destino del mismo lineal o hasta ±distancia, sin pasar de `capacidad`, sin dos colores del mismo modelo, con
+    las cajas del mismo modelo-color juntas (mejor donde ya está ese modelo-color); solo destinos que ya tienen cajas (a
+    una columna vacía no se gana nada); una columna vaciada no recibe y una que recibe no se vacía. Primero las que se
+    vacían moviendo menos cajas.
+    Devuelve (pasos, resumen). pasos = [{'orden', 'origen_id', 'caja_id', 'destino_id', 'mc'}]."""
+    abc = abc or {}
+    ocup = {c['id']: len(c['cajas']) + (c.get('extra') or 0) for c in columnas}
+    mcs = {c['id']: {} for c in columnas}            # columna -> {modelo: set(mc)}
+    for c in columnas:
+        for k in c['cajas']:
+            mcs[c['id']].setdefault(k['modelo'], set()).add(k['mc'])
+    origenes = [c for c in columnas if c['lineal'] == lineal and not c.get('z') and 0 < len(c['cajas']) < vaciar]
+    origenes.sort(key=lambda c: (len(c['cajas']), orden_hueco(c['nombre'])))
+    vaciadas, reciben = set(), set()
+    pasos, sin_sitio = [], 0
+
+    def candidatos(origen, mc, modelo, n, ocup_t, mcs_t):
+        res = []
+        for d in columnas:
+            did = d['id']
+            if did == origen['id'] or did in vaciadas or d.get('z') or abs(d['lineal'] - lineal) > distancia:
+                continue
+            if ocup_t[did] <= 0 or ocup_t[did] + n > capacidad:
+                continue
+            if mcs_t[did].get(modelo, set()) - {mc}:      # otro color del mismo modelo
+                continue
+            mismo = mc in mcs_t[did].get(modelo, set())
+            cerca = d['lineal'] if abc.get(mc) == 'A' else -d['lineal']
+            res.append(((0 if mismo else 1), cerca, -ocup_t[did], orden_hueco(d['nombre']), did))
+        res.sort()
+        return [r[-1] for r in res]
+
+    for o in origenes:
+        if o['id'] in reciben:
+            continue
+        if not all(k['movible'] for k in o['cajas']):
+            sin_sitio += 1
+            continue
+        grupos = {}
+        for k in o['cajas']:
+            grupos.setdefault((k['modelo'], k['mc']), []).append(k)
+        # tentativo: si un grupo no cabe, la columna no se vacía
+        ocup_t = dict(ocup)
+        mcs_t = {i: {m: set(s) for m, s in v.items()} for i, v in mcs.items()}
+        asign, ok = [], True
+        for (modelo, mc), ks in sorted(grupos.items(), key=lambda x: (-len(x[1]), x[0])):
+            cand = candidatos(o, mc, modelo, len(ks), ocup_t, mcs_t)
+            if not cand:
+                ok = False
+                break
+            did = cand[0]
+            ocup_t[did] += len(ks)
+            mcs_t[did].setdefault(modelo, set()).add(mc)
+            asign += [(k, did) for k in ks]
+        if not ok:
+            sin_sitio += 1
+            continue
+        ocup, mcs = ocup_t, mcs_t
+        ocup[o['id']] = 0
+        mcs[o['id']] = {}
+        vaciadas.add(o['id'])
+        for k, did in asign:
+            reciben.add(did)
+            pasos.append({'orden': len(pasos) + 1, 'origen_id': o['id'], 'caja_id': k['id'], 'destino_id': did,
+                          'mc': k['mc']})
+    resumen = {'columnas_lineal': len([c for c in columnas if c['lineal'] == lineal]),
+               'candidatas': len(origenes), 'vaciadas': len(vaciadas), 'cajas': len(pasos), 'sin_sitio': sin_sitio}
+    return pasos, resumen
+
+
+def aviso_destino(destino_cajas, mc, modelo, n, capacidad=8):
+    """v1.17.0: el operario deja la caja en otra columna (no la del plan): qué hay que avisar ('' = nada).
+    destino_cajas = [(modelo, mc)] de las cajas que ya tiene."""
+    avisos = []
+    otros = sorted({c for m, c in destino_cajas if m == modelo and c != mc})
+    if otros:
+        avisos.append('ya tiene otro color del mismo modelo (%s)' % ', '.join(otros))
+    if len(destino_cajas) + n > capacidad:
+        avisos.append('pasaría de %d cajas (tendría %d)' % (capacidad, len(destino_cajas) + n))
+    return '; '.join(avisos)

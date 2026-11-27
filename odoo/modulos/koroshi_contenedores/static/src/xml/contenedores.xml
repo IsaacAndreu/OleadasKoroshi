@@ -17,6 +17,7 @@
             <div class="o_kc_botones">
                 <button type="button" class="o_kc_atras">← Atrás</button>
                 <button type="button" class="o_kc_ronda">Retirar cajas a 0</button>
+                <button type="button" class="o_kc_compactar">Compactar</button>
                 <button type="button" class="o_kc_vaciar">Empezar de nuevo</button>
             </div>
         </div>

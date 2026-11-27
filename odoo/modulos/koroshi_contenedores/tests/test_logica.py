@@ -138,5 +138,122 @@ class TestRondaCajasCero(unittest.TestCase):
         self.assertEqual(logica.repartir_encontrados(2, []), ([], 2.0))
 
 
+def _col(cid, lineal, cajas, z=False, nombre=None, extra=0):
+    """Columna de prueba: cajas = lista de modelo-color («2622JA00-NEGRO»)."""
+    return {'id': cid, 'nombre': nombre or '07828 - L%d P%02d C1' % (lineal, cid), 'lineal': lineal, 'z': z,
+            'extra': extra,
+            'cajas': [{'id': cid * 100 + i, 'mc': mc, 'modelo': mc.split('-')[0], 'movible': True}
+                      for i, mc in enumerate(cajas)]}
+
+
+class TestCompactarFase1(unittest.TestCase):
+    """v1.17.0: plan de la fase 1 (cajas enteras, 8 por columna)."""
+
+    def test_partir_codigo(self):
+        self.assertEqual(logica.partir_codigo('2621JA67-NEGRO-M', ''), ('2621JA67', 'NEGRO', 'M'))
+        self.assertEqual(logica.partir_codigo('2621JA67-NEGRO-XL-2', ''), ('2621JA67', 'NEGRO', 'XL-2'))
+        self.assertEqual(logica.partir_codigo('8412345678901', '001-3-000003-36 Camisa'), ('001-3', '000003', '36'))
+        self.assertEqual(logica.partir_codigo('', '[2622JA00-000003-L] Jersey'), ('2622JA00', '000003', 'L'))
+        self.assertEqual(logica.mc_de('2622JA00', 'NEGRO'), '2622JA00-NEGRO')
+
+    def test_tallas_por_altura(self):
+        # M y L se piden más: abajo hasta la mitad de las uds; XS es resto (2 uds frente a 50)
+        b = logica.tallas_por_altura({'XS': 2, 'S': 20, 'M': 50, 'L': 40, 'XL': 10},
+                                     {'M': 30, 'L': 25, 'S': 10, 'XL': 2, 'XS': 1})
+        self.assertEqual(b['M'], 'abajo')
+        self.assertEqual(b['XS'], 'restos')
+        self.assertEqual(b['L'], 'arriba')        # M (50 de 122) ya está cerca de la mitad; con L se pasaría más
+        self.assertEqual(b['XL'], 'arriba')
+        # sin líneas: por stock
+        self.assertEqual(logica.tallas_por_altura({'S': 5, 'M': 10}, {}), {'M': 'abajo', 'S': 'arriba'})
+        self.assertEqual(logica.tallas_por_altura({}, {}), {})
+
+    def test_banda_caja(self):
+        bandas = {'M': 'abajo', 'L': 'arriba', 'XS': 'restos'}
+        self.assertEqual(logica.banda_caja({'M': 10, 'L': 2}, bandas), 'abajo')
+        self.assertEqual(logica.banda_caja({'L': 10}, bandas), 'arriba')
+        self.assertEqual(logica.banda_caja({'XS': 3}, bandas), 'arriba')
+        self.assertEqual(logica.banda_caja({}, bandas), 'arriba')
+
+    def test_abc(self):
+        self.assertEqual(logica.clases_abc({'a': 80, 'b': 15, 'c': 5}), {'a': 'A', 'b': 'otra', 'c': 'otra'})
+        self.assertEqual(logica.clases_abc({'a': 0}), {'a': 'otra'})
+
+    def test_vacia_la_poco_llena(self):
+        cols = [_col(1, 67, ['A1-NEGRO', 'A1-NEGRO']), _col(2, 67, ['A1-NEGRO'] * 5)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(r['vaciadas'], 1)
+        self.assertEqual({p['destino_id'] for p in pasos}, {2})
+        self.assertEqual(len(pasos), 2)
+
+    def test_no_pasa_de_8(self):
+        cols = [_col(1, 67, ['A1-NEGRO'] * 3), _col(2, 67, ['A1-NEGRO'] * 6)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(r['vaciadas'], 0)       # 6 + 3 = 9 > 8
+        self.assertEqual(pasos, [])
+        pasos, r = logica.plan_lineal(67, cols, capacidad=9)
+        self.assertEqual(r['vaciadas'], 1)
+
+    def test_no_mezcla_colores_del_mismo_modelo(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 67, ['A1-ROJO'] * 4), _col(3, 67, ['B2-AZUL'] * 4)]
+        pasos, _r = logica.plan_lineal(67, cols)
+        self.assertEqual(pasos[0]['destino_id'], 3)
+
+    def test_prefiere_donde_ya_esta(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 67, ['B2-AZUL'] * 6), _col(3, 67, ['A1-NEGRO'] * 4)]
+        pasos, _r = logica.plan_lineal(67, cols)
+        self.assertEqual(pasos[0]['destino_id'], 3)
+
+    def test_mismo_modelo_color_junto(self):
+        # dos cajas del mismo modelo-color van al mismo destino; si no caben juntas, la columna no se vacía
+        cols = [_col(1, 67, ['A1-NEGRO', 'A1-NEGRO']), _col(2, 67, ['B2-AZUL'] * 7), _col(3, 67, ['C3-VERDE'] * 6)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual({p['destino_id'] for p in pasos}, {3})
+        cols = [_col(1, 67, ['A1-NEGRO', 'A1-NEGRO']), _col(2, 67, ['B2-AZUL'] * 7)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(r['vaciadas'], 0)
+
+    def test_todo_o_nada(self):
+        # el NEGRO cabe pero el ROJO (otro modelo) no: la columna no se vacía y no hay pasos
+        cols = [_col(1, 67, ['A1-NEGRO', 'B2-ROJO', 'B2-ROJO']), _col(2, 67, ['A1-NEGRO'] * 6)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual((pasos, r['vaciadas']), ([], 0))
+
+    def test_distancia_y_zona_z(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 70, ['A1-NEGRO'] * 4), _col(3, 68, ['A1-NEGRO'] * 4, z=True)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(r['vaciadas'], 0)          # L70 queda a 3 lineales y la de L68 tiene Z
+        cols.append(_col(4, 69, ['A1-NEGRO'] * 4))
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(pasos[0]['destino_id'], 4)
+
+    def test_no_a_columnas_vacias_ni_se_vacia_la_que_recibe(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 67, []), _col(3, 67, ['A1-NEGRO'] * 2)]
+        pasos, r = logica.plan_lineal(67, cols)
+        # la 1 (1 caja) va a la 3; la 3 ya recibe y no se vacía
+        self.assertEqual(r['vaciadas'], 1)
+        self.assertEqual([p['destino_id'] for p in pasos], [3])
+
+    def test_clase_a_mas_cerca_del_muelle(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 66, ['B2-AZUL'] * 4), _col(3, 68, ['C3-VERDE'] * 4)]
+        pasos, _r = logica.plan_lineal(67, cols, abc={'A1-NEGRO': 'A'})
+        self.assertEqual(pasos[0]['destino_id'], 2)
+        pasos, _r = logica.plan_lineal(67, cols, abc={'A1-NEGRO': 'otra'})
+        self.assertEqual(pasos[0]['destino_id'], 3)
+
+    def test_no_movible_y_extra(self):
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 67, ['A1-NEGRO'] * 4)]
+        cols[0]['cajas'][0]['movible'] = False
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual((pasos, r['sin_sitio']), ([], 1))
+        cols = [_col(1, 67, ['A1-NEGRO']), _col(2, 67, ['A1-NEGRO'] * 4, extra=4)]
+        pasos, r = logica.plan_lineal(67, cols)
+        self.assertEqual(r['vaciadas'], 0)          # 4 + 4 que ya llegan = 8: no cabe otra
+
+    def test_aviso_destino(self):
+        self.assertEqual(logica.aviso_destino([('A1', 'A1-NEGRO')] * 3, 'A1-NEGRO', 'A1', 1), '')
+        self.assertIn('otro color', logica.aviso_destino([('A1', 'A1-ROJO')], 'A1-NEGRO', 'A1', 1))
+        self.assertIn('pasaría de 8', logica.aviso_destino([('B', 'B-X')] * 8, 'A1-NEGRO', 'A1', 1))
+
 if __name__ == '__main__':
     unittest.main()

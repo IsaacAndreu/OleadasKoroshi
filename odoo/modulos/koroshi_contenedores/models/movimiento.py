@@ -40,6 +40,8 @@ class KoroshiContenedorMovimiento(models.Model):
     producto_nuevo_id = fields.Many2one('product.product', 'Artículo real', ondelete='set null', index=True,
                                         readonly=True)
     move_nuevo_id = fields.Many2one('stock.move', 'Movimiento del artículo real', ondelete='set null', readonly=True)
+    # v1.17: el paso de «Compactar» que hizo este movimiento (accion 'mover')
+    paso_id = fields.Many2one('koroshi.compactacion.paso', 'Paso de compactación', ondelete='set null', readonly=True)
 
     _sql_constraints = [
         ('tanda_producto_unica', 'unique (tanda, producto_id)',
