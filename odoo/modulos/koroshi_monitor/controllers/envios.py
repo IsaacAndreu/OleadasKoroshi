@@ -276,12 +276,12 @@ class KoroshiConsultaEnvios(http.Controller):
         # v1.23: una fila por TIENDA (antes una por pedido). A la izquierda, todos sus pedidos y OUT.
         tiendas = {}
         for g in grupos:
-            # GLS genera como maximo cinco etiquetas por expedicion: se limita por pedido y luego se suma.
-            bultos = min(g['bultos'], 5) if es_gls and g['expediciones'] else g['bultos']
-            cajas = min(g['cajas'], 5) if es_gls else g['cajas']
+            # v1.47.0 (27/11): GLS ya genera una etiqueta por bulto (26/11: 12 paginas en K48 y K34, 11 en K22).
+            # Antes se limitaba a 5 por pedido y «Etiquetas GLS» no cuadraba con «Cajas preparadas» (KOROSHI lo pregunto).
+            bultos = g['bultos']
             t = tiendas.setdefault(g['tienda'] or '—', {
                 'pedidos': [], 'outs': [], 'transportistas': set(), 'expediciones': [], 'bultos': 0,
-                'cajas': 0, 'cajas_cmp': 0, 'pedidas': 0, 'hechas': 0, 'fecha': None, 'a_mano': [],
+                'cajas': 0, 'pedidas': 0, 'hechas': 0, 'fecha': None, 'a_mano': [],
                 'sin_transportista': 0, 'detalle': [], 'refs_declaradas': set(),
             })
             t['pedidos'].append(g['pedido'])
@@ -309,7 +309,6 @@ class KoroshiConsultaEnvios(http.Controller):
             else:
                 t['bultos'] += bultos
             t['cajas'] += g['cajas']
-            t['cajas_cmp'] += cajas
             try:
                 fecha = datetime.datetime.strptime(g['fecha'], '%d/%m/%Y %H:%M')
             except (TypeError, ValueError):
@@ -336,7 +335,7 @@ class KoroshiConsultaEnvios(http.Controller):
         nombres = sorted(tiendas.keys(), key=orden_tienda)
         for fila, nombre in enumerate(nombres, start=3):
             t = tiendas[nombre]
-            coincide = t['bultos'] == t['cajas_cmp']
+            coincide = t['bultos'] == t['cajas']
             transportista = ' · '.join(sorted(t['transportistas']))
             if t['sin_transportista']:
                 transportista = (transportista + ' · ' if transportista else '') + (
@@ -385,8 +384,8 @@ class KoroshiConsultaEnvios(http.Controller):
         hoja.write(total, 10, sum([t['hechas'] for t in tiendas.values()]), f['total_num'])
         hoja.write_blank(total, 11, None, f['total'])
         hoja.write_blank(total, 12, None, f['total'])
-        nota = ('Etiquetas GLS = solo expediciones con etiqueta generada, máximo 5 por pedido. '
-                'Las cajas que excedan de 5 viajan juntadas.' if es_gls else
+        nota = ('Etiquetas GLS = bultos de las OUT con la etiqueta GLS generada (una etiqueta por bulto). '
+                'Cajas preparadas = matrículas CJ distintas.' if es_gls else
                 'Bultos Odoo = lo declarado al transportista (en XPO, la nota «XPO: declarados N bultos» de la '
                 'etiqueta; sin nota, los bultos de las OUT). Cajas preparadas = matrículas CJ distintas.')
         hoja.write(total + 2, 0, nota + ' Uds pedidas = lo que pide el pedido en esas OUT; Done Quantity = '

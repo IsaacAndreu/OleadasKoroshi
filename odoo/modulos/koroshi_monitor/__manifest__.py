@@ -234,8 +234,12 @@ MEDIANA 0,10). La K1 del 25/11 sumaba 0,149 m3 en una sola CJ. En «Etiquetas CJ
 con ⚠, las de OUT con una caja leida por encima del umbral (K45: la 803 con 0,131 y la 804 sin leer), y se ven los m3.
 Y «Capacidad real por tipo de caja (7 dias)»: p50/p90/p98/max de las cajas cerradas, para la barra de llenado de
 Lecturas. Cache propia (1 y 10 min). Solo lee.
+v1.47.0 (27/11/2026): GLS SIN TOPE DE 5 ETIQUETAS (Isaac, 27/11: «ara ja no tenim esta limitació»). En el Excel y el
+correo de Tiendas GLS, «Etiquetas GLS» = suma de los bultos de las OUT (GLS ya saca una etiqueta por bulto: 26/11, 12
+paginas en K48 y K34 y 11 en K22) y «Coincide» compara con todas las cajas preparadas. Antes se contaban como maximo 5
+por pedido y no cuadraba (lo pregunto KOROSHI). Cambia la nota del Excel. Lo del v1.19.5 queda sustituido.
 """,
-    'version': '13.0.1.46.0',
+    'version': '13.0.1.47.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
