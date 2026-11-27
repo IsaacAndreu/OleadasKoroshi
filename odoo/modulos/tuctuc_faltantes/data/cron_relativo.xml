@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Una vez al día: vuelve a calcular el % de faltante (tuctuc.faltante.relativo). Solo escribe en su tabla.
+         En KOROSHI es cada hora; aquí stock_move es muy grande. El correo de las 17:00 recalcula antes de mandarse. -->
+    <record id="cron_tuctuc_faltante_relativo" model="ir.cron">
+        <field name="name">TUCTUC Faltantes: recalcular % de faltante</field>
+        <field name="model_id" ref="model_tuctuc_faltante_relativo"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_recalcular()</field>
+        <field name="interval_number">1</field>
+        <field name="interval_type">days</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+    <!-- v1.12.0 Cada 15 min: una vez al día, a partir de tuctuc_faltantes.correo_hora (17:00, hora del almacén),
+         recalcula y manda el correo del % de faltante a tuctuc_faltantes.correo_destinatarios. -->
+    <record id="cron_tuctuc_faltante_relativo_correo" model="ir.cron">
+        <field name="name">TUCTUC Faltantes: correo diario del % de faltante</field>
+        <field name="model_id" ref="model_tuctuc_faltante_relativo"/>
+        <field name="state">code</field>
+        <field name="code">model.cron_correo()</field>
+        <field name="interval_number">15</field>
+        <field name="interval_type">minutes</field>
+        <field name="numbercall">-1</field>
+        <field name="active" eval="True"/>
+    </record>
+</odoo>

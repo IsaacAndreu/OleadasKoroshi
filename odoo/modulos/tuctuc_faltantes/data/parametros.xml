@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v1.3: validar la OUT al acabar los faltantes (Ajustes > Tecnico > Parametros del sistema) -->
+    <!-- 1 = si ya no queda nada por coger, se valida sola; 0 = solo con el boton "Validar OUT" -->
+    <record id="parametro_validar_sola" model="ir.config_parameter">
+        <field name="key">tuctuc_faltantes.validar_sola</field>
+        <field name="value">1</field>
+    </record>
+    <!-- Que hacer si Odoo pregunta por el pedido pendiente: no (defecto v1.3.1: lo que falta ya esta en FALTANTE) /
+         si / preguntar (al operario) -->
+    <record id="parametro_pedido_pendiente" model="ir.config_parameter">
+        <field name="key">tuctuc_faltantes.pedido_pendiente</field>
+        <field name="value">no</field>
+    </record>
+</odoo>

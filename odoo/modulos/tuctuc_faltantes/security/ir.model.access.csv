@@ -1,0 +1,5 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tuctuc_faltante_user,tuctuc.faltante usuario,model_tuctuc_faltante,stock.group_stock_user,1,1,1,0
+access_tuctuc_faltante_manager,tuctuc.faltante responsable,model_tuctuc_faltante,stock.group_stock_manager,1,1,1,0
+access_tuctuc_faltante_encontrado_manager,tuctuc.faltante.encontrado responsable,model_tuctuc_faltante_encontrado,stock.group_stock_manager,1,1,1,1
+access_tuctuc_faltante_relativo_user,tuctuc.faltante.relativo usuario,model_tuctuc_faltante_relativo,stock.group_stock_user,1,0,0,0

@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+    <t t-name="tuctuc_faltantes.Pantalla">
+        <div class="o_tuctuc_faltantes">
+            <div class="o_kf_app">
+                <div class="o_kf_cabecera">
+                    <span>Faltante</span>
+                    <span class="o_kf_quien"/>
+                </div>
+                <div class="o_kf_paso o_kf_caja">Lee la OUT</div>
+                <div class="o_kf_out o_kf_caja"/>
+                <div class="o_kf_linea o_kf_caja"/>
+                <div class="o_kf_aviso o_kf_caja"/>
+                <div class="o_kf_pendientes"/>
+                <button class="o_kf_continuar o_kf_boton" type="button">Continuar</button>
+                <div class="o_kf_alternativas"/>
+                <div class="o_kf_resumen o_kf_caja"/>
+                <div class="o_kf_explica o_kf_caja">Odoo pregunta qué hacer con lo que falta:
+                    <b>Sí</b> = se crea un pedido pendiente con lo que falta (saldrá otro día);
+                    <b>No</b> = la OUT sale sin esas piezas y no queda nada pendiente.</div>
+                <button class="o_kf_si o_kf_boton" type="button">Sí, pedido pendiente</button>
+                <button class="o_kf_no o_kf_boton" type="button">No, sin pedido pendiente</button>
+                <input class="o_kf_codigo" type="text" autocomplete="off" placeholder="Escribir OUT y Enter"/>
+                <button class="o_kf_nada o_kf_boton" type="button">Tampoco está aquí</button>
+                <button class="o_kf_validar o_kf_boton" type="button">Validar OUT</button>
+                <button class="o_kf_volver o_kf_boton" type="button">Volver a la OUT</button>
+                <button class="o_kf_otro o_kf_boton" type="button">Otro faltante en esta OUT</button>
+                <button class="o_kf_saltar_linea btn btn-link" type="button">Esta no: dejarla y seguir</button>
+                <div class="o_kf_pie">
+                    <button class="o_kf_nuevo btn btn-link" type="button">Empezar de nuevo</button>
+                    <button class="o_kf_salir btn btn-link" type="button">Salir</button>
+                </div>
+            </div>
+        </div>
+    </t>
+
+    <!-- Boton "Faltante" en la pantalla de Operarios (tuctuc_operarios) -->
+    <t t-extend="tuctuc_operarios.Pantalla">
+        <t t-jquery=".o_ko_dejar" t-operation="after">
+            <button class="o_kf_abrir_faltante" type="button">Faltante</button>
+        </t>
+    </t>
+</templates>

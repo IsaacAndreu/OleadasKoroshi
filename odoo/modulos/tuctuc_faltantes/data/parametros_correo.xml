@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo noupdate="1">
+    <!-- v1.12.0 Correo diario del % de faltante (Isaac, 26/11). Ajustes > Técnico > Parámetros del sistema.
+         Destinatarios separados por coma; vacío = no se manda. Hora del almacén, HH:MM. -->
+    <record id="parametro_correo_destinatarios" model="ir.config_parameter">
+        <field name="key">tuctuc_faltantes.correo_destinatarios</field>
+        <field name="value">isaac.andreu@nath.es</field>
+    </record>
+    <record id="parametro_correo_hora" model="ir.config_parameter">
+        <field name="key">tuctuc_faltantes.correo_hora</field>
+        <field name="value">17:00</field>
+    </record>
+</odoo>

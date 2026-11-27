@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Al instalar (noupdate: solo corre al INSTALAR): WH-OR/FALTANTE, MODAI/FALTANTE y UBRAN/FALTANTE, fuera del
+         stock, en tuctuc.almacen.faltantes_id. Decisión de Isaac del 28/11/2026. Un almacén que se añada después a
+         la PDA: su FALTANTE se crea y se pone a mano (Inventario > Configuración > TUCTUC PDA: almacenes). -->
+    <data noupdate="1">
+        <function model="tuctuc.faltante" name="_crear_ubicaciones_faltante"/>
+    </data>
+</odoo>

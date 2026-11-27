@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_tuctuc_faltantes_root" name="TUCTUC Faltantes" parent="stock.menu_stock_root"
+              sequence="92" groups="stock.group_stock_user"/>
+    <menuitem id="menu_tuctuc_faltantes_pantalla" name="Faltante (PDA)" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_faltantes_pantalla" sequence="10"/>
+    <menuitem id="menu_tuctuc_faltantes_revision" name="Revision de faltantes" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_faltante_revision" sequence="20"/>
+    <menuitem id="menu_tuctuc_faltantes_crear_ronda" name="Crear ronda de revision" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_crear_ronda" sequence="22" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_rondas" name="Rondas de faltantes (INT)" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_rondas" sequence="24"/>
+    <menuitem id="menu_tuctuc_faltantes_resultado" name="Resultado de las rondas" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_resultado_rondas" sequence="26"/>
+    <menuitem id="menu_tuctuc_faltantes_importar_cero" name="Pasar los puestos a 0 a faltantes"
+              parent="menu_tuctuc_faltantes_root" action="action_tuctuc_importar_puestos_a_cero" sequence="32"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_cero" name="Puestos a 0 hoy" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_puestos_a_cero" sequence="30" groups="stock.group_stock_manager"/>
+    <!-- v1.11.0: % de faltante (faltante ÷ recibido), para los responsables -->
+    <menuitem id="menu_tuctuc_faltantes_relativo_sku" name="% de faltante por SKU" parent="menu_tuctuc_faltantes_root"
+              action="action_tuctuc_faltante_relativo_sku" sequence="40" groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_relativo_color" name="% de faltante por modelo-color"
+              parent="menu_tuctuc_faltantes_root" action="action_tuctuc_faltante_relativo_color" sequence="41"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_relativo_modelo" name="% de faltante por modelo"
+              parent="menu_tuctuc_faltantes_root" action="action_tuctuc_faltante_relativo_modelo" sequence="42"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_relativo_recalcular" name="Recalcular % de faltante"
+              parent="menu_tuctuc_faltantes_root" action="action_tuctuc_faltante_relativo_recalcular" sequence="43"
+              groups="stock.group_stock_manager"/>
+    <menuitem id="menu_tuctuc_faltantes_relativo_correo" name="Enviar ahora el correo de % de faltante"
+              parent="menu_tuctuc_faltantes_root" action="action_tuctuc_faltante_relativo_correo" sequence="44"
+              groups="stock.group_stock_manager"/>
+</odoo>
