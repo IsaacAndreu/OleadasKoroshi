@@ -59,6 +59,25 @@ Odoo ni en las matrices.
 - **Listas completas** (cajas vacías, cajas a mover, lineales) con filtro y «Exportar a Excel» (fichero nuevo;
   no sobrescribe).
 
+### Zona Z (outlet), desde el 27/11/2026
+
+Arriba a la izquierda se elige la zona: **Zona 0 · palés (L44–L136)** o **Zona Z · outlet (L01–L43)**. La Z se
+calcula en `redistrib/zona_z.py` (solo lee la copia):
+
+- **Criterio (Isaac, 27/11):** 1) temporada, lo que más pesa; 2) dentro de la temporada, la familia que más vende,
+  más cerca; 3) el modelo-color con su talla completa, junto. Temporadas en vivo / lento / muerto por rotación
+  (uds vendidas en OUT el último año ÷ stock): vivo ≥ 0,5 (y la temporada más nueva de verano y de invierno),
+  muerto < 0,2.
+- **Estanterías:** `redistribucion/estanterias-zona-z_hojas-20261102_transcripcion-20261127.csv`, transcrito de
+  las 8 hojas del 02/11/2026 (con 207 dudas apuntadas). Si en la hoja hay un número de posición escrito a mano
+  encima del impreso, vale el escrito (Odoo llega a P42). Capacidad de una posición = la mayor de: huecos de la
+  leyenda, o el percentil 90 de KO por posición que hay hoy en ese tipo (D10, C y E tienen ~2 KO por hueco). Se
+  llena al 90 %.
+- **Pasos:** 1 retirar cajas a 0 · 2 hacer sitio en los lineales cercanos (sacar lo lento y muerto) · 3 traer lo
+  que vende · 4 el resto (puede esperar). La caja (KO) se mueve entera; el destino es el lineal.
+- **Orden fino / medio / grueso:** una KO no se mueve si ya está en un lineal de su bloque (temporada + familia,
+  temporada o solo vivo/lento/muerto). Con la copia del 26/11: ~35.000, ~34.400 o ~26.700 movimientos.
+
 ## Uso
 
 ```powershell

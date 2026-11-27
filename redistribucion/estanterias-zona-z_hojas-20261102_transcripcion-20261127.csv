@@ -1,0 +1,1613 @@
+hoja;lineal;lado;posicion;tipo;duda
+1;12;fachada;1;D10;
+1;12;fachada;2;C;
+1;12;fachada;3;F;
+1;12;fachada;4;X;
+1;12;fachada;5;X;
+1;12;fachada;6;F;
+1;12;fachada;7;F;
+1;12;fachada;8;D10;
+1;12;fachada;9;F;
+1;12;fachada;10;D10;
+1;12;fachada;11;F;
+1;12;fachada;12;D10;
+1;12;fachada;13;D10;
+1;12;fachada;14;D10;
+1;12;fachada;15;D10;
+1;12;fachada;16;D10;
+1;12;fachada;17;D10;
+1;11;fachada;1;D10;
+1;11;fachada;2;C;
+1;11;fachada;3;F;
+1;11;fachada;4;X;
+1;11;fachada;5;X;
+1;11;fachada;6;F;
+1;11;fachada;7;F;
+1;11;fachada;8;D10;
+1;11;fachada;9;F;
+1;11;fachada;10;D10;
+1;11;fachada;11;F;
+1;11;fachada;12;D10;
+1;11;fachada;13;D10;
+1;11;fachada;14;D10;
+1;11;fachada;15;D10;
+1;11;fachada;16;D10;
+1;11;fachada;17;D10;
+1;10;fachada;1;F;
+1;10;fachada;2;F;
+1;10;fachada;3;F;
+1;10;fachada;4;X;
+1;10;fachada;5;X;
+1;10;fachada;6;X;
+1;10;fachada;7;D10;
+1;10;fachada;8;D10;
+1;10;fachada;9;D10;
+1;10;fachada;10;F;
+1;10;fachada;11;D10;
+1;10;fachada;12;D10;
+1;10;fachada;13;F;
+1;10;fachada;14;D10;
+1;10;fachada;15;D10;
+1;10;fachada;16;F;
+1;10;fachada;17;F;
+1;9;fachada;1;F;
+1;9;fachada;2;F;
+1;9;fachada;3;F;
+1;9;fachada;4;X;
+1;9;fachada;5;X;
+1;9;fachada;6;X;
+1;9;fachada;7;D10;
+1;9;fachada;8;D10;
+1;9;fachada;9;D10;
+1;9;fachada;10;F;
+1;9;fachada;11;D10;
+1;9;fachada;12;D10;
+1;9;fachada;13;F;
+1;9;fachada;14;D10;
+1;9;fachada;15;D10;
+1;9;fachada;16;F;
+1;9;fachada;17;F;
+1;8;fachada;1;F;
+1;8;fachada;2;C;
+1;8;fachada;3;F;
+1;8;fachada;4;X;
+1;8;fachada;5;X;
+1;8;fachada;6;F;
+1;8;fachada;7;F;
+1;8;fachada;8;D10;
+1;8;fachada;9;C;
+1;8;fachada;10;C;
+1;8;fachada;11;G;
+1;8;fachada;12;G;
+1;8;fachada;13;D10;
+1;8;fachada;14;X;
+1;8;fachada;15;F;
+1;8;fachada;16;F;
+1;8;fachada;17;F;
+1;7;fachada;1;F;
+1;7;fachada;2;C;
+1;7;fachada;3;F;
+1;7;fachada;4;X;
+1;7;fachada;5;X;
+1;7;fachada;6;F;
+1;7;fachada;7;F;
+1;7;fachada;8;D10;escrito «?» encima de D10
+1;7;fachada;9;C;
+1;7;fachada;10;C;
+1;7;fachada;11;G;
+1;7;fachada;12;G;
+1;7;fachada;13;D10;
+1;7;fachada;14;X;
+1;7;fachada;15;F;
+1;7;fachada;16;F;
+1;7;fachada;17;F;
+1;6;fachada;1;D10;X tachada y D10 escrito encima
+1;6;fachada;2;C;
+1;6;fachada;3;D10;
+1;6;fachada;4;X;
+1;6;fachada;5;X;"solo una raya «/», sin código; se toma como X"
+1;6;fachada;6;C;
+1;6;fachada;7;D10;
+1;6;fachada;8;D10;
+1;6;fachada;9;C;
+1;6;fachada;10;D10;
+1;6;fachada;11;F;
+1;6;fachada;12;F;
+1;6;fachada;13;F;
+1;6;fachada;14;F;
+1;6;fachada;15;F;
+1;6;fachada;16;F;
+1;6;fachada;17;F;
+1;5;fachada;1;D10;X tachada y D10 escrito encima
+1;5;fachada;2;C;
+1;5;fachada;3;D10;
+1;5;fachada;4;X;
+1;5;fachada;5;X;
+1;5;fachada;6;C;
+1;5;fachada;7;D10;
+1;5;fachada;8;D10;
+1;5;fachada;9;C;
+1;5;fachada;10;D10;
+1;5;fachada;11;F;
+1;5;fachada;12;F;
+1;5;fachada;13;F;
+1;5;fachada;14;F;
+1;5;fachada;15;F;
+1;5;fachada;16;F;
+1;5;fachada;17;F;
+1;4;fachada;1;B24;
+1;4;fachada;2;B24;
+1;4;fachada;3;D10;
+1;4;fachada;4;X;
+1;4;fachada;5;X;
+1;4;fachada;6;D10;
+1;4;fachada;7;D10;
+1;4;fachada;8;D10;
+1;4;fachada;9;D10;
+1;4;fachada;10;D10;
+1;4;fachada;11;B24;
+1;4;fachada;12;B24;
+1;4;fachada;13;B24;
+1;4;fachada;14;B24;
+1;4;fachada;15;B24;
+1;4;fachada;16;B24;
+1;4;fachada;17;B24;
+1;3;fachada;1;B24;
+1;3;fachada;2;B24;
+1;3;fachada;3;D10;
+1;3;fachada;4;X;
+1;3;fachada;5;X;
+1;3;fachada;6;D10;
+1;3;fachada;7;D10;
+1;3;fachada;8;D10;
+1;3;fachada;9;D10;
+1;3;fachada;10;D10;
+1;3;fachada;11;B24;
+1;3;fachada;12;B24;
+1;3;fachada;13;B24;
+1;3;fachada;14;B24;
+1;3;fachada;15;B24;
+1;3;fachada;16;B24;
+1;3;fachada;17;B24;
+1;2;fachada;1;A36;
+1;2;fachada;2;A36;
+1;2;fachada;3;D10;
+1;2;fachada;4;X;
+1;2;fachada;5;X;
+1;2;fachada;6;D10;
+1;2;fachada;7;B24;
+1;2;fachada;8;B24;
+1;2;fachada;9;B24;
+1;2;fachada;10;B24;
+1;2;fachada;11;B24;
+1;2;fachada;12;B24;
+1;2;fachada;13;B24;
+1;2;fachada;14;B24;
+1;2;fachada;15;B24;
+1;2;fachada;16;A36;
+1;2;fachada;17;A36;
+1;1;fachada;1;A36;
+1;1;fachada;2;A36;
+1;1;fachada;3;D10;
+1;1;fachada;4;X;
+1;1;fachada;5;X;
+1;1;fachada;6;D10;
+1;1;fachada;7;B24;
+1;1;fachada;8;B24;
+1;1;fachada;9;B24;
+1;1;fachada;10;B24;
+1;1;fachada;11;B24;
+1;1;fachada;12;B24;
+1;1;fachada;13;B24;
+1;1;fachada;14;B24;
+1;1;fachada;15;B24;
+1;1;fachada;16;A36;
+1;1;fachada;17;A36;
+2;12;medianera;18;A36;
+2;12;medianera;19;A36;
+2;12;medianera;20;A36;
+2;12;medianera;21;A36;
+2;12;medianera;22;A36;
+2;12;medianera;23;A36;
+2;12;medianera;24;A36;
+2;12;medianera;25;A36;
+2;12;medianera;26;A36;
+2;12;medianera;27;A36;
+2;12;medianera;28;A36;
+2;12;medianera;29;A36;
+2;12;medianera;30;A36;
+2;12;medianera;31;A36;
+2;12;medianera;32;A36;
+2;12;medianera;33;A36;
+2;12;medianera;34;A36;
+2;12;medianera;35;A36;
+2;12;medianera;36;A36;
+2;11;medianera;18;A36;
+2;11;medianera;19;A36;
+2;11;medianera;20;A36;
+2;11;medianera;21;A36;
+2;11;medianera;22;A36;
+2;11;medianera;23;A36;
+2;11;medianera;24;A36;
+2;11;medianera;25;A36;
+2;11;medianera;26;A36;
+2;11;medianera;27;A36;
+2;11;medianera;28;A36;
+2;11;medianera;29;A36;
+2;11;medianera;30;A36;
+2;11;medianera;31;A36;
+2;11;medianera;32;A36;
+2;11;medianera;33;A36;
+2;11;medianera;34;A36;
+2;11;medianera;35;A36;
+2;11;medianera;36;A36;
+2;10;medianera;18;A36;
+2;10;medianera;19;A36;
+2;10;medianera;20;A36;
+2;10;medianera;21;A36;
+2;10;medianera;22;A36;
+2;10;medianera;23;A36;
+2;10;medianera;24;A36;
+2;10;medianera;25;A36;
+2;10;medianera;26;A36;
+2;10;medianera;27;A36;
+2;10;medianera;28;A36;
+2;10;medianera;29;A36;
+2;10;medianera;30;A36;
+2;10;medianera;31;A36;
+2;10;medianera;32;A36;número escrito a mano encima: 34
+2;10;medianera;33;A36;número escrito a mano encima: 35
+2;10;medianera;34;A36;número escrito a mano encima: 36
+2;10;medianera;35;D10;
+2;10;medianera;36;D10;
+2;10;medianera;39;D10;añadida a mano en el margen, rotulada «39»
+2;9;medianera;18;A36;
+2;9;medianera;19;A36;
+2;9;medianera;20;A36;
+2;9;medianera;21;A36;
+2;9;medianera;22;A36;
+2;9;medianera;23;A36;
+2;9;medianera;24;A36;
+2;9;medianera;25;A36;
+2;9;medianera;26;A36;
+2;9;medianera;27;A36;
+2;9;medianera;28;A36;
+2;9;medianera;29;A36;
+2;9;medianera;30;A36;
+2;9;medianera;31;A36;
+2;9;medianera;32;A36;número escrito a mano encima: 34
+2;9;medianera;33;A36;número escrito a mano encima: 35
+2;9;medianera;34;A36;número escrito a mano encima: 36
+2;9;medianera;35;D10;número escrito a mano encima: 37
+2;9;medianera;36;D10;número escrito a mano encima: 38
+2;9;medianera;39;D10;añadida a mano en el margen, rotulada «39»
+2;8;medianera;18;A36;
+2;8;medianera;19;A36;
+2;8;medianera;20;A36;
+2;8;medianera;21;A36;
+2;8;medianera;22;A36;
+2;8;medianera;23;A36;
+2;8;medianera;24;A36;
+2;8;medianera;25;A36;
+2;8;medianera;26;A36;
+2;8;medianera;27;A36;
+2;8;medianera;28;A36;
+2;8;medianera;29;A36;
+2;8;medianera;30;A36;
+2;8;medianera;31;A36;
+2;8;medianera;32;falta;"escrito «falta» (no es un código); flecha curva encima apuntando a la izquierda"
+2;8;medianera;33;X;
+2;8;medianera;34;A36;
+2;8;medianera;35;A36;
+2;8;medianera;36;A36;
+2;8;medianera;37;D10;añadida a mano en el margen, sin número
+2;7;medianera;18;A36;
+2;7;medianera;19;A36;
+2;7;medianera;20;A36;
+2;7;medianera;21;A36;
+2;7;medianera;22;A36;
+2;7;medianera;23;A36;
+2;7;medianera;24;A36;
+2;7;medianera;25;A36;
+2;7;medianera;26;A36;
+2;7;medianera;27;A36;
+2;7;medianera;28;A36;
+2;7;medianera;29;A36;
+2;7;medianera;30;A36;
+2;7;medianera;31;A36;
+2;7;medianera;32;falta;escrito «falta» (no es un código)
+2;7;medianera;33;X;
+2;7;medianera;34;A36;
+2;7;medianera;35;A36;
+2;7;medianera;36;A36;
+2;7;medianera;37;D10;añadida a mano en el margen, sin número
+2;6;medianera;18;A36;
+2;6;medianera;19;A36;
+2;6;medianera;20;A36;
+2;6;medianera;21;A36;
+2;6;medianera;22;A36;
+2;6;medianera;23;A36;
+2;6;medianera;24;A36;
+2;6;medianera;25;A36;
+2;6;medianera;26;A36;
+2;6;medianera;27;A36;
+2;6;medianera;28;A36;
+2;6;medianera;29;A36;
+2;6;medianera;30;A36;
+2;6;medianera;31;A36;
+2;6;medianera;32;A36;
+2;6;medianera;33;A36;
+2;6;medianera;34;A36;
+2;6;medianera;35;A36;
+2;6;medianera;36;A36;
+2;6;medianera;37;A36;añadida a mano en el margen, sin número
+2;5;medianera;18;A36;
+2;5;medianera;19;A36;
+2;5;medianera;20;A36;
+2;5;medianera;21;A36;
+2;5;medianera;22;A36;
+2;5;medianera;23;A36;
+2;5;medianera;24;A36;
+2;5;medianera;25;A36;
+2;5;medianera;26;A36;
+2;5;medianera;27;A36;
+2;5;medianera;28;A36;
+2;5;medianera;29;A36;
+2;5;medianera;30;A36;
+2;5;medianera;31;A36;
+2;5;medianera;32;A36;
+2;5;medianera;33;A36;
+2;5;medianera;34;A36;
+2;5;medianera;35;A36;
+2;5;medianera;36;A36;
+2;5;medianera;37;A36;añadida a mano en el margen, sin número
+2;4;medianera;18;A36;
+2;4;medianera;19;A36;
+2;4;medianera;20;A36;
+2;4;medianera;21;A36;
+2;4;medianera;22;A36;
+2;4;medianera;23;A36;
+2;4;medianera;24;A36;
+2;4;medianera;25;A36;
+2;4;medianera;26;A36;
+2;4;medianera;27;A36;
+2;4;medianera;28;A36;
+2;4;medianera;29;A36;
+2;4;medianera;30;A36;
+2;4;medianera;31;A36;
+2;4;medianera;32;A36;
+2;4;medianera;33;A36;
+2;4;medianera;34;A36;
+2;4;medianera;35;A36;
+2;4;medianera;36;A36;
+2;3;medianera;18;A36;
+2;3;medianera;19;A36;
+2;3;medianera;20;A36;
+2;3;medianera;21;A36;
+2;3;medianera;22;A36;
+2;3;medianera;23;A36;
+2;3;medianera;24;A36;
+2;3;medianera;25;A36;
+2;3;medianera;26;A36;
+2;3;medianera;27;A36;
+2;3;medianera;28;A36;
+2;3;medianera;29;A36;
+2;3;medianera;30;A36;
+2;3;medianera;31;A36;
+2;3;medianera;32;A36;
+2;3;medianera;33;A36;
+2;3;medianera;34;A36;
+2;3;medianera;35;A36;
+2;3;medianera;36;A36;
+2;2;medianera;18;A36;
+2;2;medianera;19;A36;
+2;2;medianera;20;A36;
+2;2;medianera;21;A36;
+2;2;medianera;22;A36;
+2;2;medianera;23;A36;
+2;2;medianera;24;A36;
+2;2;medianera;25;A36;
+2;2;medianera;26;A36;
+2;2;medianera;27;A36;
+2;2;medianera;28;A36;
+2;2;medianera;29;A36;
+2;2;medianera;30;A36;
+2;2;medianera;31;A36;
+2;2;medianera;32;A36;
+2;2;medianera;33;A36;
+2;2;medianera;34;A36;
+2;2;medianera;35;A36;
+2;2;medianera;36;A36;
+2;1;medianera;18;A36;
+2;1;medianera;19;A36;
+2;1;medianera;20;A36;
+2;1;medianera;21;A36;
+2;1;medianera;22;A36;
+2;1;medianera;23;A36;
+2;1;medianera;24;A36;
+2;1;medianera;25;A36;
+2;1;medianera;26;A36;
+2;1;medianera;27;A36;
+2;1;medianera;28;A36;
+2;1;medianera;29;A36;
+2;1;medianera;30;A36;
+2;1;medianera;31;A36;
+2;1;medianera;32;A36;
+2;1;medianera;33;A36;
+2;1;medianera;34;A36;
+2;1;medianera;35;A36;
+2;1;medianera;36;A36;
+3;24;fachada;1;X;
+3;24;fachada;2;X;
+3;24;fachada;3;D10;
+3;24;fachada;4;C;flecha «←» dibujada entre P03 y P04
+3;24;fachada;5;X;
+3;24;fachada;6;D10;
+3;24;fachada;7;D10;
+3;24;fachada;8;D10;
+3;24;fachada;9;D10;
+3;24;fachada;10;C;
+3;24;fachada;11;D10;
+3;24;fachada;12;D10;
+3;24;fachada;13;D10;
+3;24;fachada;14;D10;
+3;24;fachada;15;D10;
+3;24;fachada;16;D10;
+3;24;fachada;17;D10;
+3;23;fachada;1;X;
+3;23;fachada;2;X;
+3;23;fachada;3;D10;
+3;23;fachada;4;C;flecha «←» dibujada entre P03 y P04
+3;23;fachada;5;X;
+3;23;fachada;6;D10;
+3;23;fachada;7;D10;
+3;23;fachada;8;D10;
+3;23;fachada;9;D10;
+3;23;fachada;10;C;
+3;23;fachada;11;D10;
+3;23;fachada;12;D10;
+3;23;fachada;13;D10;
+3;23;fachada;14;D10;
+3;23;fachada;15;D10;
+3;23;fachada;16;D10;
+3;23;fachada;17;D10;
+3;22;fachada;1;D10;
+3;22;fachada;2;D10;
+3;22;fachada;3;D10;
+3;22;fachada;4;X;
+3;22;fachada;5;X;
+3;22;fachada;6;A36;
+3;22;fachada;7;B24;
+3;22;fachada;8;B24;
+3;22;fachada;9;B24;
+3;22;fachada;10;D10;
+3;22;fachada;11;D10;
+3;22;fachada;12;D10;
+3;22;fachada;13;D10;
+3;22;fachada;14;D10;
+3;22;fachada;15;D10;
+3;22;fachada;16;A36;
+3;22;fachada;17;D10;
+3;21;fachada;1;D10;
+3;21;fachada;2;D10;
+3;21;fachada;3;D10;
+3;21;fachada;4;X;
+3;21;fachada;5;X;
+3;21;fachada;6;A36;
+3;21;fachada;7;B24;
+3;21;fachada;8;B24;
+3;21;fachada;9;B24;
+3;21;fachada;10;D10;
+3;21;fachada;11;D10;
+3;21;fachada;12;X;
+3;21;fachada;13;D10;
+3;21;fachada;14;D10;
+3;21;fachada;15;D10;
+3;21;fachada;16;A36;
+3;21;fachada;17;D10;
+3;20;fachada;1;B24;
+3;20;fachada;2;B24;
+3;20;fachada;3;B24;
+3;20;fachada;4;X;
+3;20;fachada;5;X;
+3;20;fachada;6;B24;
+3;20;fachada;7;B24;
+3;20;fachada;8;B24;
+3;20;fachada;9;B24;
+3;20;fachada;10;B24;
+3;20;fachada;11;B24;
+3;20;fachada;12;B24;
+3;20;fachada;13;B24;
+3;20;fachada;14;B24;
+3;20;fachada;15;B24;
+3;20;fachada;16;B24;
+3;20;fachada;17;B24;
+3;19;fachada;1;B24;
+3;19;fachada;2;B24;
+3;19;fachada;3;B24;
+3;19;fachada;4;X;
+3;19;fachada;5;X;
+3;19;fachada;6;B24;
+3;19;fachada;7;B24;
+3;19;fachada;8;B24;
+3;19;fachada;9;B24;
+3;19;fachada;10;B24;
+3;19;fachada;11;B24;
+3;19;fachada;12;B24;
+3;19;fachada;13;B24;
+3;19;fachada;14;B24;
+3;19;fachada;15;B24;
+3;19;fachada;16;B24;
+3;19;fachada;17;B24;
+3;18;fachada;1;D10;
+3;18;fachada;2;D10;
+3;18;fachada;3;D10;
+3;18;fachada;4;X;
+3;18;fachada;5;X;
+3;18;fachada;6;D10;
+3;18;fachada;7;D10;
+3;18;fachada;8;D10;
+3;18;fachada;9;C;
+3;18;fachada;10;C;
+3;18;fachada;11;C;
+3;18;fachada;12;B24;
+3;18;fachada;13;B24;
+3;18;fachada;14;B24;
+3;18;fachada;15;B24;
+3;18;fachada;16;B24;
+3;18;fachada;17;B24;
+3;17;fachada;1;D10;
+3;17;fachada;2;D10;
+3;17;fachada;3;D10;
+3;17;fachada;4;X;
+3;17;fachada;5;X;
+3;17;fachada;6;D10;
+3;17;fachada;7;D10;
+3;17;fachada;8;D10;
+3;17;fachada;9;C;
+3;17;fachada;10;C;
+3;17;fachada;11;C;
+3;17;fachada;12;B24;
+3;17;fachada;13;B24;
+3;17;fachada;14;B24;
+3;17;fachada;15;B24;
+3;17;fachada;16;B24;
+3;17;fachada;17;B24;
+3;16;fachada;1;D10;
+3;16;fachada;2;B24;
+3;16;fachada;3;B24;
+3;16;fachada;4;X;
+3;16;fachada;5;X;
+3;16;fachada;6;B24;
+3;16;fachada;7;B24;
+3;16;fachada;8;B24;
+3;16;fachada;9;B24;
+3;16;fachada;10;B24;
+3;16;fachada;11;B24;
+3;16;fachada;12;B24;
+3;16;fachada;13;C;
+3;16;fachada;14;B24;
+3;16;fachada;15;D10;
+3;16;fachada;16;D10;
+3;16;fachada;17;D10;
+3;15;fachada;1;D10;
+3;15;fachada;2;B24;
+3;15;fachada;3;B24;
+3;15;fachada;4;X;
+3;15;fachada;5;X;
+3;15;fachada;6;B24;
+3;15;fachada;7;B24;
+3;15;fachada;8;B24;
+3;15;fachada;9;B24;
+3;15;fachada;10;B24;
+3;15;fachada;11;B24;
+3;15;fachada;12;B24;
+3;15;fachada;13;C;
+3;15;fachada;14;B24;
+3;15;fachada;15;D10;
+3;15;fachada;16;D10;
+3;15;fachada;17;D10;
+3;14;fachada;1;G;
+3;14;fachada;2;G;
+3;14;fachada;3;D10;
+3;14;fachada;4;X;
+3;14;fachada;5;X;
+3;14;fachada;6;D10;
+3;14;fachada;7;D10;
+3;14;fachada;8;D10;
+3;14;fachada;9;D10;
+3;14;fachada;10;D10;
+3;14;fachada;11;D10;
+3;14;fachada;12;C;
+3;14;fachada;13;D10;
+3;14;fachada;14;C;
+3;14;fachada;15;C;
+3;14;fachada;16;B24;
+3;14;fachada;17;B24;
+3;13;fachada;1;G;"escrito parecido a «6»; probable G"
+3;13;fachada;2;G;"escrito parecido a «6»; probable G (repasado)"
+3;13;fachada;3;D10;
+3;13;fachada;4;X;
+3;13;fachada;5;X;
+3;13;fachada;6;D10;
+3;13;fachada;7;D10;
+3;13;fachada;8;D10;
+3;13;fachada;9;D10;
+3;13;fachada;10;D10;
+3;13;fachada;11;D10;
+3;13;fachada;12;C;
+3;13;fachada;13;D10;
+3;13;fachada;14;C;
+3;13;fachada;15;C;
+3;13;fachada;16;B24;
+3;13;fachada;17;B24;
+4;24;medianera;18;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;24;medianera;19;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;24;medianera;20;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;24;medianera;21;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;24;medianera;22;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;24;medianera;23;;casilla en blanco
+4;24;medianera;24;;casilla en blanco
+4;24;medianera;25;E;"número escrito a mano encima: 22; escrito «E» y «C2»; aquí llega la flecha desde P18–P22"
+4;24;medianera;26;E;"número escrito a mano encima: 23; escrito «C1» y «E»"
+4;24;medianera;27;X;
+4;24;medianera;28;X;
+4;24;medianera;29;X;
+4;24;medianera;30;X;
+4;24;medianera;31;X;
+4;24;medianera;32;E;"número escrito a mano encima: 34; «E» cruzada por una diagonal"
+4;24;medianera;33;E;"número escrito a mano encima: 35; «E» cruzada por una diagonal"
+4;24;medianera;34;E;"número escrito a mano encima: 36; «E» cruzada por una diagonal"
+4;24;medianera;35;E;"número escrito a mano encima: 37; «E» cruzada por una diagonal"
+4;24;medianera;36;E;"número escrito a mano encima: 38; «E» cruzada por una diagonal"
+4;23;medianera;18;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»); a la izquierda de L23 hay una «X» y una flecha «→»"
+4;23;medianera;19;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;23;medianera;20;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;23;medianera;21;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;23;medianera;22;E;"casilla cruzada por una diagonal; escrito «C1 C2» y «E»; flecha desde estas casillas, cruzando el pasillo, hasta P25 (rotulada «22»)"
+4;23;medianera;23;;casilla en blanco
+4;23;medianera;24;;casilla en blanco
+4;23;medianera;25;E;"número escrito a mano encima: 22; escrito «E» y «CR» (¿C2?)"
+4;23;medianera;26;E;"número escrito a mano encima: 23; escrito «C1» y «E»"
+4;23;medianera;27;X;
+4;23;medianera;28;X;
+4;23;medianera;29;X;
+4;23;medianera;30;X;
+4;23;medianera;31;X;
+4;23;medianera;32;E;"número escrito a mano encima: 34; escrito «C1 C2» y «E», cruzada por una diagonal"
+4;23;medianera;33;E;"número escrito a mano encima: 35; escrito «C1 C2» y «E», cruzada por una diagonal"
+4;23;medianera;34;E;"número escrito a mano encima: 36; escrito «C1 C2» y «E», cruzada por una diagonal"
+4;23;medianera;35;E;"número escrito a mano encima: 37; escrito «C1 C2» y «E», cruzada por una diagonal"
+4;23;medianera;36;E;"número escrito a mano encima: 38; escrito «C1 C2» y «E», cruzada por una diagonal"
+4;22;medianera;18;B25;
+4;22;medianera;19;B25;
+4;22;medianera;20;B25;
+4;22;medianera;21;B25;
+4;22;medianera;22;B25;
+4;22;medianera;23;C;
+4;22;medianera;24;D10;
+4;22;medianera;25;D10;
+4;22;medianera;26;D10;
+4;22;medianera;27;D10;
+4;22;medianera;28;D10;
+4;22;medianera;29;D10;
+4;22;medianera;30;D10;
+4;22;medianera;31;D10;número escrito a mano encima: 35
+4;22;medianera;32;D10;número escrito a mano encima: 36
+4;22;medianera;33;B25;número escrito a mano encima: 37
+4;22;medianera;34;B25;número escrito a mano encima: 38
+4;22;medianera;35;B25;número escrito a mano encima: 39
+4;22;medianera;36;B25;número escrito a mano encima: 40
+4;22;medianera;41;B25;añadida a mano en el margen, rotulada «41»
+4;22;medianera;42;B25;añadida a mano en el margen, rotulada «42»
+4;21;medianera;18;B25;
+4;21;medianera;19;B25;
+4;21;medianera;20;B25;
+4;21;medianera;21;B25;
+4;21;medianera;22;B25;
+4;21;medianera;23;C;
+4;21;medianera;24;D10;
+4;21;medianera;25;D10;
+4;21;medianera;26;D10;
+4;21;medianera;27;D10;
+4;21;medianera;28;D10;
+4;21;medianera;29;D10;
+4;21;medianera;30;D10;
+4;21;medianera;31;D10;
+4;21;medianera;32;D10;
+4;21;medianera;33;B25;
+4;21;medianera;34;B25;
+4;21;medianera;35;B25;
+4;21;medianera;36;B25;
+4;21;medianera;41;B25;añadida a mano en el margen, rotulada «41» (en L21 no hay P37–P40)
+4;21;medianera;42;B25;añadida a mano en el margen, rotulada «42»
+4;20;medianera;18;B25;
+4;20;medianera;19;B25;
+4;20;medianera;20;B25;
+4;20;medianera;21;B25;
+4;20;medianera;22;B25;
+4;20;medianera;23;B25;
+4;20;medianera;24;B25;
+4;20;medianera;25;B25;
+4;20;medianera;26;B25;
+4;20;medianera;27;B25;
+4;20;medianera;28;B25;
+4;20;medianera;29;B25;
+4;20;medianera;30;D10;
+4;20;medianera;31;G;
+4;20;medianera;32;D10;
+4;20;medianera;33;D10;
+4;20;medianera;34;B25;
+4;20;medianera;35;B25;
+4;20;medianera;36;B25;
+4;20;medianera;37;B25;añadida a mano en el margen, rotulada «P37»
+4;20;medianera;38;D10;añadida a mano en el margen, rotulada «P38»
+4;19;medianera;18;B25;
+4;19;medianera;19;B25;
+4;19;medianera;20;B25;
+4;19;medianera;21;B25;
+4;19;medianera;22;B25;
+4;19;medianera;23;B25;
+4;19;medianera;24;B25;
+4;19;medianera;25;B25;
+4;19;medianera;26;B25;
+4;19;medianera;27;B25;
+4;19;medianera;28;B25;
+4;19;medianera;29;B25;
+4;19;medianera;30;D10;
+4;19;medianera;31;G;
+4;19;medianera;32;D10;
+4;19;medianera;33;D10;
+4;19;medianera;34;B25;
+4;19;medianera;35;B25;
+4;19;medianera;36;B25;
+4;19;medianera;37;B25;añadida a mano en el margen, rotulada «P37»
+4;19;medianera;38;D10;añadida a mano en el margen, rotulada «P38»
+4;18;medianera;18;A36;
+4;18;medianera;19;A36;
+4;18;medianera;20;A36;
+4;18;medianera;21;A36;
+4;18;medianera;22;A36;
+4;18;medianera;23;A36;
+4;18;medianera;24;A36;
+4;18;medianera;25;A36;
+4;18;medianera;26;A36;
+4;18;medianera;27;A36;
+4;18;medianera;28;A36;
+4;18;medianera;29;A36;
+4;18;medianera;30;A36;
+4;18;medianera;31;A36;
+4;18;medianera;32;A36;
+4;18;medianera;33;A36;
+4;18;medianera;34;E;escrito «C1 C2» arriba, y «E» y «C3»
+4;18;medianera;35;E;escrito «C1 C2» arriba, y «E» y «C3»
+4;18;medianera;36;E;escrito «C1 C2» arriba, y «E» y «C3»
+4;18;medianera;37;E;añadida a mano en el margen, rotulada «P37», con «C1 C2» y «E»
+4;17;medianera;18;A36;
+4;17;medianera;19;A36;
+4;17;medianera;20;A36;
+4;17;medianera;21;A36;
+4;17;medianera;22;A36;
+4;17;medianera;23;A36;
+4;17;medianera;24;A36;
+4;17;medianera;25;A36;
+4;17;medianera;26;A36;
+4;17;medianera;27;A36;
+4;17;medianera;28;A36;
+4;17;medianera;29;A36;
+4;17;medianera;30;A36;
+4;17;medianera;31;A36;
+4;17;medianera;32;A36;
+4;17;medianera;33;A36;
+4;17;medianera;34;E;escrito «C1 C2» arriba, y «E» y «C3»
+4;17;medianera;35;E;escrito «C1 C2» arriba, y «E» y «C3»
+4;17;medianera;36;E;"escrito «C1 C2» arriba, y «E» y «C3»; flecha «→» hacia el margen, donde pone «36» y «C3» (no se añade casilla)"
+4;16;medianera;18;B25;
+4;16;medianera;19;D10;
+4;16;medianera;20;D10;
+4;16;medianera;21;D10;
+4;16;medianera;22;D10;
+4;16;medianera;23;D10;
+4;16;medianera;24;A36;
+4;16;medianera;25;A36;
+4;16;medianera;26;A36;
+4;16;medianera;27;A36;
+4;16;medianera;28;A36;
+4;16;medianera;29;A36;
+4;16;medianera;30;A36;
+4;16;medianera;31;A36;
+4;16;medianera;32;A36;número escrito a mano encima: 35
+4;16;medianera;33;A36;número escrito a mano encima: 36
+4;16;medianera;34;D10;número escrito a mano encima: 37
+4;16;medianera;35;D10;número escrito a mano encima: 38
+4;16;medianera;36;D10;"número escrito a mano encima: 39; la primera letra está repasada (A o D)"
+4;16;medianera;40;D10;"añadida a mano en el margen, rotulada «40»; «40|41|42» aparece dos veces por fila y «D10» está escrito encima"
+4;16;medianera;41;D10;"añadida a mano en el margen, rotulada «41»; «40|41|42» aparece dos veces por fila y «D10» está escrito encima"
+4;16;medianera;42;D10;"añadida a mano en el margen, rotulada «42»; «40|41|42» aparece dos veces por fila y «D10» está escrito encima"
+4;15;medianera;18;B25;
+4;15;medianera;19;D10;
+4;15;medianera;20;D10;
+4;15;medianera;21;D10;
+4;15;medianera;22;D10;
+4;15;medianera;23;D10;
+4;15;medianera;24;A36;
+4;15;medianera;25;A36;
+4;15;medianera;26;A36;
+4;15;medianera;27;A36;
+4;15;medianera;28;A36;
+4;15;medianera;29;A36;
+4;15;medianera;30;A36;
+4;15;medianera;31;A36;
+4;15;medianera;32;A36;número escrito a mano encima: 35
+4;15;medianera;33;A36;número escrito a mano encima: 36
+4;15;medianera;34;D10;número escrito a mano encima: 37
+4;15;medianera;35;D10;número escrito a mano encima: 38
+4;15;medianera;36;D10;número escrito a mano encima: 39
+4;15;medianera;40;D10;"añadida a mano en el margen, rotulada «40»; «40|41|42» aparece dos veces por fila y «D10» está escrito debajo"
+4;15;medianera;41;D10;"añadida a mano en el margen, rotulada «41»; «40|41|42» aparece dos veces por fila y «D10» está escrito debajo"
+4;15;medianera;42;D10;"añadida a mano en el margen, rotulada «42»; «40|41|42» aparece dos veces por fila y «D10» está escrito debajo"
+4;14;medianera;18;A36;
+4;14;medianera;19;A36;
+4;14;medianera;20;A36;
+4;14;medianera;21;A36;
+4;14;medianera;22;A36;
+4;14;medianera;23;A36;
+4;14;medianera;24;A36;
+4;14;medianera;25;A36;
+4;14;medianera;26;A36;
+4;14;medianera;27;A36;
+4;14;medianera;28;A36;
+4;14;medianera;29;A36;
+4;14;medianera;30;A36;
+4;14;medianera;31;A36;
+4;14;medianera;32;A36;
+4;14;medianera;33;A36;
+4;14;medianera;34;A36;
+4;14;medianera;35;A36;
+4;14;medianera;36;A36;
+4;14;medianera;37;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41"
+4;14;medianera;38;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41"
+4;14;medianera;39;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41"
+4;14;medianera;40;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41"
+4;14;medianera;41;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41"
+4;13;medianera;18;A36;
+4;13;medianera;19;A36;
+4;13;medianera;20;A36;
+4;13;medianera;21;A36;
+4;13;medianera;22;A36;
+4;13;medianera;23;A36;
+4;13;medianera;24;A36;
+4;13;medianera;25;A36;
+4;13;medianera;26;A36;
+4;13;medianera;27;A36;
+4;13;medianera;28;A36;
+4;13;medianera;29;A36;
+4;13;medianera;30;A36;
+4;13;medianera;31;A36;
+4;13;medianera;32;A36;
+4;13;medianera;33;A36;
+4;13;medianera;34;A36;
+4;13;medianera;35;A36;
+4;13;medianera;36;A36;
+4;13;medianera;37;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41; debajo pone «D10» sin decir a qué casillas va"
+4;13;medianera;38;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41; debajo pone «D10» sin decir a qué casillas va"
+4;13;medianera;39;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41; debajo pone «D10» sin decir a qué casillas va"
+4;13;medianera;40;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41; debajo pone «D10» sin decir a qué casillas va"
+4;13;medianera;41;E;"añadida a mano en el margen: «37|38|39 / 40|41 E»; la E solo está junto al 41; debajo pone «D10» sin decir a qué casillas va"
+5;36;fachada;1;D10;
+5;36;fachada;2;C;
+5;36;fachada;3;D10;
+5;36;fachada;4;X;
+5;36;fachada;5;C;
+5;36;fachada;6;C;
+5;36;fachada;7;D10;
+5;36;fachada;8;D10;
+5;36;fachada;9;C;
+5;36;fachada;10;B24;
+5;36;fachada;11;D10;
+5;36;fachada;12;C;
+5;36;fachada;13;C;
+5;36;fachada;14;C;
+5;36;fachada;15;D10;
+5;36;fachada;16;D10;
+5;36;fachada;17;X;
+5;35;fachada;1;D10;
+5;35;fachada;2;C;
+5;35;fachada;3;D10;
+5;35;fachada;4;X;
+5;35;fachada;5;C;
+5;35;fachada;6;C;
+5;35;fachada;7;D10;
+5;35;fachada;8;D10;
+5;35;fachada;9;C;
+5;35;fachada;10;B24;
+5;35;fachada;11;D10;
+5;35;fachada;12;C;
+5;35;fachada;13;C;
+5;35;fachada;14;C;
+5;35;fachada;15;D10;
+5;35;fachada;16;D10;
+5;35;fachada;17;X;
+5;34;fachada;1;D10;
+5;34;fachada;2;X;
+5;34;fachada;3;X;
+5;34;fachada;4;X;
+5;34;fachada;5;X;
+5;34;fachada;6;X;
+5;34;fachada;7;C;
+5;34;fachada;8;C;
+5;34;fachada;9;C;
+5;34;fachada;10;C;
+5;34;fachada;11;B24;
+5;34;fachada;12;D10;
+5;34;fachada;13;B24;
+5;34;fachada;14;C;
+5;34;fachada;15;D10;
+5;34;fachada;16;C;
+5;34;fachada;17;D10;
+5;33;fachada;1;D10;
+5;33;fachada;2;X;
+5;33;fachada;3;X;
+5;33;fachada;4;X;
+5;33;fachada;5;X;
+5;33;fachada;6;X;
+5;33;fachada;7;C;
+5;33;fachada;8;C;
+5;33;fachada;9;C;
+5;33;fachada;10;C;
+5;33;fachada;11;B24;
+5;33;fachada;12;D10;
+5;33;fachada;13;B24;
+5;33;fachada;14;C;
+5;33;fachada;15;D10;
+5;33;fachada;16;C;
+5;33;fachada;17;D10;
+5;32;fachada;1;D10;
+5;32;fachada;2;D10;
+5;32;fachada;3;C;
+5;32;fachada;4;X;
+5;32;fachada;5;X;
+5;32;fachada;6;D10;
+5;32;fachada;7;D10;
+5;32;fachada;8;D10;
+5;32;fachada;9;D10;
+5;32;fachada;10;D10;
+5;32;fachada;11;D10;
+5;32;fachada;12;B24;
+5;32;fachada;13;D10;
+5;32;fachada;14;C;
+5;32;fachada;15;C;
+5;32;fachada;16;D10;
+5;32;fachada;17;C;
+5;31;fachada;1;D10;
+5;31;fachada;2;D10;
+5;31;fachada;3;C;
+5;31;fachada;4;X;
+5;31;fachada;5;X;
+5;31;fachada;6;D10;
+5;31;fachada;7;D10;
+5;31;fachada;8;D10;
+5;31;fachada;9;D10;
+5;31;fachada;10;D10;
+5;31;fachada;11;D10;
+5;31;fachada;12;B24;
+5;31;fachada;13;D10;
+5;31;fachada;14;C;
+5;31;fachada;15;C;
+5;31;fachada;16;D10;
+5;31;fachada;17;C;
+5;30;fachada;1;D10;
+5;30;fachada;2;D10;
+5;30;fachada;3;D10;
+5;30;fachada;4;D10;"flecha «←» dibujada entre P03 y P04 (sale del pasillo; un trazo baja hasta L29)"
+5;30;fachada;5;X;
+5;30;fachada;6;C;
+5;30;fachada;7;D10;
+5;30;fachada;8;C;
+5;30;fachada;9;C;
+5;30;fachada;10;D10;
+5;30;fachada;11;D10;
+5;30;fachada;12;X;
+5;30;fachada;13;D10;
+5;30;fachada;14;D10;
+5;30;fachada;15;B24;
+5;30;fachada;16;D10;
+5;30;fachada;17;D10;
+5;29;fachada;1;D10;
+5;29;fachada;2;D10;
+5;29;fachada;3;D10;
+5;29;fachada;4;X;
+5;29;fachada;5;X;
+5;29;fachada;6;C;
+5;29;fachada;7;D10;
+5;29;fachada;8;C;
+5;29;fachada;9;C;
+5;29;fachada;10;D10;
+5;29;fachada;11;D10;
+5;29;fachada;12;X;
+5;29;fachada;13;D10;
+5;29;fachada;14;D10;
+5;29;fachada;15;B24;
+5;29;fachada;16;D10;
+5;29;fachada;17;D10;
+5;28;fachada;1;C;
+5;28;fachada;2;C;
+5;28;fachada;3;C;
+5;28;fachada;4;B24;flecha «←» dibujada entre P03 y P04
+5;28;fachada;5;X;
+5;28;fachada;6;D10;
+5;28;fachada;7;D10;
+5;28;fachada;8;D10;
+5;28;fachada;9;D10;
+5;28;fachada;10;C;
+5;28;fachada;11;C;
+5;28;fachada;12;X;
+5;28;fachada;13;C;
+5;28;fachada;14;D10;
+5;28;fachada;15;D10;
+5;28;fachada;16;D10;
+5;28;fachada;17;C;
+5;27;fachada;1;C;
+5;27;fachada;2;C;
+5;27;fachada;3;C;
+5;27;fachada;4;B24;flecha «←» dibujada entre P03 y P04
+5;27;fachada;5;X;
+5;27;fachada;6;D10;
+5;27;fachada;7;D10;
+5;27;fachada;8;D10;
+5;27;fachada;9;D10;
+5;27;fachada;10;C;
+5;27;fachada;11;C;
+5;27;fachada;12;X;
+5;27;fachada;13;C;
+5;27;fachada;14;D10;
+5;27;fachada;15;D10;
+5;27;fachada;16;D10;
+5;27;fachada;17;C;
+5;26;fachada;1;D10;
+5;26;fachada;2;A36;
+5;26;fachada;3;A36;
+5;26;fachada;4;D10;flecha «←» dibujada entre P03 y P04
+5;26;fachada;5;X;
+5;26;fachada;6;A36;
+5;26;fachada;7;D10;
+5;26;fachada;8;A36;
+5;26;fachada;9;A36;
+5;26;fachada;10;D10;
+5;26;fachada;11;A36;
+5;26;fachada;12;D10;
+5;26;fachada;13;D10;
+5;26;fachada;14;D10;
+5;26;fachada;15;D10;
+5;26;fachada;16;D10;
+5;26;fachada;17;D10;
+5;25;fachada;1;D10;
+5;25;fachada;2;A36;
+5;25;fachada;3;A36;
+5;25;fachada;4;D10;flecha «←» dibujada entre P03 y P04
+5;25;fachada;5;X;
+5;25;fachada;6;A36;
+5;25;fachada;7;D10;
+5;25;fachada;8;A36;
+5;25;fachada;9;A36;
+5;25;fachada;10;D10;
+5;25;fachada;11;A36;
+5;25;fachada;12;D10;
+5;25;fachada;13;D10;
+5;25;fachada;14;D10;
+5;25;fachada;15;D10;
+5;25;fachada;16;D10;
+5;25;fachada;17;D10;
+6;36;medianera;18;D10;
+6;36;medianera;19;D10;
+6;36;medianera;20;D10;
+6;36;medianera;21;D10;
+6;36;medianera;22;D10;
+6;36;medianera;23;D10;
+6;36;medianera;24;C;
+6;36;medianera;25;X;
+6;36;medianera;26;D10;
+6;36;medianera;27;D10;
+6;36;medianera;28;D10;
+6;36;medianera;29;D10;
+6;36;medianera;30;D10;
+6;36;medianera;31;D10;
+6;36;medianera;32;D10;número escrito a mano encima: 34
+6;36;medianera;33;D10;número escrito a mano encima: 35
+6;36;medianera;34;D10;número escrito a mano encima: 36
+6;36;medianera;35;D10;número escrito a mano encima: 37
+6;36;medianera;36;D10;número escrito a mano encima: 38
+6;36;medianera;39;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;36;medianera;40;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;36;medianera;41;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;35;medianera;18;D10;
+6;35;medianera;19;D10;
+6;35;medianera;20;D10;
+6;35;medianera;21;D10;
+6;35;medianera;22;D10;
+6;35;medianera;23;D10;
+6;35;medianera;24;C;
+6;35;medianera;25;X;
+6;35;medianera;26;D10;
+6;35;medianera;27;D10;
+6;35;medianera;28;D10;
+6;35;medianera;29;D10;
+6;35;medianera;30;D10;
+6;35;medianera;31;D10;
+6;35;medianera;32;D10;número escrito a mano encima: 34
+6;35;medianera;33;D10;número escrito a mano encima: 35
+6;35;medianera;34;D10;número escrito a mano encima: 36
+6;35;medianera;35;D10;número escrito a mano encima: 37
+6;35;medianera;36;D10;número escrito a mano encima: 38
+6;35;medianera;39;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;35;medianera;40;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;35;medianera;41;D10;añadida a mano en el margen: «39|40|41» y «D10»
+6;34;medianera;18;B24;
+6;34;medianera;19;B24;
+6;34;medianera;20;B24;
+6;34;medianera;21;D10;
+6;34;medianera;22;D10;
+6;34;medianera;23;D10;
+6;34;medianera;24;D10;
+6;34;medianera;25;D10;
+6;34;medianera;26;D10;
+6;34;medianera;27;D10;
+6;34;medianera;28;D10;
+6;34;medianera;29;D10;
+6;34;medianera;30;D10;
+6;34;medianera;31;B24;
+6;34;medianera;32;C;número escrito a mano encima: 34
+6;34;medianera;33;D10;número escrito a mano encima: 35
+6;34;medianera;34;D10;número escrito a mano encima: 36
+6;34;medianera;35;B24;número escrito a mano encima: 37
+6;34;medianera;36;B24;número escrito a mano encima: 38
+6;34;medianera;39;B24;añadida a mano en el margen: «39|40|41 B24»
+6;34;medianera;40;B24;añadida a mano en el margen: «39|40|41 B24»
+6;34;medianera;41;B24;añadida a mano en el margen: «39|40|41 B24»
+6;33;medianera;18;B24;
+6;33;medianera;19;B24;
+6;33;medianera;20;B24;
+6;33;medianera;21;D10;
+6;33;medianera;22;D10;
+6;33;medianera;23;D10;
+6;33;medianera;24;D10;
+6;33;medianera;25;D10;
+6;33;medianera;26;D10;
+6;33;medianera;27;D10;
+6;33;medianera;28;D10;
+6;33;medianera;29;D10;
+6;33;medianera;30;D10;
+6;33;medianera;31;B24;
+6;33;medianera;32;C;
+6;33;medianera;33;D10;
+6;33;medianera;34;D10;
+6;33;medianera;35;B24;
+6;33;medianera;36;B24;
+6;33;medianera;37;B24;añadida a mano en el margen, sin número (solo «B24»)
+6;32;medianera;18;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;19;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;20;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;21;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;22;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;23;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;24;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;25;E;"«E» cruzada por una diagonal, sin otro código; a la izquierda de P25, en el pasillo, pone «H14»"
+6;32;medianera;26;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;27;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;28;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;29;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;30;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;31;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;32;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;33;C;"escrito «E» cruzada y «C2» (y una «c» pequeña); nota al margen «L32 P33 C1»"
+6;32;medianera;34;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;35;E;«E» cruzada por una diagonal, sin otro código
+6;32;medianera;36;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;18;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;19;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;20;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;21;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;22;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;23;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;24;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;25;E;"«E» cruzada por una diagonal, sin otro código; a la izquierda de P25, en el pasillo, pone «H14»"
+6;31;medianera;26;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;27;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;28;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;29;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;30;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;31;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;32;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;33;C;"escrito «C E2» (o «C E C2») cruzado; nota al margen «L31 P33 C1»"
+6;31;medianera;34;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;35;E;«E» cruzada por una diagonal, sin otro código
+6;31;medianera;36;E;«E» cruzada por una diagonal, sin otro código
+6;30;medianera;18;B24;
+6;30;medianera;19;B24;
+6;30;medianera;20;B24;
+6;30;medianera;21;B24;
+6;30;medianera;22;B24;
+6;30;medianera;23;B24;
+6;30;medianera;24;B24;
+6;30;medianera;25;B24;
+6;30;medianera;26;D10;
+6;30;medianera;27;D10;
+6;30;medianera;28;D10;
+6;30;medianera;29;D10;
+6;30;medianera;30;D10;
+6;30;medianera;31;B24;
+6;30;medianera;32;D10;número escrito a mano encima: 34
+6;30;medianera;33;D10;número escrito a mano encima: 35
+6;30;medianera;34;B24;número escrito a mano encima: 36
+6;30;medianera;35;B24;número escrito a mano encima: 37
+6;30;medianera;36;B24;número escrito a mano encima: 38
+6;30;medianera;39;B24;"añadida a mano en el margen: «39 40 41 42» sin tipo; B24 por el «B24» escrito debajo (fila de L29)"
+6;30;medianera;40;B24;"añadida a mano en el margen: «39 40 41 42» sin tipo; B24 por el «B24» escrito debajo (fila de L29)"
+6;30;medianera;41;B24;"añadida a mano en el margen: «39 40 41 42» sin tipo; B24 por el «B24» escrito debajo (fila de L29)"
+6;30;medianera;42;B24;"añadida a mano en el margen: «39 40 41 42» sin tipo; B24 por el «B24» escrito debajo (fila de L29)"
+6;29;medianera;18;B24;
+6;29;medianera;19;B24;
+6;29;medianera;20;B24;
+6;29;medianera;21;B24;
+6;29;medianera;22;B24;
+6;29;medianera;23;B24;
+6;29;medianera;24;B24;
+6;29;medianera;25;B24;
+6;29;medianera;26;D10;
+6;29;medianera;27;D10;
+6;29;medianera;28;D10;
+6;29;medianera;29;D10;
+6;29;medianera;30;D10;
+6;29;medianera;31;B24;
+6;29;medianera;32;D10;
+6;29;medianera;33;D10;
+6;29;medianera;34;B24;
+6;29;medianera;35;B24;
+6;29;medianera;36;B24;
+6;29;medianera;37;B24;"añadida a mano en el margen, sin número; puede ser el tipo de L30 39–42 y no una casilla de L29"
+6;28;medianera;18;B25;"se lee casi «B28»; B25 (5 escrito sobre 4)"
+6;28;medianera;19;B25;
+6;28;medianera;20;B25;
+6;28;medianera;21;B25;
+6;28;medianera;22;B25;
+6;28;medianera;23;B25;
+6;28;medianera;24;B25;
+6;28;medianera;25;B25;
+6;28;medianera;26;B25;
+6;28;medianera;27;B25;
+6;28;medianera;28;B25;
+6;28;medianera;29;B25;
+6;28;medianera;30;B25;
+6;28;medianera;31;B25;
+6;28;medianera;32;C;
+6;28;medianera;33;D10;
+6;28;medianera;34;B25;
+6;28;medianera;35;B25;
+6;28;medianera;36;B25;
+6;28;medianera;37;B25;añadida a mano en el margen: «37|38 39|B25»
+6;28;medianera;38;B25;añadida a mano en el margen: «37|38 39|B25»
+6;28;medianera;39;B25;añadida a mano en el margen: «37|38 39|B25»
+6;27;medianera;18;B25;
+6;27;medianera;19;B25;
+6;27;medianera;20;B25;
+6;27;medianera;21;B25;
+6;27;medianera;22;B25;
+6;27;medianera;23;B25;
+6;27;medianera;24;B25;
+6;27;medianera;25;B25;
+6;27;medianera;26;B25;
+6;27;medianera;27;B25;
+6;27;medianera;28;B25;
+6;27;medianera;29;B25;
+6;27;medianera;30;B25;
+6;27;medianera;31;B25;
+6;27;medianera;32;C;
+6;27;medianera;33;D10;
+6;27;medianera;34;B25;escrito «B2.5»
+6;27;medianera;35;B25;
+6;27;medianera;36;B25;
+6;27;medianera;39;C;"añadida a mano en el margen: «39 C4» y debajo «D10» y «2»; no se entiende (¿posición 39 con C? ¿4 C?)"
+6;26;medianera;18;X;
+6;26;medianera;19;D10;
+6;26;medianera;20;G;
+6;26;medianera;21;D10;
+6;26;medianera;22;C;
+6;26;medianera;23;D10;
+6;26;medianera;24;D10;
+6;26;medianera;25;D10;
+6;26;medianera;26;B25;
+6;26;medianera;27;B25;"se lee «B24» con el 4 repasado; probable B25 como el resto de la fila"
+6;26;medianera;28;B25;"B24/B25 repasado; probable B25"
+6;26;medianera;29;B25;
+6;26;medianera;30;B25;
+6;26;medianera;31;B25;
+6;26;medianera;32;X;"solo una raya diagonal, sin código; se toma como X; hay un arco dibujado encima de P32–P33"
+6;26;medianera;33;X;"solo una raya diagonal, sin código; se toma como X; hay un arco dibujado encima de P32–P33"
+6;26;medianera;34;B25;
+6;26;medianera;35;D10;
+6;26;medianera;36;D10;
+6;26;medianera;39;D10;"añadida a mano en el margen: «40 39 41»; encima pone «D10» y «2» y debajo (fila de L25) «B25»; tipo incierto"
+6;26;medianera;40;D10;"añadida a mano en el margen: «40 39 41»; encima pone «D10» y «2» y debajo (fila de L25) «B25»; tipo incierto"
+6;26;medianera;41;D10;"añadida a mano en el margen: «40 39 41»; encima pone «D10» y «2» y debajo (fila de L25) «B25»; tipo incierto"
+6;25;medianera;18;X;
+6;25;medianera;19;D10;
+6;25;medianera;20;G;
+6;25;medianera;21;D10;
+6;25;medianera;22;C;
+6;25;medianera;23;D10;
+6;25;medianera;24;D10;
+6;25;medianera;25;D10;
+6;25;medianera;26;B25;
+6;25;medianera;27;B25;
+6;25;medianera;28;B25;
+6;25;medianera;29;B25;"se lee «BC5»; probable B25"
+6;25;medianera;30;B25;"se lee «B28»; probable B25"
+6;25;medianera;31;B25;
+6;25;medianera;32;X;"solo una raya diagonal, sin código; se toma como X; hay un arco dibujado encima de P32–P33"
+6;25;medianera;33;X;"solo una raya diagonal, sin código; se toma como X; hay un arco dibujado encima de P32–P33"
+6;25;medianera;34;B25;
+6;25;medianera;35;D10;
+6;25;medianera;36;D10;
+6;25;medianera;37;B25;"añadida a mano en el margen, sin número; puede ser el tipo de L26 39–41"
+7;43;fachada;1;C;
+7;43;fachada;2;C;
+7;43;fachada;3;C;
+7;43;fachada;4;C;
+7;43;fachada;5;C;
+7;43;fachada;6;C;
+7;43;fachada;7;C;
+7;43;fachada;8;C;
+7;43;fachada;9;C;
+7;43;fachada;10;C;
+7;43;fachada;11;C;
+7;43;fachada;12;C;
+7;43;fachada;13;C;
+7;43;fachada;14;C;
+7;43;fachada;15;C;
+7;43;fachada;16;C;
+7;43;fachada;17;C;
+7;42;fachada;1;C;
+7;42;fachada;2;D10;
+7;42;fachada;3;D10;
+7;42;fachada;4;D10;D10 repasado
+7;42;fachada;5;D10;
+7;42;fachada;6;D10;
+7;42;fachada;7;A36;
+7;42;fachada;8;A36;
+7;42;fachada;9;A36;
+7;42;fachada;10;A36;
+7;42;fachada;11;A36;
+7;42;fachada;12;A36;
+7;42;fachada;13;A36;
+7;42;fachada;14;A36;
+7;42;fachada;15;A36;
+7;42;fachada;16;A36;
+7;42;fachada;17;A36;
+7;41;fachada;1;C;
+7;41;fachada;2;D10;
+7;41;fachada;3;D10;
+7;41;fachada;4;D10;
+7;41;fachada;5;D10;"D10 tachado con una raya, sin código nuevo; puede ser X"
+7;41;fachada;6;D10;"D10 tachado con una raya, sin código nuevo; puede ser X"
+7;41;fachada;7;A36;
+7;41;fachada;8;A36;
+7;41;fachada;9;A36;
+7;41;fachada;10;A36;
+7;41;fachada;11;A36;
+7;41;fachada;12;A36;
+7;41;fachada;13;A36;
+7;41;fachada;14;A36;
+7;41;fachada;15;A36;
+7;41;fachada;16;A36;
+7;41;fachada;17;A36;
+7;40;fachada;1;C;
+7;40;fachada;2;C;
+7;40;fachada;3;C;
+7;40;fachada;4;X;
+7;40;fachada;5;X;
+7;40;fachada;6;D10;
+7;40;fachada;7;B25;
+7;40;fachada;8;B25;
+7;40;fachada;9;B25;
+7;40;fachada;10;B25;
+7;40;fachada;11;B25;
+7;40;fachada;12;B25;
+7;40;fachada;13;G;
+7;40;fachada;14;B25;
+7;40;fachada;15;G;
+7;40;fachada;16;B25;
+7;40;fachada;17;G;"escrito parecido a «6»; probable G"
+7;39;fachada;1;C;"C repasada; podría ser G"
+7;39;fachada;2;C;
+7;39;fachada;3;C;
+7;39;fachada;4;X;
+7;39;fachada;5;X;
+7;39;fachada;6;D10;
+7;39;fachada;7;B25;
+7;39;fachada;8;B25;
+7;39;fachada;9;B25;
+7;39;fachada;10;B25;
+7;39;fachada;11;B25;
+7;39;fachada;12;B25;
+7;39;fachada;13;G;
+7;39;fachada;14;B25;
+7;39;fachada;15;G;
+7;39;fachada;16;B25;
+7;39;fachada;17;G;
+7;38;fachada;1;D10;
+7;38;fachada;2;D10;
+7;38;fachada;3;C;
+7;38;fachada;4;X;
+7;38;fachada;5;X;
+7;38;fachada;6;X;
+7;38;fachada;7;C;
+7;38;fachada;8;C;
+7;38;fachada;9;X;
+7;38;fachada;10;D10;
+7;38;fachada;11;C;
+7;38;fachada;12;D10;
+7;38;fachada;13;C;
+7;38;fachada;14;C;
+7;38;fachada;15;C;
+7;38;fachada;16;C;
+7;38;fachada;17;C;
+7;37;fachada;1;D10;
+7;37;fachada;2;D10;
+7;37;fachada;3;C;
+7;37;fachada;4;X;
+7;37;fachada;5;X;
+7;37;fachada;6;X;
+7;37;fachada;7;C;
+7;37;fachada;8;C;
+7;37;fachada;9;X;
+7;37;fachada;10;D10;
+7;37;fachada;11;C;
+7;37;fachada;12;D10;
+7;37;fachada;13;C;
+7;37;fachada;14;C;
+7;37;fachada;15;C;
+7;37;fachada;16;C;
+7;37;fachada;17;C;
+8;43;medianera;18;E;
+8;43;medianera;19;E;
+8;43;medianera;20;E;
+8;43;medianera;21;E;
+8;43;medianera;22;E;
+8;43;medianera;23;E;
+8;43;medianera;24;E;
+8;43;medianera;25;E;
+8;43;medianera;26;E;
+8;43;medianera;27;E;
+8;43;medianera;28;E;
+8;43;medianera;29;E;
+8;43;medianera;30;E;
+8;43;medianera;31;E;
+8;43;medianera;32;E;"escrito parecido a «G» o «a»; el resto de la fila está escrito «ε» = E"
+8;43;medianera;33;E;
+8;43;medianera;34;E;
+8;43;medianera;35;E;
+8;43;medianera;36;E;
+8;42;medianera;18;X;
+8;42;medianera;19;A36;
+8;42;medianera;20;A36;
+8;42;medianera;21;A36;
+8;42;medianera;22;A36;
+8;42;medianera;23;A36;
+8;42;medianera;24;A36;
+8;42;medianera;25;A36;
+8;42;medianera;26;A36;
+8;42;medianera;27;A36;
+8;42;medianera;28;A36;
+8;42;medianera;29;A36;
+8;42;medianera;30;A36;
+8;42;medianera;31;A36;
+8;42;medianera;32;A36;
+8;42;medianera;33;A36;
+8;42;medianera;34;A36;
+8;42;medianera;35;A36;
+8;42;medianera;36;A36;
+8;41;medianera;18;X;
+8;41;medianera;19;A36;
+8;41;medianera;20;A36;
+8;41;medianera;21;A36;
+8;41;medianera;22;A36;
+8;41;medianera;23;A36;
+8;41;medianera;24;A36;
+8;41;medianera;25;A36;
+8;41;medianera;26;A36;
+8;41;medianera;27;A36;
+8;41;medianera;28;A36;
+8;41;medianera;29;A36;
+8;41;medianera;30;A36;
+8;41;medianera;31;A36;
+8;41;medianera;32;A36;
+8;41;medianera;33;A36;
+8;41;medianera;34;A36;
+8;41;medianera;35;A36;
+8;41;medianera;36;A36;
+8;41;medianera;37;D10;añadida a mano en el margen: «37|38|39 / 40|41 / D10»
+8;41;medianera;38;D10;añadida a mano en el margen: «37|38|39 / 40|41 / D10»
+8;41;medianera;39;D10;añadida a mano en el margen: «37|38|39 / 40|41 / D10»
+8;41;medianera;40;D10;añadida a mano en el margen: «37|38|39 / 40|41 / D10»
+8;41;medianera;41;D10;añadida a mano en el margen: «37|38|39 / 40|41 / D10»
+8;40;medianera;18;A36;
+8;40;medianera;19;A36;
+8;40;medianera;20;A36;
+8;40;medianera;21;A36;
+8;40;medianera;22;A36;
+8;40;medianera;23;A36;
+8;40;medianera;24;A36;
+8;40;medianera;25;A36;
+8;40;medianera;26;A36;
+8;40;medianera;27;A36;
+8;40;medianera;28;A36;
+8;40;medianera;29;A36;
+8;40;medianera;30;A36;
+8;40;medianera;31;A36;
+8;40;medianera;32;A36;
+8;40;medianera;33;A36;
+8;40;medianera;34;A36;
+8;40;medianera;35;A36;
+8;40;medianera;36;A36;
+8;40;medianera;37;D10;añadida a mano en el margen: «37|38|39 D10»
+8;40;medianera;38;D10;añadida a mano en el margen: «37|38|39 D10»
+8;40;medianera;39;D10;añadida a mano en el margen: «37|38|39 D10»
+8;40;medianera;40;C;añadida a mano en el margen: «40 C»
+8;39;medianera;18;A36;
+8;39;medianera;19;A36;
+8;39;medianera;20;A36;
+8;39;medianera;21;A36;
+8;39;medianera;22;A36;
+8;39;medianera;23;A36;
+8;39;medianera;24;A36;
+8;39;medianera;25;A36;
+8;39;medianera;26;A36;
+8;39;medianera;27;A36;
+8;39;medianera;28;A36;
+8;39;medianera;29;A36;
+8;39;medianera;30;A36;
+8;39;medianera;31;A36;
+8;39;medianera;32;A36;
+8;39;medianera;33;A36;
+8;39;medianera;34;A36;
+8;39;medianera;35;A36;
+8;39;medianera;36;A36;
+8;39;medianera;41;D10;"añadida a mano en el margen: «41 D10» junto a L39, bajo una raya; puede ser la posición 41 de L40"
+8;38;medianera;18;E2;
+8;38;medianera;19;E2;
+8;38;medianera;20;E2;
+8;38;medianera;21;E2;
+8;38;medianera;22;E2;
+8;38;medianera;23;E2;
+8;38;medianera;24;E2;
+8;38;medianera;25;E2;
+8;38;medianera;26;E2;
+8;38;medianera;27;E2;
+8;38;medianera;28;E2;
+8;38;medianera;29;E2;
+8;38;medianera;30;E2;
+8;38;medianera;31;E2;
+8;38;medianera;32;E2;
+8;38;medianera;33;E2;
+8;38;medianera;34;E2;
+8;38;medianera;35;E2;
+8;38;medianera;36;E2;
+8;37;medianera;18;E2;
+8;37;medianera;19;E2;
+8;37;medianera;20;E2;
+8;37;medianera;21;E2;
+8;37;medianera;22;E2;
+8;37;medianera;23;E2;
+8;37;medianera;24;E2;
+8;37;medianera;25;E2;
+8;37;medianera;26;E2;
+8;37;medianera;27;E2;
+8;37;medianera;28;E2;
+8;37;medianera;29;E2;
+8;37;medianera;30;E2;
+8;37;medianera;31;E2;
+8;37;medianera;32;E2;
+8;37;medianera;33;E2;
+8;37;medianera;34;E2;
+8;37;medianera;35;E2;
+8;37;medianera;36;E2;

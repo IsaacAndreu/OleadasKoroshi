@@ -8,6 +8,7 @@ No se conecta a Odoo ni escribe en Odoo ni en las matrices. Lo que exporta va a 
 
 Pestañas: Fuentes · Compactación zona 0 (por lineal) · Plano · Cajas a 0 (retirar) · Cajas a mover.
 """
+import collections
 import datetime
 import os
 import sys
@@ -18,7 +19,7 @@ from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
 
 from redistrib import compactar as C
-from redistrib import configuracion, fuentes, mapa_json
+from redistrib import configuracion, fuentes, mapa_json, zona_z
 from redistrib.descarga import copias_completas
 
 TITULO = 'Redistribución NAU-2 · KOROSHI'
@@ -83,9 +84,12 @@ def calcular(aviso):
     for f in mapa['lineales']:            # huecos que se liberan en el lineal: lo que más rinde, primero
         f['liberados'] = f['solo_cajas_a_0'] + f['se_vacian_compactando']
     orden = sorted(mapa['lineales'], key=lambda f: (-f['liberados'], f['cajas_a_0'] + f['cajas_a_mover'], f['l']))
+    aviso('Calculando la zona Z (outlet)…')
+    z = zona_z.calcular(copia, CARPETA_V2)
     return {'copia': copia, 'master': master, 'reglas': r, 'mcs': mcs, 'pasos': pasos, 'resumen': res,
             'vacias': vacias, 'mapa': mapa, 'posiciones': sorted(niveles), 'niveles': niveles, 'orden': orden,
-            'alturas': alturas, 'mcs_lineal': mcs_lineal, 'ko_propios': ko_propios, 'ko_lineal': ko_lineal}
+            'alturas': alturas, 'mcs_lineal': mcs_lineal, 'ko_propios': ko_propios, 'ko_lineal': ko_lineal,
+            'z': z}
 
 
 COLS_ALTURAS = ['Modelo-color', 'Familia', 'ABC', 'Líneas 28 días', 'Abajo · alturas 1–2 (tallas)',
@@ -1063,6 +1067,298 @@ class PantallaPlano(QtWidgets.QWidget):
 
 
 # ============================================================================================== ventana
+
+# ==================================================================== zona Z (outlet)
+COLOR_GRUPO = {'vivo': '#2fa37f', 'lento': '#e0a526', 'muerto': '#c2410c'}
+FONDO_GRUPO = {'vivo': '#d7f0e6', 'lento': '#fdf0d5', 'muerto': '#fde3d6'}
+COLOR_TIPO = {'A36': '#1d4fc4', 'A18': '#5b8def', 'B24': '#0f7b5a', 'B12': '#4fb38b', 'B25': '#8fd1b5',
+              'D10': '#7c3aed', 'C': '#d97706', 'E': '#f2b84b', 'E2': '#facc15', 'F': '#db2777', 'G': '#f472b6',
+              'H14': '#64748b', 'PAL': '#334155', 'X': '#ffffff'}
+NOMBRE_PASO_Z = {2: 'Paso 2 · hacer sitio', 3: 'Paso 3 · traer lo vivo', 4: 'Paso 4 · el resto'}
+COLS_TEMPORADA = ['Temporada', 'Uds vendidas (1 año)', '% vendido', 'Líneas', 'Stock hoy', '% stock',
+                  'Rotación (vendido ÷ stock)', 'Grupo', 'Orden (1 = más cerca)']
+COLS_VENTA = ['Uds vendidas (1 año)', '% vendido', 'Líneas', 'Stock hoy', '% stock', 'Rotación (vendido ÷ stock)']
+
+
+ORDENES_Z = [('Fino: temporada + familia', 'temporada+familia'), ('Medio: temporada', 'temporada'),
+             ('Grueso: vivo / lento / muerto', 'grupo')]
+
+
+class PlanoZ(Plano):
+    """Plano de la Z: cada posición coloreada por lo que irá en su lineal (vivo / lento / muerto), por lo llena que
+    está hoy o por su tipo de estantería (hojas del 02/11/2026)."""
+
+    def pintar(self, z):
+        self.z = z
+        super().pintar({'posiciones': z['posiciones']})
+
+    def colorear(self, modo):
+        self.modo = modo
+        z = getattr(self, 'z', None)
+        if not z:
+            return
+        for (l, p), it in self.celdas.items():
+            t = z['tipos'].get((l, p), {}).get('tipo')
+            if modo == 'tipo':
+                c = COLOR_TIPO.get(t, '#e3e6ea') if t else '#e3e6ea'
+            elif modo == 'hoy':
+                n, cap = z['hoy_pos'].get((l, p), 0), z['capacidad'].get((l, p), 0) or 1
+                c = '#e3e6ea' if not n else '#dbe6fb' if n / cap < 0.5 else '#8fb0ee' if n / cap < 0.9 else '#2f5fd0'
+            else:
+                f = z['destino_lineal'].get(l)
+                g = max(('vivo', 'lento', 'muerto'), key=lambda x: f['grupos'][x]) if f and sum(f['grupos'].values()) else None
+                c = COLOR_GRUPO[g] if g and z['capacidad'].get((l, p)) else '#e3e6ea'
+            it.setBrush(QtGui.QBrush(QtGui.QColor(c)))
+            it.setToolTip('<b>L%02d P%02d</b> · %s<br>Clic: detalle' % (l, p, t or 'sin hoja'))
+
+
+class PantallaZ(QtWidgets.QWidget):
+    """Zona Z (outlet): cómo vende, qué estanterías hay y el plan para ordenarla."""
+    MODOS = {'final': ('Cómo quedaría', 'Color = lo que irá en cada lineal: lo vivo cerca del muelle, lo muerto lejos.',
+                       [(COLOR_GRUPO['vivo'], 'vivo'), (COLOR_GRUPO['lento'], 'lento'),
+                        (COLOR_GRUPO['muerto'], 'muerto'), ('#e3e6ea', 'sin estantería o libre')]),
+             'hoy': ('Hoy', 'Lo llena que está hoy cada posición (KO ÷ capacidad de su tipo de estantería).',
+                     [('#dbe6fb', 'menos de la mitad'), ('#8fb0ee', 'hasta el 90 %'), ('#2f5fd0', 'llena'),
+                      ('#e3e6ea', 'vacía')]),
+             'tipo': ('Tipo de estantería', 'Hojas del 02/11/2026, transcritas el 27/11/2026.',
+                      [(c, t) for t, c in COLOR_TIPO.items() if t != 'X'] + [('#ffffff', 'X vacío')])}
+
+    def __init__(self):
+        super().__init__()
+        self.z = None
+        lay = QtWidgets.QVBoxLayout(self)
+        lay.setContentsMargins(24, 18, 24, 12)
+        lay.setSpacing(10)
+        cab = QtWidgets.QHBoxLayout()
+        cab.addWidget(etiqueta('<span style="font-size:20pt;font-weight:700">Plan de trabajo · zona Z (outlet)</span>'), 1)
+        cab.addWidget(etiqueta('<b>Orden:</b>', ajustar=False))
+        self.orden = QtWidgets.QComboBox()
+        for texto, valor in ORDENES_Z:
+            self.orden.addItem(texto, valor)
+        self.orden.setToolTip('Una caja no se mueve si ya está en un lineal de su bloque. Cuanto más fino el orden, '
+                              'más cajas hay que mover.')
+        self.orden.currentIndexChanged.connect(self._cambiar_orden)
+        cab.addWidget(self.orden)
+        lay.addLayout(cab)
+        self.copia = None
+        self.sub = etiqueta('Calculando…', 10.5, '#586374')
+        lay.addWidget(self.sub)
+        self.pest = QtWidgets.QTabWidget()
+        lay.addWidget(self.pest, 1)
+
+        # --- 0 Plan
+        w = QtWidgets.QWidget()
+        pl = QtWidgets.QVBoxLayout(w)
+        pl.setContentsMargins(0, 10, 0, 0)
+        self.criterio = etiqueta('', 10.5, '#18202b')
+        pl.addWidget(self.criterio)
+        fila = QtWidgets.QHBoxLayout()
+        self.p = [Paso(1, '#e0a526', 'Retirar las cajas vacías', 'Ver la lista', lambda: self.pest.setCurrentIndex(5)),
+                  Paso(2, '#c2410c', 'Hacer sitio cerca del muelle', 'Ver la lista', lambda: self.ver_paso(2)),
+                  Paso(3, '#2fa37f', 'Traer lo que vende', 'Ver la lista', lambda: self.ver_paso(3)),
+                  Paso(4, '#2f6fdb', 'Ordenar el resto (puede esperar)', 'Ver la lista', lambda: self.ver_paso(4))]
+        for x in self.p:
+            fila.addWidget(x, 1)
+        pl.addLayout(fila)
+        pl.addWidget(etiqueta('<span style="font-size:13pt;font-weight:700">Lineales, del más cercano al muelle al más '
+                              'lejano</span><span style="color:#586374">  ·  qué irá en cada uno. Doble clic: verlo en '
+                              'el plano.</span>'))
+        self.t_lin = PanelTabla('zona-z_lineales', ['Lineal', 'Metros a expedición', 'Estanterías (posiciones)',
+                                                    'Capacidad (KO)', 'KO hoy', 'KO después', 'Entran', 'Salen',
+                                                    'Se quedan', 'Cajas a 0', 'Grupo', 'Qué irá (temporada familia, KO)'],
+                                numericas=(1, 3, 4, 5, 6, 7, 8, 9),
+                                color=lambda f, c: FONDO_GRUPO.get(f[10].split('/')[0]) if c == 10 else None)
+        self.t_lin.doble.connect(lambda f: self.ver_lineal(int(f[0][1:])))
+        pl.addWidget(self.t_lin, 1)
+        self.pest.addTab(w, 'Plan')
+
+        # --- 1 Plano
+        w = QtWidgets.QWidget()
+        pl = QtWidgets.QVBoxLayout(w)
+        barra = QtWidgets.QHBoxLayout()
+        self.grupo = QtWidgets.QButtonGroup(self)
+        for i, (modo, (titulo, _, _)) in enumerate(self.MODOS.items()):
+            b = QtWidgets.QPushButton(titulo)
+            b.setCheckable(True)
+            b.setProperty('modo', modo)
+            b.setStyleSheet('QPushButton:checked { background:#2f5fd0; color:white; border:0; font-weight:600; }')
+            self.grupo.addButton(b, i)
+            barra.addWidget(b)
+        self.grupo.buttonClicked.connect(lambda b: self.poner_modo(b.property('modo')))
+        barra.addStretch(1)
+        barra.addWidget(etiqueta('Rueda: zoom · arrastrar: mover · <b>clic</b>: detalle', 9, '#586374', False))
+        pl.addLayout(barra)
+        self.explica = etiqueta('', 10.5)
+        pl.addWidget(self.explica)
+        self.leyenda = QtWidgets.QHBoxLayout()
+        pl.addLayout(self.leyenda)
+        medio = QtWidgets.QHBoxLayout()
+        self.plano = PlanoZ()
+        self.plano.posicion_elegida.connect(self.elegir)
+        medio.addWidget(self.plano, 1)
+        self.texto = QtWidgets.QTextBrowser()
+        self.texto.setFixedWidth(380)
+        medio.addWidget(self.texto)
+        pl.addLayout(medio, 1)
+        self.pest.addTab(w, 'Plano')
+
+        # --- 2 Cómo vende
+        w = QtWidgets.QWidget()
+        pl = QtWidgets.QVBoxLayout(w)
+        self.vende = etiqueta('', 10.5)
+        pl.addWidget(self.vende)
+        sub = QtWidgets.QTabWidget()
+        self.t_temp = PanelTabla('outlet_por-temporada', COLS_TEMPORADA, numericas=(1, 2, 3, 4, 5, 6, 8),
+                                 color=lambda f, c: FONDO_GRUPO.get(f[7]) if c == 7 else None)
+        self.t_fam = PanelTabla('outlet_por-familia', ['Familia'] + COLS_VENTA, numericas=range(1, 7),
+                                ayuda='«?» = modelos con código antiguo, sin familia en Odoo.')
+        self.t_talla = PanelTabla('outlet_por-talla', ['Talla'] + COLS_VENTA, numericas=range(1, 7))
+        sub.addTab(self.t_temp, 'Por temporada')
+        sub.addTab(self.t_fam, 'Por familia')
+        sub.addTab(self.t_talla, 'Por talla')
+        pl.addWidget(sub, 1)
+        self.pest.addTab(w, 'Cómo vende el outlet')
+
+        # --- 3 Estanterías
+        self.t_tipos = PanelTabla('zona-z_estanterias', ['Tipo', 'Qué es', 'Posiciones', 'Huecos según la hoja',
+                                                          'KO por posición hoy (percentil 90)', 'Capacidad usada (KO)',
+                                                          'Posiciones medidas', 'KO hoy'],
+                                  numericas=(2, 3, 4, 5, 6, 7),
+                                  ayuda='Capacidad usada = la mayor de: los huecos de la hoja, o lo que ya cabe hoy en las '
+                                        'posiciones de ese tipo (percentil 90 de KO por posición en Odoo). Las X cuentan 0: '
+                                        'si hoy tienen cajas, hay que sacarlas.')
+        self.pest.addTab(self.t_tipos, 'Estanterías')
+        # --- 4 Movimientos
+        self.t_movs = PanelTabla('zona-z_movimientos', ['Paso', 'Orden', 'Desde', 'Caja', 'Modelo-color principal',
+                                                        'Tallas', 'Uds', 'Temporada', 'Grupo', 'Familia', 'Hasta',
+                                                        'Modelos-color en la caja'],
+                                 numericas=(1, 6, 11),
+                                 color=lambda f, c: FONDO_GRUPO.get(f[8]) if c == 8 else None,
+                                 ayuda='La caja (KO) se mueve entera. «Hasta» es el lineal: dentro del lineal, el hueco lo '
+                                       'elige el operario, juntando el mismo modelo-color con su talla completa.')
+        self.pest.addTab(self.t_movs, 'Movimientos')
+        # --- 5 Cajas a 0
+        self.t_ceros = PanelTabla('zona-z_cajas-a-0', ['Posición', 'Cajas a 0', 'Tipo de estantería'], numericas=(1,),
+                                  ayuda='Cajas de las estanterías de la Z que en Odoo están a 0: comprobar que están '
+                                        'vacías y retirarlas antes de mover nada.')
+        self.pest.addTab(self.t_ceros, 'Cajas a 0')
+        self.aviso = etiqueta('', 9.5, '#b45309')
+        lay.addWidget(self.aviso)
+        self.poner_modo('final')
+
+    def poner_modo(self, modo):
+        titulo, texto, ley = self.MODOS[modo]
+        for b in self.grupo.buttons():
+            b.setChecked(b.property('modo') == modo)
+        self.explica.setText('<b>%s.</b> %s' % (titulo, texto))
+        while self.leyenda.count():
+            w = self.leyenda.takeAt(0).widget()
+            if w:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
+        for col, txt in ley:
+            self.leyenda.addWidget(etiqueta('<span style="background:%s">&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</span> %s'
+                                            % (col, txt), ajustar=False))
+        self.leyenda.addStretch(1)
+        self.plano.colorear(modo)
+
+    def poner(self, z):
+        self.z = z
+        r = z['resumen']
+        self.sub.setText('Datos de Odoo del %s · ventas del %s al %s · estanterías: hojas del 02/11/2026 (%s posiciones, '
+                         '%s con duda) · propuesta sin probar en la nave'
+                         % (r['fecha_copia'], r['ventas_desde'], r['ventas_hasta'], esp(r['posiciones_con_hoja']),
+                            esp(r['dudas_hoja'])))
+        por_grupo = {g: [t for t in z['orden_temporadas'] if z['temporadas'][t]['grupo'] == g]
+                     for g in ('vivo', 'lento', 'muerto')}
+        corto = lambda xs: ', '.join(xs[:14]) + ('…' if len(xs) > 14 else '')
+        self.criterio.setText(
+            '<b>Criterio:</b> 1) la temporada, que es lo que más pesa · 2) dentro de la temporada, la familia que más vende, '
+            'más cerca · 3) el modelo-color con su talla completa, junto.<br>'
+            '<span style="color:%s"><b>Vivo</b></span>: %s · <span style="color:%s"><b>lento</b></span>: %s · '
+            '<span style="color:%s"><b>muerto</b></span>: %s'
+            % (COLOR_GRUPO['vivo'], corto(por_grupo['vivo']), COLOR_GRUPO['lento'], corto(por_grupo['lento']),
+               COLOR_GRUPO['muerto'], corto(por_grupo['muerto'])))
+        pa = r['pasos']
+        self.p[0].poner(esp(r['cajas_a_0']), 'cajas de las estanterías de la Z que en Odoo están a 0. Comprobar que '
+                                             'están vacías y retirarlas.')
+        lv = r['lineales_vivo']
+        rango = ('L%02d–L%02d' % (min(lv), max(lv))) if lv else '—'
+        self.p[1].poner(esp(pa.get(2, 0)), 'cajas de temporadas lentas o muertas que hoy ocupan los lineales cercanos '
+                                           '(%s, %d lineales): sacarlas hacia el fondo o a palés.' % (rango, len(lv)))
+        self.p[2].poner(esp(pa.get(3, 0)), 'cajas de las temporadas que venden: a los lineales cercanos, por familia '
+                                           '(la que más vende, más cerca) y con el modelo-color junto.')
+        self.p[3].poner(esp(pa.get(4, 0)), 'cajas lentas o muertas que cambian de sitio entre los lineales del fondo o '
+                                           'van a palés. Se puede dejar para el final.')
+        self.t_lin.poner([[f['l'], f['metros'], ', '.join('%s %d' % kv for kv in f['tipos'].most_common()),
+                           f['capacidad'], f['ko_hoy'], f['ko_despues'], f['entran'], f['salen'], f['se_quedan'],
+                           f['cajas_a_0'], f['grupo'], f['que_va']] for f in z['lineales']])
+        self.t_temp.poner(z['ventas']['temporada'])
+        self.t_fam.poner(z['ventas']['familia'])
+        self.t_talla.poner(z['ventas']['talla'])
+        pt, ut = r['pedidos_por_tamano'], r['uds_por_tamano']
+        self.vende.setText(
+            '<b>%s uds vendidas</b> en un año (OUT de la zona Z sin PERMANENTE), con %s uds de stock hoy. <b>%s de %s</b> '
+            'modelos-color con stock no han vendido nada en el año (%s uds).<br>%s pedidos. De más de 50 uds: <b>%s '
+            'pedidos con el %s %% de las uds</b> (stockistas o Privalia: sin confirmar, falta leer el cliente); de 1 ud: %s.'
+            % (esp(r['uds_vendidas']), esp(r['stock']), esp(r['mc_sin_venta']), esp(r['mc_con_stock']),
+               esp(r['uds_sin_venta']), esp(r['pedidos']), esp(pt.get('más de 50 uds', 0)),
+               round(100 * ut.get('más de 50 uds', 0) / max(1, r['uds_vendidas'])), esp(pt.get('1 ud', 0))))
+        self.t_tipos.poner([[c['tipo'], c['descripcion'], c['posiciones'], '' if c['nominal'] is None else c['nominal'],
+                             '' if c['real'] is None else c['real'], c['usar'], c['medidas'], c['ko_hoy']]
+                            for c in sorted(z['cap_tipo'].values(), key=lambda c: -c['posiciones']) if c['posiciones']])
+        self.t_movs.poner([[NOMBRE_PASO_Z[m[0]]] + m[1:] for m in z['movimientos']])
+        self.t_ceros.poner(z['ceros'])
+        self.aviso.setText('Capacidad de las estanterías L01–L43: %s KO, para %s KO de la Z (%s hoy en estanterías y %s '
+                           'en palés o sin hueco). No caben %s: se quedan en palés, al fondo.'
+                           % (esp(r['capacidad_estanterias']), esp(r['ko_total']), esp(r['ko_en_estanterias']),
+                              esp(r['ko_fuera']), esp(r['no_caben'])))
+        self.plano.pintar(z)
+        self.texto.setHtml('<h3>Haz clic en una posición</h3><p style="color:#586374">Sale su tipo de estantería, lo que '
+                           'tiene hoy y lo que irá en su lineal.</p>')
+
+    def _cambiar_orden(self):
+        if not self.copia:
+            return
+        QtWidgets.QApplication.setOverrideCursor(Qt.WaitCursor)
+        try:
+            self.poner(zona_z.calcular(self.copia, CARPETA_V2, zona_z.ReglasZ(bloque=self.orden.currentData())))
+        finally:
+            QtWidgets.QApplication.restoreOverrideCursor()
+
+    def ver_paso(self, n):
+        self.pest.setCurrentIndex(4)
+        self.t_movs.caja.setText(NOMBRE_PASO_Z[n])
+
+    def ver_lineal(self, l):
+        self.pest.setCurrentIndex(1)
+        QtCore.QTimer.singleShot(30, lambda: (self.plano.ir_a_lineal('L%02d' % l), self.elegir(l, None)))
+
+    def elegir(self, l, p):
+        z = self.z
+        if not z:
+            return
+        f = z['destino_lineal'].get(l)
+        html = ['<h2 style="margin:0">L%02d%s</h2>' % (l, '' if p is None else ' P%02d' % p)]
+        if p is not None:
+            t = z['tipos'].get((l, p))
+            if t:
+                html.append('<p><b>Estantería %s</b> · %s<br>Lado %s · hoja %s%s</p>'
+                            % (t['tipo'], zona_z.DESCRIPCION.get(t['tipo'], ''), t['lado'], t['hoja'],
+                               ('<br><span style="color:#b45309">Duda: %s</span>' % t['duda']) if t['duda'] else ''))
+            else:
+                html.append('<p style="color:#586374">Sin dato en las hojas de estanterías.</p>')
+            html.append('<p>Hoy: <b>%d KO</b> · capacidad <b>%d</b></p>'
+                        % (z['hoy_pos'].get((l, p), 0), z['capacidad'].get((l, p), 0)))
+        if f:
+            html.append('<h3>Lineal L%02d · %s</h3><p>Capacidad %d KO · hoy %d → después %d<br>Entran %d · salen %d · '
+                        'se quedan %d · cajas a 0: %d</p><p><b>Qué irá:</b> %s</p>'
+                        % (l, f['grupo'], f['capacidad'], f['ko_hoy'], f['ko_despues'], f['entran'], f['salen'],
+                           f['se_quedan'], f['cajas_a_0'], f['que_va'] or '—'))
+        self.texto.setHtml(''.join(html))
+
+
 class Ventana(QtWidgets.QMainWindow):
     SECCIONES = ['Inicio', 'Por lineal', 'Plano de la nave', 'Listas completas', 'Fuentes de datos']
 
@@ -1082,11 +1378,21 @@ class Ventana(QtWidgets.QMainWindow):
                          '<span style="font-size:9pt;font-weight:400;color:#9aa3af">Redistribución KOROSHI</span></div>')
         marca.setStyleSheet('background:#18202b;padding:14px 18px')
         lado.addWidget(marca)
+        self.zona = QtWidgets.QComboBox()
+        self.zona.addItems(['Zona 0 · palés (L44–L136)', 'Zona Z · outlet (L01–L43)'])
+        self.zona.setStyleSheet('margin:8px 10px;padding:6px;font-weight:600')
+        self.zona.setToolTip('Qué zona quieres compactar')
+        self.zona.currentIndexChanged.connect(self.cambiar_zona)
+        lado.addWidget(self.zona)
         self.menu = QtWidgets.QListWidget()
         self.menu.setObjectName('menu')
         self.menu.setFixedWidth(210)
         self.menu.addItems(self.SECCIONES)
         lado.addWidget(self.menu, 1)
+        self.relleno = QtWidgets.QWidget()          # ocupa el sitio del menú cuando se ve la zona Z
+        self.relleno.setStyleSheet('background:#18202b')
+        self.relleno.hide()
+        lado.addWidget(self.relleno, 1)
         self.b_calc = QtWidgets.QPushButton('↻  Recalcular')
         self.b_calc.setStyleSheet('background:#263142;color:white;border:0;border-radius:0;padding:12px')
         self.b_calc.clicked.connect(self.recalcular)
@@ -1163,10 +1469,18 @@ class Ventana(QtWidgets.QMainWindow):
         lay.addWidget(b1, 0, Qt.AlignLeft)
         self.pila.addWidget(w)
 
+        # 5 Zona Z
+        self.pz = PantallaZ()
+        self.pila.addWidget(self.pz)
         self.menu.currentRowChanged.connect(self.pila.setCurrentIndex)
         self.menu.setCurrentRow(0)
         self.pintar_fuentes()
         QtCore.QTimer.singleShot(50, self.recalcular)
+
+    def cambiar_zona(self, i):
+        self.menu.setVisible(i == 0)
+        self.relleno.setVisible(i == 1)
+        self.pila.setCurrentIndex(5 if i == 1 else max(0, self.menu.currentRow()))
 
     def pintar_fuentes(self, res=None):
         filas = []
@@ -1216,6 +1530,11 @@ class Ventana(QtWidgets.QMainWindow):
         self.t_pasos.poner(m['pasos'])
         self.t_alt.poner(filas_alturas(res))
         self.pplano.poner(res)
+        self.pz.copia = res['copia']
+        self.pz.orden.blockSignals(True)
+        self.pz.orden.setCurrentIndex(0)
+        self.pz.orden.blockSignals(False)
+        self.pz.poner(res['z'])
         self.estado.setText('Listo · datos de Odoo del %s · %s' % (r['fecha_copia'], res['master'].ruta.name))
 
     def ver_lineal(self, l):
