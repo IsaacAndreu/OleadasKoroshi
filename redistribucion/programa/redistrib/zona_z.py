@@ -52,8 +52,10 @@ class ReglasZ:
     minimo_medir: int = 8              # posiciones de un tipo con KO para fiarse de su capacidad real
     percentil: float = 0.9
     llenado: float = 0.9               # parte de la capacidad que se llena (sitio para lo que entre)
-    bloque: str = 'temporada+familia'  # una KO no se mueve si ya está en un lineal de su bloque:
-                                       # 'temporada+familia', 'temporada' o 'grupo' (vivo/lento/muerto)
+    bloque: str = 'mixto'              # una KO no se mueve si ya está en un lineal de su bloque. 'mixto' (el
+                                       # recomendado, 27/11): lo vivo por temporada + familia (ahí se prepara
+                                       # el 80 % de lo que sale); lo lento y lo muerto, solo por grupo.
+                                       # También: 'temporada+familia', 'temporada' o 'grupo'.
 
 
 def ruta_csv():
@@ -239,9 +241,10 @@ def calcular(ruta_copia, carpeta_v2, r=ReglasZ(), ruta_estanterias=None):
 
     def bloque(c):
         p = c['p'][c['mcs'].most_common(1)[0][0]]
-        if r.bloque == 'temporada+familia':
+        g = temporadas[p[5]]['grupo']
+        if r.bloque == 'temporada+familia' or (r.bloque == 'mixto' and g == 'vivo'):
             return (p[5], p[4] or '?')
-        return (p[5],) if r.bloque == 'temporada' else (temporadas[p[5]]['grupo'],)
+        return (p[5],) if r.bloque == 'temporada' else (g,)
 
     libre = dict(cap_lineal)
     i_l = 0

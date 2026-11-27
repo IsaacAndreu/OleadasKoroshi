@@ -75,8 +75,11 @@ calcula en `redistrib/zona_z.py` (solo lee la copia):
   llena al 90 %.
 - **Pasos:** 1 retirar cajas a 0 · 2 hacer sitio en los lineales cercanos (sacar lo lento y muerto) · 3 traer lo
   que vende · 4 el resto (puede esperar). La caja (KO) se mueve entera; el destino es el lineal.
-- **Orden fino / medio / grueso:** una KO no se mueve si ya está en un lineal de su bloque (temporada + familia,
-  temporada o solo vivo/lento/muerto). Con la copia del 26/11: ~35.000, ~34.400 o ~26.700 movimientos.
+- **Orden (decidido por cálculo el 27/11, sin selector):** lo vivo (80 % de las líneas, 41 % del stock) por
+  temporada + familia; lo lento y lo muerto, solo separados. Una KO no se mueve si ya está en un lineal de su
+  bloque. Copia del 26/11: ~28.900 movimientos (todo fino: ~35.000; solo vivo/lento/muerto: ~26.700).
+- **En la Z cada KO es un hueco de la estantería** (A36 = 36 KO por posición): los «a 0» son huecos libres, no
+  cajas que retirar.
 
 ## Uso
 

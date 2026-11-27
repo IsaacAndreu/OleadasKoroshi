@@ -1080,10 +1080,6 @@ COLS_TEMPORADA = ['Temporada', 'Uds vendidas (1 año)', '% vendido', 'Líneas', 
 COLS_VENTA = ['Uds vendidas (1 año)', '% vendido', 'Líneas', 'Stock hoy', '% stock', 'Rotación (vendido ÷ stock)']
 
 
-ORDENES_Z = [('Fino: temporada + familia', 'temporada+familia'), ('Medio: temporada', 'temporada'),
-             ('Grueso: vivo / lento / muerto', 'grupo')]
-
-
 class PlanoZ(Plano):
     """Plano de la Z: cada posición coloreada por lo que irá en su lineal (vivo / lento / muerto), por lo llena que
     está hoy o por su tipo de estantería (hojas del 02/11/2026)."""
@@ -1131,14 +1127,6 @@ class PantallaZ(QtWidgets.QWidget):
         lay.setSpacing(10)
         cab = QtWidgets.QHBoxLayout()
         cab.addWidget(etiqueta('<span style="font-size:20pt;font-weight:700">Plan de trabajo · zona Z (outlet)</span>'), 1)
-        cab.addWidget(etiqueta('<b>Orden:</b>', ajustar=False))
-        self.orden = QtWidgets.QComboBox()
-        for texto, valor in ORDENES_Z:
-            self.orden.addItem(texto, valor)
-        self.orden.setToolTip('Una caja no se mueve si ya está en un lineal de su bloque. Cuanto más fino el orden, '
-                              'más cajas hay que mover.')
-        self.orden.currentIndexChanged.connect(self._cambiar_orden)
-        cab.addWidget(self.orden)
         lay.addLayout(cab)
         self.copia = None
         self.sub = etiqueta('Calculando…', 10.5, '#586374')
@@ -1153,7 +1141,7 @@ class PantallaZ(QtWidgets.QWidget):
         self.criterio = etiqueta('', 10.5, '#18202b')
         pl.addWidget(self.criterio)
         fila = QtWidgets.QHBoxLayout()
-        self.p = [Paso(1, '#e0a526', 'Retirar las cajas vacías', 'Ver la lista', lambda: self.pest.setCurrentIndex(5)),
+        self.p = [Paso(1, '#e0a526', 'Huecos libres hoy', 'Ver la lista', lambda: self.pest.setCurrentIndex(5)),
                   Paso(2, '#c2410c', 'Hacer sitio cerca del muelle', 'Ver la lista', lambda: self.ver_paso(2)),
                   Paso(3, '#2fa37f', 'Traer lo que vende', 'Ver la lista', lambda: self.ver_paso(3)),
                   Paso(4, '#2f6fdb', 'Ordenar el resto (puede esperar)', 'Ver la lista', lambda: self.ver_paso(4))]
@@ -1238,10 +1226,10 @@ class PantallaZ(QtWidgets.QWidget):
                                        'elige el operario, juntando el mismo modelo-color con su talla completa.')
         self.pest.addTab(self.t_movs, 'Movimientos')
         # --- 5 Cajas a 0
-        self.t_ceros = PanelTabla('zona-z_cajas-a-0', ['Posición', 'Cajas a 0', 'Tipo de estantería'], numericas=(1,),
-                                  ayuda='Cajas de las estanterías de la Z que en Odoo están a 0: comprobar que están '
-                                        'vacías y retirarlas antes de mover nada.')
-        self.pest.addTab(self.t_ceros, 'Cajas a 0')
+        self.t_ceros = PanelTabla('zona-z_huecos-libres', ['Posición', 'Huecos libres', 'Tipo de estantería'], numericas=(1,),
+                                  ayuda='Huecos de las estanterías de la Z vacíos hoy (su KO está a 0 en Odoo). Es sitio '
+                                        'libre: ahí va lo que se mueve.')
+        self.pest.addTab(self.t_ceros, 'Huecos libres')
         self.aviso = etiqueta('', 9.5, '#b45309')
         lay.addWidget(self.aviso)
         self.poner_modo('final')
@@ -1274,15 +1262,16 @@ class PantallaZ(QtWidgets.QWidget):
                      for g in ('vivo', 'lento', 'muerto')}
         corto = lambda xs: ', '.join(xs[:14]) + ('…' if len(xs) > 14 else '')
         self.criterio.setText(
-            '<b>Criterio:</b> 1) la temporada, que es lo que más pesa · 2) dentro de la temporada, la familia que más vende, '
-            'más cerca · 3) el modelo-color con su talla completa, junto.<br>'
+            '<b>Criterio:</b> 1) la temporada, que es lo que más pesa · 2) en lo vivo (el 80 %% de lo que se prepara), la '
+            'familia que más vende, más cerca, y el modelo-color con su talla completa junto · 3) lo lento y lo muerto, '
+            'solo separados, sin ordenar por familia (no compensa moverlo).<br>'
             '<span style="color:%s"><b>Vivo</b></span>: %s · <span style="color:%s"><b>lento</b></span>: %s · '
             '<span style="color:%s"><b>muerto</b></span>: %s'
             % (COLOR_GRUPO['vivo'], corto(por_grupo['vivo']), COLOR_GRUPO['lento'], corto(por_grupo['lento']),
                COLOR_GRUPO['muerto'], corto(por_grupo['muerto'])))
         pa = r['pasos']
-        self.p[0].poner(esp(r['cajas_a_0']), 'cajas de las estanterías de la Z que en Odoo están a 0. Comprobar que '
-                                             'están vacías y retirarlas.')
+        self.p[0].poner(esp(r['cajas_a_0']), 'huecos de estantería vacíos (su KO está a 0 en Odoo). En la Z cada KO es un '
+                                             'hueco: no hay que retirar nada, es el sitio donde va lo que se mueve.')
         lv = r['lineales_vivo']
         rango = ('L%02d–L%02d' % (min(lv), max(lv))) if lv else '—'
         self.p[1].poner(esp(pa.get(2, 0)), 'cajas de temporadas lentas o muertas que hoy ocupan los lineales cercanos '
@@ -1317,15 +1306,6 @@ class PantallaZ(QtWidgets.QWidget):
         self.plano.pintar(z)
         self.texto.setHtml('<h3>Haz clic en una posición</h3><p style="color:#586374">Sale su tipo de estantería, lo que '
                            'tiene hoy y lo que irá en su lineal.</p>')
-
-    def _cambiar_orden(self):
-        if not self.copia:
-            return
-        QtWidgets.QApplication.setOverrideCursor(Qt.WaitCursor)
-        try:
-            self.poner(zona_z.calcular(self.copia, CARPETA_V2, zona_z.ReglasZ(bloque=self.orden.currentData())))
-        finally:
-            QtWidgets.QApplication.restoreOverrideCursor()
 
     def ver_paso(self, n):
         self.pest.setCurrentIndex(4)
@@ -1531,9 +1511,6 @@ class Ventana(QtWidgets.QMainWindow):
         self.t_alt.poner(filas_alturas(res))
         self.pplano.poner(res)
         self.pz.copia = res['copia']
-        self.pz.orden.blockSignals(True)
-        self.pz.orden.setCurrentIndex(0)
-        self.pz.orden.blockSignals(False)
         self.pz.poner(res['z'])
         self.estado.setText('Listo · datos de Odoo del %s · %s' % (r['fecha_copia'], res['master'].ruta.name))
 
