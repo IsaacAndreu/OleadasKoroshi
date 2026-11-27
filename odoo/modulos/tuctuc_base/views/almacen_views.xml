@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="view_tuctuc_almacen_tree" model="ir.ui.view">
+        <field name="name">tuctuc.almacen.tree</field>
+        <field name="model">tuctuc.almacen</field>
+        <field name="arch" type="xml">
+            <tree string="Almacenes de la PDA" editable="bottom">
+                <field name="sequence" widget="handle"/>
+                <field name="warehouse_id"/>
+                <field name="company_id"/>
+                <field name="sorter_id"/>
+                <field name="faltantes_id"/>
+                <field name="zona_picking"/>
+                <field name="active" widget="boolean_toggle"/>
+            </tree>
+        </field>
+    </record>
+
+    <record id="action_tuctuc_almacen" model="ir.actions.act_window">
+        <field name="name">TUCTUC PDA: almacenes</field>
+        <field name="res_model">tuctuc.almacen</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'active_test': False}</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">Añade los almacenes que usan la PDA</p>
+            <p>Uno por compañía de la nave (WH-OR, MODAI, UBRAN). La PDA solo trabaja con albaranes y ubicaciones de
+                estos almacenes, y con la compañía de cada documento.</p>
+        </field>
+    </record>
+
+    <menuitem id="menu_tuctuc_almacen" name="TUCTUC PDA: almacenes" parent="stock.menu_stock_config_settings"
+              action="action_tuctuc_almacen" sequence="90" groups="stock.group_stock_manager"/>
+</odoo>

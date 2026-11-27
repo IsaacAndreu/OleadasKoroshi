@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Al instalar: WH-OR, MODAI y UBRAN (si existen) con su SORTER y su ubicación de faltantes.
+         noupdate: solo corre al instalar, no al actualizar (CLAUDE.md, regla 9). -->
+    <data noupdate="1">
+        <function model="tuctuc.almacen" name="_crear_iniciales"/>
+    </data>
+</odoo>

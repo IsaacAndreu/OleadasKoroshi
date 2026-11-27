@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Parámetros de la PDA de Oriola - Amposta. noupdate: si se cambian en Ajustes > Técnico > Parámetros del sistema,
+         al actualizar no se pisan. Los valores por defecto están también en comun.py (si se borra el parámetro). -->
+    <data noupdate="1">
+        <!-- Turno por hora de entrada (comun.turno_de). Valor de NAU-2: falta confirmar los turnos de Oriola. -->
+        <record id="parametro_turnos" model="ir.config_parameter">
+            <field name="key">tuctuc_base.turnos</field>
+            <field name="value">07:00 06:00-14:00 descanso=15; 11:00 08:00-13:00,14:00-17:00</field>
+        </record>
+        <!-- Prefijos de los EAN de las prendas de la nave (separados por comas) -->
+        <record id="parametro_prefijos_ean" model="ir.config_parameter">
+            <field name="key">tuctuc_base.prefijos_ean</field>
+            <field name="value">8447333,8435689</field>
+        </record>
+        <!-- Prefijos de los contenedores (sububicaciones de un hueco: .../L75 P38 C2/KO_300726_755) -->
+        <record id="parametro_prefijos_contenedor" model="ir.config_parameter">
+            <field name="key">tuctuc_base.prefijos_contenedor</field>
+            <field name="value">KO_,TT_,UB_</field>
+        </record>
+        <!-- Tipos de pedido (sale.order.s_order_type_id) que van por oleada: INT de la estantería al SORTER; desde allí
+             reparte y embala PedidosMultiples. El resto de tipos se preparan en la PDA con su OUT entera. -->
+        <record id="parametro_tipos_oleada" model="ir.config_parameter">
+            <field name="key">tuctuc_base.tipos_oleada</field>
+            <field name="value">WEB,WEB B&amp;B,PED. INICIAL</field>
+        </record>
+        <!-- Caja de OUT: la crea Odoo con la secuencia «Packages» (BOX + 7 cifras) -->
+        <record id="parametro_patron_caja" model="ir.config_parameter">
+            <field name="key">tuctuc_base.patron_caja</field>
+            <field name="value">^BOX\d{7}$</field>
+        </record>
+    </data>
+</odoo>
