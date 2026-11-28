@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_tuctuc_contenedor_mov_usuario,tuctuc.contenedor.movimiento usuario,model_tuctuc_contenedor_movimiento,stock.group_stock_user,1,0,0,0
+access_tuctuc_compactacion_paso_usuario,tuctuc.compactacion.paso usuario,model_tuctuc_compactacion_paso,stock.group_stock_user,1,0,0,0
+access_tuctuc_contenedor_banda_usuario,tuctuc.contenedor.banda usuario,model_tuctuc_contenedor_banda,stock.group_stock_user,1,0,0,0

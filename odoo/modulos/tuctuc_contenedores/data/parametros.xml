@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <!-- Parámetros de Contenedores en Oriola (noupdate: si se cambian en Ajustes > Técnico > Parámetros del sistema,
+         al actualizar no se pisan).
+         - lineales: lineales de la ronda de cajas a 0 y de Compactar («1-189»). Vacío = todos: en Oriola no hay zona
+           0 ni outlet (Isaac, 28/11/2026).
+         - temporadas: temporadas (season_id) que se compactan, separadas por comas. Vacío = todas.
+         - tarjetas_revisar / tarjetas_con_prendas: ids de empleado (hr.employee) separados por comas. Vacío = nadie
+           (se ponen a mano cuando se decida quién en Oriola).
+         - cajas_columna, cajas_vaciar, lineales_distancia: los de NATH (columna = medio palé = 8 cajas). Por confirmar
+           en la nave de Oriola (también el sentido del muelle: lo de más salida va al lineal con número más bajo). -->
+    <data noupdate="1">
+        <record id="parametro_lineales" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.lineales</field>
+            <field name="value"> </field>
+        </record>
+        <record id="parametro_temporadas" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.temporadas</field>
+            <field name="value"> </field>
+        </record>
+        <record id="parametro_tarjetas_revisar" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.tarjetas_revisar</field>
+            <field name="value"> </field>
+        </record>
+        <record id="parametro_tarjetas_con_prendas" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.tarjetas_con_prendas</field>
+            <field name="value"> </field>
+        </record>
+        <record id="parametro_cajas_columna" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.cajas_columna</field>
+            <field name="value">8</field>
+        </record>
+        <record id="parametro_cajas_vaciar" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.cajas_vaciar</field>
+            <field name="value">4</field>
+        </record>
+        <record id="parametro_lineales_distancia" model="ir.config_parameter">
+            <field name="key">tuctuc_contenedores.lineales_distancia</field>
+            <field name="value">2</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <menuitem id="menu_tuctuc_contenedores_app" name="Contenedores" action="action_tuctuc_contenedores_pantalla"
+              web_icon="tuctuc_contenedores,static/description/icon.png" sequence="3"/>
+    <menuitem id="menu_tuctuc_contenedores_root" name="Contenedores"
+              parent="tuctuc_operarios.menu_tuctuc_operarios_root" sequence="95"/>
+    <menuitem id="menu_tuctuc_contenedores_pantalla" name="Mover contenedores"
+              parent="menu_tuctuc_contenedores_root" action="action_tuctuc_contenedores_pantalla" sequence="10"/>
+    <menuitem id="menu_tuctuc_contenedores_mov" name="Movimientos hechos"
+              parent="menu_tuctuc_contenedores_root" action="action_tuctuc_contenedor_mov" sequence="20"/>
+    <menuitem id="menu_tuctuc_compactacion_paso" name="Compactar: pasos"
+              parent="menu_tuctuc_contenedores_root" action="action_tuctuc_compactacion_paso" sequence="30"/>
+    <menuitem id="menu_tuctuc_contenedor_banda" name="Altura de las cajas"
+              parent="menu_tuctuc_contenedores_root" action="action_tuctuc_contenedor_banda" sequence="40"/>
+</odoo>

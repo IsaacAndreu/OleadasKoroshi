@@ -23,7 +23,7 @@ PATRON_CAJA = r'^BOX\d{7}$'
 
 # Valores por defecto de los parámetros (data/parametros.xml los crea con estos mismos valores)
 PREFIJOS_EAN = '8447333,8435689'
-PREFIJOS_CONTENEDOR = 'KO_,TT_,UB_'
+PREFIJOS_CONTENEDOR = 'KO_,TT_,UB_,MI_'   # v1.0.1: MI_ (MODA INTIMA)
 TIPOS_OLEADA = 'WEB,WEB B&B,PED. INICIAL'
 
 

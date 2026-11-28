@@ -20,8 +20,10 @@ nuevos tuctuc_* para la nave de Oriola, los koroshi_* no se tocan). Diseño: bin
 Puestos a 0: sin usuarios por defecto (parámetro tuctuc_faltantes.puestos_a_cero_usuarios vacío).
 
 v1.0.0 (28/11/2026): primera versión, clon multicompañía de koroshi_faltantes 1.12.0 para odoo.tuctuc.com.
+v1.0.1 (28/11/2026): la zona de picking es la del almacén de cada ubicación (antes, la de cualquiera) y, si está
+vacía (MIECI, sin N1), vale cualquier hueco de su stock. Para MIECI en la PDA (sí de Isaac 28/11).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

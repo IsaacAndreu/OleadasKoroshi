@@ -244,9 +244,14 @@ class TuctucFaltante(models.Model):
         """True si no es de donde se coge para una OUT: fuera de la zona de picking de los almacenes de la PDA (N1)
         o, dentro, fuera de un hueco de lineal (FALTAS_001, SORTER, contenedores sueltos)."""
         completo = ubicacion.complete_name or ''
-        partes = [p.strip() for p in completo.split('/')]
-        zonas = set(z for z in self.env['tuctuc.almacen'].activos().mapped('zona_picking') if z)
-        if not zonas.intersection(partes):
+        alm = self.env['tuctuc.almacen'].de_ubicacion(ubicacion)
+        if not alm:
+            return True
+        stock = alm.warehouse_id.lot_stock_id
+        if not stock.parent_path or not (ubicacion.parent_path or '').startswith(stock.parent_path):
+            return True
+        # 1.0.1: la zona de SU almacén (N1); vacía (MIECI) = cualquier hueco de su stock
+        if alm.zona_picking and alm.zona_picking not in [p.strip() for p in completo.split('/')]:
             return True
         return not RE_HUECO.search(completo)
 

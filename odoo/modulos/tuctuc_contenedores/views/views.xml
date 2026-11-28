@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_tuctuc_contenedores_pantalla" model="ir.actions.client">
+        <field name="name">Contenedores</field>
+        <field name="tag">tuctuc_contenedores_pantalla</field>
+    </record>
+
+    <record id="view_tuctuc_contenedor_mov_tree" model="ir.ui.view">
+        <field name="name">tuctuc.contenedor.movimiento.tree</field>
+        <field name="model">tuctuc.contenedor.movimiento</field>
+        <field name="arch" type="xml">
+            <tree create="false" edit="false" delete="false">
+                <field name="create_date" string="Cuándo"/>
+                <field name="accion"/>
+                <field name="employee_id"/>
+                <field name="user_id" optional="hide"/>
+                <field name="contenedor"/>
+                <field name="company_id" optional="show"/>
+                <field name="producto_id" optional="show"/>
+                <field name="producto_nuevo_id" optional="show"/>
+                <field name="origen"/>
+                <field name="destino"/>
+                <field name="lineas"/>
+                <field name="uds"/>
+                <field name="reservadas"/>
+                <field name="move_id" optional="hide"/>
+                <field name="move_nuevo_id" optional="hide"/>
+                <field name="faltante_id" optional="hide"/>
+                <field name="tanda" optional="hide"/>
+            </tree>
+        </field>
+    </record>
+    <!-- v1.5: buscar por contenedor, artículo, persona y acción (los ajustes de stock: «Poner a cero» / «Añadir») -->
+    <record id="view_tuctuc_contenedor_mov_search" model="ir.ui.view">
+        <field name="name">tuctuc.contenedor.movimiento.search</field>
+        <field name="model">tuctuc.contenedor.movimiento</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="contenedor"/>
+                <field name="producto_id"/>
+                <field name="producto_nuevo_id"/>
+                <field name="employee_id"/>
+                <filter name="ajustes" string="Ajustes de stock (a cero / añadir / cantidad / a Faltantes / es otro / encontrado)"
+                        domain="[('accion', 'in', ('cero', 'anadir', 'cantidad', 'faltante', 'cambiar_articulo', 'encontrado'))]"/>
+                <!-- v1.16.0: ronda de cajas a 0 -->
+                <filter name="retiradas" string="Cajas a 0 retiradas (ronda)"
+                        domain="[('accion', '=', 'archivar'), ('destino', 'in', ('(archivado, vacía, ronda cajas a 0)', '(archivado, no estaba en el hueco)'))]"/>
+                <filter name="con_prendas" string="Cajas a 0 con prendas (marcadas)" domain="[('accion', '=', 'con_prendas')]"/>
+                <filter name="faltantes" string="A Faltantes" domain="[('accion', '=', 'faltante')]"/>
+                <filter name="cambiar_articulo" string="Cambiar artículo (errores de talla)"
+                        domain="[('accion', '=', 'cambiar_articulo')]"/>
+                <filter name="hoy" string="Hoy"
+                        domain="[('create_date', '&gt;=', context_today().strftime('%Y-%m-%d'))]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_accion" string="Acción" context="{'group_by': 'accion'}"/>
+                    <filter name="por_persona" string="Persona" context="{'group_by': 'employee_id'}"/>
+                    <filter name="por_empresa" string="Empresa" context="{'group_by': 'company_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_tuctuc_contenedor_mov" model="ir.actions.act_window">
+        <field name="name">Movimientos de contenedores</field>
+        <field name="res_model">tuctuc.contenedor.movimiento</field>
+        <field name="view_mode">tree</field>
+    </record>
+
+    <!-- v1.17.0: «Compactar» (fase 1): pasos del plan y alturas de las KO. Solo lectura (se hacen desde la PDA). -->
+    <record id="view_tuctuc_compactacion_paso_tree" model="ir.ui.view">
+        <field name="name">tuctuc.compactacion.paso.tree</field>
+        <field name="model">tuctuc.compactacion.paso</field>
+        <field name="arch" type="xml">
+            <tree string="Pasos de compactación" create="false" edit="false" delete="false"
+                  decoration-muted="estado == 'sustituido'" decoration-success="estado in ('hecho', 'cambiado')"
+                  decoration-danger="estado == 'no_esta'">
+                <field name="lineal"/>
+                <field name="orden"/>
+                <field name="origen_id"/>
+                <field name="contenedor"/>
+                <field name="company_id" optional="show"/>
+                <field name="mc"/>
+                <field name="uds" sum="Uds"/>
+                <field name="destino_id"/>
+                <field name="banda"/>
+                <field name="estado"/>
+                <field name="destino_real_id"/>
+                <field name="employee_id"/>
+                <field name="fecha"/>
+                <field name="motivo"/>
+            </tree>
+        </field>
+    </record>
+    <record id="view_tuctuc_compactacion_paso_search" model="ir.ui.view">
+        <field name="name">tuctuc.compactacion.paso.search</field>
+        <field name="model">tuctuc.compactacion.paso</field>
+        <field name="arch" type="xml">
+            <search>
+                <field name="lineal"/>
+                <field name="contenedor"/>
+                <field name="mc"/>
+                <field name="origen_id"/>
+                <field name="destino_id"/>
+                <field name="employee_id"/>
+                <filter name="vigentes" string="Sin sustituidos" domain="[('estado', '!=', 'sustituido')]"/>
+                <separator/>
+                <filter name="pendientes" string="Pendientes" domain="[('estado', '=', 'pendiente')]"/>
+                <filter name="hechos" string="Hechos" domain="[('estado', 'in', ('hecho', 'cambiado'))]"/>
+                <filter name="cambiados" string="En otra columna" domain="[('estado', '=', 'cambiado')]"/>
+                <filter name="no_esta" string="No está" domain="[('estado', '=', 'no_esta')]"/>
+                <group expand="0" string="Agrupar por">
+                    <filter name="por_lineal" string="Lineal" context="{'group_by': 'lineal'}"/>
+                    <filter name="por_estado" string="Estado" context="{'group_by': 'estado'}"/>
+                    <filter name="por_persona_c" string="Persona" context="{'group_by': 'employee_id'}"/>
+                </group>
+            </search>
+        </field>
+    </record>
+    <record id="action_tuctuc_compactacion_paso" model="ir.actions.act_window">
+        <field name="name">Compactar: pasos</field>
+        <field name="res_model">tuctuc.compactacion.paso</field>
+        <field name="view_mode">tree</field>
+        <field name="context">{'search_default_vigentes': 1, 'search_default_por_lineal': 1}</field>
+    </record>
+    <record id="view_tuctuc_contenedor_banda_tree" model="ir.ui.view">
+        <field name="name">tuctuc.contenedor.banda.tree</field>
+        <field name="model">tuctuc.contenedor.banda</field>
+        <field name="arch" type="xml">
+            <tree string="Altura de las KO" create="false" edit="false" delete="false">
+                <field name="contenedor_id"/>
+                <field name="banda"/>
+                <field name="employee_id"/>
+                <field name="write_date" string="Desde"/>
+            </tree>
+        </field>
+    </record>
+    <record id="action_tuctuc_contenedor_banda" model="ir.actions.act_window">
+        <field name="name">Altura de las KO</field>
+        <field name="res_model">tuctuc.contenedor.banda</field>
+        <field name="view_mode">tree</field>
+    </record>
+</odoo>

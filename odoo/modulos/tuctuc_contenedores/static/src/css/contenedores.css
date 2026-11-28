@@ -1,0 +1,109 @@
+/* TUCTUC Contenedores v1.5.0. Todo dentro de .o_tuctuc_contenedores. Sin aria-hidden (Odoo 13 lo oculta). */
+.o_tuctuc_contenedores { background: #eef1f4; color: #111827; min-height: 100%; font-family: Arial, sans-serif; font-size: 17px; padding-bottom: 20px; }
+.o_tuctuc_contenedores * { box-sizing: border-box; }
+.o_tuctuc_contenedores .o_kc_cab { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 12px 16px; background: #fff; border-bottom: 1px solid #c4cbd3; }
+.o_tuctuc_contenedores .o_kc_titulo { font-size: 22px; font-weight: bold; }
+.o_tuctuc_contenedores .o_kc_codigo { flex: 1; min-width: 220px; font-size: 18px; padding: 10px; border: 2px solid #c4cbd3; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_codigo:focus { border-color: #1e7b34; outline: none; }
+.o_tuctuc_contenedores .o_kc_aviso { margin: 12px 16px 0; padding: 12px 14px; border-radius: 8px; font-weight: bold; display: none; }
+.o_tuctuc_contenedores .o_kc_aviso.o_kc_ok { display: block; background: #dff3e3; color: #14572a; }
+.o_tuctuc_contenedores .o_kc_aviso.o_kc_mal { display: block; background: #fbe0e1; color: #8c1014; }
+.o_tuctuc_contenedores .o_kc_paso { margin: 12px 16px 0; font-size: 20px; font-weight: bold; color: #0b4f9c; }
+.o_tuctuc_contenedores .o_kc_card { margin: 10px 16px 0; background: #fff; border: 1px solid #c4cbd3; border-radius: 10px; padding: 12px 14px; }
+.o_tuctuc_contenedores .o_kc_card h3 { margin: 0; font-size: 20px; }
+.o_tuctuc_contenedores .o_kc_hueco { color: #4b5563; font-size: 14px; margin: 2px 0 6px; word-break: break-all; }
+.o_tuctuc_contenedores .o_kc_vacio { color: #b86e00; font-weight: bold; }
+.o_tuctuc_contenedores table { width: 100%; border-collapse: collapse; font-size: 15px; }
+.o_tuctuc_contenedores td { padding: 3px 4px; border-top: 1px solid #e3e7ec; }
+.o_tuctuc_contenedores td.o_kc_n { text-align: right; white-space: nowrap; }
+.o_tuctuc_contenedores .o_kc_quitar { float: right; border: 0; background: #e3e7ec; border-radius: 6px; padding: 4px 10px; font-size: 15px; }
+.o_tuctuc_contenedores .o_kc_botones { margin: 14px 16px 0; }
+.o_tuctuc_contenedores .o_kc_vaciar { padding: 10px 16px; font-size: 16px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_persona { margin: 10px 16px 0; font-size: 17px; }
+.o_tuctuc_contenedores .o_kc_cambiar { border: 0; background: #e3e7ec; border-radius: 6px; padding: 4px 10px; font-size: 15px; margin-left: 8px; }
+.o_tuctuc_contenedores .o_kc_aviso.o_kc_info { display: block; background: #fff1d6; color: #7a4a00; }
+.o_tuctuc_contenedores .o_kc_hueco_panel .o_kc_card { margin-top: 10px; }
+.o_tuctuc_contenedores .o_kc_archivar { margin-top: 10px; padding: 12px 18px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; background: #1e7b34; color: #fff; }
+.o_tuctuc_contenedores .o_kc_solo_stock, .o_tuctuc_contenedores .o_kc_volver { margin: 8px 16px 8px 0; padding: 8px 14px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_hueco_panel > .o_kc_volver { margin: 10px 16px 0; }
+.o_tuctuc_contenedores .o_kc_fila_hueco { cursor: pointer; }
+.o_tuctuc_contenedores .o_kc_fila_hueco.o_kc_con td { color: #8c1014; font-weight: bold; }
+.o_tuctuc_contenedores .o_kc_fila_hueco.o_kc_sin td { color: #6b7280; }
+.o_tuctuc_contenedores .o_kc_confirmar { margin-top: 12px; padding: 12px; background: #fff1d6; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_confirmar button { margin: 10px 10px 0 0; padding: 12px 18px; font-size: 17px; font-weight: bold; border: 0; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_confirmar_si { background: #1e7b34; color: #fff; }
+.o_tuctuc_contenedores .o_kc_confirmar_no { background: #e3e7ec; color: #111827; }
+/* v1.5: compactar un hueco (casillas, acciones, contenedor abierto, añadir prendas) */
+.o_tuctuc_contenedores .o_kc_acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+.o_tuctuc_contenedores .o_kc_acciones button { padding: 12px 16px; font-size: 17px; font-weight: bold; border: 1px solid #c4cbd3; border-radius: 8px; background: #fff; color: #111827; }
+.o_tuctuc_contenedores .o_kc_acciones button[disabled] { opacity: .45; }
+.o_tuctuc_contenedores .o_kc_acciones .o_kc_archivar { margin-top: 0; background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.o_tuctuc_contenedores .o_kc_mover_marcados, .o_tuctuc_contenedores .o_kc_guardar_anadir { background: #0b4f9c !important; border-color: #0b4f9c !important; color: #fff !important; }
+.o_tuctuc_contenedores .o_kc_cero { background: #b42318 !important; border-color: #b42318 !important; color: #fff !important; }
+.o_tuctuc_contenedores .o_kc_tabla_hueco td { padding: 6px 4px; vertical-align: middle; }
+.o_tuctuc_contenedores .o_kc_td_marca { width: 44px; }
+.o_tuctuc_contenedores .o_kc_marca { width: 28px; height: 28px; }
+.o_tuctuc_contenedores .o_kc_ver { border: 0; background: none; padding: 4px 0; font-size: 17px; font-weight: bold; color: #0b4f9c; text-decoration: underline; text-align: left; }
+.o_tuctuc_contenedores .o_kc_tabla_hueco tr.o_kc_sin td.o_kc_n { color: #6b7280; }
+.o_tuctuc_contenedores .o_kc_tabla_hueco tr.o_kc_con td.o_kc_n { color: #8c1014; font-weight: bold; }
+.o_tuctuc_contenedores .o_kc_tabla_hueco tr.o_kc_marcado { background: #e6f0fb; }
+.o_tuctuc_contenedores .o_kc_volver_hueco { margin: 10px 16px 0; padding: 8px 14px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_anadir_caja { margin-top: 12px; padding: 12px; background: #e6f0fb; border-radius: 8px; }
+/* v1.6: «← Atrás», «⌨ Escribir» y «Cantidad» */
+.o_tuctuc_contenedores .o_kc_atras { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 2px solid #1e7b34; color: #1e7b34; background: #fff; border-radius: 8px; margin-right: 8px; }
+.o_tuctuc_contenedores .o_kc_teclado { padding: 10px 12px; font-size: 15px; border: 1px solid #c4cbd3; background: #fff; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_teclado_on { background: #e8f3ea; border-color: #1e7b34; }
+.o_tuctuc_contenedores .o_kc_cantidad_fila { margin: 8px 0; }
+.o_tuctuc_contenedores .o_kc_cantidad { width: 90px; font-size: 18px; padding: 6px; margin: 0 8px; border: 2px solid #c4cbd3; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_cantidad_ok { padding: 8px 14px; font-size: 16px; border: 1px solid #1e7b34; background: #fff; border-radius: 8px; }
+
+/* v1.7: cambiar la cantidad de un artículo del contenedor, buscar por un trozo del nombre */
+.o_tuctuc_contenedores .o_kc_editar { padding: 4px 10px; margin-left: 8px; border: 1px solid #1565c0;
+    border-radius: 6px; background: #fff; color: #1565c0; font-size: 14px; }
+.o_tuctuc_contenedores .o_kc_editar_caja { margin: 10px 0; padding: 10px; border: 2px solid #1565c0;
+    border-radius: 8px; background: #e3f2fd; }
+.o_tuctuc_contenedores .o_kc_editar_caja input { width: 90px; font-size: 22px; padding: 4px 8px; margin: 6px 8px 6px 0; }
+.o_tuctuc_contenedores .o_kc_editar_caja button { padding: 8px 14px; margin-right: 6px; font-size: 16px; }
+.o_tuctuc_contenedores .o_kc_editar_ok { background: #1565c0; color: #fff; border: 0; border-radius: 6px; }
+/* v1.14: «Es otro» (error de talla) */
+.o_tuctuc_contenedores .o_kc_otro { padding: 4px 10px; margin-left: 6px; border: 1px solid #8e24aa;
+    border-radius: 6px; background: #fff; color: #8e24aa; font-size: 14px; }
+.o_tuctuc_contenedores .o_kc_otro_caja { border-color: #8e24aa; background: #f3e5f5; }
+.o_tuctuc_contenedores .o_kc_otro_caja input { width: 90px; font-size: 22px; padding: 4px 8px; margin: 6px 8px 6px 0; }
+.o_tuctuc_contenedores .o_kc_otro_ok { background: #8e24aa; color: #fff; border: 0; border-radius: 6px; }
+.o_tuctuc_contenedores .o_kc_otro_ok[disabled] { opacity: 0.4; }
+.o_tuctuc_contenedores .o_kc_otro_lee { font-size: 18px; font-weight: bold; margin: 8px 0; }
+.o_tuctuc_contenedores .o_kc_abrir { float: right; margin-right: 6px; padding: 4px 10px; border: 1px solid #1565c0;
+    border-radius: 6px; background: #fff; color: #1565c0; }
+.o_tuctuc_contenedores .o_kc_sugerencias:empty { display: none; }
+.o_tuctuc_contenedores .o_kc_sugerencias { margin: 4px 0 8px; border: 1px solid #90caf9; border-radius: 8px;
+    background: #fff; }
+.o_tuctuc_contenedores .o_kc_sugerencia { display: block; width: 100%; text-align: left; padding: 10px 12px;
+    border: 0; border-bottom: 1px solid #e0e0e0; background: #fff; font-size: 16px; }
+.o_tuctuc_contenedores .o_kc_sugerencia small { color: #666; }
+
+/* v1.8: tipo de cada resultado de la búsqueda */
+.o_tuctuc_contenedores .o_kc_tipo { display: inline-block; min-width: 74px; margin-right: 8px; padding: 1px 6px;
+    border-radius: 4px; background: #eceff1; color: #455a64; font-size: 12px; text-align: center; }
+.o_tuctuc_contenedores .o_kc_tipo_contenedor { background: #fff3e0; color: #e65100; }
+.o_tuctuc_contenedores .o_kc_tipo_hueco { background: #e8f5e9; color: #2e7d32; }
+.o_tuctuc_contenedores .o_kc_tipo_lineal { background: #ede7f6; color: #4527a0; }
+.o_tuctuc_contenedores .o_kc_tipo_articulo { background: #e3f2fd; color: #1565c0; }
+.o_tuctuc_contenedores .o_kc_aviso_reserva { color: #b02a37; margin: 6px 0; }   /* v1.12 */
+/* v1.16: retirar cajas a 0 (ronda) */
+.o_tuctuc_contenedores .o_kc_ronda { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 1px solid #b86e00; background: #fff1d6; color: #7a4a00; border-radius: 8px; margin-left: 8px; }
+.o_tuctuc_contenedores .o_kc_fila_r { cursor: pointer; }
+.o_tuctuc_contenedores .o_kc_fila_r td { padding: 8px 4px; }
+.o_tuctuc_contenedores .o_kc_libre { color: #14572a; }
+.o_tuctuc_contenedores .o_kc_libre_grande { margin-top: 10px; padding: 14px; background: #dff3e3; color: #14572a; font-size: 20px; font-weight: bold; border-radius: 8px; }
+.o_tuctuc_contenedores .o_kc_r_titulo { margin-top: 10px; font-weight: bold; color: #0b4f9c; }
+.o_tuctuc_contenedores .o_kc_r_prendas { padding: 6px 10px; font-size: 15px; border: 1px solid #b86e00; background: #fff; color: #7a4a00; border-radius: 6px; }
+.o_tuctuc_contenedores .o_kc_acciones .o_kc_r_retirar { background: #1e7b34; border-color: #1e7b34; color: #fff; }
+.o_tuctuc_contenedores .o_kc_card tr.o_kc_marcado { background: #e6f0fb; }
+/* v1.17: compactar (fase 1) */
+.o_tuctuc_contenedores .o_kc_compactar { padding: 10px 16px; font-size: 16px; font-weight: bold; border: 1px solid #0b4f9c; background: #e6f0fb; color: #0b4f9c; border-radius: 8px; margin-left: 8px; }
+.o_tuctuc_contenedores .o_kc_c_btn_si { background: #1e7b34; color: #fff; }
+.o_tuctuc_contenedores .o_kc_c_btn_no { background: #e3e7ec; color: #111827; }
+.o_tuctuc_contenedores .o_kc_c_marcar, .o_tuctuc_contenedores .o_kc_c_soltar { padding: 6px 10px; margin: 4px 0 0 4px; font-size: 15px; border: 1px solid #6b7280; background: #fff; border-radius: 6px; }
+.o_tuctuc_contenedores .o_kc_banda_abajo { font-size: 20px; color: #fff; background: #0b4f9c; padding: 2px 8px; border-radius: 4px; }
+.o_tuctuc_contenedores .o_kc_banda_arriba { font-size: 20px; color: #fff; background: #b86e00; padding: 2px 8px; border-radius: 4px; }

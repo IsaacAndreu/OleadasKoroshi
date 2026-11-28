@@ -36,6 +36,7 @@ class TestComun(unittest.TestCase):
         pref = comun.lista(comun.PREFIJOS_CONTENEDOR)
         self.assertEqual(comun.empieza_por('ub_240725_612', pref), 'UB_')
         self.assertEqual(comun.empieza_por('KO_300726_755', pref), 'KO_')
+        self.assertEqual(comun.empieza_por('MI_120526_031', pref), 'MI_')
         self.assertEqual(comun.empieza_por('06298 - L75 P38 C2', pref), '')
         self.assertEqual(comun.empieza_por('8447333693493', comun.lista(comun.PREFIJOS_EAN)), '8447333')
 

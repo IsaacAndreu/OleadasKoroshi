@@ -12,7 +12,7 @@ from odoo import api, fields, models
 _logger = logging.getLogger(__name__)
 
 # Almacenes que se crean al instalar (si existen en la base de datos): código del almacén de Odoo
-CODIGOS_INICIALES = ('WH-OR', 'MODAI', 'UBRAN')
+CODIGOS_INICIALES = ('WH-OR', 'MODAI', 'UBRAN', 'MIECI')   # 1.0.1: MIECI (ECI - MODA INTIMA), sí de Isaac 28/11
 
 
 class TuctucAlmacen(models.Model):
@@ -36,7 +36,8 @@ class TuctucAlmacen(models.Model):
         help='Donde van las unidades que no se encuentran al preparar (la usa tuctuc_faltantes).')
     zona_picking = fields.Char(
         string='Zona de picking', default='N1',
-        help='Primer tramo de las ubicaciones de picking después de Stock (WH-OR/Stock/N1/...).')
+        help='Primer tramo de las ubicaciones de picking después de Stock (WH-OR/Stock/N1/...). Vacío: cualquier '
+             'hueco del stock del almacén (MIECI/Stock/24003 - L100 P17 C2).')
 
     _sql_constraints = [
         ('warehouse_unico', 'unique(warehouse_id)', 'Ese almacén ya está en la lista de la PDA.'),
@@ -85,14 +86,19 @@ class TuctucAlmacen(models.Model):
         Loc = self.env['stock.location'].sudo()
         orden = 10
         for codigo in CODIGOS_INICIALES:
-            wh = Wh.search([('code', '=', codigo)], limit=1)
+            # 1.0.1: el código se repite (en tuctuc hay MODAI y MIECI también en PRIME, ids 251 y 252): el bueno es el
+            # más antiguo (MODAI 109, de MODA INTIMA). Se comprueba a mano después en TUCTUC PDA: almacenes.
+            wh = Wh.search([('code', '=', codigo)], order='id', limit=1)
             if not wh or self.sudo().with_context(active_test=False).search([('warehouse_id', '=', wh.id)]):
                 continue
             sorter = Loc.search([('complete_name', '=', '%s/SORTER' % codigo), ('usage', '=', 'internal')], limit=1)
             faltas = Loc.search([('location_id', 'child_of', wh.view_location_id.id), ('usage', '=', 'internal'),
                                  ('name', '=like', 'FALTAS%')], order='id', limit=1)
+            # 1.0.1: zona N1 si el stock la tiene (WH-OR, MODAI, UBRAN); si no (MIECI: los huecos cuelgan de
+            # MIECI/Stock), vacía = cualquier hueco del stock del almacén
+            n1 = Loc.search([('location_id', '=', wh.lot_stock_id.id), ('name', '=', 'N1')], limit=1)
             self.sudo().create({'sequence': orden, 'warehouse_id': wh.id, 'sorter_id': sorter.id or False,
-                                'faltantes_id': faltas.id or False})
+                                'faltantes_id': faltas.id or False, 'zona_picking': 'N1' if n1 else False})
             _logger.info('TUCTUC Base: almacén %s en la PDA (SORTER %s, faltantes %s)', codigo,
                          sorter.complete_name or '-', faltas.complete_name or '-')
             orden += 10
