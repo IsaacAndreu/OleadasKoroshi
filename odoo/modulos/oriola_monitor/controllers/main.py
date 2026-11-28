@@ -264,7 +264,9 @@ class OriolaMonitor(http.Controller):
 
         uds_personas = sum(p['uds'] for p in personas)
         horas_personas = sum(p['horas'] for p in personas)
+        operarios = self._operarios(dia, es_hoy)   # v1.1.0
         return {
+            'operarios': operarios,
             'resumen': {
                 'validadas': len(hechas),
                 'uds_validadas': sum(uds_out.values()),
@@ -288,6 +290,103 @@ class OriolaMonitor(http.Controller):
             'lotes': lotes,
             'segundos': round(time.time() - t0, 2),
         }
+
+    # ------------------------------------------------------------------ v1.1.0: por operario y empresa
+    def _operarios(self, dia, es_hoy):
+        """Con la PDA nueva (tuctuc_operarios, tuctuc_preparacion): por operario (su tarjeta OP) y empresa del
+        albarán, uds, tareas acabadas, minutos efectivos, parado y uds/hora (la misma cifra que la productividad de
+        tuctuc_operarios: tarea._medir); qué hace ahora cada uno (hoy); y lo pendiente por empresa. Si no están
+        instalados, False (la pantalla no enseña la sección). Solo lee."""
+        env = request.env
+        if 'tuctuc.operario.tarea' not in env or 'tuctuc.almacen' not in env:
+            return False
+        Tarea = env['tuctuc.operario.tarea'].sudo()
+        ahora = datetime.datetime.utcnow()
+        umbral = Tarea._minutos_sin_leer_max()
+        tareas = Tarea.search([('dia', '=', dia)], order='inicio asc')
+        marcas = tareas._marcas_preparacion(ahora)
+        almacenes = env['tuctuc.almacen'].activos()
+        companias = almacenes.mapped('company_id')
+        nombre_cia = dict((c.id, c.name) for c in companias)
+        ops = {}
+        en_curso = []
+        for t in tareas:
+            med = t._medir(ahora, marcas.get(t.id), umbral)
+            e = t.employee_id
+            o = ops.setdefault(e.id, {'nombre': e.name or '', 'codigo': e.barcode or '', 'uds': 0.0, 'minutos': 0.0,
+                                      'parado': 0.0, 'efectivo': 0.0, 'acabadas': 0, 'dejadas': 0, 'curso': 0,
+                                      'por_cia': {}, 'inicio': None, 'fin': None})
+            cia = t.company_id.id
+            pc = o['por_cia'].setdefault(str(cia), {'uds': 0.0, 'tareas': 0, 'efectivo': 0.0})
+            for k in ('uds', 'minutos', 'parado', 'efectivo'):
+                o[k] += med[k]
+            pc['uds'] += med['uds']
+            pc['efectivo'] += med['efectivo']
+            pc['tareas'] += 1
+            o[{'acabada': 'acabadas', 'dejada': 'dejadas', 'curso': 'curso'}.get(t.estado, 'dejadas')] += 1
+            if not o['inicio'] or t.inicio < o['inicio']:
+                o['inicio'] = t.inicio
+            if not o['fin'] or med['fin'] > o['fin']:
+                o['fin'] = med['fin']
+            if es_hoy and t.estado == 'curso':
+                pickings = t._pickings()
+                en_curso.append({
+                    'nombre': e.name or '', 'ref': (t.batch_id.name if t.tipo == 'agrupacion' else t.picking_id.name) or '',
+                    'tipo': pickings[:1].picking_type_code == 'internal' and 'INT al SORTER' or 'OUT',
+                    'empresa': nombre_cia.get(cia, t.company_id.name or ''),
+                    'leidas': round(Tarea._uds_leidas(pickings)), 'total': round(t.uds_total or 0),
+                    'desde': self._hm(t.inicio), 'sin_leer': int(t._minutos_sin_leer(ahora)),
+                    'parado': t._minutos_sin_leer(ahora) >= umbral})
+        lista = []
+        for o in ops.values():
+            o['uds_hora'] = o['efectivo'] >= 1 and round(o['uds'] * 60.0 / o['efectivo']) or 0
+            for pc in o['por_cia'].values():
+                pc['uds_hora'] = pc['efectivo'] >= 1 and round(pc['uds'] * 60.0 / pc['efectivo']) or 0
+            o['inicio'], o['fin'] = self._hm(o['inicio']), self._hm(o['fin'])
+            lista.append(o)
+        lista.sort(key=lambda x: -x['uds'])
+        en_curso.sort(key=lambda x: -x['sin_leer'])
+        return {
+            'empresas': [{'id': str(c.id), 'nombre': c.name} for c in companias],
+            'operarios': lista,
+            'ahora': en_curso,
+            'pendiente': self._pendiente_empresas(almacenes) if es_hoy else [],
+        }
+
+    def _pendiente_empresas(self, almacenes):
+        """Por almacén de la PDA (y su empresa), albaranes listos para coger ahora: OUT directas (las que da la PDA),
+        INT de la estantería al SORTER y OUT de oleada (las reparte PedidosMultiples). Uds = lo que piden."""
+        Asig = request.env['tuctuc.operario.asignacion'].sudo()
+        oleada = set(Asig._oleada_pendientes(almacenes.mapped('company_id')))
+        res = []
+        for alm in almacenes:
+            sorter = alm.sorter_id
+            filas = self._sql("""
+                SELECT p.id, pt.code, l.parent_path, ld.parent_path, COALESCE(SUM(m.product_uom_qty), 0)
+                  FROM stock_picking p
+                  JOIN stock_picking_type pt ON pt.id = p.picking_type_id
+                  JOIN stock_location l ON l.id = p.location_id
+                  JOIN stock_location ld ON ld.id = p.location_dest_id
+                  LEFT JOIN stock_move m ON m.picking_id = p.id AND m.state NOT IN ('done', 'cancel')
+                 WHERE p.state = 'assigned' AND pt.warehouse_id = %s AND pt.code IN ('outgoing', 'internal')
+                 GROUP BY p.id, pt.code, l.parent_path, ld.parent_path
+            """, (alm.warehouse_id.id,))
+            fila = {'almacen': alm.codigo or '', 'empresa': alm.company_id.name or '', 'directas': 0, 'uds_directas': 0.0,
+                    'int_sorter': 0, 'uds_int': 0.0, 'oleada': 0, 'uds_oleada': 0.0}
+            pp = sorter.parent_path or ''
+            for pid, code, origen, destino, uds in filas:
+                if code == 'internal':
+                    if pp and (destino or '').startswith(pp):
+                        fila['int_sorter'] += 1
+                        fila['uds_int'] += uds
+                elif pid in oleada or (pp and (origen or '').startswith(pp)):
+                    fila['oleada'] += 1
+                    fila['uds_oleada'] += uds
+                else:
+                    fila['directas'] += 1
+                    fila['uds_directas'] += uds
+            res.append(fila)
+        return res
 
     @http.route('/oriola_monitor/datos', type='json', auth='user')
     def datos(self, dia=None, refrescar=False, **kw):

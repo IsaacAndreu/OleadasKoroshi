@@ -35,3 +35,4 @@
 .o_oriola_monitor .om-mini { width: 90px; height: 8px; background: var(--om-bar); border-radius: 4px; overflow: hidden; display: inline-flex; vertical-align: middle; margin-right: 6px; }
 .o_oriola_monitor .om-mini i { display: block; height: 100%; }
 .o_oriola_monitor .om-error { background: #fde4dc; border-color: #e3a08a; }
+.o_oriola_monitor tr.om-parado td { background: #fde4dc; }

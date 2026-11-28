@@ -99,6 +99,7 @@ var Monitor = AbstractAction.extend({
                 kpi(n(R.espera) + ' <small>' + n(R.uds_espera) + ' uds</small>', 'OUT en espera (sin stock)') : '') +
             '</div>';
 
+        h += this._operarios(r);   // v1.1.0: PDA nueva (tarjeta del operario), por empresa
         h += this._personas(r);
         h += this._porHora(r);
         h += this._canales(r);
@@ -108,6 +109,68 @@ var Monitor = AbstractAction.extend({
         h += '<p class="om-nota" style="margin-top:24px">Uds leídas: líneas con cantidad hecha escritas ese día en las OUT de salida, por el usuario que las escribió. ' +
             'Horas activas: cuartos de hora con lecturas, más los huecos de hasta 30 min entre ellos. Solo lee: no cambia nada en Odoo.</p></main>';
         this.$el.html(h);
+    },
+
+    // v1.1.0: con la PDA nueva (tuctuc_operarios): por operario (su tarjeta) y empresa, qué hace ahora cada uno y lo
+    // pendiente por empresa. Sin los módulos tuctuc_*, r.operarios es false y no sale nada.
+    _operarios: function (r) {
+        var O = r.operarios;
+        if (!O) { return ''; }
+        var emp = O.empresas || [];
+        var corto = function (nombre) { return e((nombre || '').replace(/ (SL|S\.L\.)$/i, '')); };
+        var h = '<h2>Por operario y empresa (PDA nueva)</h2>';
+        if (!O.operarios.length) {
+            h += '<div class="om-card om-nota">Ningún operario ha pasado la tarjeta ' + (r.es_hoy ? 'todavía hoy' : 'ese día') + '.</div>';
+        } else {
+            var T = {uds: 0, ef: 0, par: 0, ac: 0, cia: {}};
+            h += '<div class="om-card"><table><tr><th>Operario</th><th class="r">Uds</th><th class="r">Uds/hora</th><th class="r">Efectivo</th>' +
+                '<th class="r">Parado</th><th class="r">Hechas</th><th>De</th><th>A</th>' +
+                emp.map(function (c) { return '<th class="r">' + corto(c.nombre) + '</th>'; }).join('') + '</tr>' +
+                O.operarios.map(function (o) {
+                    T.uds += o.uds; T.ef += o.efectivo; T.par += o.parado; T.ac += o.acabadas;
+                    return '<tr' + (o.curso ? ' class="om-activo"' : '') + '><td>' + (r.es_hoy ? '<span class="om-punto' + (o.curso ? '' : ' off') + '"></span>' : '') +
+                        e(o.nombre) + ' <small class="om-nota">' + e(o.codigo) + '</small></td><td class="r"><b>' + n(o.uds) + '</b></td><td class="r">' + n(o.uds_hora) +
+                        '</td><td class="r">' + hm(o.efectivo / 60) + '</td><td class="r">' + hm(o.parado / 60) + '</td><td class="r">' + n(o.acabadas) +
+                        '</td><td>' + e(o.inicio) + '</td><td>' + e(o.fin) + '</td>' +
+                        emp.map(function (c) {
+                            var x = o.por_cia[c.id];
+                            if (!x) { return '<td class="r om-nota">·</td>'; }
+                            var t = T.cia[c.id] = T.cia[c.id] || {uds: 0, ef: 0};
+                            t.uds += x.uds; t.ef += x.efectivo;
+                            return '<td class="r">' + n(x.uds) + ' <small class="om-nota">' + n(x.uds_hora) + '/h</small></td>';
+                        }).join('') + '</tr>';
+                }).join('') +
+                (O.operarios.length > 1 ? '<tr class="om-tot"><td>Total</td><td class="r">' + n(T.uds) + '</td><td class="r">' + (T.ef >= 1 ? n(T.uds * 60 / T.ef) : '') +
+                    '</td><td class="r">' + hm(T.ef / 60) + '</td><td class="r">' + hm(T.par / 60) + '</td><td class="r">' + n(T.ac) + '</td><td></td><td></td>' +
+                    emp.map(function (c) {
+                        var t = T.cia[c.id];
+                        return '<td class="r">' + (t ? n(t.uds) + ' <small class="om-nota">' + (t.ef >= 1 ? n(t.uds * 60 / t.ef) : 0) + '/h</small>' : '') + '</td>';
+                    }).join('') + '</tr>' : '') +
+                '</table><p class="om-nota" style="margin:8px 0 0">Uds: leídas en sus OUT e INT (de que lee el albarán a que se cierra). ' +
+                'Efectivo = tiempo menos los huecos de 15 min o más sin leer (parado). Uds/hora sobre el efectivo. Hechas: albaranes validados.' +
+                (r.es_hoy ? ' <span class="om-punto"></span>tiene un albarán empezado.' : '') + '</p></div>';
+        }
+        if (r.es_hoy && O.ahora.length) {
+            h += '<h2>Ahora mismo</h2><div class="om-card"><table><tr><th>Operario</th><th>Albarán</th><th>Tipo</th><th>Empresa</th>' +
+                '<th class="r">Leído</th><th>Desde</th><th class="r">Sin leer</th></tr>' +
+                O.ahora.map(function (a) {
+                    return '<tr' + (a.parado ? ' class="om-parado"' : '') + '><td>' + e(a.nombre) + '</td><td>' + e(a.ref) + '</td><td>' + e(a.tipo) +
+                        '</td><td>' + corto(a.empresa) + '</td><td class="r">' + n(a.leidas) + ' / ' + n(a.total) + '</td><td>' + e(a.desde) +
+                        '</td><td class="r">' + n(a.sin_leer) + ' min</td></tr>';
+                }).join('') + '</table><p class="om-nota" style="margin:8px 0 0">En rojo: 15 min o más sin leer nada.</p></div>';
+        }
+        if (r.es_hoy && O.pendiente.length) {
+            h += '<h2>Pendiente por empresa (listo para coger)</h2><div class="om-card"><table><tr><th>Almacén</th><th>Empresa</th>' +
+                '<th class="r">OUT directas</th><th class="r">Uds</th><th class="r">INT al SORTER</th><th class="r">Uds</th>' +
+                '<th class="r">OUT de oleada</th><th class="r">Uds</th></tr>' +
+                O.pendiente.map(function (p) {
+                    return '<tr><td>' + e(p.almacen) + '</td><td>' + corto(p.empresa) + '</td><td class="r"><b>' + n(p.directas) + '</b></td><td class="r">' +
+                        n(p.uds_directas) + '</td><td class="r"><b>' + n(p.int_sorter) + '</b></td><td class="r">' + n(p.uds_int) + '</td><td class="r">' +
+                        n(p.oleada) + '</td><td class="r">' + n(p.uds_oleada) + '</td></tr>';
+                }).join('') + '</table><p class="om-nota" style="margin:8px 0 0">OUT directas e INT al SORTER: las que da la PDA. ' +
+                'OUT de oleada: las reparte PedidosMultiples desde el SORTER (no salen en la PDA).</p></div>';
+        }
+        return h;
     },
 
     _personas: function (r) {

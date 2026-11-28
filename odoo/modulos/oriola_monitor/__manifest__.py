@@ -26,8 +26,12 @@ Solo lee: no cambia nada en Odoo.
 
 v1.0.0 (26/10/2026): primera version (monitor del picking de Oriola - Amposta en odoo.tuctuc.com). Linea de historial
 anadida el 23/11/2026 (revision general, R19) para que bin/comprobar.py no de E6; el modulo no cambia.
+v1.1.0 (28/11/2026): con la PDA nueva (tuctuc_operarios y tuctuc_preparacion), seccion «Por operario y empresa»: por
+tarjeta OP y por empresa del albaran (PRIME, MODA INTIMA, UNITED), uds, uds/hora efectiva, parado y albaranes
+hechos; «Ahora mismo» (que hace cada uno y cuanto lleva sin leer) y «Pendiente por empresa» (OUT directas, INT al
+SORTER y OUT de oleada). Lo pide Isaac el 28/11. Sin los modulos tuctuc_* la seccion no sale (no depende de ellos).
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.1.0',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
