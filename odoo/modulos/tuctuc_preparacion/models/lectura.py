@@ -1081,7 +1081,8 @@ class Lectura(models.Model):
             Pack = self.env['product.packaging'].sudo()
             ids = [int(x) for x in re.findall(r'\d+', self._param(PARAM_EMBALAJES, ''))]
             if ids:
-                embalajes = Pack.browse(ids).exists()
+                orden = ids
+                validos = set(Pack.browse(ids).exists().ids)
             else:
                 desde = fields.Datetime.now() - timedelta(days=DIAS_EMBALAJES)
                 companias = self.env['tuctuc.almacen'].companias().ids
@@ -1089,9 +1090,22 @@ class Lectura(models.Model):
                     [('packaging_id', '!=', False), ('create_date', '>=', desde),
                      '|', ('company_id', '=', False), ('company_id', 'in', companias)],
                     ['packaging_id'], ['packaging_id'], lazy=False)
-                usados = [g['packaging_id'][0] for g in sorted(grupos, key=lambda g: -g['__count'])]
-                embalajes = Pack.browse(usados).exists().filtered(
-                    lambda p: not p.product_id and (not p.company_id or p.company_id.id in companias))
+                orden = [g['packaging_id'][0] for g in sorted(grupos, key=lambda g: -g['__count'])]
+                validos = set(Pack.browse(orden).exists().filtered(
+                    lambda p: not p.product_id and (not p.company_id or p.company_id.id in companias)).ids)
+            # 1.0.1 (prueba en tuctuc 28/11): exists() devuelve los registros en el orden de la base de datos, no en el
+            # de uso, y se cortaba a MAX_EMBALAJES: faltaba «Generica Grande 60x40x33», la tercera más usada. Ahora se
+            # respeta el orden y se quitan los nombres repetidos («CAJA ONLINE» dos veces, «... 60x40x33 » con espacio).
+            embalajes, vistos = [], set()
+            for pid in orden:
+                if pid not in validos:
+                    continue
+                p = Pack.browse(pid)
+                nombre = ' '.join((p.name or '').split()).upper()
+                if nombre in vistos:
+                    continue
+                vistos.add(nombre)
+                embalajes.append(p)
             tipos = []
             for p in embalajes[:MAX_EMBALAJES]:
                 medidas = ''

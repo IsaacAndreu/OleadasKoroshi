@@ -20,8 +20,10 @@ No se clona: agrupaciones Z- enteras, ruta óptima por la nave (geometría de NA
 Consumibles, koroshi_caja_existente, migraciones y tests de NATH.
 
 v1.0.0 (28/11/2026): primera versión, clon multicompañía de koroshi_preparacion 3.38.1 para odoo.tuctuc.com.
+v1.0.1 (28/11/2026): la lista de tipos de caja sale en el orden de uso (exists() la desordenaba y, al cortar a 12,
+faltaba «Generica Grande 60x40x33») y sin nombres repetidos. Visto en la primera prueba en tuctuc.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
