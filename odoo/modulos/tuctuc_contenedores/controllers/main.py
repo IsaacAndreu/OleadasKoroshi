@@ -53,6 +53,18 @@ MIN_BUSCAR_OTROS = 3      # v1.8: huecos y artículos, a partir de 3 caracteres
 MAX_TIPO = 8              # v1.8: resultados como máximo de cada tipo (contenedor, hueco, artículo)
 # v1.8.2: también los lineales de MU (MU-01…MU-14): sus huecos se llaman «MU-01 P00 C1», sin número delante
 LINEAL_RE = re.compile(r'^(L\d{1,4}|MU-? ?\d{1,2})$', re.I)
+
+# 1.0.1 (prueba en tuctuc 28/11): en Oriola los lineales del 1 al 9 se escriben con cero («00049 - L01 P30 C1»):
+# «Compactar» L1 decía «No encuentro columnas en L1». Se busca L1 y L01.
+_SQL_LINEAL = 'AND (h.name ILIKE %s OR h.name ILIKE %s OR h.name ILIKE %s OR h.name ILIKE %s)'
+
+
+def _patrones_lineal(n):
+    """ILIKE del lineal n en el nombre del hueco, con y sin cero delante: ['% L1 %', 'L1 %', '% L01 %', 'L01 %']."""
+    res = []
+    for codigo in ('L%d' % n, 'L%02d' % n):
+        res += ['%% %s %%' % codigo, '%s %%' % codigo]
+    return res
 LINEAL_DELANTE_RE = re.compile(r'^(L\d{1,4}|MU-\d{1,2})(\s|$)', re.I)   # «MU-00 P» o «L70 P3»: se ofrece el lineal
 # v1.16.0: retirar cajas a 0 (parámetros del sistema; los pone IT)
 PARAM_LINEALES = 'tuctuc_contenedores.lineales'     # «1-189» o vacío (todos): lineales de la ronda y de Compactar
@@ -1238,9 +1250,7 @@ class TuctucContenedores(http.Controller):
                 n = int(lineal or 0)
             except (TypeError, ValueError):
                 raise UserError('Lineal no válido.')
-            clave = 'L%d' % n
-            cajas = [c for c in self._cajas('AND (h.name ILIKE %s OR h.name ILIKE %s)',
-                                             ('%% %s %%' % clave, '%s %%' % clave)) if c['lineal'] == n]
+            cajas = [c for c in self._cajas(_SQL_LINEAL, _patrones_lineal(n)) if c['lineal'] == n]
             por_hueco = self._por_hueco(cajas)
             directo = self._directo(list(por_hueco))
             huecos = []
@@ -1519,10 +1529,10 @@ class TuctucContenedores(http.Controller):
         las temporadas del parámetro o con prendas sueltas no se toca."""
         cr = request.env.cr
         lineales = sorted(set(lineales))
-        conds = ' OR '.join(['h.name ILIKE %s OR h.name ILIKE %s'] * len(lineales))
+        conds = ' OR '.join(['h.name ILIKE %s OR h.name ILIKE %s OR h.name ILIKE %s OR h.name ILIKE %s'] * len(lineales))
         args = [_cias(), _prefijos()]
         for n in lineales:
-            args += ['%% L%d %%' % n, 'L%d %%' % n]
+            args += _patrones_lineal(n)
         cr.execute("""SELECT h.id, h.name, h.company_id, h.barcode FROM stock_location h
                        WHERE h.active AND h.usage = 'internal' AND (h.company_id = ANY(%s) OR h.company_id IS NULL)
                          AND upper(left(h.name, 3)) <> ALL(%s) AND (""" + conds + ")", args)
@@ -1658,8 +1668,7 @@ class TuctucContenedores(http.Controller):
                         'company_id': d['cia'][0] or False,
                         'mc': p['mc'], 'uds': d['uds'],
                         'banda': logica.banda_caja(d['tallas'].get(p['mc'], {}), bandas.get(p['mc'], {}))})
-            ceros = len([c for c in self._cajas('AND (h.name ILIKE %s OR h.name ILIKE %s)',
-                                                 ('%% L%d %%' % n, 'L%d %%' % n))
+            ceros = len([c for c in self._cajas(_SQL_LINEAL, _patrones_lineal(n))
                          if c['lineal'] == n and c['estado'] == 'cero' and not c['con_prendas']])
             msg = 'L%d: %d columnas se vacían moviendo %d cajas' % (n, resumen['vaciadas'], resumen['cajas'])
             if resumen['sin_sitio']:

@@ -22,8 +22,10 @@ Diseño: bin/versiones/tuctuc_pda/20261127_diseno-clon-tuctuc-pda_v1.md.
 - tarjetas_revisar y tarjetas_con_prendas vacíos (nadie) hasta que se decida quién en Oriola.
 
 v1.0.0 (28/11/2026): primera versión, clon multicompañía de koroshi_contenedores 1.17.0 para odoo.tuctuc.com.
+v1.0.1 (28/11/2026): Compactar encuentra los lineales del 1 al 9 escritos con cero (L01...): «No encuentro columnas
+en L1» en la primera prueba en tuctuc.
 """,
-    'version': '13.0.1.0.0',
+    'version': '13.0.1.0.1',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
