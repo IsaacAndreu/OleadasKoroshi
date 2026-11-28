@@ -32,6 +32,9 @@
 # v1.15 (revisión general 23/11, O5 y R16): grupo, tarjeta y búsqueda de la prenda salen de tuctuc_base.pda (1.2.0).
 # La tarjeta tiene que ser de un operario activo de la compañía (antes bastaba con que existiera).
 # =============================================================================
+import base64
+import json
+import logging
 import re
 
 from odoo import fields, http
@@ -41,6 +44,8 @@ from odoo.tools import float_compare, float_is_zero
 from odoo.addons.tuctuc_base import pda
 
 from .. import logica
+
+_logger = logging.getLogger(__name__)
 
 MAX_LINEAS = 40
 MAX_ANADIR = 500          # v1.5: uds de un artículo en un solo «Añadir» (más = lecturas de más)
@@ -1473,29 +1478,77 @@ class TuctucContenedores(http.Controller):
             res[pid] = (modelo, logica.mc_de(modelo, (color or '').strip()), (talla or '').strip(), tid)
         return res
 
-    def _lineas_28(self):
-        """Líneas de salida de 28 días (OUT hechas: albarán + artículo) por modelo-color y por (modelo-color, talla),
-        de las compañías de la PDA. Una consulta para toda la nave."""
+    # 1.0.2 (28/11, «Compactar» L75 tardaba 24 s): las salidas de 28 días de toda la nave (99.510 líneas, 16.720
+    # artículos en tuctuc) se leían en cada cálculo. Ahora:
+    #   - por modelo-color (para la clase ABC, cambia poco): de stock_move (date con índice) y guardado 12 h en un
+    #     adjunto, compartido por todos los procesos de Odoo; el primer cálculo después de 12 h es el lento;
+    #   - por (modelo-color, talla): solo de los artículos de las plantillas del plan (consulta corta, por product_id).
+    HORAS_CACHE_28 = 12
+    NOMBRE_CACHE_28 = 'tuctuc_contenedores_salidas_28_dias.json'
+
+    def _salidas_28(self, product_ids=None):
+        """[(product_id, albaranes de salida hechos en 28 días)] de las compañías de la PDA (de stock_move: un albarán
+        cuenta una vez por artículo). Con product_ids, solo esos."""
         desde = fields.Datetime.subtract(fields.Datetime.now(), days=28)
         cr = request.env.cr
+        filtro, args = '', [desde, _cias()]
+        if product_ids is not None:
+            if not product_ids:
+                return []
+            filtro, args = 'AND m.product_id = ANY(%s)', args + [list(product_ids)]
         cr.execute("""
-            SELECT ml.product_id, COUNT(DISTINCT ml.picking_id)
-              FROM stock_move_line ml
-              JOIN stock_picking p ON p.id = ml.picking_id
-              JOIN stock_picking_type t ON t.id = p.picking_type_id
-             WHERE ml.state = 'done' AND t.code = 'outgoing' AND ml.date >= %s
-               AND (t.company_id = ANY(%s) OR t.company_id IS NULL)
-             GROUP BY ml.product_id""", (desde, _cias()))
-        filas = cr.fetchall()
+            SELECT m.product_id, COUNT(DISTINCT m.picking_id)
+              FROM stock_move m
+              JOIN stock_picking_type t ON t.id = m.picking_type_id
+             WHERE m.state = 'done' AND t.code = 'outgoing' AND m.date >= %s AND m.picking_id IS NOT NULL
+               AND (t.company_id = ANY(%s) OR t.company_id IS NULL) """ + filtro + """
+             GROUP BY m.product_id""", args)
+        return cr.fetchall()
+
+    def _lineas_28_mc(self):
+        """{modelo-color: albaranes de salida de 28 días}, de un adjunto de menos de HORAS_CACHE_28 o recalculado."""
+        Adj = request.env['ir.attachment'].sudo()
+        adj = Adj.search([('name', '=', self.NOMBRE_CACHE_28), ('res_model', '=', 'tuctuc.compactacion.paso')],
+                         limit=1)
+        limite = fields.Datetime.subtract(fields.Datetime.now(), hours=self.HORAS_CACHE_28)
+        if adj and adj.write_date and adj.write_date >= limite:
+            try:
+                return json.loads(base64.b64decode(adj.datas or b'').decode('utf-8') or '{}')
+            except ValueError:
+                pass
+        filas = self._salidas_28()
         var = self._variantes([f[0] for f in filas])
-        por_mc, por_talla = {}, {}
+        por_mc = {}
         for pid, n in filas:
-            if pid not in var:
-                continue
-            _modelo, mc, talla, _tid = var[pid]
-            por_mc[mc] = por_mc.get(mc, 0) + n
-            por_talla[(mc, talla)] = por_talla.get((mc, talla), 0) + n
-        return por_mc, por_talla
+            if pid in var:
+                mc = var[pid][1]
+                por_mc[mc] = por_mc.get(mc, 0) + n
+        datos = base64.b64encode(json.dumps(por_mc).encode('utf-8'))
+        try:
+            with request.env.cr.savepoint():
+                if adj:
+                    adj.write({'datas': datos})
+                else:
+                    Adj.create({'name': self.NOMBRE_CACHE_28, 'res_model': 'tuctuc.compactacion.paso', 'res_id': 0,
+                                'type': 'binary', 'datas': datos, 'mimetype': 'application/json'})
+        except Exception:   # otro proceso lo está guardando a la vez: se usa lo calculado
+            _logger.info('TUCTUC Contenedores: no se ha podido guardar la caché de salidas de 28 días', exc_info=True)
+        return por_mc
+
+    def _lineas_28_talla(self, plantillas):
+        """{(modelo-color, talla): albaranes de salida de 28 días} de los artículos de estas plantillas."""
+        if not plantillas:
+            return {}
+        Prod = request.env['product.product'].sudo().with_context(active_test=False)
+        ids = Prod.search([('product_tmpl_id', 'in', list(plantillas))]).ids
+        filas = self._salidas_28(ids)
+        var = self._variantes([f[0] for f in filas])
+        por_talla = {}
+        for pid, n in filas:
+            if pid in var:
+                _modelo, mc, talla, _tid = var[pid]
+                por_talla[(mc, talla)] = por_talla.get((mc, talla), 0) + n
+        return por_talla
 
     def _stock_tallas(self, mcs, plantillas):
         """Uds de cada talla de estos modelos-color (de estas plantillas) en las compañías de la PDA, para las bandas."""
@@ -1642,12 +1695,13 @@ class TuctucContenedores(http.Controller):
             for c in cols:
                 c['extra'] = llegan.get(c['id'], 0)
             gemelos = {c['id']: c['gemelos'] for c in cols}
-            lineas_mc, lineas_talla = self._lineas_28()
+            lineas_mc = self._lineas_28_mc()   # 1.0.2: guardado 12 h
             abc = logica.clases_abc({mc: lineas_mc.get(mc, 0) for mc in lineas_mc})
             pasos, resumen = logica.plan_lineal(n, cols, abc=abc, **reglas)
             plantillas = set()
             for p in pasos:
                 plantillas |= info[p['caja_id']]['plantillas']
+            lineas_talla = self._lineas_28_talla(plantillas)   # 1.0.2: solo las plantillas del plan
             stock = self._stock_tallas({p['mc'] for p in pasos}, plantillas)
             bandas = {}
             for mc in {p['mc'] for p in pasos}:

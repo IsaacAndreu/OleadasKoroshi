@@ -24,8 +24,11 @@ Diseño: bin/versiones/tuctuc_pda/20261127_diseno-clon-tuctuc-pda_v1.md.
 v1.0.0 (28/11/2026): primera versión, clon multicompañía de koroshi_contenedores 1.17.0 para odoo.tuctuc.com.
 v1.0.1 (28/11/2026): Compactar encuentra los lineales del 1 al 9 escritos con cero (L01...): «No encuentro columnas
 en L1» en la primera prueba en tuctuc.
+v1.0.2 (28/11/2026): «Compactar» tardaba 24 s en L75: las salidas de 28 días de toda la nave (99.510 líneas) se
+leían en cada cálculo. Ahora, por modelo-color de stock_move y guardado 12 h en un adjunto; por talla, solo
+las plantillas del plan.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.0.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',
