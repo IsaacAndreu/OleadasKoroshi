@@ -24,8 +24,10 @@ v1.0.0 (27/11/2026): primera versión, clon multicompañía de koroshi_operarios
 v1.0.1 (28/11/2026): revisión 28/11, T1. «Siguiente pedido» quita las OUT de oleada (WEB, WEB B&B, PED. INICIAL)
 con una consulta sobre las OUT abiertas, no con sale_id.s_order_type_id en el dominio: Odoo 13 cargaba los
 642.340 pedidos de esos tipos en cada petición, y las OUT sin pedido de venta no salían nunca.
+v1.0.2 (28/11/2026): los tipos de pedido de oleada van POR ALMACÉN (parámetro tuctuc_operarios.oleadas): en Oriola
+los PED. INICIAL de MODAI y la WEB de UBRAN salen directos del stock y la PDA no los daba nunca.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.0.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

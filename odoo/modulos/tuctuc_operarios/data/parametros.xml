@@ -30,5 +30,11 @@
             <field name="key">tuctuc_operarios.minutos_tarjeta</field>
             <field name="value">60</field>
         </record>
+        <!-- 1.0.2 (28/11): tipos de pedido que van por oleada (INT al SORTER y PedidosMultiples) en cada almacén:
+             «CÓDIGO=tipo,tipo; CÓDIGO=tipo». Sus OUT no se dan en la PDA. Un almacén que no sale, todo directo. -->
+        <record id="parametro_oleadas" model="ir.config_parameter">
+            <field name="key">tuctuc_operarios.oleadas</field>
+            <field name="value">WH-OR=WEB,WEB B&amp;B,PED. INICIAL; MODAI=WEB,WEB B&amp;B</field>
+        </record>
     </data>
 </odoo>

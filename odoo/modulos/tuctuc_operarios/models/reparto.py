@@ -46,6 +46,26 @@ def _hoy():
     return comun.hoy_local()
 
 
+# 1.0.2: tipos de pedido que van por oleada (INT al SORTER y PedidosMultiples), POR ALMACÉN. Lo comprobado en
+# tuctuc del 14 al 28/11: WH-OR, WEB / WEB B&B / PED. INICIAL salen del SORTER; MODAI, WEB y WEB B&B del SORTER pero
+# PED. INICIAL directo; UBRAN (sin SORTER) y MIECI, todo directo. Un almacén que no sale aquí no tiene oleadas.
+PARAM_OLEADAS = 'tuctuc_operarios.oleadas'
+OLEADAS = 'WH-OR=WEB,WEB B&B,PED. INICIAL; MODAI=WEB,WEB B&B'
+
+
+def oleadas_por_almacen(texto):
+    """'WH-OR=WEB,WEB B&B; MODAI=WEB' -> {'WH-OR': ['WEB', 'WEB B&B'], 'MODAI': ['WEB']}. Lo mal escrito se salta."""
+    res = {}
+    for parte in (texto or '').split(';'):
+        if '=' not in parte:
+            continue
+        codigo, tipos = parte.split('=', 1)
+        lista = [x.strip() for x in tipos.split(',') if x.strip()]
+        if codigo.strip() and lista:
+            res[codigo.strip().upper()] = lista
+    return res
+
+
 def _medianoche_utc():
     """00:00 de hoy en la hora del almacén, en UTC sin zona (en koroshi era la medianoche de UTC: 1-2 h de desfase)."""
     return comun.inicio_dia_utc(comun.hoy_local())
@@ -420,8 +440,8 @@ class TuctucOperarioAsignacion(models.Model):
         sorters = _sorters(self.env)
         cogidas = self.sudo().search([('estado', 'in', VIVAS), ('tipo', '=', 'out')]).mapped('picking_id')
         dejadas = self._dejadas_hoy(employee)   # v2.10: «Dejar este pedido»: a este operario no se le vuelve a dar
-        # OUT directas: ni las de los tipos de pedido que van por oleada (WEB, WEB B&B, PED. INICIAL: parámetro
-        # tuctuc_base.tipos_oleada; el 28/11 eran 1.084 de las 1.157 OUT preparadas) ni las que salen del SORTER
+        # OUT directas: ni las de los tipos de pedido que van por oleada en su almacén (parámetro
+        # tuctuc_operarios.oleadas) ni las que salen del SORTER
         # 1.0.1 (revisión 28/11, T1): las de oleada salen de una consulta (_oleada_pendientes) y van al «not in» de
         # abajo. Antes, '!' + sale_id.s_order_type_id.name: Odoo 13 cargaba los ids de todos los pedidos de esos tipos
         # (642.340 el 28/11) en cada «siguiente», y el NOT IN dejaba fuera las OUT sin pedido de venta.
@@ -470,12 +490,22 @@ class TuctucOperarioAsignacion(models.Model):
 
     @api.model
     def _oleada_pendientes(self, companias):
-        """1.0.1 (T1): ids de las OUT sin hacer de los tipos de pedido que van por oleada (parámetro
-        tuctuc_base.tipos_oleada: WEB, WEB B&B, PED. INICIAL), con una consulta sobre las OUT abiertas (el 28/11, unas
-        1.100). Vacío si no hay tipos o la base de datos no tiene sale.order.s_order_type_id (sales_ext)."""
-        tipos = pda.tipos_oleada(self.env)
+        """Ids de las OUT sin hacer que van por oleada (INT al SORTER y PedidosMultiples): las de los tipos de pedido
+        de oleada DE SU ALMACÉN (parámetro tuctuc_operarios.oleadas, ver oleadas_por_almacen). Una consulta sobre las
+        OUT abiertas (1.0.1, T1). Vacío si no hay oleadas o la base de datos no tiene sale.order.s_order_type_id.
+        1.0.2 (28/11): antes los tipos valían para todos los almacenes, pero en Oriola los PED. INICIAL de MODAI y la
+        WEB de UBRAN salen directos del stock (305 y 76 OUT hechas del 14 al 28/11): la PDA no los daba nunca."""
         campo = self.env['sale.order']._fields.get('s_order_type_id')
-        if not tipos or not campo or not campo.store or not companias:
+        if not campo or not campo.store or not companias:
+            return []
+        por_almacen = oleadas_por_almacen(self.env['ir.config_parameter'].sudo().get_param(PARAM_OLEADAS, OLEADAS))
+        conds, args = [], [companias.ids]
+        for alm in self.env['tuctuc.almacen'].activos():
+            tipos = por_almacen.get((alm.codigo or '').upper())
+            if tipos:
+                conds.append('(pt.warehouse_id = %s AND t.name = ANY(%s))')
+                args += [alm.warehouse_id.id, tipos]
+        if not conds:
             return []
         tabla = self.env[campo.comodel_name]._table
         self.env['stock.picking'].flush(['sale_id', 'state', 'company_id', 'picking_type_id'])
@@ -487,7 +517,7 @@ class TuctucOperarioAsignacion(models.Model):
               JOIN {tabla} t ON t.id = so.s_order_type_id
              WHERE p.state NOT IN ('done', 'cancel', 'draft')
                AND p.company_id = ANY(%s)
-               AND t.name = ANY(%s)""".format(tabla=tabla), (companias.ids, tipos))
+               AND ({conds})""".format(tabla=tabla, conds=' OR '.join(conds)), args)
         return [r[0] for r in self.env.cr.fetchall()]
 
     @api.model
