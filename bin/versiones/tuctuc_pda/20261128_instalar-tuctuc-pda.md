@@ -6,8 +6,8 @@ sacados de la etiqueta con `bin/empaquetar.py`:
 | Módulo | Versión | ZIP |
 |---|---|---|
 | tuctuc_base | 1.0.1 | `bin/20261128_tuctuc_base_v1.0.1.zip` |
-| tuctuc_operarios | 1.0.0 | `bin/20261128_tuctuc_operarios_v1.0.0.zip` |
-| tuctuc_faltantes | 1.0.1 | `bin/20261128_tuctuc_faltantes_v1.0.1.zip` |
+| tuctuc_operarios | 1.0.1 | `bin/20261128_tuctuc_operarios_v1.0.1.zip` |
+| tuctuc_faltantes | 1.0.2 | `bin/20261128_tuctuc_faltantes_v1.0.2.zip` |
 | tuctuc_preparacion | 1.0.0 | `bin/20261128_tuctuc_preparacion_v1.0.0.zip` |
 | tuctuc_contenedores | 1.0.0 | `bin/20261128_tuctuc_contenedores_v1.0.0.zip` |
 | tuctuc_pda_app | 1.0.0 | `bin/20261128_tuctuc_pda_app_v1.0.0.zip` |
@@ -25,9 +25,9 @@ export ADDONS_DIR=/opt/tuctuc-erp/nath/custom_addons
 export ODOO_SERVICE=tuctuc-erp
 export BACKUP_DIR=/opt/tuctuc-erp/copias_modulos
 export ZIP_DIR=<carpeta donde se dejan los 6 ZIP>
-bash desplegar.sh check tuctuc_base 1.0.1 tuctuc_operarios 1.0.0 tuctuc_faltantes 1.0.1 \
+bash desplegar.sh check tuctuc_base 1.0.1 tuctuc_operarios 1.0.1 tuctuc_faltantes 1.0.2 \
     tuctuc_preparacion 1.0.0 tuctuc_contenedores 1.0.0 tuctuc_pda_app 1.0.0
-sudo -E AUTO_CONFIRM=1 bash desplegar.sh install tuctuc_base 1.0.1 tuctuc_operarios 1.0.0 tuctuc_faltantes 1.0.1 \
+sudo -E AUTO_CONFIRM=1 bash desplegar.sh install tuctuc_base 1.0.1 tuctuc_operarios 1.0.1 tuctuc_faltantes 1.0.2 \
     tuctuc_preparacion 1.0.0 tuctuc_contenedores 1.0.0 tuctuc_pda_app 1.0.0
 ```
 

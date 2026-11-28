@@ -422,10 +422,11 @@ class TuctucOperarioAsignacion(models.Model):
         dejadas = self._dejadas_hoy(employee)   # v2.10: «Dejar este pedido»: a este operario no se le vuelve a dar
         # OUT directas: ni las de los tipos de pedido que van por oleada (WEB, WEB B&B, PED. INICIAL: parámetro
         # tuctuc_base.tipos_oleada; el 28/11 eran 1.084 de las 1.157 OUT preparadas) ni las que salen del SORTER
+        # 1.0.1 (revisión 28/11, T1): las de oleada salen de una consulta (_oleada_pendientes) y van al «not in» de
+        # abajo. Antes, '!' + sale_id.s_order_type_id.name: Odoo 13 cargaba los ids de todos los pedidos de esos tipos
+        # (642.340 el 28/11) en cada «siguiente», y el NOT IN dejaba fuera las OUT sin pedido de venta.
         que = [('picking_type_code', '=', 'outgoing')]
-        tipos = pda.tipos_oleada(self.env)
-        if tipos and 's_order_type_id' in self.env['sale.order']._fields:
-            que = expression.AND([que, ['!', ('sale_id.s_order_type_id.name', 'in', tipos)]])
+        oleada = self._oleada_pendientes(companias)
         if sorters:
             que = expression.AND([que, ['!', ('location_id', 'child_of', sorters.ids)]])
             if dia.dar_int:
@@ -434,7 +435,7 @@ class TuctucOperarioAsignacion(models.Model):
         almacenes = self.env['tuctuc.almacen'].activos().mapped('warehouse_id')
         dom = expression.AND([que, [('company_id', 'in', companias.ids),
                                     ('picking_type_id.warehouse_id', 'in', almacenes.ids),
-                                    ('id', 'not in', (cogidas | dejadas.mapped('picking_id')).ids)]])
+                                    ('id', 'not in', (cogidas | dejadas.mapped('picking_id')).ids + oleada)]])
         dom += [('state', '=', 'assigned')] if dia.solo_preparadas else [('state', 'in', ('assigned', 'confirmed'))]
         # OUT sueltas: sin agrupacion de zonas (las de una Z- solo se dan con la agrupacion entera).
         # v2.12: las Z- fuera EN EL DOMINIO, antes del limite (si no, 400 OUT de zonas llenaban el limite y no quedaba
@@ -466,6 +467,28 @@ class TuctucOperarioAsignacion(models.Model):
                     lista.append((b.create_date, 'agrupacion', b))
         lista.sort(key=lambda x: (x[0] or datetime.datetime.max, x[2].id))
         return lista
+
+    @api.model
+    def _oleada_pendientes(self, companias):
+        """1.0.1 (T1): ids de las OUT sin hacer de los tipos de pedido que van por oleada (parámetro
+        tuctuc_base.tipos_oleada: WEB, WEB B&B, PED. INICIAL), con una consulta sobre las OUT abiertas (el 28/11, unas
+        1.100). Vacío si no hay tipos o la base de datos no tiene sale.order.s_order_type_id (sales_ext)."""
+        tipos = pda.tipos_oleada(self.env)
+        campo = self.env['sale.order']._fields.get('s_order_type_id')
+        if not tipos or not campo or not campo.store or not companias:
+            return []
+        tabla = self.env[campo.comodel_name]._table
+        self.env['stock.picking'].flush(['sale_id', 'state', 'company_id', 'picking_type_id'])
+        self.env.cr.execute("""
+            SELECT p.id
+              FROM stock_picking p
+              JOIN stock_picking_type pt ON pt.id = p.picking_type_id AND pt.code = 'outgoing'
+              JOIN sale_order so ON so.id = p.sale_id
+              JOIN {tabla} t ON t.id = so.s_order_type_id
+             WHERE p.state NOT IN ('done', 'cancel', 'draft')
+               AND p.company_id = ANY(%s)
+               AND t.name = ANY(%s)""".format(tabla=tabla), (companias.ids, tipos))
+        return [r[0] for r in self.env.cr.fetchall()]
 
     @api.model
     def _dejadas_hoy(self, employee):

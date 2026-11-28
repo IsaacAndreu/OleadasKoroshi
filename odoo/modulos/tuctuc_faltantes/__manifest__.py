@@ -22,8 +22,11 @@ Puestos a 0: sin usuarios por defecto (parámetro tuctuc_faltantes.puestos_a_cer
 v1.0.0 (28/11/2026): primera versión, clon multicompañía de koroshi_faltantes 1.12.0 para odoo.tuctuc.com.
 v1.0.1 (28/11/2026): la zona de picking es la del almacén de cada ubicación (antes, la de cualquiera) y, si está
 vacía (MIECI, sin N1), vale cualquier hueco de su stock. Para MIECI en la PDA (sí de Isaac 28/11).
+v1.0.2 (28/11/2026): revisión 28/11, T2. Las alternativas de Faltante (y el mejor destino) salen de una consulta
+por parent_path, no de child_of del stock: Odoo 13 cargaba más de 150.000 ids de ubicación en cada búsqueda
+(la PDA busca alternativas cuando se para 3 s en una línea). Mismo resultado.
 """,
-    'version': '13.0.1.0.1',
+    'version': '13.0.1.0.2',
     'author': 'NATH',
     'category': 'Warehouse',
     'license': 'LGPL-3',

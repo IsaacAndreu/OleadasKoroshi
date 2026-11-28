@@ -256,6 +256,26 @@ class TuctucFaltante(models.Model):
         return not RE_HUECO.search(completo)
 
     @api.model
+    def _libre_dentro(self, product, raiz, sin=None):
+        """1.0.2 (revisión 28/11, T2): {ubicacion: uds libres} del artículo en las ubicaciones internas dentro de raiz
+        (sin `sin`), con UNA consulta por parent_path. Antes, child_of de raiz: Odoo 13 cargaba los más de 150.000
+        ids de ubicación de WH-OR/Stock cada vez que la PDA buscaba alternativas."""
+        if not raiz.parent_path:
+            return {}
+        self.env['stock.quant'].flush(['product_id', 'location_id', 'quantity', 'reserved_quantity'])
+        self.env.cr.execute("""
+            SELECT q.location_id, SUM(q.quantity - q.reserved_quantity)
+              FROM stock_quant q
+              JOIN stock_location l ON l.id = q.location_id
+             WHERE q.product_id = %s AND q.quantity > 0 AND l.usage = 'internal'
+               AND l.parent_path LIKE %s AND q.location_id != %s
+             GROUP BY q.location_id""", (product.id, raiz.parent_path + '%', sin.id if sin else 0))
+        rounding = product.uom_id.rounding
+        Loc = self.env['stock.location']
+        return {Loc.browse(lid): qty for lid, qty in self.env.cr.fetchall()
+                if float_compare(qty or 0.0, 0, precision_rounding=rounding) > 0}
+
+    @api.model
     def _libre_en(self, product, ubicacion):
         """Uds libres justo en esa ubicacion (sin hijas)."""
         quants = self.env['stock.quant'].search([('product_id', '=', product.id),
@@ -266,9 +286,7 @@ class TuctucFaltante(models.Model):
     def _alternativas_ordenadas(self, product, ubicacion_vieja, raiz):
         """[(ubicacion, uds libres)] de TODAS las ubicaciones con stock libre del articulo dentro de raiz, sin la
         vieja, ordenadas por el lineal mas cercano al de la vieja y despues por mas uds libres."""
-        libre = self._libre_por_ubicacion(product, [('location_id', 'child_of', raiz.id),
-                                                    ('location_id.usage', '=', 'internal'),
-                                                    ('location_id', '!=', ubicacion_vieja.id)])
+        libre = self._libre_dentro(product, raiz, ubicacion_vieja)   # 1.0.2 (T2)
         libre = {loc: qty for loc, qty in libre.items() if not self._excluida(loc)}   # v1.6
         lv = lineal_de(ubicacion_vieja)
 
